@@ -20,7 +20,7 @@ Find the full feature list below.
 Development is coordinated on `GitHub <https://github.com/Antidote1911/Arsenic>`_
 suggestions and contributions are welcome.
 
-If you need help with a problem, please open an `issue on GitHub
+If you need help you can open an `issue on GitHub
 <https://github.com/Antidote1911/Arsenic/issues>`_
 
 Passphrase Derivation
