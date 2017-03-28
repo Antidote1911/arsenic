@@ -5,7 +5,7 @@
 #include <QString>
 #include <stdint.h>
 
-namespace BBp
+namespace ARs
 {
 
 struct Preferences

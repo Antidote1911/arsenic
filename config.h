@@ -16,7 +16,7 @@ class Config : public QDialog
 public:
     explicit Config(QWidget *parent = 0);
     ~Config();
-    static bool getPreferences(BBp::Preferences &prefs, QWidget* parent = 0);
+    static bool getPreferences(ARs::Preferences &prefs, QWidget* parent = 0);
 
 
 

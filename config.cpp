@@ -24,7 +24,7 @@ Config::~Config()
     delete ui;
 }
 
-bool Config::getPreferences(BBp::Preferences &prefs, QWidget *parent)
+bool Config::getPreferences(ARs::Preferences &prefs, QWidget *parent)
 {
     bool retValue = false;
 

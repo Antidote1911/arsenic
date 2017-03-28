@@ -53,7 +53,7 @@ public slots:
 
 private:
     Ui::MainWindow *ui;
-    BBp::Preferences m_prefs;
+    ARs::Preferences m_prefs;
 
     QStandardItemModel *fileListModelCrypto;
     QStandardItemModel *fileListModelHash;

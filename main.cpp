@@ -9,10 +9,10 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    app.setOrganizationName(BBp::APP_ORGANIZATION);
-    app.setOrganizationDomain(BBp::APP_URL);
-    app.setApplicationName(BBp::APP_NAME);
-    app.setApplicationVersion(BBp::APP_VERSION);
+    app.setOrganizationName(ARs::APP_ORGANIZATION);
+    app.setOrganizationDomain(ARs::APP_URL);
+    app.setApplicationName(ARs::APP_NAME);
+    app.setApplicationVersion(ARs::APP_VERSION);
 
     // Addapt langage to system locale
     QString locale = QLocale::system().name().section('_', 0, 0);

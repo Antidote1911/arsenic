@@ -32,7 +32,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 {
     ui->setupUi(this);
-    MainWindow::setWindowTitle(BBp::APP_NAME);
+    MainWindow::setWindowTitle(ARs::APP_NAME);
 
     Crypto = new Crypto_Thread(this);
     Hash   = new Hash_Tool(this);
@@ -454,7 +454,7 @@ void MainWindow::on_pushStartJob_clicked()
                      direction,
                      m_prefs.algoCrypto,
                      m_prefs.deleteOriginals,
-                     BBp::APP_VERSION);
+                     ARs::APP_VERSION);
 
     Crypto->start();
 }

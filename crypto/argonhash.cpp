@@ -14,9 +14,9 @@ string pwdHash(QString user_password, Botan::secure_vector<uint8_t> user_salt, s
     size_t passwordLength = static_cast<size_t>(user_password.size());
 
 
-    auto ret = argon2_hash(BBp::T_COST,
-                           BBp::M_COST,
-                           BBp::PARALLELISM,
+    auto ret = argon2_hash(ARs::T_COST,
+                           ARs::M_COST,
+                           ARs::PARALLELISM,
                            user_password.data(),
                            passwordLength,
                            user_salt.data(),
