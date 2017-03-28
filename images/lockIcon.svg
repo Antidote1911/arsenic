@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+    Kryvos File Encryptor - Encrypts and decrypts files.
+    Copyright (C) 2014 Andrew Dolby
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Contact : andrewdolby@gmail.com
+-->
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="50"
+   height="65.002556"
+   id="svg2989"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="lockIcon.svg">
+  <defs
+     id="defs2991" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="11.313709"
+     inkscape:cx="31.868057"
+     inkscape:cy="33.104593"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1680"
+     inkscape:window-height="987"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
+  <metadata
+     id="metadata2994">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-249.6875,-313.05994)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.2084413"
+       id="rect3003"
+       width="49.791595"
+       height="34.791515"
+       x="249.79172"
+       y="343.16675"
+       ry="3.9374022" />
+    <g
+       id="g2999"
+       transform="matrix(0.86475212,0,0,0.88910306,245.29262,303.24254)"
+       style="fill:#ffffff;stroke:#ffffff">
+      <path
+         sodipodi:nodetypes="ccccc"
+         inkscape:connector-curvature="0"
+         id="path3841"
+         d="m 32.940186,64.155494 3.422325,-0.01563 4.052814,7.174807 -11.341201,0 z"
+         style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.4485704px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <path
+         transform="matrix(1.0555556,0,0,1.0555556,-2.3828712,-4.1268063)"
+         d="m 39.740258,60.129871 c 0,2.582111 -2.093214,4.675325 -4.675324,4.675325 -2.582111,0 -4.675325,-2.093214 -4.675325,-4.675325 0,-2.58211 2.093214,-4.675324 4.675325,-4.675324 2.58211,0 4.675324,2.093214 4.675324,4.675324 z"
+         sodipodi:ry="4.6753244"
+         sodipodi:rx="4.6753244"
+         sodipodi:cy="60.129871"
+         sodipodi:cx="35.064934"
+         id="path3853"
+         style="fill:#ffffff;fill-opacity:1;stroke:#ffffff"
+         sodipodi:type="arc" />
+    </g>
+    <path
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.1851707"
+       d="m 274.37507,313.15762 c -11.54115,0.18438 -20.76405,10.3976 -20.59263,22.81229 l 6.03092,0 c 0.1209,-9.73188 6.73895,-17.58448 14.87419,-17.58448 8.13524,0 14.75329,7.8526 14.87419,17.58448 l 6.03093,0 c 0.003,-0.22253 0.003,-0.46065 0,-0.68319 -0.17143,-12.41469 -9.67645,-22.31351 -21.2176,-22.1291 z"
+       id="path3063"
+       inkscape:connector-curvature="0" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.20799358"
+       id="rect4078-9"
+       width="5.9985862"
+       height="9.6262655"
+       x="289.57104"
+       y="335.95013" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.20812437"
+       id="rect4078-9-8"
+       width="6.0094986"
+       height="9.6208754"
+       x="253.79311"
+       y="335.92993" />
+  </g>
+</svg>

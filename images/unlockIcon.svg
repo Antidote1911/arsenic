@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+    Kryvos File Encryptor - Encrypts and decrypts files.
+    Copyright (C) 2014 Andrew Dolby
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Contact : andrewdolby@gmail.com
+-->
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="50"
+   height="65.002556"
+   id="svg2989"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="unlockIcon.svg">
+  <defs
+     id="defs2991" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="11.313709"
+     inkscape:cx="23.332229"
+     inkscape:cy="32.493335"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1680"
+     inkscape:window-height="987"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:snap-page="true" />
+  <metadata
+     id="metadata2994">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-249.75,-313.02869)">
+    <path
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.18651323"
+       d="m 274.71952,313.12704 c -11.70014,0.18453 -21.04766,10.38675 -20.87388,22.81095 l 6.1133,0 c 0.12257,-9.73933 6.83002,-17.5997 15.07733,-17.5997 6.61868,0 12.22573,5.07473 14.25378,12.1076 l 6.3667,0 c -2.22242,-10.07059 -10.79609,-17.47881 -20.93723,-17.31885 z"
+       id="path3063"
+       inkscape:connector-curvature="0" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.20821993"
+       id="rect4078-9-8"
+       width="6.0094986"
+       height="9.6297131"
+       x="253.79312"
+       y="335.923" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.20844163"
+       id="rect3003"
+       width="49.791691"
+       height="34.791557"
+       x="249.85414"
+       y="343.13547"
+       ry="3.9374068" />
+    <g
+       id="g2999"
+       transform="matrix(0.86475212,0,0,0.88991975,245.34825,303.15503)"
+       style="fill:#ffffff;stroke:#ffffff">
+      <path
+         sodipodi:nodetypes="ccccc"
+         inkscape:connector-curvature="0"
+         id="path3841"
+         d="m 32.940186,64.155494 3.422325,-0.01563 4.052814,7.174807 -11.341201,0 z"
+         style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:0.4485704px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <path
+         transform="matrix(1.0555556,0,0,1.0555556,-2.3828712,-4.1268063)"
+         d="m 39.740258,60.129871 c 0,2.582111 -2.093214,4.675325 -4.675324,4.675325 -2.582111,0 -4.675325,-2.093214 -4.675325,-4.675325 0,-2.58211 2.093214,-4.675324 4.675325,-4.675324 2.58211,0 4.675324,2.093214 4.675324,4.675324 z"
+         sodipodi:ry="4.6753244"
+         sodipodi:rx="4.6753244"
+         sodipodi:cy="60.129871"
+         sodipodi:cx="35.064934"
+         id="path3853"
+         style="fill:#ffffff;fill-opacity:1;stroke:#ffffff"
+         sodipodi:type="arc" />
+    </g>
+  </g>
+</svg>
