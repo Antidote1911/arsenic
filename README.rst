@@ -38,4 +38,5 @@ You can choose AES, Serpent or ChaCha20.
 - ChaCha20 is a new generation algorithm. It is extremly robust and fast than AES on standard architecture not optimized for AES.
 
 The output format of the encrypted file is:
+
 .. image:: https://github.com/Antidote1911/Arsenic/blob/master/screenshots/file_format.jpg
