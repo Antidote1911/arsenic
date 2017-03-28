@@ -67,5 +67,6 @@ FORMS    += mainwindow.ui \
     config.ui \
     about.ui
 
-TRANSLATIONS = arsenic_en.ts
+TRANSLATIONS = arsenic_en.ts \
+               arsenic_fr.ts
 

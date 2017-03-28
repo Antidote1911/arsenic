@@ -17,7 +17,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
-      <string>Chiffrage/Déchiffrage</string>
+      <string>Encrypt/Decrypt</string>
      </property>
      <layout class="QFormLayout" name="formLayout">
       <item row="0" column="0">
@@ -58,7 +58,7 @@
       <item row="2" column="0">
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Encodage :</string>
+         <string>Encoding :</string>
         </property>
        </widget>
       </item>
@@ -99,21 +99,21 @@
             <enum>Qt::LeftToRight</enum>
            </property>
            <property name="text">
-            <string>Supprimer les fichiers du disque aprés traitement.</string>
+            <string>Delete files after job finishing</string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QCheckBox" name="checkGoLogs">
            <property name="text">
-            <string>Aller sur la vue des logs aprés traitement.</string>
+            <string>Go to log view when strart job</string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QCheckBox" name="checkClearList">
            <property name="text">
-            <string>Vider la liste de fichiers aprés traitement.</string>
+            <string>Clean file list after job finishing</string>
            </property>
           </widget>
          </item>
@@ -123,7 +123,7 @@
       <item row="1" column="0">
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>Algorithme :</string>
+         <string>Algorithm :</string>
         </property>
        </widget>
       </item>

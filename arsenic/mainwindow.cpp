@@ -108,11 +108,11 @@ void MainWindow::restoreLogText()
 void MainWindow::cryptoFileView()
 {
     fileListModelCrypto = new QStandardItemModel(0,5);
-    fileListModelCrypto->setHeaderData(0, Qt::Horizontal, tr("Fichier"));
-    fileListModelCrypto->setHeaderData(1, Qt::Horizontal, tr("Chemin"));
-    fileListModelCrypto->setHeaderData(2, Qt::Horizontal, tr("Taille en Mb"));
-    fileListModelCrypto->setHeaderData(3, Qt::Horizontal, tr("Progression"));
-    fileListModelCrypto->setHeaderData(4, Qt::Horizontal, tr("Retirer Fichier"));
+    fileListModelCrypto->setHeaderData(0, Qt::Horizontal, tr("File"));
+    fileListModelCrypto->setHeaderData(1, Qt::Horizontal, tr("Path"));
+    fileListModelCrypto->setHeaderData(2, Qt::Horizontal, tr("Size in Mb"));
+    fileListModelCrypto->setHeaderData(3, Qt::Horizontal, tr("Progress"));
+    fileListModelCrypto->setHeaderData(4, Qt::Horizontal, tr("Remove File"));
 
     QHeaderView* headerCrypto = ui->fileListViewCrypto->horizontalHeader();
     headerCrypto->setStretchLastSection(false);
@@ -121,11 +121,11 @@ void MainWindow::cryptoFileView()
 void MainWindow::cryptoHashView()
 {
     fileListModelHash = new QStandardItemModel(0,5);
-    fileListModelHash->setHeaderData(0, Qt::Horizontal, tr("Fichier"));
-    fileListModelHash->setHeaderData(1, Qt::Horizontal, tr("Chemin"));
-    fileListModelHash->setHeaderData(2, Qt::Horizontal, tr("Taille en Mb"));
-    fileListModelHash->setHeaderData(3, Qt::Horizontal, tr("Progression"));
-    fileListModelHash->setHeaderData(4, Qt::Horizontal, tr("Retirer Fichier"));
+    fileListModelHash->setHeaderData(0, Qt::Horizontal, tr("File"));
+    fileListModelHash->setHeaderData(1, Qt::Horizontal, tr("Path"));
+    fileListModelHash->setHeaderData(2, Qt::Horizontal, tr("Size in Mb"));
+    fileListModelHash->setHeaderData(3, Qt::Horizontal, tr("Progress"));
+    fileListModelHash->setHeaderData(4, Qt::Horizontal, tr("Remove File"));
 
     QHeaderView* headerHash = ui->fileListViewHash->horizontalHeader();
     headerHash->setStretchLastSection(false);
@@ -248,12 +248,12 @@ void MainWindow::on_pushAddHash_clicked()
 void MainWindow::addFiles(QString cryptoOrHash)
 {
     // Open a file dialog to get files
-    const QStringList files = QFileDialog::getOpenFileNames(this,tr("Ouvrir Fichier"), m_prefs.lastDirectory,
-                              tr("Tous (*.*) ;; "
-                                 "Fichiers Arsenic (*.ars) ;; "
-                                 "Fichiers Textes (*.txt *.doc *.inf *.ini *.rtf *.html .*css) ;; "
+    const QStringList files = QFileDialog::getOpenFileNames(this,tr("Add File(s)"), m_prefs.lastDirectory,
+                              tr("All (*.*) ;; "
+                                 "Arsenic Files(*.ars) ;; "
+                                 "Text Files (*.txt *.doc *.inf *.ini *.rtf *.html .*css) ;; "
                                  "Images (*.jpg *.jpeg *.bmp *.tif *.svg *.tga *.png *.gif *.psd *.xcf) ;; "
-                                 "Vidéos (*.avi *.mkv *.mpg *.mpeg *.webm *.divx *.mov *.3gp *.rm *.flv *.wmv *.vob *.ts *.ogg *.ogm) ;; "
+                                 "Videos (*.avi *.mkv *.mpg *.mpeg *.webm *.divx *.mov *.3gp *.rm *.flv *.wmv *.vob *.ts *.ogg *.ogm) ;; "
                                  "Executables (*.exe *.bat)"));
 
 
@@ -403,7 +403,7 @@ void MainWindow::on_pushStartHash_clicked()
     if (getListFiles("hash").isEmpty())
     {
         QMessageBox::warning(this, tr("Oups..."),
-                             tr("Vous devez ajouter un ou plusieurs fichiers pour démarrer le traitemment."));
+                             tr("You must add one are more files to start job."));
         return;
     }
     QString algo= ui->comboHash->currentText();
@@ -429,7 +429,7 @@ void MainWindow::on_pushStartJob_clicked()
     if (getListFiles("crypto").isEmpty())
     {
         QMessageBox::warning(this, tr("Oups..."),
-                             tr("Vous devez ajouter un ou plusieurs fichiers pour démarrer le traitemment."));
+                             tr("You must add one are more files to start job."));
         return;
 
     }
@@ -437,14 +437,14 @@ void MainWindow::on_pushStartJob_clicked()
     if (ui->linePassEncrypt->text().isEmpty() && ui->linePassConfirm->text().isEmpty())
     {
         QMessageBox::warning(this, tr("Oups..."),
-                             tr("Vous devez entrer une passphrase et sa confirmation."));
+                             tr("You must enter the passphrase and the confirmation."));
         return;
     }
 
     if (ui->linePassEncrypt->text()!=ui->linePassConfirm->text() && direction==true)
     {
         QMessageBox::warning(this, tr("Oups..."),
-                             tr("La Passphrase et sa confirmation ne sont pas identiques."));
+                             tr("Passphrase and confirmation not match."));
         return;
     }
 
@@ -508,22 +508,22 @@ void MainWindow::on_actionQuitter_triggered()
 
 void MainWindow::on_actionA_propos_de_Arsenic_triggered()
 {
-    About::setText(tr("file:about_files/fr/fr_about_arsenic.html"), this);
+    About::setText(tr("file:about_files/en/en_about_arsenic.html"), this);
 }
 
 void MainWindow::on_actionA_propos_de_Botan_triggered()
 {
-    About::setText(tr("file:about_files/fr/fr_about_botan.html"), this);
+    About::setText(tr("file:about_files/en/en_about_botan.html"), this);
 }
 
 void MainWindow::on_actionA_Propos_de_Argon2_triggered()
 {
-    About::setText(tr("file:about_files/fr/fr_about_argon2.html"), this);
+    About::setText(tr("file:about_files/en/en_about_argon2.html"), this);
 }
 
 void MainWindow::on_actionA_Propos_de_Qt_triggered()
 {
-    QMessageBox::aboutQt(this,tr("Arsenic About Qt"));
+    QMessageBox::aboutQt(this,tr("About Qt"));
 }
 
 void MainWindow::on_comboHash_currentIndexChanged(const QString &arg1)

@@ -25,7 +25,7 @@
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
-        <string>Chiffrage/Déchiffrage</string>
+        <string>Encrypt/Decrypt</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_6">
         <item>
@@ -49,30 +49,30 @@
               <item>
                <widget class="QPushButton" name="pushAddCrypto">
                 <property name="text">
-                 <string>Ajouter Fichier(s)</string>
+                 <string>Add Files(s)</string>
                 </property>
                </widget>
               </item>
               <item>
                <widget class="QPushButton" name="pushRemoveAllCrypto">
                 <property name="text">
-                 <string>Enlever Tout</string>
+                 <string>Remove All</string>
                 </property>
                </widget>
               </item>
               <item>
                <widget class="QComboBox" name="comboDirection">
                 <property name="currentText">
-                 <string>Chiffrage</string>
+                 <string>Encrypt</string>
                 </property>
                 <item>
                  <property name="text">
-                  <string>Chiffrage</string>
+                  <string>Encrypt</string>
                  </property>
                 </item>
                 <item>
                  <property name="text">
-                  <string>Déchiffrage</string>
+                  <string>Decrypt</string>
                  </property>
                 </item>
                </widget>
@@ -80,7 +80,7 @@
               <item>
                <widget class="QPushButton" name="pushStartJob">
                 <property name="text">
-                 <string>Lancer</string>
+                 <string>Start Job</string>
                 </property>
                </widget>
               </item>
@@ -166,7 +166,7 @@
       </widget>
       <widget class="QWidget" name="tab_3">
        <attribute name="title">
-        <string>Calculs des Hash</string>
+        <string>Hash Calculator</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="1" column="0">
@@ -193,14 +193,14 @@
               <item>
                <widget class="QPushButton" name="pushAddHash">
                 <property name="text">
-                 <string>Ajouter Fichier(s)</string>
+                 <string>Add File(s)</string>
                 </property>
                </widget>
               </item>
               <item>
                <widget class="QPushButton" name="pushRemoveAllHash">
                 <property name="text">
-                 <string>Enlever Tout</string>
+                 <string>Remove All</string>
                 </property>
                </widget>
               </item>
@@ -314,7 +314,7 @@
               <item>
                <widget class="QPushButton" name="pushStartHash">
                 <property name="text">
-                 <string>Lancer</string>
+                 <string>Start Job</string>
                 </property>
                </widget>
               </item>
@@ -344,7 +344,7 @@
       </widget>
       <widget class="QWidget" name="tab_log">
        <attribute name="title">
-        <string>Logs de sortie</string>
+        <string>Output Log</string>
        </attribute>
        <layout class="QHBoxLayout" name="horizontalLayout_6">
         <item>
@@ -359,7 +359,7 @@
            <item>
             <widget class="QPushButton" name="pushClearLog">
              <property name="text">
-              <string>Tout Effacer</string>
+              <string>Clean Log</string>
              </property>
             </widget>
            </item>
@@ -403,7 +403,7 @@
    </property>
    <widget class="QMenu" name="menuFichier">
     <property name="title">
-     <string>Fic&amp;hier</string>
+     <string>Fi&amp;le</string>
     </property>
     <addaction name="actionConfiguration"/>
     <addaction name="actionQuitter"/>
@@ -449,7 +449,7 @@
   </action>
   <action name="actionA_propos_de_Arsenic">
    <property name="text">
-    <string>&amp;A Propos de Arsenic</string>
+    <string>About Arsenic</string>
    </property>
    <property name="toolTip">
     <string>A Propos de Arsenic</string>
@@ -457,22 +457,22 @@
   </action>
   <action name="actionA_propos_de_Botan">
    <property name="text">
-    <string>A &amp;Propos de Botan</string>
+    <string>About Botan</string>
    </property>
   </action>
   <action name="actionA_Propos_de_Argon2">
    <property name="text">
-    <string>A Propos &amp;de Argon2</string>
+    <string>About Argon2</string>
    </property>
   </action>
   <action name="actionA_Propos_de_Qt">
    <property name="text">
-    <string>A Propos de &amp;Qt</string>
+    <string>About &amp;Qt</string>
    </property>
   </action>
   <action name="actionQuitter">
    <property name="text">
-    <string>&amp;Quitter</string>
+    <string>Quit</string>
    </property>
   </action>
   <action name="actionConfiguration">
