@@ -39,4 +39,4 @@ You can choose AES, Serpent or ChaCha20.
 
 The output format of the encrypted file is:
 
-.. image:: https://github.com/Antidote1911/Arsenic/blob/master/screenshots/file_format.jpg
+.. image:: https://github.com/Antidote1911/Arsenic/blob/master/screenshots/file_format.jpg1
