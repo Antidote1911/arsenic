@@ -30,7 +30,7 @@ You can choose AES, Serpent or ChaCha20.
 - Serpent is the second finalist. It is more prudent and robust in this conception but AES is faster.
 - ChaCha20 is a new generation algorithm. It is extremly robust and fast than AES on standard architecture not optimized for AES.
 
-Arsenic provide three format for encrypted data.
+Arsenic provide three formats for writing encrypted data in file.
 
 1. **Raw Data** - No encoding. The file is more compact than Base64 and hexadecimal encoding, but it can' be opened by text editor.
 
