@@ -46,7 +46,7 @@ All three algorithms use integrity and `authentication. <https://en.wikipedia.or
 
 Encrypted File Format
 ^^^^^^^^^^^^^^^^^^^^^
-The output format of the encrypted file is:::
+The output format of the encrypted file is::
 
  - Header + Version   (checked by decryption routine)
  - Algorithm Name     (for decryption routine)
@@ -71,3 +71,16 @@ It provides the highest level of security and privacy, because all files, includ
 Use a robust open source operating system like **Linux distribution with full disk encryption**.
 
 Never, never trust a proprietary OS or security software !!!
+
+Notes for developpers
+-----------------------
+To build Arsenic, you'll need Qt 5.0 (or later), Botan 2.0, and a C++14 capable compiler (tests ok with GCC and Clang)
+You do not need to install Argon2 or Botan library.
+
+For simplify compillation Argon2 original source code is included in the QtCreator project. Botan is included as an amalgamation configurations.
+
+The configuration commands used to generate Botan GCC amalgamation files is::
+
+ ./configure.py --cc=gcc --amalgamation --disable-shared --cc=clang --disable-module threefish_avx2,tls
+
+You can change gcc to clang, and disable all unnecessary modules for reduce compilation time. I have disabled threefish_avx2 because my processor don't like AVX2 instructions.
