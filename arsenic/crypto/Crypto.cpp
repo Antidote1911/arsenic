@@ -183,7 +183,7 @@ QString Crypto_Thread::uniqueFileName(const QString& fileName)
 
 void Crypto_Thread::encryptFile(QString& inputFileName, QString& passphrase, QString& algo, QString& encoding, QString version)
 {
-    std::string algorithmName=algo.toStdString();
+    const string algorithmName = algo.toStdString();
     QFileInfo fileInfo{inputFileName};
 
     if (fileInfo.exists() && fileInfo.isFile() && fileInfo.isReadable())
@@ -205,18 +205,18 @@ void Crypto_Thread::encryptFile(QString& inputFileName, QString& passphrase, QSt
         }
 
         // Randomize the 16 bytes salt
-        Botan::secure_vector<uint8_t> pbkdf_salt(PBKDF_SALT_LEN);
+        secure_vector<uint8_t> pbkdf_salt(PBKDF_SALT_LEN);
         rng.randomize(pbkdf_salt.data(), pbkdf_salt.size());
 
         // Calculate Argon2 derivation of the password
         const size_t ARGON_OUTPUT_LEN = CIPHER_KEY_LEN + CIPHER_IV_LEN;
 
-        SymmetricKey master_key = pwdHash(passphrase,pbkdf_salt,ARGON_OUTPUT_LEN);
+        const SymmetricKey master_key = pwdHash(passphrase.toStdString(),pbkdf_salt,ARGON_OUTPUT_LEN);
 
         // Split master_key in two parts. One for cipher_key, one for iv
         const uint8_t* mk = master_key.begin();
-        SymmetricKey cipher_key(mk, CIPHER_KEY_LEN);
-        InitializationVector iv(&mk[CIPHER_KEY_LEN], CIPHER_IV_LEN);
+        const SymmetricKey cipher_key(mk, CIPHER_KEY_LEN);
+        const InitializationVector iv(&mk[CIPHER_KEY_LEN], CIPHER_IV_LEN);
 
         // Open input for read.and output file. Add .ars extension to the output file
         std::ifstream in{inputFileName.toStdString(), std::ios::binary};
@@ -251,10 +251,10 @@ void Crypto_Thread::encryptFile(QString& inputFileName, QString& passphrase, QSt
 
         auto headerText = "-------- ENCRYPTED ARSENIC " + version.toStdString() + " FILE --------";
 
-        out << headerText << endl;
-        out << algorithmName << endl;
-        out<<encoding.toStdString()<<endl;
-        out << Botan::base64_encode(&pbkdf_salt[0], pbkdf_salt.size()) << std::endl;
+        out << headerText                                              << endl;
+        out << algorithmName                                           << endl;
+        out << encoding.toStdString()                                  << endl;
+        out << Botan::base64_encode(&pbkdf_salt[0], pbkdf_salt.size()) << endl;
 
         pipe.append(new Botan::DataSink_Stream{out});
 
@@ -310,16 +310,16 @@ void Crypto_Thread::decryptFile(const QString& inputFileName,
 
         const size_t CIPHER_KEY_LEN = 32;  //32 bytes = 256 bits
 
-        secure_vector<uint8_t> salt = Botan::base64_decode( pbkdfSaltString );
+        const secure_vector<uint8_t>salt = Botan::base64_decode( pbkdfSaltString);
 
         // Calculate Argon2 derivation of the password
         const size_t ARGON_OUTPUT_LEN = CIPHER_KEY_LEN + CIPHER_IV_LEN;
-        SymmetricKey master_key = pwdHash(passphrase,salt,ARGON_OUTPUT_LEN);
+        SymmetricKey master_key = pwdHash(passphrase.toStdString(),salt,ARGON_OUTPUT_LEN);
 
         // Split master_key in two parts. One for cipher_key, one for iv
         const uint8_t* mk = master_key.begin();
-        SymmetricKey cipher_key(mk, CIPHER_KEY_LEN);
-        InitializationVector iv(&mk[CIPHER_KEY_LEN], CIPHER_IV_LEN);
+        const SymmetricKey cipher_key(mk, CIPHER_KEY_LEN);
+        const InitializationVector iv(&mk[CIPHER_KEY_LEN], CIPHER_IV_LEN);
 
         // Remove the .ars extension if it's in the file name
         const auto outputFileName = removeExtension(inputFileName,

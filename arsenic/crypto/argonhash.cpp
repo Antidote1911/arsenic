@@ -10,17 +10,15 @@ extern "C" {
 using namespace std;
 
 
-vector<uint8_t> pwdHash(QString user_password, Botan::secure_vector<uint8_t> user_salt, size_t outlen) {
+vector<uint8_t> pwdHash(string user_password, Botan::secure_vector<uint8_t> user_salt, size_t outlen) {
 
     vector<uint8_t> output(outlen);
-    size_t passwordLength = static_cast<size_t>(user_password.size());
-
 
     auto ret = argon2_hash(ARs::T_COST,
                            ARs::M_COST,
                            ARs::PARALLELISM,
                            user_password.data(),
-                           passwordLength,
+                           user_password.size(),
                            user_salt.data(),
                            user_salt.size(),
                            output.data(), outlen, NULL, 0, Argon2_id, ARGON2_VERSION_NUMBER);

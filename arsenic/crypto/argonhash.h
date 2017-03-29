@@ -5,7 +5,7 @@
 #include <QString>
 
 
-std::vector<uint8_t> pwdHash(QString passwordStr, Botan::secure_vector<uint8_t> salt, size_t outlen);
+std::vector<uint8_t> pwdHash(std::string passwordStr, Botan::secure_vector<uint8_t> salt, size_t outlen);
 
 
 
