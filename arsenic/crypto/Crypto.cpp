@@ -315,7 +315,6 @@ void Crypto_Thread::decryptFile(const QString& inputFileName,
         // Calculate Argon2 derivation of the password
         const size_t ARGON_OUTPUT_LEN = CIPHER_KEY_LEN + CIPHER_IV_LEN;
         SymmetricKey master_key = pwdHash(passphrase,salt,ARGON_OUTPUT_LEN);
-        //string userhash  = pwdHash(passphrase,salt,ARGON_OUTPUT_LEN);
 
         // Split master_key in two parts. One for cipher_key, one for iv
         const uint8_t* mk = master_key.begin();
