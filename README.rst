@@ -23,21 +23,41 @@ The passphrase is extended by Argon2 and a random 16 bytes salt to generate a 48
 Argon2 is protected from GPU Brute Force Attack and Side Chanel Attack. Arsenic use Argon2id version of the algorithm, 64MiB Memory usage, 4 pass computation and 2 for parrallelism.
 
 Encryption
-^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^
 You can choose AES, Serpent or ChaCha20.
 
 - AES is the winner of the competition organized by the NIST in 1997. He is approved by NSA for *"Top Secret"* classification level of the US governement organizations.
 - Serpent is the second finalist. It is more prudent and robust in this conception but AES is faster.
 - ChaCha20 is a new generation algorithm. It is extremly robust and fast than AES on standard architecture not optimized for AES.
 
+Arsenic provide three format for encrypted data.
+
+1. **Raw Data** - No encoding. The file is more compact than Base64 and hexadecimal encoding, but it can' be opened by text editor.
+
+2. **Base64**  - The file can be opened with a text editor. Exellent for send encrypted file by email, forums or printed ! )
+
+3. **Hexadecimal** -same as base64 but produce bigger files
+
+
+
+Authentication
+^^^^^^^^^^^^^^
 All three algorithms use integrity and `authentication. <https://en.wikipedia.org/wiki/Authenticated_encryption>`_ `The GCM (Galois Counter Mode) <https://github.com/Antidote1911/Arsenic/issues>`_ for AES and Serpent, and `Poly1305 <https://github.com/Antidote1911/Arsenic/issues>`_ for Chacha20.
 
+Encrypted File Format
+^^^^^^^^^^^^^^^^^^^^^
 The output format of the encrypted file is:::
 
- - header + version   (checked by decryption routine)
- - Algorithm name     (for decryption routine)
- - Encoding           (for decryption routine)
+ - Header + Version   (checked by decryption routine)
+ - Algorithm Name     (for decryption routine)
+ - Encoding type      (for decryption routine)
  - 16 bytes Salt      (for Argon2 pass derrivation)
+ -
+ - 5651651651651516   |
+ - 0165598496848161   | encrypted data.
+ - 7896825464565515   | writed with the selected
+ - 8979846513213313   | encoding.
+ - 2165161946546516   |
 
 Recommandations
 ^^^^^^^^^^^^^^^
@@ -48,4 +68,6 @@ Encryption is not magic and don't protect you if your system is not secure. Most
 It provides the highest level of security and privacy, because all files, including any temporary files that Windows and applications create on the system partition (typically, without your knowledge or consent), hibernation files, swap files, etc., are always permanently encrypted (even when power supply is suddenly interrupted). Windows also records large amounts of potentially sensitive data, such as the names and locations of files you open, applications you run, etc. All such log files and registry entries are always permanently encrypted as well.
 
 **But don't forget:** Full drive encryption don't protect againt a malware infection like a keylogger !
-Use a robust open source operating system like **Linux distribution with full disk encryption**. Never, never trust a proprietary OS or security software !!!
+Use a robust open source operating system like **Linux distribution with full disk encryption**.
+
+Never, never trust a proprietary OS or security software !!!
