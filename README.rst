@@ -73,7 +73,15 @@ Use a robust open source operating system like **Linux distribution with full di
 Never, never trust a proprietary OS or security software !!!
 
 Notes for developpers
------------------------
+---------------------
+I am not noob in crypto but i am learning C++. Contributions and suggestions are welcomes.
+
+Thanks to `adolby <https://github.com/adolby>`_ for some portions of code. If you need a good and nice multiplatform file
+encryptor that support theming, have a look to `Kryvos <https://github.com/adolby/Kryvos>`_ ! or `here <https://andrewdolby.com/>`_.
+
+I am french, et j'adore boire mon café et manger ma chocolatine en programmant, même
+si je ruine mon clavier à chaque fois ! Pour les bugs, veuillez envoyer un rapport à mes chats (Minours, Minette, et Haribo) :)
+
 To build Arsenic, you'll need Qt 5.0 (or later), Botan 2.0, and a C++14 capable compiler (tests ok with GCC and Clang)
 You do not need to install Argon2 or Botan library.
 
