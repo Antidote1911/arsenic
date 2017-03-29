@@ -26,7 +26,7 @@ Encryption
 ^^^^^^^^^^^^^^^^^^^^^
 You can choose AES, Serpent or ChaCha20.
 
-- AES is the winner of the competition organized by the NIST. He is approved by NSA for *"Top Secret"* classification level of the US governement organizations.
+- AES is the winner of the competition organized by the NIST in 1997. He is approved by NSA for *"Top Secret"* classification level of the US governement organizations.
 - Serpent is the second finalist. It is more prudent and robust in this conception but AES is faster.
 - ChaCha20 is a new generation algorithm. It is extremly robust and fast than AES on standard architecture not optimized for AES.
 
@@ -48,4 +48,4 @@ Encryption is not magic and don't protect you if your system is not secure. Most
 It provides the highest level of security and privacy, because all files, including any temporary files that Windows and applications create on the system partition (typically, without your knowledge or consent), hibernation files, swap files, etc., are always permanently encrypted (even when power supply is suddenly interrupted). Windows also records large amounts of potentially sensitive data, such as the names and locations of files you open, applications you run, etc. All such log files and registry entries are always permanently encrypted as well.
 
 **But don't forget:** Full drive encryption don't protect againt a malware infection like a keylogger !
-Use a robust open source operating system like Linux distribution with full disk encryption.
+Use a robust open source operating system like **Linux distribution with full disk encryption**. Never, never trust a proprietary OS or security software !!!
