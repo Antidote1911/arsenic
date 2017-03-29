@@ -1,5 +1,7 @@
-Arsenic: Strong files encryption
-==================================================
+Arsenic v0.9.9: Strong files encryption
+=======================================
+
+*Warning: this version is not stable. Encryption sheme may change an become incompatible with the future first stabilized realease (v1.0.0)*
 
 Arsenic is a cryptography application written in C++11 with Qt5, the fantastic crypto library `Botan
 <https://botan.randombit.net/>`_, and Argon2, the password-hashing function that won the Password Hashing Competition (PHC). It is released under the `GPL-3.0
