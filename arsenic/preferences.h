@@ -25,6 +25,6 @@ struct Preferences
     int cipherDirection;
 };
 
-} // namespace BBp
+} // namespace ARs
 
 #endif // PREFERENCES_H

@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     app.installTranslator(&translator);
     qApp->setStyle(QStyleFactory::create("Fusion"));
 
+    // dark fusion good look on Windows
     QPalette darkPalette;
     darkPalette.setColor(QPalette::Window, QColor(53,53,53));
     darkPalette.setColor(QPalette::WindowText, Qt::white);

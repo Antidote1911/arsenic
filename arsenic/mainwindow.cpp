@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "Delegate.h"
 #include "preferences.h"
+#include <Constants.h>
 #include "config.h"
 #include "about.h"
 
@@ -28,7 +29,7 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
-    //,m_prefs()
+    ,m_prefs()
 
 {
     ui->setupUi(this);
@@ -59,9 +60,9 @@ MainWindow::~MainWindow()
 void MainWindow::loadOptions()
 {
     QSettings settings;
-    m_prefs.algoCrypto        = settings.value("algo_crypto").toString();
-    m_prefs.algoHash          = settings.value("algo_hash").toString();
-    m_prefs.encoding          = settings.value("encoding").toString();
+    m_prefs.algoCrypto        = settings.value("algo_crypto",ARs::DEFAULT_CRYPTO_ALGO).toString();
+    m_prefs.algoHash          = settings.value("algo_hash",ARs::DEFAULT_HASH_ALGO).toString();
+    m_prefs.encoding          = settings.value("encoding",ARs::DEFAULT_ENCODING).toString();
     m_prefs.lastDirectory     = settings.value("lastDirectory").toString();
     m_prefs.deleteOriginals   = settings.value("deleteOriginals").toBool();
     m_prefs.restoreGeometry   = settings.value("mainWindowGeometry").toByteArray();
@@ -452,7 +453,7 @@ void MainWindow::on_pushStartJob_clicked()
                      ui->linePassEncrypt->text(),
                      m_prefs.algoCrypto,
                      direction,
-                     m_prefs.algoCrypto,
+                     m_prefs.encoding,
                      m_prefs.deleteOriginals,
                      ARs::APP_VERSION);
 

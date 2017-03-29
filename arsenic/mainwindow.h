@@ -25,6 +25,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
+    ARs::Preferences m_prefs;
 
 signals:
     void stopFile(const QString& fileName);
@@ -53,7 +54,7 @@ public slots:
 
 private:
     Ui::MainWindow *ui;
-    ARs::Preferences m_prefs;
+
 
     QStandardItemModel *fileListModelCrypto;
     QStandardItemModel *fileListModelHash;
