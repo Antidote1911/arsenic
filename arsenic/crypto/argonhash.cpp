@@ -1,14 +1,16 @@
-#include "crypto/botan/botan_all.h"
-#include "crypto/argonhash.h"
-#include "crypto/argon2/argon2.h"
+#include "botan/botan_all.h"
+#include "argonhash.h"
 #include "preferences.h"
 #include <iostream>
 
+extern "C" {
+#include "argon2/argon2.h"
+}
 
 using namespace std;
 
 
-string pwdHash(QString user_password, Botan::secure_vector<uint8_t> user_salt, size_t outlen) {
+vector<uint8_t> pwdHash(QString user_password, Botan::secure_vector<uint8_t> user_salt, size_t outlen) {
 
     vector<uint8_t> output(outlen);
     size_t passwordLength = static_cast<size_t>(user_password.size());
@@ -28,6 +30,8 @@ string pwdHash(QString user_password, Botan::secure_vector<uint8_t> user_salt, s
         cerr << "ARGON2 ERROR : " << argon2_error_message(ret) << endl;
     }
 
-    return Botan::hex_encode(output,output.size());
+    //Botan::hex_encode(output,output.size())
+
+    return output;
 
 }
