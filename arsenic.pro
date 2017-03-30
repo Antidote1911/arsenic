@@ -1,4 +1,6 @@
 TEMPLATE      = subdirs
 
 SUBDIRS = \
-    arsenic
+    arsenic \
+    tests \
+    arsenic_cli
