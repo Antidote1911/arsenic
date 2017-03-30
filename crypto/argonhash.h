@@ -2,7 +2,6 @@
 #define ARGONHASH_H
 
 #include "botan/botan_all.h"
-#include <QString>
 
 
 std::vector<uint8_t> pwdHash(std::string passwordStr, Botan::secure_vector<uint8_t> salt, size_t outlen);

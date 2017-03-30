@@ -45,8 +45,8 @@ SOURCES += main.cpp\
 HEADERS  += mainwindow.h \
     config.h \
     about.h \
-    preferences.h \
-    Constants.h \
+    ../preferences/preferences.h \
+    ../preferences/Constants.h \
     Delegate.h \
     ../crypto/argon2/argon2.h \
     ../crypto/botan/botan_all.h \

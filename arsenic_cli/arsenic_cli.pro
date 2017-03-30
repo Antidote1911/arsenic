@@ -1,9 +1,8 @@
-TEMPLATE = app
-CONFIG += console c++11
-CONFIG -= app_bundle
-CONFIG += qt
 QT       += core
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+CONFIG += c++14
+TEMPLATE = app
+CONFIG += console
+
 
 TARGET = arsenic_cli
 
@@ -25,4 +24,5 @@ HEADERS  += ../crypto/argon2/argon2.h \
     ../crypto/botan/botan_all.h \
     ../crypto/botan/botan_all_internal.h \
     ../crypto/argonhash.h \
-    ../crypto/hash_tool.h
+    ../preferences/preferences.h \
+    ../preferences/Constants.h

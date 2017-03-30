@@ -5,7 +5,7 @@
 #include <QSettings>
 #include <QLabel>
 #include <QCheckBox>
-#include <Constants.h>
+#include <../preferences/Constants.h>
 
 
 Config::Config(QWidget *parent) :
