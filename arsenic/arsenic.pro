@@ -29,12 +29,12 @@ SOURCES += main.cpp\
     crypto/botan/botan_all_rdrand.cpp \
     crypto/botan/botan_all_rdseed.cpp \
     crypto/botan/botan_all_ssse3.cpp \
-    crypto/argon2/blake2/blake2b.c \
-    crypto/argon2/argon2.c \
-    crypto/argon2/core.c \
-    crypto/argon2/encoding.c \
-    crypto/argon2/ref.c \
-    crypto/argon2/thread.c \
+    crypto/phc-winner-argon2/src/blake2/blake2b.c \
+    crypto/phc-winner-argon2/src/argon2.c \
+    crypto/phc-winner-argon2/src/core.c \
+    crypto/phc-winner-argon2/src/encoding.c \
+    crypto/phc-winner-argon2/src/ref.c \
+    crypto/phc-winner-argon2/src/thread.c \
     crypto/argonhash.cpp \
     crypto/Crypto.cpp \
     crypto/hash_tool.cpp \
@@ -45,15 +45,15 @@ SOURCES += main.cpp\
 HEADERS  += mainwindow.h \
     crypto/botan/botan_all.h \
     crypto/botan/botan_all_internal.h \
-    crypto/argon2/blake2/blake2-impl.h \
-    crypto/argon2/blake2/blake2.h \
-    crypto/argon2/blake2/blamka-round-opt.h \
-    crypto/argon2/blake2/blamka-round-ref.h \
-    crypto/argon2/argon2.h \
-    crypto/argon2/core.h \
-    crypto/argon2/encoding.h \
-    crypto/argon2/ref.h \
-    crypto/argon2/thread.h \
+    crypto/phc-winner-argon2/src/blake2/blake2-impl.h \
+    crypto/phc-winner-argon2/src/blake2/blake2.h \
+    crypto/phc-winner-argon2/src/blake2/blamka-round-opt.h \
+    crypto/phc-winner-argon2/src/blake2/blamka-round-ref.h \
+    crypto/phc-winner-argon2/src/argon2.h \
+    crypto/phc-winner-argon2/src/core.h \
+    crypto/phc-winner-argon2/src/encoding.h \
+    crypto/phc-winner-argon2/src/ref.h \
+    crypto/phc-winner-argon2/src/thread.h \
     crypto/argonhash.h \
     crypto/Crypto.h \
     crypto/hash_tool.h \

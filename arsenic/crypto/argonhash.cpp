@@ -4,7 +4,7 @@
 #include <iostream>
 
 extern "C" {
-#include "argon2/argon2.h"
+#include "phc-winner-argon2/src/argon2.h"
 }
 
 using namespace std;
