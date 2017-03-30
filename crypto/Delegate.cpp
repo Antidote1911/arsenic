@@ -18,7 +18,7 @@
  * Contact : andrewdolby@gmail.com
  */
 
-#include "Delegate.hpp"
+#include "Delegate.h"
 #include <QtWidgets/QApplication>
 #include <QtCore/QEvent>
 #include <QtGui/QMouseEvent>

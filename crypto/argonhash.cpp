@@ -3,12 +3,11 @@
 #include "preferences.h"
 #include <iostream>
 
-extern "C" {
+
 #include "argon2/argon2.h"
-}
+
 
 using namespace std;
-
 
 vector<uint8_t> pwdHash(string user_password, Botan::secure_vector<uint8_t> user_salt, size_t outlen) {
 
