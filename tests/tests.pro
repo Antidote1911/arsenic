@@ -1,7 +1,7 @@
 QT += core
 QT -= gui
 
-CONFIG += c++11
+CONFIG += c++14
 
 TARGET = tests
 CONFIG += console
@@ -10,25 +10,25 @@ CONFIG -= app_bundle
 TEMPLATE = app
 
 SOURCES += main.cpp \
-    ../crypto/botan/botan_all.cpp \
-    ../crypto/botan/botan_all_aesni.cpp \
-    ../crypto/botan/botan_all_rdrand.cpp \
-    ../crypto/botan/botan_all_rdseed.cpp \
-    ../crypto/botan/botan_all_ssse3.cpp \
-    ../crypto/argonhash.cpp \
-    ../crypto/argon2/blake2/blake2b.c \
-    ../crypto/argon2/argon2.c \
-    ../crypto/argon2/core.c \
-    ../crypto/argon2/encoding.c \
-    ../crypto/argon2/ref.c \
-    ../crypto/argon2/thread.c
+    ../arsenic/crypto/botan/botan_all.cpp \
+    ../arsenic/crypto/botan/botan_all_aesni.cpp \
+    ../arsenic/crypto/botan/botan_all_rdrand.cpp \
+    ../arsenic/crypto/botan/botan_all_rdseed.cpp \
+    ../arsenic/crypto/botan/botan_all_ssse3.cpp \
+    ../arsenic/crypto/argonhash.cpp \
+    ../arsenic/crypto/argon2/blake2/blake2b.c \
+    ../arsenic/crypto/argon2/argon2.c \
+    ../arsenic/crypto/argon2/core.c \
+    ../arsenic/crypto/argon2/encoding.c \
+    ../arsenic/crypto/argon2/ref.c \
+    ../arsenic/crypto/argon2/thread.c
 
-HEADERS  += ../crypto/argon2/argon2.h \
-    ../crypto/botan/botan_all.h \
-    ../crypto/botan/botan_all_internal.h \
-    ../crypto/argonhash.h \
-    ../preferences/preferences.h \
-    ../preferences/Constants.h
+HEADERS  += ../arsenic/crypto/argon2/argon2.h \
+    ../arsenic/crypto/botan/botan_all.h \
+    ../arsenic/crypto/botan/botan_all_internal.h \
+    ../arsenic/crypto/argonhash.h \
+    ../arsenic/preferences/preferences.h \
+    ../arsenic/preferences/Constants.h
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked deprecated (the exact warnings

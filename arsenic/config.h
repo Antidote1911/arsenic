@@ -3,7 +3,7 @@
 
 #include <QDialog>
 #include <QSettings>
-#include <../preferences/preferences.h>
+#include <preferences/preferences.h>
 
 namespace Ui {
 class Config;

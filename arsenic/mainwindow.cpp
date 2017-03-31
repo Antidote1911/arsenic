@@ -1,8 +1,8 @@
 ﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "Delegate.h"
-#include "../preferences/preferences.h"
-#include <../preferences/Constants.h>
+#include "preferences/preferences.h"
+#include "preferences/Constants.h"
 #include "config.h"
 #include "about.h"
 

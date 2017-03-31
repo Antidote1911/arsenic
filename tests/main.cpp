@@ -1,8 +1,8 @@
 #include <QCoreApplication>
 #include <iostream>
 
-#include "../crypto/argon2/argon2.h"
-#include "../crypto/botan/botan_all.h"
+#include "../arsenic/crypto/argon2/argon2.h"
+#include "../arsenic/crypto/botan/botan_all.h"
 
 
 using namespace std;

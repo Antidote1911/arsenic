@@ -7,11 +7,11 @@
 #include <QProgressBar>
 #include <QStandardItemModel>
 
-#include "../crypto/Crypto.h"
-#include "../crypto/hash_tool.h"
+#include "crypto/Crypto.h"
+#include "crypto/hash_tool.h"
 #include "config.h"
 #include "about.h"
-#include "../preferences/preferences.h"
+#include "preferences/preferences.h"
 
 
 namespace Ui {

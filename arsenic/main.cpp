@@ -3,7 +3,7 @@
 #include <QTranslator>
 #include <iostream>
 #include <QStyleFactory>
-#include <../preferences/Constants.h>
+#include <preferences/Constants.h>
 
 int main(int argc, char *argv[])
 {
