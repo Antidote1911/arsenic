@@ -1,4 +1,4 @@
-#include "../crypto/Crypto.h"
+#include "Crypto.h"
 #include <QtCore>
 #include <iostream>
 #include <fstream>
@@ -10,7 +10,7 @@
 #include <QStringRef>
 #include <QStringBuilder>
 #include "botan/botan_all.h"
-#include "../crypto/argonhash.h"
+#include "argonhash.h"
 
 
 using namespace std;

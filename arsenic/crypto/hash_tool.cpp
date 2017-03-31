@@ -1,5 +1,5 @@
-#include "../crypto/hash_tool.h"
-#include "../crypto/botan/botan_all.h"
+#include "hash_tool.h"
+#include "botan/botan_all.h"
 #include <fstream>
 #include <QtCore>
 

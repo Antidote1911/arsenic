@@ -3,7 +3,6 @@
 #include "../preferences/preferences.h"
 #include <iostream>
 
-
 #include "argon2/argon2.h"
 
 
