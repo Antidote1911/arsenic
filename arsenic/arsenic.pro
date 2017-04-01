@@ -6,10 +6,6 @@
 
 QT       += core gui
 CONFIG += c++14
-QMAKE_CXXFLAGS += -std=c++14
-QMAKE_CXX = g++
-QMAKE_LINK = g++
-QMAKE_CC = gcc
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
