@@ -28,8 +28,6 @@ before_install:
   
 install:
   - sudo apt-get install -yqq qt${QT_BASE}base qt${QT_BASE}svg; source /opt/qt${QT_BASE}/bin/qt${QT_BASE}-env.sh
-  - sudo apt-get install g++-5
-  - sudo apt-get install clang-3.8
 
 
 script:
