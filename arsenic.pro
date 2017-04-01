@@ -5,8 +5,6 @@ SUBDIRS = \
     tests \
     arsenic_cli
 
-QMAKE_CXXFLAGS += -Wall -Wextra -Weffc++ -Werror
-
 # clang
 QMAKE_CXX = clang++
 QMAKE_LINK = clang++
