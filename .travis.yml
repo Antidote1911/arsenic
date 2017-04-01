@@ -1,5 +1,6 @@
+dist: trusty
 language: cpp
-compiler: gcc
+compiler: g++
 sudo: true
 
 before_install:  
