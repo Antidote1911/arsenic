@@ -1,5 +1,7 @@
 Arsenic v0.9.9: Strong files encryption
 =======================================
+.. image:: https://travis-ci.org/Antidote1911/Arsenic.svg?branch=master
+    :target: https://travis-ci.org/Antidote1911/Arsenic
 
 *Warning: this version is not stable. Encryption sheme may change an become incompatible with the future first stabilized realease (v1.0.0)*
 
