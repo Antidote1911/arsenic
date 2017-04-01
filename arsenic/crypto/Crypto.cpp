@@ -11,6 +11,7 @@
 #include <QStringBuilder>
 #include "botan/botan_all.h"
 #include "argonhash.h"
+#include "../preferences/Constants.h"
 
 
 using namespace std;
@@ -205,13 +206,14 @@ void Crypto_Thread::encryptFile(QString& inputFileName, QString& passphrase, QSt
         }
 
         // Randomize the 16 bytes salt
-        secure_vector<uint8_t> pbkdf_salt(PBKDF_SALT_LEN);
+        vector<uint8_t> pbkdf_salt(PBKDF_SALT_LEN);
         rng.randomize(pbkdf_salt.data(), pbkdf_salt.size());
 
         // Calculate Argon2 derivation of the password
         const size_t ARGON_OUTPUT_LEN = CIPHER_KEY_LEN + CIPHER_IV_LEN;
 
-        const SymmetricKey master_key = pwdHash(passphrase.toStdString(),pbkdf_salt,ARGON_OUTPUT_LEN);
+        string salt2(pbkdf_salt.begin(), pbkdf_salt.end());
+        const SymmetricKey master_key = pwdHashRaw(ARs::T_COST,ARs::M_COST,ARs::PARALLELISM,passphrase.toStdString(),salt2,ARGON_OUTPUT_LEN);
 
         // Split master_key in two parts. One for cipher_key, one for iv
         const uint8_t* mk = master_key.begin();
@@ -310,11 +312,13 @@ void Crypto_Thread::decryptFile(const QString& inputFileName,
 
         const size_t CIPHER_KEY_LEN = 32;  //32 bytes = 256 bits
 
-        const secure_vector<uint8_t>salt = Botan::base64_decode( pbkdfSaltString);
+        Botan::secure_vector<uint8_t>salt = Botan::base64_decode( pbkdfSaltString);
+
 
         // Calculate Argon2 derivation of the password
         const size_t ARGON_OUTPUT_LEN = CIPHER_KEY_LEN + CIPHER_IV_LEN;
-        SymmetricKey master_key = pwdHash(passphrase.toStdString(),salt,ARGON_OUTPUT_LEN);
+        string salt2(salt.begin(), salt.end());
+        SymmetricKey master_key = pwdHashRaw(ARs::T_COST,ARs::M_COST,ARs::PARALLELISM,passphrase.toStdString(),salt2,ARGON_OUTPUT_LEN);
 
         // Split master_key in two parts. One for cipher_key, one for iv
         const uint8_t* mk = master_key.begin();

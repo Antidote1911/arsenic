@@ -36,7 +36,7 @@ Arsenic provide three formats for writing encrypted data in file.
 
 1. **Raw Data** - No encoding. The file is more compact than Base64 and hexadecimal encoding, but it can' be opened by text editor.
 
-2. **Base64**  - The file can be opened with a text editor. Exellent for send encrypted file by email, forums or printed ! )
+2. **Base64**  - The file can be opened with a text editor. Excellent for send encrypted file by email, forums or printed ! )
 
 3. **Hexadecimal** -same as base64 but produce bigger files
 

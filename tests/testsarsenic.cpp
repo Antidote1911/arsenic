@@ -4,6 +4,7 @@
 #include "../arsenic/crypto/botan/botan_all.h"
 #include "../arsenic/crypto/Crypto.h"
 #include "../arsenic/crypto/hash_tool.h"
+#include "../arsenic/crypto/argonhash.h"
 
 using namespace std;
 
@@ -12,14 +13,14 @@ class TestArsenic: public QObject
 {
     Q_OBJECT
 private slots:
-    void testSimpleTests();
+    void initialTest();
     void testArgon2();
     void testHash();
     void testEncrypt();
     void testDecrypt();
 };
 
-void TestArsenic::testSimpleTests()
+void TestArsenic::initialTest()
 {
     QString str = "Hello";
     QCOMPARE(str.toUpper(), QString("HELLO"));
@@ -61,7 +62,7 @@ void TestArsenic::testArgon2()
     // https://github.com/P-H-C/phc-winner-argon2/blob/master/README.md
 
     uint32_t time_cost     = 2;
-    uint32_t memory_cost   = 1<<16; // 65536 KiB
+    uint32_t memory_cost   = 1<<16; // 65536 KiB (64 MiB)
     uint32_t parallelism   = 4;
 
     string password  = "password";
@@ -76,15 +77,11 @@ void TestArsenic::testArgon2()
     vector<uint8_t> outputRaw(24);
     vector<char> outputEncoded(256);
 
-    argon2_hash(time_cost, memory_cost, parallelism,
-                password.data(), password.size(),
-                salt.data(), salt.size(),
-                outputRaw.data(), outputRaw.size(),
-                outputEncoded.data(), outputEncoded.size(),
-                Argon2_i, ARGON2_VERSION_NUMBER);
+    outputRaw     = pwdHashRaw(time_cost,memory_cost,parallelism,password,salt,24);
+    outputEncoded = pwdHashEncoded(time_cost,memory_cost,parallelism,password,salt,24);
 
-    QVERIFY(outputEncoded.data() == referenceResultEncoded);
     QVERIFY(Botan::hex_encode(outputRaw) == referenceResultRaw);
+    QVERIFY(outputEncoded.data()         == referenceResultEncoded);
 
 }
 
@@ -109,14 +106,13 @@ void TestArsenic::testEncrypt()
         QSKIP(message.toStdString().c_str());
 
     }
-    QVERIFY(fileName1==fileName1);
 
-    QString password = "my password";
-    QString algo     = "Serpent/GCM";
-    bool encrypt     = true;
-    QString encoding = "Base64_Encoder";
-    bool deleteOriginals     = false;
-    QString appVersion= "0.9.9";
+    QString password      = "my password";
+    QString algo          = "Serpent/GCM";
+    bool encrypt          = true;
+    QString encoding      = "Base64_Encoder";
+    bool deleteOriginals  = false;
+    QString appVersion    = "0.9.9";
 
     fileList.append(fileName1);
 
@@ -149,12 +145,12 @@ void TestArsenic::testDecrypt()
         QSKIP(message.toStdString().c_str());
 
     }
-    QString password = "my password";
-    QString algo     = "not used for decrypt";
-    bool encrypt     = false;
-    QString encoding = "not used for decrypt";
-    bool deleteOriginals     = false;
-    QString appVersion= "0.9.9";
+    QString password     = "my password";
+    QString algo         = "not used for decrypt";
+    bool encrypt         = false;
+    QString encoding     = "not used for decrypt";
+    bool deleteOriginals = false;
+    QString appVersion   = "0.9.9";
 
     fileList.append(fileName);
 
@@ -163,7 +159,17 @@ void TestArsenic::testDecrypt()
     crypto.wait();
 
     QFile file2{"test1 (2).txt"};
-    QVERIFY(file2.exists());
+    QFile original{"test1.txt"};
+
+    file2.open(QIODevice::ReadOnly);
+    original.open(QIODevice::ReadOnly);
+    bool verify = file2.readAll() == original.readAll();
+    QVERIFY(verify);
+    if (verify)
+    {
+        file.remove();
+        file2.remove();
+    }
 
 }
 
