@@ -19,12 +19,9 @@ install:
   # Qt5
   - travis_wait 20 sudo apt-get install --yes qt58base
 
-
-env: CXX="g++-6" CXXFLAGS="-std=c++11 -Wall -Wno-error"
+env: CXX= -std=c++14 -Wall -Wno-error"
 
 script:
- - $CXX --version
- - g++-6 --version
  - qmake -project
  - qmake arsenic.pro
  - make
