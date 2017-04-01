@@ -1,21 +1,17 @@
-dist: trusty
+sudo: required
+
 language: cpp
-compiler: g++
-sudo: true
 
-before_install:  
-  # Qt5
-  - sudo apt-add-repository --yes ppa:beineri/opt-qt58-trusty
-  - travis_wait 20 sudo apt-get -qq update
+compiler:
+  - gcc
+  - clang
 
-install:
-  # Qt5
-  - travis_wait 20 sudo apt-get install --yes qt58base
-  - sudo apt-get install clang
-
-
+arch:
+  packages:
+  - qt5
+  script:
+  - qmake
+  - make
 
 script:
- - qmake
- - make
- - ./Arsenic
+- "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
