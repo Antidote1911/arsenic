@@ -7,6 +7,14 @@
 QT       += core gui
 CONFIG += c++14
 
+QMAKE_CXXFLAGS += -Wall -Wextra -Weffc++ -Werror
+
+# clang
+QMAKE_CXX = clang++
+QMAKE_LINK = clang++
+QMAKE_CC = clang
+QMAKE_CXXFLAGS += -std=c++1y
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = arsenic
