@@ -15,7 +15,7 @@ QMAKE_LINK = clang++
 QMAKE_CC = clang
 QMAKE_CXXFLAGS += -std=c++1y
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
 
 TARGET = arsenic
 TEMPLATE = app
