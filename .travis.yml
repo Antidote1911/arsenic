@@ -1,5 +1,7 @@
 language: generic
 compiler: gcc
+dist: trusty
+sudo: required
 
 before_install:
   # g++6
