@@ -1,5 +1,5 @@
 language: generic
-compiler: gcc
+compiler: g++
 dist: trusty
 sudo: required
 
