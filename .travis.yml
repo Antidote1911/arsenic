@@ -26,4 +26,3 @@ env: CXX= "g++-6" -std=c++14 -Wall -Wno-error"
 script:
  - qmake
  - make
- - ./arsenic
