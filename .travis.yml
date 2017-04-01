@@ -19,7 +19,7 @@ install:
   # Qt5
   - travis_wait 20 sudo apt-get install --yes qt58base
 
-env: CXX= -std=c++14 -Wall -Wno-error"
+env: CXX= "g++-6" -std=c++14 -Wall -Wno-error"
 
 script:
  - qmake -project
