@@ -14,7 +14,7 @@ before_install:
 install:
   # g++6
   - sudo apt-get remove g++
-  - sudo apt-get install -qq g++-6
+  - travis_wait 20 mvn sudo apt-get install -qq g++-6
 
   # Qt5
   - yes | sudo apt-get install --yes qt58base
