@@ -14,4 +14,4 @@ arch:
   - make
 
 script:
-- "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
+- "curl -s https://raw.githubusercontent.com/Antidote1911/arch-travis/master/arch-travis.sh | bash"
