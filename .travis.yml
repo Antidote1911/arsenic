@@ -36,7 +36,7 @@ script:
  
 after_success:
  - ./tests
- - cd tests && npm test
+ - cd tests && npm run test
 
 notifications:
 email: antidote1911@gmail.com
