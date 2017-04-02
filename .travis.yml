@@ -33,7 +33,7 @@ script:
  - qmake -project
  - qmake arsenic.pro
  - make
- - ./tests/tests
+ - ./tests
  
 
 
