@@ -23,6 +23,7 @@ install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq cmake qt58base qt58declarative qt58graphicaleffects qt58quickcontrols2
   - source /opt/qt58/bin/qt58-env.sh
+  - sudo apt-get install clang
 
 before_script:
   - export PATH=$PATH:/opt/qt58/bin
