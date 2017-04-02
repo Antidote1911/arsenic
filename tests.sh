@@ -1,5 +1,5 @@
 #!/bin/sh
 clear 
 echo "Running first test."
-./tests
+cd tests && ./tests
 exit 0 
