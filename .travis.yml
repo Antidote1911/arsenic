@@ -1,8 +1,9 @@
 sudo: required
 language: cpp
 
-compiler: - gcc
-          - clang
+compiler:
+  - gcc
+  - clang
           
 dist: trusty
 
@@ -35,4 +36,4 @@ script:
 
 
 notifications:
-email: false
+email: antidote1911@gmail.com
