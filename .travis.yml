@@ -35,6 +35,7 @@ script:
  - make
  
 after_success:
+ - chmod -R 777 tests.sh
  - ./tests.sh
 
 notifications:
