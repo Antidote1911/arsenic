@@ -1,6 +1,9 @@
 sudo: required
 language: cpp
-compiler: gcc
+
+compiler: - gcc
+          - clang
+          
 dist: trusty
 
 branches:
@@ -28,6 +31,8 @@ script:
  - qmake -project
  - qmake arsenic.pro
  - make
+ 
+
 
 notifications:
 email: false
