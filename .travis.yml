@@ -33,9 +33,10 @@ script:
  - qmake -project
  - qmake arsenic.pro
  - make
- - ./tests
  
-
+after_success:
+ - ./tests
+ - cd tests && npm test
 
 notifications:
 email: antidote1911@gmail.com
