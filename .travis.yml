@@ -1,17 +1,42 @@
 sudo: required
 
+git:
+  depth: 1
+
 language: cpp
 
-compiler:
-  - gcc
-  - clang
-
-arch:
-  packages:
-  - qt5
-  script:
-  - qmake
-  - make
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-6
+            - g++-6
 
 script:
-- "curl -s https://raw.githubusercontent.com/Antidote1911/arch-travis/master/arch-travis.sh | bash"
+  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 100 ; fi
+  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 100 ; fi
+  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then chmod +x build_linux.sh ; fi
+  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then TAG_NAME=${TRAVIS_TAG} CXX="g++-6" CC="gcc-6" ./build_linux.sh ; fi
+
+deploy:
+  - provider: releases
+    file:
+      - build/linux/gcc/x86_64/release/Arsenic_${TRAVIS_TAG}_linux_x86_64_portable.zip
+    overwrite: true
+    skip_cleanup: true
+    on:
+      tags: true
+      condition: $TRAVIS_OS_NAME = linux
+
+notifications:
+  email:
+    recipients:
+      - antidote1911@gmail.com
+    on_success: change
+on_failure: change
