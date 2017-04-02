@@ -27,11 +27,6 @@ SOURCES += main.cpp\
     config.cpp \
     about.cpp \
     Delegate.cpp \
-    crypto/botan/botan_all.cpp \
-    crypto/botan/botan_all_aesni.cpp \
-    crypto/botan/botan_all_rdrand.cpp \
-    crypto/botan/botan_all_rdseed.cpp \
-    crypto/botan/botan_all_ssse3.cpp \
     crypto/argonhash.cpp \
     crypto/Crypto.cpp \
     crypto/hash_tool.cpp \
@@ -49,11 +44,39 @@ HEADERS  += mainwindow.h \
     preferences/preferences.h \
     preferences/Constants.h \
     crypto/argon2/argon2.h \
-    crypto/botan/botan_all.h \
-    crypto/botan/botan_all_internal.h \
     crypto/argonhash.h \
     crypto/Crypto.h \
     crypto/hash_tool.h
+
+# Platform-specific configuration
+
+
+        equals(QMAKE_CXX, clang++) {
+             message(clang x86_64)
+             
+             SOURCES += crypto/botan/clang/botan_all.cpp \
+                        crypto/botan/clang/botan_all_aesni.cpp \
+                        crypto/botan/clang/botan_all_rdrand.cpp \
+                        crypto/botan/clang/botan_all_rdseed.cpp \
+                        crypto/botan/clang/botan_all_ssse3.cpp
+             
+             HEADERS += crypto/botan/clang/botan_all.h \
+                        crypto/botan/clang/botan_all_internal.h
+    
+                    }
+     
+        equals(QMAKE_CXX, g++) {
+            message(g++ x86_64)
+            
+            SOURCES += crypto/botan/gcc/botan_all.cpp \
+                       crypto/botan/gcc/botan_all_aesni.cpp \
+                       crypto/botan/gcc/botan_all_rdrand.cpp \
+                       crypto/botan/gcc/botan_all_rdseed.cpp \
+                       crypto/botan/gcc/botan_all_ssse3.cpp
+             
+            HEADERS += crypto/botan/gcc/botan_all.h \
+                       crypto/botan/gcc/botan_all_internal.h
+            }
 
 
 FORMS    += mainwindow.ui \

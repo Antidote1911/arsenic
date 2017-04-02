@@ -2,7 +2,12 @@
 #define CRYPTO_THREAD_H
 
 #include <QThread>
-#include "botan/botan_all.h"
+
+#if defined(__clang__)
+#include "botan/clang/botan_all.h"
+#elif defined(__GNUC__) || defined(__GNUG__)
+#include "botan/gcc/botan_all.h"
+#endif
 
 
 class Crypto_Thread : public QThread

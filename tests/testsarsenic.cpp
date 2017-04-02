@@ -1,10 +1,16 @@
 #include <QtTest>
 #include <iostream>
 #include "../arsenic/crypto/argon2/argon2.h"
-#include "../arsenic/crypto/botan/botan_all.h"
 #include "../arsenic/crypto/Crypto.h"
 #include "../arsenic/crypto/hash_tool.h"
 #include "../arsenic/crypto/argonhash.h"
+
+#if defined(__clang__)
+#include "../arsenic/crypto/botan/clang/botan_all.h"
+#elif defined(__GNUC__) || defined(__GNUG__)
+#include "../arsenic/crypto/botan/gcc/botan_all.h"
+#endif
+
 
 using namespace std;
 

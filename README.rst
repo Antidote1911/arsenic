@@ -93,6 +93,6 @@ For simplify compillation Argon2 original source code is included in the QtCreat
 
 The configuration commands used to generate Botan GCC amalgamation files is::
 
- ./configure.py --cc=gcc --amalgamation --disable-shared --cc=clang --disable-module threefish_avx2,tls
+ ./configure.py --cc=gcc --amalgamation --disable-shared --disable-module threefish_avx2,tls,pkcs11
 
 You can change gcc to clang, and disable all unnecessary modules for reduce compilation time. I have disabled threefish_avx2 because my processor don't like AVX2 instructions.

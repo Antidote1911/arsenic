@@ -335,7 +335,7 @@ inline uint8_t xtime14(uint8_t s) { return xtime8(s) ^ xtime4(s) ^ xtime(s); }
 
 const std::vector<uint32_t>& AES_TE()
    {
-   auto compute_TE = []() {
+   auto compute_TE = []() -> std::vector<uint32_t> {
       std::vector<uint32_t> TE(1024);
       for(size_t i = 0; i != 256; ++i)
          {
@@ -356,7 +356,7 @@ const std::vector<uint32_t>& AES_TE()
 
 const std::vector<uint32_t>& AES_TD()
    {
-   auto compute_TD = []() {
+   auto compute_TD = []() -> std::vector<uint32_t> {
       std::vector<uint32_t> TD(1024);
       for(size_t i = 0; i != 256; ++i)
          {
@@ -1923,12 +1923,12 @@ void X509_Time::set_to(const std::string& t_spec, ASN1_Tag spec_tag)
 
    if(spec_tag == GENERALIZED_TIME)
       {
-      if(t_spec.size() != 13 && t_spec.size() != 15)
+      if(t_spec.size() != 15)
          throw Invalid_Argument("Invalid GeneralizedTime string: '" + t_spec + "'");
       }
    else if(spec_tag == UTC_TIME)
       {
-      if(t_spec.size() != 11 && t_spec.size() != 13)
+      if(t_spec.size() != 13)
          throw Invalid_Argument("Invalid UTCTime string: '" + t_spec + "'");
       }
 
@@ -3663,7 +3663,6 @@ void X509_DN::decode_from(BER_Decoder& source)
          rdn.start_cons(SEQUENCE)
             .decode(oid)
             .decode(str)
-            .verify_end()
         .end_cons();
 
          add_attribute(oid, str.value());
@@ -4240,7 +4239,7 @@ size_t base64_encode(char out[],
 std::string base64_encode(const uint8_t input[],
                           size_t input_length)
    {
-   const size_t output_length = (round_up(input_length, 3) / 3) * 4;
+   const size_t output_length = base64_encode_max_output(input_length);
    std::string output(output_length, 0);
 
    size_t consumed = 0;
@@ -4392,7 +4391,7 @@ secure_vector<uint8_t> base64_decode(const char input[],
                                  size_t input_length,
                                  bool ignore_ws)
    {
-   const size_t output_length = (round_up(input_length, 4) * 3) / 4;
+   const size_t output_length = base64_decode_max_output(input_length);
    secure_vector<uint8_t> bin(output_length);
 
    size_t written = base64_decode(bin.data(),
@@ -4410,6 +4409,15 @@ secure_vector<uint8_t> base64_decode(const std::string& input,
    return base64_decode(input.data(), input.size(), ignore_ws);
    }
 
+size_t base64_encode_max_output(size_t input_length)
+   {
+   return (round_up(input_length, 3) / 3) * 4;
+   }
+
+size_t base64_decode_max_output(size_t input_length)
+   {
+   return (round_up(input_length, 4) * 3) / 4;
+   }
 
 }
 /*
@@ -6130,6 +6138,9 @@ BlockCipher::create(const std::string& algo,
       }
 #endif
 
+   BOTAN_UNUSED(req);
+   BOTAN_UNUSED(provider);
+
    return nullptr;
    }
 
@@ -6442,27 +6453,31 @@ void Blowfish::key_expansion(const uint8_t key[],
 void Blowfish::eks_key_schedule(const uint8_t key[], size_t length,
                                 const uint8_t salt[16], size_t workfactor)
    {
-   // Truncate longer passwords to the 56 byte limit Blowfish enforces
-   length = std::min<size_t>(length, 55);
-
-   if(workfactor == 0)
-      throw Invalid_Argument("Bcrypt work factor must be at least 1");
 
    /*
    * On a 2.8 GHz Core-i7, workfactor == 18 takes about 25 seconds to
    * hash a password. This seems like a reasonable upper bound for the
    * time being.
+   * Bcrypt allows up to work factor 31 (2^31 iterations)
    */
    if(workfactor > 18)
       throw Invalid_Argument("Requested Bcrypt work factor " +
-                                  std::to_string(workfactor) + " too large");
+                             std::to_string(workfactor) + " too large");
+
+   if(workfactor < 4)
+      throw Invalid_Argument("Bcrypt requires work factor at least 4");
+
+   if(length > 72)
+      {
+      // Truncate longer passwords to the 72 char bcrypt limit
+      length = 72;
+      }
 
    m_P.resize(18);
    copy_mem(m_P.data(), P_INIT, 18);
 
    m_S.resize(1024);
    copy_mem(m_S.data(), S_INIT, 1024);
-
    key_expansion(key, length, salt);
 
    const uint8_t null_salt[16] = { 0 };
@@ -9453,6 +9468,11 @@ void ChaCha::key_schedule(const uint8_t key[], size_t length)
    set_iv(ZERO, sizeof(ZERO));
    }
 
+bool ChaCha::valid_iv_length(size_t iv_len) const
+   {
+   return (iv_len == 0 || iv_len == 8 || iv_len == 12);
+   }
+
 void ChaCha::set_iv(const uint8_t iv[], size_t length)
    {
    if(!valid_iv_length(length))
@@ -9461,7 +9481,13 @@ void ChaCha::set_iv(const uint8_t iv[], size_t length)
    m_state[12] = 0;
    m_state[13] = 0;
 
-   if(length == 8)
+   if(length == 0)
+      {
+      // Treat zero length IV same as an all-zero IV
+      m_state[14] = 0;
+      m_state[15] = 0;
+      }
+   else if(length == 8)
       {
       m_state[14] = load_le<uint32_t>(iv, 0);
       m_state[15] = load_le<uint32_t>(iv, 1);
@@ -11068,7 +11094,6 @@ Curve25519_PublicKey::Curve25519_PublicKey(const AlgorithmIdentifier&,
    BER_Decoder(key_bits)
       .start_cons(SEQUENCE)
       .decode(m_public, OCTET_STRING)
-      .verify_end()
    .end_cons();
 
    size_check(m_public.size(), "public key");
@@ -11097,7 +11122,6 @@ Curve25519_PrivateKey::Curve25519_PrivateKey(const AlgorithmIdentifier&,
       .start_cons(SEQUENCE)
       .decode(m_public, OCTET_STRING)
       .decode(m_private, OCTET_STRING)
-      .verify_end()
    .end_cons();
 
    size_check(m_public.size(), "public key");
@@ -15438,8 +15462,6 @@ Blinded_Point_Multiply::Blinded_Point_Multiply(const PointGFp& base, const BigIn
 
    const CurveGFp& curve = base.get_curve();
 
-#if BOTAN_POINTGFP_BLINDED_MULTIPLY_USE_MONTGOMERY_LADDER
-
    const PointGFp inv = -base;
 
    m_U.resize(6*m_h + 3);
@@ -15456,17 +15478,6 @@ Blinded_Point_Multiply::Blinded_Point_Multiply(const PointGFp& base, const BigIn
       m_U[3*m_h+1-i] = m_U[3*m_h+2-i];
       m_U[3*m_h+1-i].add(inv, m_ws);
       }
-#else
-   m_U.resize(1 << m_h);
-   m_U[0] = PointGFp::zero_of(curve);
-   m_U[1] = base;
-
-   for(size_t i = 2; i < m_U.size(); ++i)
-      {
-      m_U[i] = m_U[i-1];
-      m_U[i].add(base, m_ws);
-      }
-#endif
    }
 
 PointGFp Blinded_Point_Multiply::blinded_multiply(const BigInt& scalar_in,
@@ -15475,9 +15486,9 @@ PointGFp Blinded_Point_Multiply::blinded_multiply(const BigInt& scalar_in,
    if(scalar_in.is_negative())
       throw Invalid_Argument("Blinded_Point_Multiply scalar must be positive");
 
-#if BOTAN_POINTGFP_SCALAR_BLINDING_BITS > 0
+#if BOTAN_POINTGFP_USE_SCALAR_BLINDING
    // Choose a small mask m and use k' = k + m*order (Coron's 1st countermeasure)
-   const BigInt mask(rng, BOTAN_POINTGFP_SCALAR_BLINDING_BITS, false);
+   const BigInt mask(rng, (m_order.bits()+1)/2, false);
    const BigInt scalar = scalar_in + m_order * mask;
 #else
    const BigInt& scalar = scalar_in;
@@ -15489,7 +15500,6 @@ PointGFp Blinded_Point_Multiply::blinded_multiply(const BigInt& scalar_in,
    for(size_t i = 0; i != m_U.size(); ++i)
       m_U[i].randomize_repr(rng);
 
-#if BOTAN_POINTGFP_BLINDED_MULTIPLY_USE_MONTGOMERY_LADDER
    PointGFp R = m_U.at(3*m_h + 2); // base point
    int32_t alpha = 0;
 
@@ -15519,38 +15529,6 @@ PointGFp Blinded_Point_Multiply::blinded_multiply(const BigInt& scalar_in,
    const int32_t k0 = scalar.get_bit(0);
    R.add(m_U[3*m_h + 1 - alpha - (k0 ^ 1)], m_ws);
 
-#else
-
-   // N-bit windowing exponentiation:
-
-   size_t windows = round_up(scalar_bits, m_h) / m_h;
-
-   PointGFp R = m_U[0];
-
-   if(windows > 0)
-      {
-      windows--;
-      const uint32_t nibble = scalar.get_substring(windows*m_h, m_h);
-      R.add(m_U[nibble], m_ws);
-
-      /*
-      Randomize after adding the first nibble as before the addition R
-      is zero, and we cannot effectively randomize the point
-      representation of the zero point.
-      */
-      R.randomize_repr(rng);
-
-      while(windows)
-         {
-         for(size_t i = 0; i != m_h; ++i)
-            R.mult2(m_ws);
-
-         const uint32_t inner_nibble = scalar.get_substring((windows-1)*m_h, m_h);
-         R.add(m_U[inner_nibble], m_ws);
-         windows--;
-         }
-      }
-#endif
 
    //BOTAN_ASSERT(R.on_the_curve(), "Output is on the curve");
 
@@ -15889,6 +15867,46 @@ std::string EC_Group::PEM_encode() const
    return PEM_Code::encode(der, "EC PARAMETERS");
    }
 
+bool EC_Group::verify_group(RandomNumberGenerator& rng,
+                            bool) const
+   {
+   //compute the discriminant
+   Modular_Reducer p(m_curve.get_p());
+   BigInt discriminant = p.multiply(4, m_curve.get_a());
+   discriminant += p.multiply(27, m_curve.get_b());
+   discriminant = p.reduce(discriminant);
+   //check the discriminant
+   if(discriminant == 0)
+      {
+      return false;
+      }
+   //check for valid cofactor
+   if(m_cofactor < 1)
+      {
+      return false;
+      }
+   //check if the base point is on the curve
+   if(!m_base_point.on_the_curve())
+      {
+      return false;
+      }
+   if((m_base_point * m_cofactor).is_zero())
+      {
+      return false;
+      }
+   //check if order is prime
+   if(!is_prime(m_order, rng, 128))
+      {
+      return false;
+      }
+   //check if order of the base point is correct
+   if(!(m_base_point * m_order).is_zero())
+      {
+      return false;
+      }
+   return true;
+   }
+
 }
 /*
 * List of ECC groups
@@ -16204,11 +16222,39 @@ EC_PublicKey::EC_PublicKey(const AlgorithmIdentifier& alg_id,
    m_domain_encoding{EC_DOMPAR_ENC_EXPLICIT}
    {}
 
-bool EC_PublicKey::check_key(RandomNumberGenerator&,
+bool EC_PublicKey::check_key(RandomNumberGenerator& rng,
                              bool) const
    {
-   return public_point().on_the_curve();
+   //verify domain parameters
+   if(!m_domain_params.verify_group(rng))
+      {
+      return false;
+      }
+   //check that public point is not at infinity
+   if(public_point().is_zero())
+      {
+      return false;
+      }
+   //check that public point is on the curve
+   if(!public_point().on_the_curve())
+      {
+      return false;
+      }
+   if(m_domain_params.get_cofactor() > 1)
+      {
+      if((public_point() * m_domain_params.get_cofactor()).is_zero())
+         {
+         return false;
+         }
+      //check that public point has order q
+      if(!(public_point() * m_domain_params.get_order()).is_zero())
+         {
+         return false;
+         }
+      }
+   return true;
    }
+
 
 AlgorithmIdentifier EC_PublicKey::algorithm_identifier() const
    {
@@ -17926,7 +17972,13 @@ secure_vector<uint8_t> emsa3_encoding(const secure_vector<uint8_t>& msg,
    T[0] = 0x01;
    set_mem(&T[1], P_LENGTH, 0xFF);
    T[P_LENGTH+1] = 0x00;
-   buffer_insert(T, P_LENGTH+2, hash_id, hash_id_length);
+
+   if(hash_id_length > 0)
+      {
+      BOTAN_ASSERT_NONNULL(hash_id);
+      buffer_insert(T, P_LENGTH+2, hash_id, hash_id_length);
+      }
+
    buffer_insert(T, output_length-msg.size(), msg.data(), msg.size());
    return T;
    }
@@ -18338,6 +18390,9 @@ EMSA_X931::EMSA_X931(HashFunction* hash) : m_hash(hash)
 #if defined(BOTAN_HAS_ENTROPY_SRC_DARWIN_SECRANDOM)
 #endif
 
+#if defined(BOTAN_HAS_ENTROPY_SRC_GETENTROPY)
+#endif
+
 namespace Botan {
 
 std::unique_ptr<Entropy_Source> Entropy_Source::create(const std::string& name)
@@ -18360,6 +18415,13 @@ std::unique_ptr<Entropy_Source> Entropy_Source::create(const std::string& name)
       {
 #if defined(BOTAN_HAS_ENTROPY_SRC_DARWIN_SECRANDOM)
       return std::unique_ptr<Entropy_Source>(new Darwin_SecRandom);
+#endif
+      }
+
+   if(name == "getentropy")
+      {
+#if defined(BOTAN_HAS_ENTROPY_SRC_GETENTROPY)
+      return std::unique_ptr<Entropy_Source>(new Getentropy);
 #endif
       }
 
@@ -18526,7 +18588,7 @@ int operator>>(int fd, Pipe& pipe)
 
 }
 /*
-* (C) 2015 Jack Lloyd
+* (C) 2015,2017 Jack Lloyd
 *
 * Botan is released under the Simplified BSD License (see license.txt)
 */
@@ -18593,7 +18655,7 @@ void log_exception(const char* func_name, const char* what)
 
 int ffi_error_exception_thrown(const char* exn)
    {
-   printf("exception %s\n", exn);
+   fprintf(stderr, "exception %s\n", exn);
    return BOTAN_FFI_ERROR_EXCEPTION_THROWN;
    }
 
@@ -18603,6 +18665,16 @@ T& safe_get(botan_struct<T,M>* p)
    if(!p)
       throw FFI_Error("Null pointer argument");
    if(T* t = p->get())
+      return *t;
+   throw FFI_Error("Invalid object pointer");
+   }
+
+template<typename T, uint32_t M>
+const T& safe_get(const botan_struct<T,M>* p)
+   {
+   if(!p)
+      throw FFI_Error("Null pointer argument");
+   if(const T* t = p->get())
       return *t;
    throw FFI_Error("Invalid object pointer");
    }
@@ -18666,7 +18738,14 @@ inline int write_str_output(char out[], size_t* out_len, const std::string& str)
    return write_str_output(reinterpret_cast<uint8_t*>(out), out_len, str);
    }
 
-#define BOTAN_FFI_DO(T, obj, param, block) apply_fn(obj, BOTAN_CURRENT_FUNCTION, [=](T& param) { do { block } while(0); return 0; })
+inline int write_str_output(char out[], size_t* out_len, const std::vector<uint8_t>& str_vec)
+   {
+   return write_output(reinterpret_cast<uint8_t*>(out), out_len,
+                       reinterpret_cast<const uint8_t*>(str_vec.data()),
+                       str_vec.size());
+   }
+
+#define BOTAN_FFI_DO(T, obj, param, block) apply_fn(obj, BOTAN_CURRENT_FUNCTION, [=](T& param) -> int { do { block } while(0); return 0; })
 
 }
 
@@ -18682,6 +18761,7 @@ struct botan_cipher_struct : public botan_struct<Botan::Cipher_Mode, 0xB4A2BF9C>
    };
 
 BOTAN_FFI_DECLARE_STRUCT(botan_rng_struct, Botan::RandomNumberGenerator, 0x4901F9C1);
+BOTAN_FFI_DECLARE_STRUCT(botan_mp_struct, Botan::BigInt, 0xC828B9D2);
 BOTAN_FFI_DECLARE_STRUCT(botan_hash_struct, Botan::HashFunction, 0x1F0A4F84);
 BOTAN_FFI_DECLARE_STRUCT(botan_mac_struct, Botan::MessageAuthenticationCode, 0xA06E8FC1);
 BOTAN_FFI_DECLARE_STRUCT(botan_pubkey_struct, Botan::Public_Key, 0x2C286519);
@@ -18693,6 +18773,7 @@ BOTAN_FFI_DECLARE_STRUCT(botan_pk_op_verify_struct, Botan::PK_Verifier, 0x2B91F9
 BOTAN_FFI_DECLARE_STRUCT(botan_pk_op_ka_struct, Botan::PK_Key_Agreement, 0x2939CAB1);
 
 BOTAN_FFI_DECLARE_STRUCT(botan_x509_cert_struct, Botan::X509_Certificate, 0x8F628937);
+
 
 #if defined(BOTAN_HAS_TLS)
 BOTAN_FFI_DECLARE_STRUCT(botan_tls_channel_struct, Botan::TLS::Channel, 0x0212FE99);
@@ -18799,6 +18880,203 @@ int botan_rng_reseed(botan_rng_t rng, size_t bits)
    {
    return BOTAN_FFI_DO(Botan::RandomNumberGenerator, rng, r, { r.reseed_from_rng(Botan::system_rng(), bits); });
    }
+
+int botan_mp_init(botan_mp_t* mp)
+   {
+   *mp = new botan_mp_struct(new Botan::BigInt);
+   return 0;
+   }
+
+int botan_mp_set_from_int(botan_mp_t mp, int initial_value)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, bn, {
+      if(initial_value >= 0)
+         {
+         bn = Botan::BigInt(static_cast<uint64_t>(initial_value));
+         }
+      else
+         {
+         bn = Botan::BigInt(static_cast<uint64_t>(-initial_value));
+         bn.flip_sign();
+         }
+      });
+   }
+
+int botan_mp_set_from_str(botan_mp_t mp, const char* str)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, bn, { bn = Botan::BigInt(str); });
+   }
+
+int botan_mp_set_from_mp(botan_mp_t dest, botan_mp_t source)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, dest, bn, { bn = safe_get(source); });
+   }
+
+int botan_mp_is_negative(botan_mp_t mp)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, bn, { return bn.is_negative() ? 1 : 0; });
+   }
+
+int botan_mp_flip_sign(botan_mp_t mp)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, bn, { bn.flip_sign(); });
+   }
+
+int botan_mp_from_bin(botan_mp_t mp, const uint8_t bin[], size_t bin_len)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, bn, { bn.binary_decode(bin, bin_len); });
+   }
+
+int botan_mp_to_hex(botan_mp_t mp, char* out)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, bn, {
+      std::vector<uint8_t> hex = Botan::BigInt::encode(bn, Botan::BigInt::Hexadecimal);
+      std::memcpy(out, hex.data(), hex.size());
+      out[hex.size()] = 0; // null terminate
+      });
+   }
+
+int botan_mp_to_str(botan_mp_t mp, uint8_t digit_base, char* out, size_t* out_len)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, bn, {
+      Botan::BigInt::Base base;
+      if(digit_base == 0 || digit_base == 10)
+         base = Botan::BigInt::Decimal;
+      else if(digit_base == 16)
+         base = Botan::BigInt::Hexadecimal;
+      else
+         throw FFI_Error("botan_mp_to_str invalid digit base");
+
+      std::vector<uint8_t> hex = Botan::BigInt::encode(bn, base);
+      hex.push_back(0); // null terminator
+      write_str_output(out, out_len, hex);
+      });
+   }
+
+int botan_mp_to_bin(botan_mp_t mp, uint8_t vec[])
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, bn, { bn.binary_encode(vec); });
+   }
+
+int botan_mp_destroy(botan_mp_t mp)
+   {
+   delete mp;
+   return 0;
+   }
+
+int botan_mp_add(botan_mp_t result, botan_mp_t x, botan_mp_t y)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, result, res, { res = safe_get(x) + safe_get(y); });
+   }
+
+int botan_mp_sub(botan_mp_t result, botan_mp_t x, botan_mp_t y)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, result, res, { res = safe_get(x) - safe_get(y); });
+   }
+
+int botan_mp_mul(botan_mp_t result, botan_mp_t x, botan_mp_t y)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, result, res, { res = safe_get(x) * safe_get(y); });
+   }
+
+int botan_mp_div(botan_mp_t quotient,
+                 botan_mp_t remainder,
+                 botan_mp_t x, botan_mp_t y)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, quotient, q, {
+      Botan::BigInt r;
+      Botan::divide(safe_get(x), safe_get(y), q, r);
+      safe_get(remainder) = r;
+      });
+   }
+
+int botan_mp_equal(botan_mp_t x_w, botan_mp_t y_w)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, x_w, x, { return x == safe_get(y_w); });
+   }
+
+int botan_mp_cmp(int* result, botan_mp_t x_w, botan_mp_t y_w)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, x_w, x, { *result = x.cmp(safe_get(y_w)); });
+   }
+
+int botan_mp_swap(botan_mp_t x_w, botan_mp_t y_w)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, x_w, x, { x.swap(safe_get(y_w)); });
+   }
+
+// Return (base^exponent) % modulus
+int botan_mp_powmod(botan_mp_t out, botan_mp_t base, botan_mp_t exponent, botan_mp_t modulus)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, out, o,
+                       { o = Botan::power_mod(safe_get(base), safe_get(exponent), safe_get(modulus)); });
+   }
+
+int botan_mp_lshift(botan_mp_t out, botan_mp_t in, size_t shift)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, out, o, { o = safe_get(in) << shift; });
+   }
+
+int botan_mp_rshift(botan_mp_t out, botan_mp_t in, size_t shift)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, out, o, { o = safe_get(in) >> shift; });
+   }
+
+int botan_mp_mod_inverse(botan_mp_t out, botan_mp_t in, botan_mp_t modulus)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, out, o, { o = Botan::inverse_mod(safe_get(in), safe_get(modulus)); });
+   }
+
+int botan_mp_mod_mul(botan_mp_t out, botan_mp_t x, botan_mp_t y, botan_mp_t modulus)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, out, o, {
+      Botan::Modular_Reducer reducer(safe_get(modulus));
+      o = reducer.multiply(safe_get(x), safe_get(y));
+      });
+   }
+
+int botan_mp_rand_bits(botan_mp_t rand_out, botan_rng_t rng, size_t bits)
+   {
+   return BOTAN_FFI_DO(Botan::RandomNumberGenerator, rng, r, {
+      safe_get(rand_out).randomize(r, bits); });
+   }
+
+int botan_mp_rand_range(botan_mp_t rand_out,
+                        botan_rng_t rng,
+                        botan_mp_t lower,
+                        botan_mp_t upper)
+   {
+   return BOTAN_FFI_DO(Botan::RandomNumberGenerator, rng, r, {
+      safe_get(rand_out) = Botan::BigInt::random_integer(r, safe_get(lower), safe_get(upper)); });
+   }
+
+int botan_mp_gcd(botan_mp_t out, botan_mp_t x, botan_mp_t y)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, out, o, {
+      o = Botan::gcd(safe_get(x), safe_get(y)); });
+   }
+
+int botan_mp_is_prime(botan_mp_t mp, botan_rng_t rng, size_t test_prob)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, n,
+                       { return (Botan::is_prime(n, safe_get(rng), test_prob)) ? 1 : 0; });
+   }
+
+int botan_mp_bit_set(botan_mp_t mp, size_t bit)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, n, { return (n.get_bit(bit)); });
+   }
+
+int botan_mp_num_bits(botan_mp_t mp, size_t* bits)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, n, { *bits = n.bits(); });
+   }
+
+int botan_mp_num_bytes(botan_mp_t mp, size_t* bytes)
+   {
+   return BOTAN_FFI_DO(Botan::BigInt, mp, n, { *bytes = n.bytes(); });
+   }
+
 
 int botan_hash_init(botan_hash_t* hash, const char* hash_name, uint32_t flags)
    {
@@ -19300,7 +19578,7 @@ int botan_privkey_create_rsa(botan_privkey_t* key_obj, botan_rng_t rng_obj, size
 
 
 int botan_privkey_create_ecdsa(botan_privkey_t* key_obj, botan_rng_t rng_obj, const char* param_str)
-   {
+  {
    try
       {
       if(key_obj == nullptr || rng_obj == nullptr || param_str == nullptr || *param_str == 0)
@@ -19418,6 +19696,163 @@ int botan_privkey_load(botan_privkey_t* key, botan_rng_t rng_obj,
    return -1;
    }
 
+int botan_privkey_load_rsa(botan_privkey_t* key,
+                           botan_mp_t p, botan_mp_t q, botan_mp_t d)
+   {
+   *key = nullptr;
+
+#if defined(BOTAN_HAS_RSA)
+   try
+      {
+      *key = new botan_privkey_struct(new Botan::RSA_PrivateKey(safe_get(p),
+                                                                safe_get(q),
+                                                                safe_get(d)));
+      return 0;
+      }
+   catch(std::exception& e)
+      {
+      log_exception(BOTAN_CURRENT_FUNCTION, e.what());
+      }
+   return -1;
+#else
+   return BOTAN_FFI_ERROR_NOT_IMPLEMENTED;
+#endif
+   }
+
+int botan_pubkey_load_rsa(botan_pubkey_t* key,
+                          botan_mp_t n, botan_mp_t e)
+   {
+   *key = nullptr;
+
+#if defined(BOTAN_HAS_RSA)
+   try
+      {
+      *key = new botan_pubkey_struct(new Botan::RSA_PublicKey(safe_get(n), safe_get(e)));
+      return 0;
+      }
+   catch(std::exception& exn)
+      {
+      log_exception(BOTAN_CURRENT_FUNCTION, exn.what());
+      }
+
+   return -1;
+#else
+   return BOTAN_FFI_ERROR_NOT_IMPLEMENTED;
+#endif
+   }
+
+int botan_privkey_rsa_get_p(botan_mp_t p, botan_privkey_t key)
+   {
+#if defined(BOTAN_HAS_RSA)
+   return BOTAN_FFI_DO(Botan::Private_Key, key, k, {
+      if(const Botan::RSA_PrivateKey* rsa = dynamic_cast<Botan::RSA_PrivateKey*>(&k))
+         {
+         safe_get(p) = rsa->get_p();
+         }
+      else
+         throw FFI_Error("Passed non-RSA key to botan_privkey_rsa_get_p");
+      });
+#else
+   return BOTAN_FFI_ERROR_NOT_IMPLEMENTED;
+#endif
+   }
+
+int botan_privkey_rsa_get_q(botan_mp_t q, botan_privkey_t key)
+   {
+#if defined(BOTAN_HAS_RSA)
+   return BOTAN_FFI_DO(Botan::Private_Key, key, k, {
+      if(const Botan::RSA_PrivateKey* rsa = dynamic_cast<Botan::RSA_PrivateKey*>(&k))
+         {
+         safe_get(q) = rsa->get_q();
+         }
+      else
+         throw FFI_Error("Passed non-RSA key to botan_privkey_rsa_get_q");
+      });
+#else
+   return BOTAN_FFI_ERROR_NOT_IMPLEMENTED;
+#endif
+   }
+
+int botan_privkey_rsa_get_n(botan_mp_t n, botan_privkey_t key)
+   {
+#if defined(BOTAN_HAS_RSA)
+   return BOTAN_FFI_DO(Botan::Private_Key, key, k, {
+      if(const Botan::RSA_PrivateKey* rsa = dynamic_cast<Botan::RSA_PrivateKey*>(&k))
+         {
+         safe_get(n) = rsa->get_n();
+         }
+      else
+         throw FFI_Error("Passed non-RSA key to botan_privkey_rsa_get_n");
+      });
+#else
+   return BOTAN_FFI_ERROR_NOT_IMPLEMENTED;
+#endif
+   }
+
+int botan_privkey_rsa_get_e(botan_mp_t e, botan_privkey_t key)
+   {
+#if defined(BOTAN_HAS_RSA)
+   return BOTAN_FFI_DO(Botan::Private_Key, key, k, {
+      if(const Botan::RSA_PrivateKey* rsa = dynamic_cast<Botan::RSA_PrivateKey*>(&k))
+         {
+         safe_get(e) = rsa->get_e();
+         }
+      else
+         throw FFI_Error("Passed non-RSA key to botan_privkey_rsa_get_e");
+      });
+#else
+   return BOTAN_FFI_ERROR_NOT_IMPLEMENTED;
+#endif
+   }
+
+int botan_privkey_rsa_get_d(botan_mp_t d, botan_privkey_t key)
+   {
+#if defined(BOTAN_HAS_RSA)
+   return BOTAN_FFI_DO(Botan::Private_Key, key, k, {
+      if(const Botan::RSA_PrivateKey* rsa = dynamic_cast<Botan::RSA_PrivateKey*>(&k))
+         {
+         safe_get(d) = rsa->get_e();
+         }
+      else
+         throw FFI_Error("Passed non-RSA key to botan_privkey_rsa_get_d");
+      });
+#else
+   return BOTAN_FFI_ERROR_NOT_IMPLEMENTED;
+#endif
+   }
+
+int botan_pubkey_rsa_get_e(botan_mp_t e, botan_pubkey_t key)
+   {
+#if defined(BOTAN_HAS_RSA)
+   return BOTAN_FFI_DO(Botan::Public_Key, key, k, {
+      if(const Botan::RSA_PublicKey* rsa = dynamic_cast<Botan::RSA_PublicKey*>(&k))
+         {
+         safe_get(e) = rsa->get_e();
+         }
+      else
+         throw FFI_Error("Passed non-RSA key to botan_pubkey_rsa_get_e");
+      });
+#else
+   return BOTAN_FFI_ERROR_NOT_IMPLEMENTED;
+#endif
+   }
+
+int botan_pubkey_rsa_get_n(botan_mp_t n, botan_pubkey_t key)
+   {
+#if defined(BOTAN_HAS_RSA)
+   return BOTAN_FFI_DO(Botan::Public_Key, key, k, {
+      if(const Botan::RSA_PublicKey* rsa = dynamic_cast<Botan::RSA_PublicKey*>(&k))
+         {
+         safe_get(n) = rsa->get_n();
+         }
+      else
+         throw FFI_Error("Passed non-RSA key to botan_pubkey_rsa_get_n");
+      });
+#else
+   return BOTAN_FFI_ERROR_NOT_IMPLEMENTED;
+#endif
+   }
+
 int botan_privkey_destroy(botan_privkey_t key)
    {
    delete key;
@@ -19453,6 +19888,21 @@ int botan_pubkey_algo_name(botan_pubkey_t key, char out[], size_t* out_len)
    return BOTAN_FFI_DO(Botan::Public_Key, key, k, { return write_str_output(out, out_len, k.algo_name()); });
    }
 
+int botan_pubkey_check_key(botan_pubkey_t key, botan_rng_t rng, uint32_t flags)
+   {
+   const bool strong = (flags & BOTAN_CHECK_KEY_EXPENSIVE_TESTS);
+
+   return BOTAN_FFI_DO(Botan::Public_Key, key, k,
+                       { return (k.check_key(safe_get(rng), strong) == true) ? 0 : -1; });
+   }
+
+int botan_privkey_check_key(botan_privkey_t key, botan_rng_t rng, uint32_t flags)
+   {
+   const bool strong = (flags & BOTAN_CHECK_KEY_EXPENSIVE_TESTS);
+   return BOTAN_FFI_DO(Botan::Private_Key, key, k,
+                       { return (k.check_key(safe_get(rng), strong) == true) ? 0 : -1; });
+   }
+
 int botan_pubkey_export(botan_pubkey_t key, uint8_t out[], size_t* out_len, uint32_t flags)
    {
    return BOTAN_FFI_DO(Botan::Public_Key, key, k, {
@@ -19481,19 +19931,93 @@ int botan_privkey_export_encrypted(botan_privkey_t key,
                                    uint8_t out[], size_t* out_len,
                                    botan_rng_t rng_obj,
                                    const char* pass,
-                                   const char* pbe,
+                                   const char* /*ignored - pbe*/,
                                    uint32_t flags)
    {
+   return botan_privkey_export_encrypted_pbkdf_iter(key, out, out_len, rng_obj, pass, 100000, nullptr, nullptr, flags);
+   }
+
+int botan_privkey_export_encrypted_pbkdf_msec(botan_privkey_t key,
+                                              uint8_t out[], size_t* out_len,
+                                              botan_rng_t rng_obj,
+                                              const char* pass,
+                                              uint32_t pbkdf_msec,
+                                              size_t* pbkdf_iters_out,
+                                              const char* maybe_cipher,
+                                              const char* maybe_pbkdf_hash,
+                                              uint32_t flags)
+   {
    return BOTAN_FFI_DO(Botan::Private_Key, key, k, {
-      auto pbkdf_time = std::chrono::milliseconds(300);
+      const std::chrono::milliseconds pbkdf_time(pbkdf_msec);
       Botan::RandomNumberGenerator& rng = safe_get(rng_obj);
 
+      std::string cipher;
+      if(maybe_cipher)
+         {
+         cipher = maybe_cipher;
+         }
+
+      std::string pbkdf_hash;
+      if(maybe_pbkdf_hash)
+         {
+         pbkdf_hash = maybe_pbkdf_hash;
+         }
+
       if(flags == BOTAN_PRIVKEY_EXPORT_FLAG_DER)
-         return write_vec_output(out, out_len, Botan::PKCS8::BER_encode(k, rng, pass, pbkdf_time, pbe));
+         {
+         return write_vec_output(out, out_len,
+                                 Botan::PKCS8::BER_encode_encrypted_pbkdf_msec(k, rng, pass, pbkdf_time, pbkdf_iters_out, cipher, pbkdf_hash));
+         }
       else if(flags == BOTAN_PRIVKEY_EXPORT_FLAG_PEM)
-         return write_str_output(out, out_len, Botan::PKCS8::PEM_encode(k, rng, pass, pbkdf_time, pbe));
+         {
+         return write_str_output(out, out_len,
+                                 Botan::PKCS8::PEM_encode_encrypted_pbkdf_msec(k, rng, pass, pbkdf_time, pbkdf_iters_out, cipher, pbkdf_hash));
+         }
       else
+         {
          return -2;
+         }
+      });
+   }
+
+int botan_privkey_export_encrypted_pbkdf_iter(botan_privkey_t key,
+                                              uint8_t out[], size_t* out_len,
+                                              botan_rng_t rng_obj,
+                                              const char* pass,
+                                              size_t pbkdf_iter,
+                                              const char* maybe_cipher,
+                                              const char* maybe_pbkdf_hash,
+                                              uint32_t flags)
+   {
+   return BOTAN_FFI_DO(Botan::Private_Key, key, k, {
+      Botan::RandomNumberGenerator& rng = safe_get(rng_obj);
+
+      std::string cipher;
+      if(maybe_cipher)
+         {
+         cipher = maybe_cipher;
+         }
+
+      std::string pbkdf_hash;
+      if(maybe_pbkdf_hash)
+         {
+         pbkdf_hash = maybe_pbkdf_hash;
+         }
+
+      if(flags == BOTAN_PRIVKEY_EXPORT_FLAG_DER)
+         {
+         return write_vec_output(out, out_len,
+                                 Botan::PKCS8::BER_encode_encrypted_pbkdf_iter(k, rng, pass, pbkdf_iter, cipher, pbkdf_hash));
+         }
+      else if(flags == BOTAN_PRIVKEY_EXPORT_FLAG_PEM)
+         {
+         return write_str_output(out, out_len,
+                                 Botan::PKCS8::PEM_encode_encrypted_pbkdf_iter(k, rng, pass, pbkdf_iter, cipher, pbkdf_hash));
+         }
+      else
+         {
+         return -2;
+         }
       });
    }
 
@@ -24750,7 +25274,8 @@ bool iso9796_verification(const secure_vector<uint8_t>& const_coded,
       }
 
    secure_vector<uint8_t> coded = const_coded;
-
+   
+   CT::poison(coded.data(), coded.size());
    //remove mask
    uint8_t* DB = coded.data();
    const size_t DB_size = coded.size() - HASH_SIZE - tLength;
@@ -24762,19 +25287,26 @@ bool iso9796_verification(const secure_vector<uint8_t>& const_coded,
    DB[0] &= 0x7F;
 
    //recover msg1 and salt
-   size_t msg1_offset = 0;
-   for(size_t j = 0; j != DB_size; ++j)
+   size_t msg1_offset = 1;
+   uint8_t waiting_for_delim = 0xFF;
+   uint8_t bad_input = 0;
+   for(size_t j = 0; j < DB_size; ++j)
       {
-      if(DB[j] == 0x01)
-         {
-         msg1_offset = j + 1;
-         break;
-         }
+      const uint8_t one_m = CT::is_equal<uint8_t>(DB[j], 0x01);
+      const uint8_t zero_m = CT::is_zero(DB[j]);
+      const uint8_t add_m = waiting_for_delim & zero_m;
+      
+      bad_input |= waiting_for_delim & ~(zero_m | one_m);
+      msg1_offset += CT::select<uint8_t>(add_m, 1, 0);
+      
+      waiting_for_delim &= zero_m;
       }
-   if(msg1_offset == 0)
-      {
-      return false;
-      }
+   
+   //invalid, if delimiter 0x01 was not found or msg1_offset is too big
+   bad_input |= waiting_for_delim;
+   bad_input |= CT::is_less(coded.size(), tLength + HASH_SIZE + msg1_offset + SALT_SIZE);
+   //in case that msg1_offset is too big, just continue with offset = 0. 
+   msg1_offset = CT::select<size_t>(bad_input, 0, msg1_offset);
    secure_vector<uint8_t> msg1(coded.begin() + msg1_offset,
                             coded.end() - tLength - HASH_SIZE - SALT_SIZE);
    secure_vector<uint8_t> salt(coded.begin() + msg1_offset + msg1.size(),
@@ -24811,9 +25343,12 @@ bool iso9796_verification(const secure_vector<uint8_t>& const_coded,
    hash->update(msg2);
    hash->update(salt);
    secure_vector<uint8_t> H2 = hash->final();
-
+   
    //check if H3 == H2
-   return same_mem(H3.data(), H2.data(), HASH_SIZE);
+   bad_input |= CT::is_equal<uint8_t>(same_mem(H3.data(), H2.data(), HASH_SIZE), false);
+   CT::unpoison(coded.data(), coded.size());
+   
+   return (bad_input == 0);
    }
 
 }
@@ -25311,6 +25846,9 @@ std::unique_ptr<KDF> KDF::create(const std::string& algo_spec,
          }
       }
 #endif
+
+   BOTAN_UNUSED(req);
+   BOTAN_UNUSED(provider);
 
    return nullptr;
    }
@@ -26060,6 +26598,9 @@ MessageAuthenticationCode::create(const std::string& algo_spec,
          }
       }
 #endif
+
+   BOTAN_UNUSED(req);
+   BOTAN_UNUSED(provider);
 
    return nullptr;
    }
@@ -32524,19 +33065,6 @@ void Noekeon::decrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) const
 #if defined(BOTAN_HAS_NOEKEON_SIMD)
    if(CPUID::has_simd_32())
       {
-      /*
-      const size_t blocks4 = blocks / 4;
-      const size_t blocks_left = blocks % 4;
-
-      in += blocks4 * BLOCK_SIZE;
-      out += blocks4 * BLOCK_SIZE;
-      blocks = blocks % 4;
-
-      BOTAN_PARALLEL_FOR(size_t i = 0; i < blocks4; ++i)
-         {
-         simd_encrypt_4(in + i*4*BLOCK_SIZE, out + i*4*BLOCK_SIZE);
-         }
-      */
       while(blocks >= 4)
          {
          simd_decrypt_4(in, out);
@@ -32698,10 +33226,10 @@ namespace Botan {
 */
 void Noekeon::simd_encrypt_4(const uint8_t in[], uint8_t out[]) const
    {
-   const SIMD_32 K0 = SIMD_32(m_EK[0]);
-   const SIMD_32 K1 = SIMD_32(m_EK[1]);
-   const SIMD_32 K2 = SIMD_32(m_EK[2]);
-   const SIMD_32 K3 = SIMD_32(m_EK[3]);
+   const SIMD_32 K0 = SIMD_32::splat(m_EK[0]);
+   const SIMD_32 K1 = SIMD_32::splat(m_EK[1]);
+   const SIMD_32 K2 = SIMD_32::splat(m_EK[2]);
+   const SIMD_32 K3 = SIMD_32::splat(m_EK[3]);
 
    SIMD_32 A0 = SIMD_32::load_be(in     );
    SIMD_32 A1 = SIMD_32::load_be(in + 16);
@@ -32712,7 +33240,7 @@ void Noekeon::simd_encrypt_4(const uint8_t in[], uint8_t out[]) const
 
    for(size_t i = 0; i != 16; ++i)
       {
-      A0 ^= SIMD_32(RC[i]);
+      A0 ^= SIMD_32::splat(RC[i]);
 
       NOK_SIMD_THETA(A0, A1, A2, A3, K0, K1, K2, K3);
 
@@ -32727,7 +33255,7 @@ void Noekeon::simd_encrypt_4(const uint8_t in[], uint8_t out[]) const
       A3.rotate_right(2);
       }
 
-   A0 ^= SIMD_32(RC[16]);
+   A0 ^= SIMD_32::splat(RC[16]);
    NOK_SIMD_THETA(A0, A1, A2, A3, K0, K1, K2, K3);
 
    SIMD_32::transpose(A0, A1, A2, A3);
@@ -32743,10 +33271,10 @@ void Noekeon::simd_encrypt_4(const uint8_t in[], uint8_t out[]) const
 */
 void Noekeon::simd_decrypt_4(const uint8_t in[], uint8_t out[]) const
    {
-   const SIMD_32 K0 = SIMD_32(m_DK[0]);
-   const SIMD_32 K1 = SIMD_32(m_DK[1]);
-   const SIMD_32 K2 = SIMD_32(m_DK[2]);
-   const SIMD_32 K3 = SIMD_32(m_DK[3]);
+   const SIMD_32 K0 = SIMD_32::splat(m_DK[0]);
+   const SIMD_32 K1 = SIMD_32::splat(m_DK[1]);
+   const SIMD_32 K2 = SIMD_32::splat(m_DK[2]);
+   const SIMD_32 K3 = SIMD_32::splat(m_DK[3]);
 
    SIMD_32 A0 = SIMD_32::load_be(in     );
    SIMD_32 A1 = SIMD_32::load_be(in + 16);
@@ -32759,7 +33287,7 @@ void Noekeon::simd_decrypt_4(const uint8_t in[], uint8_t out[]) const
       {
       NOK_SIMD_THETA(A0, A1, A2, A3, K0, K1, K2, K3);
 
-      A0 ^= SIMD_32(RC[16-i]);
+      A0 ^= SIMD_32::splat(RC[16-i]);
 
       A1.rotate_left(1);
       A2.rotate_left(5);
@@ -32773,7 +33301,7 @@ void Noekeon::simd_decrypt_4(const uint8_t in[], uint8_t out[]) const
       }
 
    NOK_SIMD_THETA(A0, A1, A2, A3, K0, K1, K2, K3);
-   A0 ^= SIMD_32(RC[0]);
+   A0 ^= SIMD_32::splat(RC[0]);
 
    SIMD_32::transpose(A0, A1, A2, A3);
 
@@ -32863,7 +33391,7 @@ bool generate_dsa_primes(RandomNumberGenerator& rng,
    q.set_bit(qbits-1);
    q.set_bit(0);
 
-   if(!is_prime(q, rng))
+   if(!is_prime(q, rng, 126))
       return false;
 
    const size_t n = (pbits-1) / (HASH_SIZE * 8),
@@ -32889,7 +33417,7 @@ bool generate_dsa_primes(RandomNumberGenerator& rng,
 
          p = X - (X % (2*q) - 1);
 
-         if(p.bits() == pbits && is_prime(p, rng))
+         if(p.bits() == pbits && is_prime(p, rng, 126))
             return true;
          }
       }
@@ -35537,18 +36065,17 @@ std::vector<uint8_t> encode_pbes2_params(const std::string& cipher,
       .get_contents_unlocked();
    }
 
-}
-
 /*
-* PKCS#5 v2.0 PBE Constructor
+* PKCS#5 v2.0 PBE Encryption
 */
 std::pair<AlgorithmIdentifier, std::vector<uint8_t>>
-pbes2_encrypt(const secure_vector<uint8_t>& key_bits,
-              const std::string& passphrase,
-              std::chrono::milliseconds msec,
-              const std::string& cipher,
-              const std::string& digest,
-              RandomNumberGenerator& rng)
+pbes2_encrypt_shared(const secure_vector<uint8_t>& key_bits,
+                     const std::string& passphrase,
+                     size_t* msec_in_iterations_out,
+                     size_t iterations_if_msec_null,
+                     const std::string& cipher,
+                     const std::string& digest,
+                     RandomNumberGenerator& rng)
    {
    const std::string prf = "HMAC(" + digest + ")";
 
@@ -35569,12 +36096,22 @@ pbes2_encrypt(const secure_vector<uint8_t>& key_bits,
    std::unique_ptr<PBKDF> pbkdf(get_pbkdf("PBKDF2(" + prf + ")"));
 
    const size_t key_length = enc->key_spec().maximum_keylength();
-   size_t iterations = 0;
+
 
    secure_vector<uint8_t> iv = rng.random_vec(enc->default_nonce_length());
 
-   enc->set_key(pbkdf->derive_key(key_length, passphrase, salt.data(), salt.size(),
-                                  msec, iterations).bits_of());
+   size_t iterations = iterations_if_msec_null;
+
+   if(msec_in_iterations_out)
+      {
+      std::chrono::milliseconds msec(*msec_in_iterations_out);
+      enc->set_key(pbkdf->derive_key(key_length, passphrase, salt.data(), salt.size(), msec, iterations).bits_of());
+      *msec_in_iterations_out = iterations;
+      }
+   else
+      {
+      enc->set_key(pbkdf->pbkdf_iterations(key_length, passphrase, salt.data(), salt.size(), iterations));
+      }
 
    enc->start(iv);
    secure_vector<uint8_t> buf = key_bits;
@@ -35585,6 +36122,52 @@ pbes2_encrypt(const secure_vector<uint8_t>& key_bits,
       encode_pbes2_params(cipher, prf, salt, iv, iterations, key_length));
 
    return std::make_pair(id, unlock(buf));
+   }
+
+
+}
+
+std::pair<AlgorithmIdentifier, std::vector<uint8_t>>
+pbes2_encrypt(const secure_vector<uint8_t>& key_bits,
+              const std::string& passphrase,
+              std::chrono::milliseconds msec,
+              const std::string& cipher,
+              const std::string& digest,
+              RandomNumberGenerator& rng)
+   {
+   size_t msec_in_iterations_out = msec.count();
+   return pbes2_encrypt_shared(key_bits, passphrase, &msec_in_iterations_out, 0, cipher, digest, rng);
+   // return value msec_in_iterations_out discarded
+   }
+
+std::pair<AlgorithmIdentifier, std::vector<uint8_t>>
+pbes2_encrypt_msec(const secure_vector<uint8_t>& key_bits,
+                   const std::string& passphrase,
+                   std::chrono::milliseconds msec,
+                   size_t* out_iterations_if_nonnull,
+                   const std::string& cipher,
+                   const std::string& digest,
+                   RandomNumberGenerator& rng)
+   {
+   size_t msec_in_iterations_out = msec.count();
+
+   auto ret = pbes2_encrypt_shared(key_bits, passphrase, &msec_in_iterations_out, 0, cipher, digest, rng);
+
+   if(out_iterations_if_nonnull)
+      *out_iterations_if_nonnull = msec_in_iterations_out;
+
+   return ret;
+   }
+
+std::pair<AlgorithmIdentifier, std::vector<uint8_t>>
+pbes2_encrypt_iter(const secure_vector<uint8_t>& key_bits,
+                   const std::string& passphrase,
+                   size_t pbkdf_iter,
+                   const std::string& cipher,
+                   const std::string& digest,
+                   RandomNumberGenerator& rng)
+   {
+   return pbes2_encrypt_shared(key_bits, passphrase, nullptr, pbkdf_iter, cipher, digest, rng);
    }
 
 secure_vector<uint8_t>
@@ -35598,7 +36181,6 @@ pbes2_decrypt(const secure_vector<uint8_t>& key_bits,
       .start_cons(SEQUENCE)
          .decode(kdf_algo)
          .decode(enc_algo)
-         .verify_end()
       .end_cons();
 
    AlgorithmIdentifier prf_algo;
@@ -35618,7 +36200,6 @@ pbes2_decrypt(const secure_vector<uint8_t>& key_bits,
          .decode_optional(prf_algo, SEQUENCE, CONSTRUCTED,
                           AlgorithmIdentifier("HMAC(SHA-160)",
                                               AlgorithmIdentifier::USE_NULL_PARAM))
-      .verify_end()
       .end_cons();
 
    const std::string cipher = OIDS::lookup(enc_algo.oid);
@@ -35705,6 +36286,9 @@ std::unique_ptr<PBKDF> PBKDF::create(const std::string& algo_spec,
 
       }
 #endif
+
+   BOTAN_UNUSED(req);
+   BOTAN_UNUSED(provider);
 
    return nullptr;
    }
@@ -37688,8 +38272,8 @@ std::vector<uint8_t> BER_encode(const Private_Key& key,
    const auto pbe_params = choose_pbe_params(pbe_algo, key.algo_name());
 
    const std::pair<AlgorithmIdentifier, std::vector<uint8_t>> pbe_info =
-      pbes2_encrypt(PKCS8::BER_encode(key), pass, msec,
-                    pbe_params.first, pbe_params.second, rng);
+      pbes2_encrypt_msec(PKCS8::BER_encode(key), pass, msec, nullptr,
+                         pbe_params.first, pbe_params.second, rng);
 
    return DER_Encoder()
          .start_cons(SEQUENCE)
@@ -37713,6 +38297,88 @@ std::string PEM_encode(const Private_Key& key,
 
    return PEM_Code::encode(PKCS8::BER_encode(key, rng, pass, msec, pbe_algo),
                            "ENCRYPTED PRIVATE KEY");
+   }
+
+/*
+* BER encode a PKCS #8 private key, encrypted
+*/
+std::vector<uint8_t> BER_encode_encrypted_pbkdf_iter(const Private_Key& key,
+                                                     RandomNumberGenerator& rng,
+                                                     const std::string& pass,
+                                                     size_t pbkdf_iterations,
+                                                     const std::string& cipher,
+                                                     const std::string& pbkdf_hash)
+   {
+   const std::pair<AlgorithmIdentifier, std::vector<uint8_t>> pbe_info =
+      pbes2_encrypt_iter(key.private_key_info(),
+                         pass, pbkdf_iterations,
+                         cipher.empty() ? "AES-256/CBC" : cipher,
+                         pbkdf_hash.empty() ? "SHA-256" : pbkdf_hash,
+                         rng);
+
+   return DER_Encoder()
+         .start_cons(SEQUENCE)
+            .encode(pbe_info.first)
+            .encode(pbe_info.second, OCTET_STRING)
+         .end_cons()
+      .get_contents_unlocked();
+   }
+
+/*
+* PEM encode a PKCS #8 private key, encrypted
+*/
+std::string PEM_encode_encrypted_pbkdf_iter(const Private_Key& key,
+                                            RandomNumberGenerator& rng,
+                                            const std::string& pass,
+                                            size_t pbkdf_iterations,
+                                            const std::string& cipher,
+                                            const std::string& pbkdf_hash)
+   {
+   return PEM_Code::encode(
+      PKCS8::BER_encode_encrypted_pbkdf_iter(key, rng, pass, pbkdf_iterations, cipher, pbkdf_hash),
+      "ENCRYPTED PRIVATE KEY");
+   }
+
+/*
+* BER encode a PKCS #8 private key, encrypted
+*/
+std::vector<uint8_t> BER_encode_encrypted_pbkdf_msec(const Private_Key& key,
+                                                     RandomNumberGenerator& rng,
+                                                     const std::string& pass,
+                                                     std::chrono::milliseconds pbkdf_msec,
+                                                     size_t* pbkdf_iterations,
+                                                     const std::string& cipher,
+                                                     const std::string& pbkdf_hash)
+   {
+   const std::pair<AlgorithmIdentifier, std::vector<uint8_t>> pbe_info =
+      pbes2_encrypt_msec(key.private_key_info(), pass,
+                         pbkdf_msec, pbkdf_iterations,
+                         cipher.empty() ? "AES-256/CBC" : cipher,
+                         pbkdf_hash.empty() ? "SHA-256" : pbkdf_hash,
+                         rng);
+
+   return DER_Encoder()
+         .start_cons(SEQUENCE)
+            .encode(pbe_info.first)
+            .encode(pbe_info.second, OCTET_STRING)
+         .end_cons()
+      .get_contents_unlocked();
+   }
+
+/*
+* PEM encode a PKCS #8 private key, encrypted
+*/
+std::string PEM_encode_encrypted_pbkdf_msec(const Private_Key& key,
+                                            RandomNumberGenerator& rng,
+                                            const std::string& pass,
+                                            std::chrono::milliseconds pbkdf_msec,
+                                            size_t* pbkdf_iterations,
+                                            const std::string& cipher,
+                                            const std::string& pbkdf_hash)
+   {
+   return PEM_Code::encode(
+      PKCS8::BER_encode_encrypted_pbkdf_msec(key, rng, pass, pbkdf_msec, pbkdf_iterations, cipher, pbkdf_hash),
+      "ENCRYPTED PRIVATE KEY");
    }
 
 namespace {
@@ -38231,7 +38897,6 @@ Public_Key* load_key(DataSource& source)
             .start_cons(SEQUENCE)
             .decode(alg_id)
             .decode(key_bits, BIT_STRING)
-            .verify_end()
          .end_cons();
          }
       else
@@ -38244,7 +38909,6 @@ Public_Key* load_key(DataSource& source)
             .start_cons(SEQUENCE)
             .decode(alg_id)
             .decode(key_bits, BIT_STRING)
-            .verify_end()
          .end_cons();
          }
 
@@ -38819,7 +39483,7 @@ void RandomNumberGenerator::randomize_with_ts_input(uint8_t output[], size_t out
    */
    uint8_t additional_input[16] = { 0 };
    store_le(OS::get_system_timestamp_ns(), additional_input);
-   store_le(OS::get_processor_timestamp(), additional_input + 8);
+   store_le(OS::get_high_resolution_clock(), additional_input + 8);
 
    randomize_with_input(output, output_len, additional_input, sizeof(additional_input));
    }
@@ -38855,7 +39519,16 @@ RandomNumberGenerator* RandomNumberGenerator::make_rng()
    }
 
 #if defined(BOTAN_TARGET_OS_HAS_THREADS)
-Serialized_RNG::Serialized_RNG() : m_rng(RandomNumberGenerator::make_rng()) {}
+
+#if defined(BOTAN_HAS_AUTO_SEEDING_RNG)
+Serialized_RNG::Serialized_RNG() : m_rng(new AutoSeeded_RNG) {}
+#else
+Serialized_RNG::Serialized_RNG()
+   {
+   throw Exception("Serialized_RNG default constructor failed: AutoSeeded_RNG disabled in build");
+   }
+#endif
+
 #endif
 
 }
@@ -38908,7 +39581,6 @@ RSA_PublicKey::RSA_PublicKey(const AlgorithmIdentifier&,
       .start_cons(SEQUENCE)
         .decode(m_n)
         .decode(m_e)
-      .verify_end()
       .end_cons();
    }
 
@@ -39017,7 +39689,7 @@ bool RSA_PrivateKey::check_key(RandomNumberGenerator& rng, bool strong) const
    if(m_d1 != m_d % (m_p - 1) || m_d2 != m_d % (m_q - 1) || m_c != inverse_mod(m_q, m_p))
       return false;
 
-   const size_t prob = (strong) ? 56 : 12;
+   const size_t prob = (strong) ? 128 : 12;
 
    if(!is_prime(m_p, rng, prob) || !is_prime(m_q, rng, prob))
       return false;
@@ -40199,10 +40871,10 @@ namespace {
 
 #define key_xor(round, B0, B1, B2, B3)                             \
    do {                                                            \
-      B0 ^= SIMD_32(m_round_key[4*round  ]);                       \
-      B1 ^= SIMD_32(m_round_key[4*round+1]);                       \
-      B2 ^= SIMD_32(m_round_key[4*round+2]);                       \
-      B3 ^= SIMD_32(m_round_key[4*round+3]);                       \
+      B0 ^= SIMD_32::splat(m_round_key[4*round  ]);                \
+      B1 ^= SIMD_32::splat(m_round_key[4*round+1]);                \
+      B2 ^= SIMD_32::splat(m_round_key[4*round+2]);                \
+      B3 ^= SIMD_32::splat(m_round_key[4*round+3]);                \
    } while(0);
 
 /*
@@ -42546,7 +43218,7 @@ void Stateful_RNG::randomize_with_ts_input(uint8_t output[], size_t output_len)
    {
    uint8_t additional_input[24] = { 0 };
    store_le(OS::get_system_timestamp_ns(), additional_input);
-   store_le(OS::get_processor_timestamp(), additional_input + 8);
+   store_le(OS::get_high_resolution_clock(), additional_input + 8);
    store_le(m_last_pid, additional_input + 16);
    store_le(static_cast<uint32_t>(m_reseed_counter), additional_input + 20);
 
@@ -42721,6 +43393,9 @@ std::unique_ptr<StreamCipher> StreamCipher::create(const std::string& algo_spec,
 
 #endif
 
+   BOTAN_UNUSED(req);
+   BOTAN_UNUSED(provider);
+
    return nullptr;
    }
 
@@ -42755,6 +43430,10 @@ std::vector<std::string> StreamCipher::providers(const std::string& algo_spec)
 #include <windows.h>
 #define NOMINMAX 1
 #include <wincrypt.h>
+
+#elif defined(BOTAN_TARGET_OS_HAS_ARC4RANDOM)
+
+#include <stdlib.h>
 
 #else
 
@@ -42794,6 +43473,8 @@ std::string System_RNG_Impl::name() const
    {
 #if defined(BOTAN_TARGET_OS_HAS_CRYPTGENRANDOM)
    return "cryptoapi";
+#elif defined(BOTAN_TARGET_OS_HAS_ARC4RANDOM)
+   return "arc4random";
 #else
    return BOTAN_SYSTEM_RNG_DEVICE;
 #endif
@@ -42806,6 +43487,8 @@ System_RNG_Impl::System_RNG_Impl()
    if(!CryptAcquireContext(&m_prov, 0, 0, BOTAN_SYSTEM_RNG_CRYPTOAPI_PROV_TYPE, CRYPT_VERIFYCONTEXT))
       throw Exception("System_RNG failed to acquire crypto provider");
 
+#elif defined(BOTAN_TARGET_OS_HAS_ARC4RANDOM)
+   // Nothing to do, arc4random(3) works from the beginning.
 #else
 
 #ifndef O_NOCTTY
@@ -42828,6 +43511,8 @@ System_RNG_Impl::~System_RNG_Impl()
    {
 #if defined(BOTAN_TARGET_OS_HAS_CRYPTGENRANDOM)
    ::CryptReleaseContext(m_prov, 0);
+#elif defined(BOTAN_TARGET_OS_HAS_ARC4RANDOM)
+   // Nothing to do.
 #else
    ::close(m_fd);
    m_fd = -1;
@@ -42856,6 +43541,8 @@ void System_RNG_Impl::add_entropy(const uint8_t input[], size_t len)
       secure_vector<uint8_t> buf(input, input + len);
       ::CryptGenRandom(m_prov, static_cast<DWORD>(buf.size()), buf.data());
       }
+#elif defined(BOTAN_TARGET_OS_HAS_ARC4RANDOM)
+   // arc4random(3) reseeds itself from the OpenBSD kernel, not from user land.
 #else
    while(len)
       {
@@ -42895,6 +43582,8 @@ void System_RNG_Impl::randomize(uint8_t buf[], size_t len)
    {
 #if defined(BOTAN_TARGET_OS_HAS_CRYPTGENRANDOM)
    ::CryptGenRandom(m_prov, static_cast<DWORD>(len), buf);
+#elif defined(BOTAN_TARGET_OS_HAS_ARC4RANDOM)
+   ::arc4random_buf(buf, len);
 #else
    while(len)
       {
@@ -44595,7 +45284,6 @@ void Barrier::sync()
 */
 
 #include <ctime>
-#include <stdlib.h>
 
 #if defined(BOTAN_HAS_BOOST_DATETIME)
 #include <boost/date_time/posix_time/posix_time_types.hpp>
@@ -44704,10 +45392,11 @@ std::chrono::system_clock::time_point calendar_point::to_std_timepoint() const
 
    // 32 bit time_t ends at January 19, 2038
    // https://msdn.microsoft.com/en-us/library/2093ets1.aspx
-   // For consistency reasons, throw after 2037 as long as
-   // no other implementation is available.
-   if (year > 2037)
+   // Throw after 2037 if 32 bit time_t is used
+   if (year > 2037 && sizeof(std::time_t) == 4)
+      {
       throw Invalid_Argument("calendar_point::to_std_timepoint() does not support years after 2037.");
+      }
 
    // std::tm: struct without any timezone information
    std::tm tm;
@@ -44969,7 +45658,7 @@ bool caseless_cmp(char a, char b)
 }
 /*
 * Runtime CPU detection
-* (C) 2009-2010,2013 Jack Lloyd
+* (C) 2009,2010,2013,2017 Jack Lloyd
 *
 * Botan is released under the Simplified BSD License (see license.txt)
 */
@@ -44977,77 +45666,61 @@ bool caseless_cmp(char a, char b)
 
 #if defined(BOTAN_TARGET_CPU_IS_PPC_FAMILY)
 
+/*
+* On Darwin and OpenBSD ppc, use sysctl to detect AltiVec
+*/
 #if defined(BOTAN_TARGET_OS_IS_DARWIN)
   #include <sys/sysctl.h>
-#endif
-
-#if defined(BOTAN_TARGET_OS_IS_OPENBSD)
+#elif defined(BOTAN_TARGET_OS_IS_OPENBSD)
   #include <sys/param.h>
   #include <machine/cpu.h>
 #endif
 
+#elif defined(BOTAN_TARGET_CPU_IS_ARM_FAMILY)
+
+/*
+* On ARM, use getauxval if available, otherwise fall back to
+* running probe functions with a SIGILL handler.
+*/
+#if defined(BOTAN_TARGET_OS_HAS_GETAUXVAL)
+  #include <sys/auxv.h>
+#else
 #endif
 
-#if defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
+#elif defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
+
+/*
+* On x86, use CPUID instruction
+*/
 
 #if defined(BOTAN_BUILD_COMPILER_IS_MSVC)
-
-#include <intrin.h>
-
-#define X86_CPUID(type, out) do { __cpuid((int*)out, type); } while(0)
-#define X86_CPUID_SUBLEVEL(type, level, out) do { __cpuidex((int*)out, type, level); } while(0)
-
+  #include <intrin.h>
 #elif defined(BOTAN_BUILD_COMPILER_IS_INTEL)
-
-#include <ia32intrin.h>
-
-#define X86_CPUID(type, out) do { __cpuid(out, type); } while(0)
-#define X86_CPUID_SUBLEVEL(type, level, out) do { __cpuidex((int*)out, type, level); } while(0)
-
-#elif defined(BOTAN_TARGET_ARCH_IS_X86_64) && defined(BOTAN_USE_GCC_INLINE_ASM)
-
-#define X86_CPUID(type, out)                                                    \
-   asm("cpuid\n\t" : "=a" (out[0]), "=b" (out[1]), "=c" (out[2]), "=d" (out[3]) \
-       : "0" (type))
-
-#define X86_CPUID_SUBLEVEL(type, level, out)                                    \
-   asm("cpuid\n\t" : "=a" (out[0]), "=b" (out[1]), "=c" (out[2]), "=d" (out[3]) \
-       : "0" (type), "2" (level))
-
+  #include <ia32intrin.h>
 #elif defined(BOTAN_BUILD_COMPILER_IS_GCC) || defined(BOTAN_BUILD_COMPILER_IS_CLANG)
-
-#include <cpuid.h>
-
-#define X86_CPUID(type, out) do { __get_cpuid(type, out, out+1, out+2, out+3); } while(0)
-
-#define X86_CPUID_SUBLEVEL(type, level, out) \
-   do { __cpuid_count(type, level, out[0], out[1], out[2], out[3]); } while(0)
-
-#else
-
-#warning "No way of calling cpuid for this compiler"
-
-#define X86_CPUID(type, out) do { clear_mem(out, 4); } while(0)
-#define X86_CPUID_SUBLEVEL(type, level, out) do { clear_mem(out, 4); } while(0)
-
+  #include <cpuid.h>
 #endif
 
 #endif
 
 namespace Botan {
 
-uint64_t CPUID::g_processor_flags[2] = { 0, 0 };
+uint64_t CPUID::g_processor_features = 0;
 size_t CPUID::g_cache_line_size = BOTAN_TARGET_CPU_DEFAULT_CACHE_LINE_SIZE;
-bool CPUID::g_initialized = false;
 bool CPUID::g_little_endian = false;
 
 namespace {
 
 #if defined(BOTAN_TARGET_CPU_IS_PPC_FAMILY)
 
-bool altivec_check_sysctl()
+/*
+* PowerPC specific block: check for AltiVec using either
+* sysctl or by reading processor version number register.
+*/
+uint64_t powerpc_detect_cpu_featutures()
    {
 #if defined(BOTAN_TARGET_OS_IS_DARWIN) || defined(BOTAN_TARGET_OS_IS_OPENBSD)
+   // On Darwin/OS X and OpenBSD, use sysctl
 
 #if defined(BOTAN_TARGET_OS_IS_OPENBSD)
    int sels[2] = { CTL_MACHDEP, CPU_ALTIVEC };
@@ -45060,18 +45733,9 @@ bool altivec_check_sysctl()
    int error = sysctl(sels, 2, &vector_type, &length, NULL, 0);
 
    if(error == 0 && vector_type > 0)
-      return true;
-#endif
+      return (1ULL << CPUID::CPUID_ALTIVEC_BIT);
 
-   return false;
-   }
-
-bool altivec_check_pvr_emul()
-   {
-   bool altivec_capable = false;
-
-#if defined(BOTAN_TARGET_OS_IS_LINUX) || defined(BOTAN_TARGET_OS_IS_NETBSD)
-
+#elif defined(BOTAN_TARGET_OS_IS_LINUX) || defined(BOTAN_TARGET_OS_IS_NETBSD)
    /*
    On PowerPC, MSR 287 is PVR, the Processor Version Number
    Normally it is only accessible to ring 0, but Linux and NetBSD
@@ -45080,6 +45744,14 @@ bool altivec_check_pvr_emul()
    PVR identifiers for various AltiVec enabled CPUs. Taken from
    PearPC and Linux sources, mostly.
    */
+
+   uint32_t pvr = 0;
+
+   // TODO: we could run inside SIGILL handler block
+   asm volatile("mfspr %0, 287" : "=r" (pvr));
+
+   // Top 16 bit suffice to identify model
+   pvr >>= 16;
 
    const uint16_t PVR_G4_7400  = 0x000C;
    const uint16_t PVR_G5_970   = 0x0039;
@@ -45091,29 +45763,234 @@ bool altivec_check_pvr_emul()
    const uint16_t PVR_POWER8   = 0x004B;
    const uint16_t PVR_CELL_PPU = 0x0070;
 
-   // Motorola produced G4s with PVR 0x800[0123C] (at least)
-   const uint16_t PVR_G4_74xx_24  = 0x800;
-
-   uint32_t pvr = 0;
-
-   asm volatile("mfspr %0, 287" : "=r" (pvr));
-
-   // Top 16 bit suffice to identify model
-   pvr >>= 16;
-
-   altivec_capable |= (pvr == PVR_G4_7400);
-   altivec_capable |= ((pvr >> 4) == PVR_G4_74xx_24);
-   altivec_capable |= (pvr == PVR_G5_970);
-   altivec_capable |= (pvr == PVR_G5_970FX);
-   altivec_capable |= (pvr == PVR_G5_970MP);
-   altivec_capable |= (pvr == PVR_G5_970GX);
-   altivec_capable |= (pvr == PVR_POWER6);
-   altivec_capable |= (pvr == PVR_POWER7);
-   altivec_capable |= (pvr == PVR_POWER8);
-   altivec_capable |= (pvr == PVR_CELL_PPU);
+   if(pvr == PVR_G4_7400 ||
+      pvr == PVR_G5_970 || pvr == PVR_G5_970FX ||
+      pvr == PVR_G5_970MP || pvr == PVR_G5_970GX ||
+      pvr == PVR_POWER6 || pvr == PVR_POWER7 || pvr == PVR_POWER8 ||
+      pvr == PVR_CELL_PPU)
+      {
+      return (1ULL << CPUID::CPUID_ALTIVEC_BIT);
+      }
+#else
+  #warning "No PowerPC feature detection available for this platform"
 #endif
 
-   return altivec_capable;
+   return 0;
+   }
+
+#elif defined(BOTAN_TARGET_CPU_IS_ARM_FAMILY)
+
+uint64_t arm_detect_cpu_features(size_t* cache_line_size)
+   {
+   uint64_t detected_features = 0;
+   *cache_line_size = BOTAN_TARGET_CPU_DEFAULT_CACHE_LINE_SIZE;
+
+#if defined(BOTAN_TARGET_OS_HAS_GETAUXVAL)
+   errno = 0;
+
+   /*
+   * On systems with getauxval these bits should normally be defined
+   * in bits/auxv.h but some buggy? glibc installs seem to miss them.
+   * These following values are all fixed, for the Linux ELF format,
+   * so we just hardcode them in ARM_hwcap_bit enum.
+   */
+
+   enum ARM_hwcap_bit {
+#if defined(BOTAN_TARGET_ARCH_IS_ARM32)
+      NEON_bit  = (1 << 12),
+      AES_bit   = (1 << 0),
+      PMULL_bit = (1 << 1),
+      SHA1_bit  = (1 << 2),
+      SHA2_bit  = (1 << 3),
+
+      ARCH_hwcap_neon   = 16, // AT_HWCAP
+      ARCH_hwcap_crypto = 26, // AT_HWCAP2
+#elif defined(BOTAN_TARGET_ARCH_IS_ARM64)
+      NEON_bit  = (1 << 1),
+      AES_bit   = (1 << 3),
+      PMULL_bit = (1 << 4),
+      SHA1_bit  = (1 << 5),
+      SHA2_bit  = (1 << 6),
+
+      ARCH_hwcap_neon   = 16, // AT_HWCAP
+      ARCH_hwcap_crypto = 16, // AT_HWCAP
+#endif
+   };
+
+   const unsigned long hwcap_neon = ::getauxval(ARM_hwcap_bit::ARCH_hwcap_neon);
+   if(hwcap_neon & ARM_hwcap_bit::NEON_bit)
+      detected_features |= CPUID::CPUID_ARM_NEON_BIT;
+
+   /*
+   On aarch64 this ends up calling getauxval twice with AT_HWCAP
+   It doesn't seem worth optimizing this out, since getauxval is
+   just reading a field in the ELF header.
+   */
+   const unsigned long hwcap_crypto = ::getauxval(ARM_hwcap_bit::ARCH_hwcap_crypto);
+   if(hwcap_crypto & ARM_hwcap_bit::AES_bit)
+      detected_features |= CPUID::CPUID_ARM_AES_BIT;
+   if(hwcap_crypto & ARM_hwcap_bit::PMULL_bit)
+      detected_features |= CPUID::CPUID_ARM_PMULL_BIT;
+   if(hwcap_crypto & ARM_hwcap_bit::SHA1_bit)
+      detected_features |= CPUID::CPUID_ARM_SHA1_BIT;
+   if(hwcap_crypto & ARM_hwcap_bit::SHA2_bit)
+      detected_features |= CPUID::CPUID_ARM_SHA2_BIT;
+
+#if defined(AT_DCACHEBSIZE)
+   const unsigned long dcache_line = ::getauxval(AT_DCACHEBSIZE);
+
+   // plausibility check
+   if(dcache_line == 32 || dcache_line == 64 || dcache_line == 128)
+      *cache_line_size = static_cast<size_t>(dcache_line);
+#endif
+
+#else
+   // No getauxval API available, fall back on probe functions
+
+   // TODO: probe functions
+
+#endif
+
+   return detected_features;
+   }
+
+#elif defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
+
+uint64_t x86_detect_cpu_features(size_t* cache_line_size)
+   {
+#if defined(BOTAN_BUILD_COMPILER_IS_MSVC)
+  #define X86_CPUID(type, out) do { __cpuid((int*)out, type); } while(0)
+  #define X86_CPUID_SUBLEVEL(type, level, out) do { __cpuidex((int*)out, type, level); } while(0)
+
+#elif defined(BOTAN_BUILD_COMPILER_IS_INTEL)
+  #define X86_CPUID(type, out) do { __cpuid(out, type); } while(0)
+  #define X86_CPUID_SUBLEVEL(type, level, out) do { __cpuidex((int*)out, type, level); } while(0)
+
+#elif defined(BOTAN_TARGET_ARCH_IS_X86_64) && defined(BOTAN_USE_GCC_INLINE_ASM)
+  #define X86_CPUID(type, out)                                                    \
+     asm("cpuid\n\t" : "=a" (out[0]), "=b" (out[1]), "=c" (out[2]), "=d" (out[3]) \
+         : "0" (type))
+
+  #define X86_CPUID_SUBLEVEL(type, level, out)                                    \
+     asm("cpuid\n\t" : "=a" (out[0]), "=b" (out[1]), "=c" (out[2]), "=d" (out[3]) \
+         : "0" (type), "2" (level))
+
+#elif defined(BOTAN_BUILD_COMPILER_IS_GCC) || defined(BOTAN_BUILD_COMPILER_IS_CLANG)
+  #define X86_CPUID(type, out) do { __get_cpuid(type, out, out+1, out+2, out+3); } while(0)
+
+  #define X86_CPUID_SUBLEVEL(type, level, out) \
+     do { __cpuid_count(type, level, out[0], out[1], out[2], out[3]); } while(0)
+#else
+  #warning "No way of calling x86 cpuid instruction for this compiler"
+  #define X86_CPUID(type, out) do { clear_mem(out, 4); } while(0)
+  #define X86_CPUID_SUBLEVEL(type, level, out) do { clear_mem(out, 4); } while(0)
+#endif
+
+   uint64_t features_detected = 0;
+   uint32_t cpuid[4] = { 0 };
+
+   // CPUID 0: vendor identification, max sublevel
+   X86_CPUID(0, cpuid);
+
+   const uint32_t max_supported_sublevel = cpuid[0];
+
+   const uint32_t INTEL_CPUID[3] = { 0x756E6547, 0x6C65746E, 0x49656E69 };
+   const uint32_t AMD_CPUID[3] = { 0x68747541, 0x444D4163, 0x69746E65 };
+   const bool is_intel = same_mem(cpuid + 1, INTEL_CPUID, 3);
+   const bool is_amd = same_mem(cpuid + 1, AMD_CPUID, 3);
+
+   if(max_supported_sublevel >= 1)
+      {
+      // CPUID 1: feature bits
+      X86_CPUID(1, cpuid);
+      const uint64_t flags0 = (static_cast<uint64_t>(cpuid[2]) << 32) | cpuid[3];
+
+      enum x86_CPUID_1_bits : uint64_t {
+         RDTSC = (1ULL << 4),
+         SSE2 = (1ULL << 26),
+         CLMUL = (1ULL << 33),
+         SSSE3 = (1ULL << 41),
+         SSE41 = (1ULL << 51),
+         SSE42 = (1ULL << 52),
+         AESNI = (1ULL << 57),
+         RDRAND = (1ULL << 62)
+      };
+
+      if(flags0 & x86_CPUID_1_bits::RDTSC)
+         features_detected |= CPUID::CPUID_RDTSC_BIT;
+      if(flags0 & x86_CPUID_1_bits::SSE2)
+         features_detected |= CPUID::CPUID_SSE2_BIT;
+      if(flags0 & x86_CPUID_1_bits::CLMUL)
+         features_detected |= CPUID::CPUID_CLMUL_BIT;
+      if(flags0 & x86_CPUID_1_bits::SSSE3)
+         features_detected |= CPUID::CPUID_SSSE3_BIT;
+      if(flags0 & x86_CPUID_1_bits::SSE41)
+         features_detected |= CPUID::CPUID_SSE41_BIT;
+      if(flags0 & x86_CPUID_1_bits::SSE42)
+         features_detected |= CPUID::CPUID_SSE42_BIT;
+      if(flags0 & x86_CPUID_1_bits::AESNI)
+         features_detected |= CPUID::CPUID_AESNI_BIT;
+      if(flags0 & x86_CPUID_1_bits::RDRAND)
+         features_detected |= CPUID::CPUID_RDRAND_BIT;
+      }
+
+   if(is_intel)
+      {
+      // Intel cache line size is in cpuid(1) output
+      *cache_line_size = 8 * get_byte(2, cpuid[1]);
+      }
+   else if(is_amd)
+      {
+      // AMD puts it in vendor zone
+      X86_CPUID(0x80000005, cpuid);
+      *cache_line_size = get_byte(3, cpuid[2]);
+      }
+
+   if(max_supported_sublevel >= 7)
+      {
+      clear_mem(cpuid, 4);
+      X86_CPUID_SUBLEVEL(7, 0, cpuid);
+
+      enum x86_CPUID_7_bits : uint64_t {
+         AVX2 = (1ULL << 5),
+         BMI2 = (1ULL << 8),
+         AVX512F = (1ULL << 16),
+         RDSEED = (1ULL << 18),
+         ADX = (1ULL << 19),
+         SHA = (1ULL << 29),
+      };
+      uint64_t flags7 = (static_cast<uint64_t>(cpuid[2]) << 32) | cpuid[1];
+
+      if(flags7 & x86_CPUID_7_bits::AVX2)
+         features_detected |= CPUID::CPUID_AVX2_BIT;
+      if(flags7 & x86_CPUID_7_bits::BMI2)
+         features_detected |= CPUID::CPUID_BMI2_BIT;
+      if(flags7 & x86_CPUID_7_bits::AVX512F)
+         features_detected |= CPUID::CPUID_AVX512F_BIT;
+      if(flags7 & x86_CPUID_7_bits::RDSEED)
+         features_detected |= CPUID::CPUID_RDSEED_BIT;
+      if(flags7 & x86_CPUID_7_bits::ADX)
+         features_detected |= CPUID::CPUID_ADX_BIT;
+      if(flags7 & x86_CPUID_7_bits::SHA)
+         features_detected |= CPUID::CPUID_SHA_BIT;
+      }
+
+#undef X86_CPUID
+#undef X86_CPUID_SUBLEVEL
+
+   /*
+   * If we don't have access to CPUID, we can still safely assume that
+   * any x86-64 processor has SSE2 and RDTSC
+   */
+#if defined(BOTAN_TARGET_ARCH_IS_X86_64)
+   if(features_detected == 0)
+      {
+      features_detected |= CPUID::CPUID_SSE2_BIT;
+      features_detected |= CPUID::CPUID_RDTSC_BIT;
+      }
+#endif
+
+   return features_detected;
    }
 
 #endif
@@ -45126,16 +46003,19 @@ bool CPUID::has_simd_32()
    return CPUID::has_sse2();
 #elif defined(BOTAN_TARGET_SUPPORTS_ALTIVEC)
    return CPUID::has_altivec();
+#elif defined(BOTAN_TARGET_SUPPORTS_NEON)
+   return CPUID::has_neon();
 #else
    return true;
 #endif
    }
 
-void CPUID::print(std::ostream& o)
+//static
+std::string CPUID::to_string()
    {
-   o << "CPUID flags: ";
+   std::vector<std::string> flags;
 
-#define CPUID_PRINT(flag) do { if(has_##flag()) o << #flag << " "; } while(0)
+#define CPUID_PRINT(flag) do { if(has_##flag()) { flags.push_back(#flag); } } while(0)
 
 #if defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
    CPUID_PRINT(sse2);
@@ -45147,79 +46027,53 @@ void CPUID::print(std::ostream& o)
 
    CPUID_PRINT(rdtsc);
    CPUID_PRINT(bmi2);
-   CPUID_PRINT(clmul);
+   CPUID_PRINT(adx);
+
    CPUID_PRINT(aes_ni);
+   CPUID_PRINT(clmul);
    CPUID_PRINT(rdrand);
    CPUID_PRINT(rdseed);
    CPUID_PRINT(intel_sha);
-   CPUID_PRINT(adx);
 #endif
 
 #if defined(BOTAN_TARGET_CPU_IS_PPC_FAMILY)
    CPUID_PRINT(altivec);
 #endif
 
+#if defined(BOTAN_TARGET_CPU_IS_ARM_FAMILY)
+   CPUID_PRINT(neon);
+   CPUID_PRINT(arm_sha1);
+   CPUID_PRINT(arm_sha2);
+   CPUID_PRINT(arm_aes);
+   CPUID_PRINT(arm_pmull);
+#endif
+
 #undef CPUID_PRINT
-   o << "\n";
+
+   return string_join(flags, ' ');
+   }
+
+//static
+void CPUID::print(std::ostream& o)
+   {
+   o << "CPUID flags: " << CPUID::to_string() << "\n";
    }
 
 void CPUID::initialize()
    {
-   clear_mem(g_processor_flags, 2);
+   g_processor_features = 0;
 
 #if defined(BOTAN_TARGET_CPU_IS_PPC_FAMILY)
-   if(altivec_check_sysctl() || altivec_check_pvr_emul())
-      {
-      g_processor_flags[0] |= CPUID_ALTIVEC_BIT;
-      }
+   g_processor_features = powerpc_detect_cpu_featutures();
+#elif defined(BOTAN_TARGET_CPU_IS_ARM_FAMILY)
+   g_processor_features = arm_detect_cpu_features(&g_cache_line_size);
+#elif defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
+   g_processor_features = x86_detect_cpu_features(&g_cache_line_size);
 #endif
 
-#if defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
-   const uint32_t INTEL_CPUID[3] = { 0x756E6547, 0x6C65746E, 0x49656E69 };
-   const uint32_t AMD_CPUID[3] = { 0x68747541, 0x444D4163, 0x69746E65 };
+   g_processor_features |= CPUID::CPUID_INITIALIZED_BIT;
 
-   uint32_t cpuid[4] = { 0 };
-   X86_CPUID(0, cpuid);
-
-   const uint32_t max_supported_sublevel = cpuid[0];
-
-   if(max_supported_sublevel == 0)
-      return;
-
-   const bool is_intel = same_mem(cpuid + 1, INTEL_CPUID, 3);
-   const bool is_amd = same_mem(cpuid + 1, AMD_CPUID, 3);
-
-   X86_CPUID(1, cpuid);
-
-   g_processor_flags[0] = (static_cast<uint64_t>(cpuid[2]) << 32) | cpuid[3];
-
-   if(is_intel)
-      g_cache_line_size = 8 * get_byte(2, cpuid[1]);
-
-   if(max_supported_sublevel >= 7)
-      {
-      clear_mem(cpuid, 4);
-      X86_CPUID_SUBLEVEL(7, 0, cpuid);
-      g_processor_flags[1] = (static_cast<uint64_t>(cpuid[2]) << 32) | cpuid[1];
-      }
-
-   if(is_amd)
-      {
-      X86_CPUID(0x80000005, cpuid);
-      g_cache_line_size = get_byte(3, cpuid[2]);
-      }
-
-#endif
-
-#if defined(BOTAN_TARGET_ARCH_IS_X86_64)
-   /*
-   * If we don't have access to CPUID, we can still safely assume that
-   * any x86-64 processor has SSE2 and RDTSC
-   */
-   if(g_processor_flags[0] == 0)
-      g_processor_flags[0] = (1 << CPUID_SSE2_BIT) | (1 << CPUID_RDTSC_BIT);
-#endif
-
+   // Check runtime endian
    const uint32_t endian32 = 0x01234567;
    const uint8_t* e8 = reinterpret_cast<const uint8_t*>(&endian32);
 
@@ -45236,14 +46090,13 @@ void CPUID::initialize()
       throw Internal_Error("Unexpected endian at runtime, neither big nor little");
       }
 
-   // If we were compiled with a known endian, verify if matches at runtime
+   // If we were compiled with a known endian, verify it matches at runtime
 #if defined(BOTAN_TARGET_CPU_IS_LITTLE_ENDIAN)
-   BOTAN_ASSERT(g_little_endian, "Little-endian build but big-endian at runtime");
+   BOTAN_ASSERT(g_little_endian == true, "Build and runtime endian match");
 #elif defined(BOTAN_TARGET_CPU_IS_BIG_ENDIAN)
-   BOTAN_ASSERT(!g_little_endian, "Big-endian build but little-endian at runtime");
+   BOTAN_ASSERT(g_little_endian == false, "Build and runtime endian match");
 #endif
 
-   g_initialized = true;
    }
 
 }
@@ -45626,6 +46479,8 @@ void secure_scrub_memory(void* ptr, size_t n)
 #if defined(BOTAN_TARGET_OS_TYPE_IS_UNIX)
   #include <sys/mman.h>
   #include <sys/resource.h>
+  #include <signal.h>
+  #include <setjmp.h>
 #endif
 
 #if defined(BOTAN_TARGET_OS_IS_WINDOWS) || defined(BOTAN_TARGET_OS_IS_MINGW)
@@ -45634,9 +46489,7 @@ void secure_scrub_memory(void* ptr, size_t n)
 
 namespace Botan {
 
-namespace OS {
-
-uint32_t get_process_id()
+uint32_t OS::get_process_id()
    {
 #if defined(BOTAN_TARGET_OS_TYPE_IS_UNIX)
    return ::getpid();
@@ -45649,14 +46502,16 @@ uint32_t get_process_id()
 #endif
    }
 
-uint64_t get_processor_timestamp()
+uint64_t OS::get_processor_timestamp()
    {
 #if defined(BOTAN_TARGET_OS_HAS_QUERY_PERF_COUNTER)
    LARGE_INTEGER tv;
    ::QueryPerformanceCounter(&tv);
    return tv.QuadPart;
 
-#elif defined(BOTAN_USE_GCC_INLINE_ASM) && defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
+#elif defined(BOTAN_USE_GCC_INLINE_ASM)
+
+#if defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
    if(CPUID::has_rdtsc()) // not available on all x86 CPUs
       {
       uint32_t rtc_low = 0, rtc_high = 0;
@@ -45664,37 +46519,58 @@ uint64_t get_processor_timestamp()
       return (static_cast<uint64_t>(rtc_high) << 32) | rtc_low;
       }
 
-#elif defined(BOTAN_USE_GCC_INLINE_ASM) && defined(BOTAN_TARGET_CPU_IS_PPC_FAMILY)
+#elif defined(BOTAN_TARGET_ARCH_IS_PPC64)
    uint32_t rtc_low = 0, rtc_high = 0;
    asm volatile("mftbu %0; mftb %1" : "=r" (rtc_high), "=r" (rtc_low));
-   return (static_cast<uint64_t>(rtc_high) << 32) | rtc_low;
 
-#elif defined(BOTAN_USE_GCC_INLINE_ASM) && defined(BOTAN_TARGET_ARCH_IS_ALPHA)
+   /*
+   qemu-ppc seems to not support mftb instr, it always returns zero.
+   If both time bases are 0, assume broken and return another clock.
+   */
+   if(rtc_high > 0 || rtc_low > 0)
+      {
+      return (static_cast<uint64_t>(rtc_high) << 32) | rtc_low;
+      }
+
+#elif defined(BOTAN_TARGET_ARCH_IS_ALPHA)
    uint64_t rtc = 0;
    asm volatile("rpcc %0" : "=r" (rtc));
    return rtc;
 
    // OpenBSD does not trap access to the %tick register
-#elif defined(BOTAN_USE_GCC_INLINE_ASM) && defined(BOTAN_TARGET_ARCH_IS_SPARC64) && !defined(BOTAN_TARGET_OS_IS_OPENBSD)
+#elif defined(BOTAN_TARGET_ARCH_IS_SPARC64) && !defined(BOTAN_TARGET_OS_IS_OPENBSD)
    uint64_t rtc = 0;
    asm volatile("rd %%tick, %0" : "=r" (rtc));
    return rtc;
 
-#elif defined(BOTAN_USE_GCC_INLINE_ASM) && defined(BOTAN_TARGET_ARCH_IS_IA64)
+#elif defined(BOTAN_TARGET_ARCH_IS_IA64)
    uint64_t rtc = 0;
    asm volatile("mov %0=ar.itc" : "=r" (rtc));
    return rtc;
 
-#elif defined(BOTAN_USE_GCC_INLINE_ASM) && defined(BOTAN_TARGET_ARCH_IS_S390X)
+#elif defined(BOTAN_TARGET_ARCH_IS_S390X)
    uint64_t rtc = 0;
    asm volatile("stck 0(%0)" : : "a" (&rtc) : "memory", "cc");
    return rtc;
 
-#elif defined(BOTAN_USE_GCC_INLINE_ASM) && defined(BOTAN_TARGET_ARCH_IS_HPPA)
+#elif defined(BOTAN_TARGET_ARCH_IS_HPPA)
    uint64_t rtc = 0;
    asm volatile("mfctl 16,%0" : "=r" (rtc)); // 64-bit only?
    return rtc;
+
+#else
+   //#warning "OS::get_processor_timestamp not implemented"
 #endif
+
+#endif
+
+   return 0;
+   }
+
+uint64_t OS::get_high_resolution_clock()
+   {
+   if(uint64_t cpu_clock = OS::get_processor_timestamp())
+      return cpu_clock;
 
    /*
    If we got here either we either don't have an asm instruction
@@ -45739,7 +46615,7 @@ uint64_t get_processor_timestamp()
    return std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
    }
 
-uint64_t get_system_timestamp_ns()
+uint64_t OS::get_system_timestamp_ns()
    {
 #if defined(BOTAN_TARGET_OS_HAS_CLOCK_GETTIME)
    struct timespec ts;
@@ -45753,7 +46629,7 @@ uint64_t get_system_timestamp_ns()
    return std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
    }
 
-size_t get_memory_locking_limit()
+size_t OS::get_memory_locking_limit()
    {
 #if defined(BOTAN_TARGET_OS_HAS_POSIX_MLOCK)
    /*
@@ -45780,6 +46656,7 @@ size_t get_memory_locking_limit()
       catch(std::exception&) { /* ignore it */ }
       }
 
+#if defined(RLIMIT_MEMLOCK)
    if(mlock_requested > 0)
       {
       struct ::rlimit limits;
@@ -45795,6 +46672,14 @@ size_t get_memory_locking_limit()
 
       return std::min<size_t>(limits.rlim_cur, mlock_requested * 1024);
       }
+#else
+   /*
+   * If RLIMIT_MEMLOCK is not defined, likely the OS does not support
+   * unprivileged mlock calls.
+   */
+   return 0;
+#endif
+
 #elif defined(BOTAN_TARGET_OS_HAS_VIRTUAL_LOCK) && defined(BOTAN_BUILD_COMPILER_IS_MSVC)
    SIZE_T working_min = 0, working_max = 0;
    DWORD working_flags = 0;
@@ -45830,7 +46715,7 @@ size_t get_memory_locking_limit()
    return 0;
    }
 
-void* allocate_locked_pages(size_t length)
+void* OS::allocate_locked_pages(size_t length)
    {
 #if defined(BOTAN_TARGET_OS_HAS_POSIX_MLOCK)
 
@@ -45887,7 +46772,7 @@ void* allocate_locked_pages(size_t length)
 #endif
    }
 
-void free_locked_pages(void* ptr, size_t length)
+void OS::free_locked_pages(void* ptr, size_t length)
    {
    if(ptr == nullptr || length == 0)
       return;
@@ -45906,7 +46791,71 @@ void free_locked_pages(void* ptr, size_t length)
 #endif
    }
 
+#if defined(BOTAN_TARGET_OS_TYPE_IS_UNIX)
+namespace {
+
+static ::sigjmp_buf g_sigill_jmp_buf;
+
+void botan_sigill_handler(int)
+   {
+   ::siglongjmp(g_sigill_jmp_buf, /*non-zero return value*/1);
+   }
+
 }
+#endif
+
+int OS::run_cpu_instruction_probe(std::function<int ()> probe_fn)
+   {
+   volatile int probe_result = -3;
+
+#if defined(BOTAN_TARGET_OS_TYPE_IS_UNIX)
+   struct sigaction old_sigaction;
+   struct sigaction sigaction;
+
+   sigaction.sa_handler = botan_sigill_handler;
+   sigemptyset(&sigaction.sa_mask);
+   sigaction.sa_flags = 0;
+
+   int rc = ::sigaction(SIGILL, &sigaction, &old_sigaction);
+
+   if(rc != 0)
+      throw Exception("run_cpu_instruction_probe sigaction failed");
+
+   rc = ::sigsetjmp(g_sigill_jmp_buf, /*save sigs*/1);
+
+   if(rc == 0)
+      {
+      // first call to sigsetjmp
+      probe_result = probe_fn();
+      }
+   else if(rc == 1)
+      {
+      // non-local return from siglongjmp in signal handler: return error
+      probe_result = -1;
+      }
+
+   // Restore old SIGILL handler, if any
+   rc = ::sigaction(SIGILL, &old_sigaction, nullptr);
+   if(rc != 0)
+      throw Exception("run_cpu_instruction_probe sigaction restore failed");
+
+#elif defined(BOTAN_TARGET_OS_IS_WINDOWS) && defined(BOTAN_TARGET_COMPILER_IS_MSVC)
+
+   // Windows SEH
+   __try
+      {
+      probe_result = probe_fn();
+      }
+   __except(::GetExceptionCode() == EXCEPTION_ILLEGAL_INSTRUCTION ?
+            EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+      {
+      probe_result = -1;
+      }
+
+#endif
+
+   return probe_result;
+   }
 
 }
 /*
@@ -48047,11 +48996,17 @@ void decode_optional_list(BER_Decoder& ber,
 Request::Request(const X509_Certificate& issuer_cert,
                  const X509_Certificate& subject_cert) :
    m_issuer(issuer_cert),
-   m_subject(subject_cert),
-   m_certid(m_issuer, m_subject)
+   m_certid(m_issuer, BigInt::decode(subject_cert.serial_number()))
    {
    if(subject_cert.issuer_dn() != issuer_cert.subject_dn())
       throw Invalid_Argument("Invalid cert pair to OCSP::Request (mismatched issuer,subject args?)");
+   }
+
+Request::Request(const X509_Certificate& issuer_cert,
+                 const BigInt& subject_serial) :
+   m_issuer(issuer_cert),
+   m_certid(m_issuer, subject_serial)
+   {
    }
 
 std::vector<uint8_t> Request::BER_encode() const
@@ -48269,17 +49224,16 @@ Certificate_Status_Code Response::status_for(const X509_Certificate& issuer,
 #if defined(BOTAN_HAS_HTTP_UTIL)
 
 Response online_check(const X509_Certificate& issuer,
-                      const X509_Certificate& subject,
+                      const BigInt& subject_serial,
+                      const std::string& ocsp_responder,
                       Certificate_Store* trusted_roots)
    {
-   const std::string responder_url = subject.ocsp_responder();
+   if(ocsp_responder.empty())
+      throw Invalid_Argument("No OCSP responder specified");
 
-   if(responder_url.empty())
-      throw Exception("No OCSP responder specified");
+   OCSP::Request req(issuer, subject_serial);
 
-   OCSP::Request req(issuer, subject);
-
-   auto http = HTTP::POST_sync(responder_url,
+   auto http = HTTP::POST_sync(ocsp_responder,
                                "application/ocsp-request",
                                req.BER_encode());
 
@@ -48296,6 +49250,20 @@ Response online_check(const X509_Certificate& issuer,
       response.check_signature(trusted_roots_vec);
 
    return response;
+   }
+
+
+Response online_check(const X509_Certificate& issuer,
+                      const X509_Certificate& subject,
+                      Certificate_Store* trusted_roots)
+   {
+   if(subject.issuer_dn() != issuer.subject_dn())
+      throw Invalid_Argument("Invalid cert pair to OCSP::online_check (mismatched issuer,subject args?)");
+
+   return online_check(issuer,
+                       BigInt::decode(subject.serial_number()),
+                       subject.ocsp_responder(),
+                       trusted_roots);
    }
 
 #endif
@@ -48316,7 +49284,7 @@ namespace Botan {
 namespace OCSP {
 
 CertID::CertID(const X509_Certificate& issuer,
-               const X509_Certificate& subject)
+               const BigInt& subject_serial)
    {
    /*
    In practice it seems some responders, including, notably,
@@ -48326,8 +49294,8 @@ CertID::CertID(const X509_Certificate& issuer,
 
    m_hash_id = AlgorithmIdentifier(hash->name(), AlgorithmIdentifier::USE_NULL_PARAM);
    m_issuer_key_hash = unlock(hash->process(issuer.subject_public_key_bitstring()));
-   m_issuer_dn_hash = unlock(hash->process(subject.raw_issuer_dn()));
-   m_subject_serial = BigInt::decode(subject.serial_number());
+   m_issuer_dn_hash = unlock(hash->process(issuer.raw_subject_dn()));
+   m_subject_serial = subject_serial;
    }
 
 bool CertID::is_id_for(const X509_Certificate& issuer,
@@ -49286,7 +50254,6 @@ void Extensions::decode_from(BER_Decoder& from_source)
             .decode(oid)
             .decode_optional(critical, BOOLEAN, UNIVERSAL, false)
             .decode(value, OCTET_STRING)
-            .verify_end()
          .end_cons();
 
       m_extensions_raw.emplace(oid, std::make_pair(value, critical));
@@ -49367,7 +50334,6 @@ void Basic_Constraints::decode_inner(const std::vector<uint8_t>& in)
       .start_cons(SEQUENCE)
          .decode_optional(m_is_ca, BOOLEAN, UNIVERSAL, false)
          .decode_optional(m_path_limit, INTEGER, UNIVERSAL, NO_CERT_PATH_LIMIT)
-         .verify_end()
       .end_cons();
 
    if(m_is_ca == false)
@@ -50063,7 +51029,6 @@ void X509_Object::decode_from(BER_Decoder& from)
          .end_cons()
          .decode(m_sig_algo)
          .decode(m_sig, BIT_STRING)
-         .verify_end()
       .end_cons();
    }
 
@@ -50288,7 +51253,6 @@ void X509_Certificate::force_decode()
       .start_cons(SEQUENCE)
          .decode(start)
          .decode(end)
-         .verify_end()
       .end_cons()
       .decode(dn_subject);
 
@@ -51237,15 +52201,15 @@ PKIX::check_ocsp_online(const std::vector<std::shared_ptr<const X509_Certificate
 
       if(subject->ocsp_responder() == "")
          {
-         ocsp_response_futures.emplace_back(std::async(std::launch::deferred, [&]{
+         ocsp_response_futures.emplace_back(std::async(std::launch::deferred, [&]() -> std::shared_ptr<const OCSP::Response> {
                   throw Exception("No OCSP responder URL set for this certificate");
                   return std::shared_ptr<const OCSP::Response>();
                   }));
             }
          else
             {
-            ocsp_response_futures.emplace_back(std::async(std::launch::async, [&]{
-                  OCSP::Request req(*issuer, *subject);
+            ocsp_response_futures.emplace_back(std::async(std::launch::async, [&]() -> std::shared_ptr<const OCSP::Response> {
+                  OCSP::Request req(*issuer, BigInt::decode(subject->serial_number()));
 
                   auto http = HTTP::POST_sync(subject->ocsp_responder(),
                                               "application/ocsp-request",
@@ -51326,14 +52290,14 @@ PKIX::check_crl_online(const std::vector<std::shared_ptr<const X509_Certificate>
       else if(cert_path[i]->crl_distribution_point() == "")
          {
          // Avoid creating a thread for this case
-         future_crls.emplace_back(std::async(std::launch::deferred, [&]{
+         future_crls.emplace_back(std::async(std::launch::deferred, [&]() -> std::shared_ptr<const X509_CRL> {
                throw Exception("No CRL distribution point for this certificate");
                return std::shared_ptr<const X509_CRL>();
                }));
          }
       else
          {
-         future_crls.emplace_back(std::async(std::launch::async, [&]() {
+         future_crls.emplace_back(std::async(std::launch::async, [&]() -> std::shared_ptr<const X509_CRL> {
                auto http = HTTP::GET_sync(cert_path[i]->crl_distribution_point());
                http.throw_unless_ok();
                // check the mime type?

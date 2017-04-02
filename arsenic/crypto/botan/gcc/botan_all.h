@@ -35,10 +35,10 @@
 
 /*
 * This file was automatically generated running
-* './configure.py --cc=gcc --amalgamation --disable-shared --cc=clang --disable-module threefish_avx2,tls'
+* './configure.py --cc=gcc --amalgamation --disable-shared --disable-module threefish_avx2,tls,pkcs11'
 *
 * Target
-*  - Compiler: clang++  -m64 -pthread -std=c++11 -D_REENTRANT -fstack-protector -O3
+*  - Compiler: g++ -fstack-protector -m64 -pthread -std=c++11 -D_REENTRANT -O3 -momit-leaf-frame-pointer
 *  - Arch: x86_64/x86_64
 *  - OS: linux
 */
@@ -73,6 +73,7 @@
 #define BOTAN_TARGET_OS_HAS_CLOCK_GETTIME
 #define BOTAN_TARGET_OS_HAS_DLOPEN
 #define BOTAN_TARGET_OS_HAS_FILESYSTEM
+#define BOTAN_TARGET_OS_HAS_GETAUXVAL
 #define BOTAN_TARGET_OS_HAS_GETTIMEOFDAY
 #define BOTAN_TARGET_OS_HAS_GMTIME_R
 #define BOTAN_TARGET_OS_HAS_POSIX_MLOCK
@@ -85,7 +86,6 @@
 #define BOTAN_TARGET_SUPPORTS_AESNI
 #define BOTAN_TARGET_SUPPORTS_AVX2
 #define BOTAN_TARGET_SUPPORTS_BMI2
-#define BOTAN_TARGET_SUPPORTS_CLMUL
 #define BOTAN_TARGET_SUPPORTS_RDRAND
 #define BOTAN_TARGET_SUPPORTS_RDSEED
 #define BOTAN_TARGET_SUPPORTS_SHA
@@ -99,7 +99,7 @@
 #define BOTAN_TARGET_CPU_HAS_NATIVE_64BIT
 #define BOTAN_TARGET_UNALIGNED_MEMORY_ACCESS_OK 1
 
-#define BOTAN_BUILD_COMPILER_IS_CLANG
+#define BOTAN_BUILD_COMPILER_IS_GCC
 
 /*
 * Module availability definitions
@@ -171,7 +171,7 @@
 #define BOTAN_HAS_ENTROPY_SRC_PROC_WALKER 20131128
 #define BOTAN_HAS_ENTROPY_SRC_RDRAND 20131128
 #define BOTAN_HAS_ENTROPY_SRC_RDSEED 20151218
-#define BOTAN_HAS_FFI 20151015
+#define BOTAN_HAS_FFI 20170327
 #define BOTAN_HAS_FILTERS 20160415
 #define BOTAN_HAS_FPE_FE1 20131128
 #define BOTAN_HAS_GCM_CLMUL 20131227
@@ -299,21 +299,14 @@
 #define BOTAN_USE_VOLATILE_MEMSET_FOR_ZERO 1
 
 /*
-* If enabled the ECC implementation will use Montgomery ladder
-* instead of a fixed window implementation.
+* If enabled the ECC implementation will use scalar blinding with order.bits()/2
+* bit long masks.
 */
-#define BOTAN_POINTGFP_BLINDED_MULTIPLY_USE_MONTGOMERY_LADDER 0
-
-/*
-* Set number of bits used to generate mask for blinding the scalar of
-* a point multiplication. Set to zero to disable this side-channel
-* countermeasure.
-*/
-#define BOTAN_POINTGFP_SCALAR_BLINDING_BITS 20
+#define BOTAN_POINTGFP_USE_SCALAR_BLINDING 1
 
 /*
 * Set number of bits used to generate mask for blinding the
-* representation of an ECC point. Set to zero to diable this
+* representation of an ECC point. Set to zero to disable this
 * side-channel countermeasure.
 */
 #define BOTAN_POINTGFP_RANDOMIZE_BLINDING_BITS 80
@@ -323,7 +316,7 @@
 * its inverse, of a form appropriate to the algorithm being blinded), and
 * then choosing new blinding operands by successive squaring of both
 * values. This is much faster than computing a new starting point but
-* introduces some possible coorelation
+* introduces some possible corelation
 *
 * To avoid possible leakage problems in long-running processes, the blinder
 * periodically reinitializes the sequence. This value specifies how often
@@ -348,7 +341,7 @@
 * seriously broken system RNG.
 */
 #define BOTAN_ENTROPY_DEFAULT_SOURCES \
-   { "rdseed", "rdrand", "darwin_secrandom", "dev_random", \
+   { "rdseed", "rdrand", "darwin_secrandom", "getentropy", "dev_random", \
     "win32_cryptoapi", "proc_walk", "system_stats" }
 
 
@@ -468,6 +461,14 @@ Each read generates 32 bits of output
 #endif
 
 /*
+* Define special macro when building under MSVC 2013 since there are
+* many compiler workarounds required for that version.
+*/
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  #define BOTAN_BUILD_COMPILER_IS_MSVC_2013
+#endif
+
+/*
 * Define BOTAN_FUNC_ISA
 */
 #if defined(__GNUG__) || (BOTAN_CLANG_VERSION > 38)
@@ -536,7 +537,7 @@ Each read generates 32 bits of output
 /*
 * Define BOTAN_NOEXCEPT (for MSVC 2013)
 */
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
+#if defined(BOTAN_BUILD_COMPILER_IS_MSVC_2013)
   // noexcept is not supported in VS 2013
   #include <yvals.h>
   #define BOTAN_NOEXCEPT _NOEXCEPT
@@ -568,8 +569,8 @@ Each read generates 32 bits of output
   #define BOTAN_PARALLEL_SIMD_FOR _Pragma("simd") for
 #elif defined(BOTAN_TARGET_HAS_OPENMP)
   #define BOTAN_PARALLEL_SIMD_FOR _Pragma("omp simd") for
-#elif defined(BOTAN_TARGET_COMPILER_IS_GCC)
-  #define BOTAN_PARALLEL_FOR _Pragma("GCC ivdep") for
+#elif defined(BOTAN_BUILD_COMPILER_IS_GCC)
+  #define BOTAN_PARALLEL_SIMD_FOR _Pragma("GCC ivdep") for
 #else
   #define BOTAN_PARALLEL_SIMD_FOR for
 #endif
@@ -3943,11 +3944,11 @@ class RandomNumberGenerator;
 class BOTAN_DLL Entropy_Source
    {
    public:
-      /*
+      /**
       * Return a new entropy source of a particular type, or null
       * Each entropy source may require substantial resources (eg, a file handle
       * or socket instance), so try to share them among multiple RNGs, or just
-      * use the preconfigured global list accessed by global_entropy_sources()
+      * use the preconfigured global list accessed by Entropy_Sources::global_sources()
       */
       static std::unique_ptr<Entropy_Source> create(const std::string& type);
 
@@ -3959,7 +3960,7 @@ class BOTAN_DLL Entropy_Source
       /**
       * Perform an entropy gathering poll
       * @param rng will be provided with entropy via calls to add_entropy
-      @ @return conservative estimate of actual entropy added to rng during poll
+      * @return conservative estimate of actual entropy added to rng during poll
       */
       virtual size_t poll(RandomNumberGenerator& rng) = 0;
 
@@ -4154,7 +4155,8 @@ class BOTAN_DLL RandomNumberGenerator
 typedef RandomNumberGenerator RNG;
 
 /**
-* Hardware RNG has no members but exists to tag hardware RNG types
+* Hardware_RNG has no members but exists to tag hardware RNG types
+* (PKCS11_RNG, TPM_RNG, RDRAND_RNG)
 */
 class BOTAN_DLL Hardware_RNG : public RandomNumberGenerator
    {
@@ -4572,7 +4574,7 @@ namespace Botan {
 
 /**
 * Perform base64 encoding
-* @param output an array of at least input_length*4/3 bytes
+* @param output an array of at least base64_encode_max_output bytes
 * @param input is some binary data
 * @param input_length length of input in bytes
 * @param input_consumed is an output parameter which says how many
@@ -4611,7 +4613,7 @@ std::string base64_encode(const std::vector<uint8_t, Alloc>& input)
 
 /**
 * Perform base64 decoding
-* @param output an array of at least input_length*3/4 bytes
+* @param output an array of at least base64_decode_max_output bytes
 * @param input some base64 input
 * @param input_length length of input in bytes
 * @param input_consumed is an output parameter which says how many
@@ -4633,7 +4635,7 @@ size_t BOTAN_DLL base64_decode(uint8_t output[],
 
 /**
 * Perform base64 decoding
-* @param output an array of at least input_length*3/4 bytes
+* @param output an array of at least base64_decode_max_output bytes
 * @param input some base64 input
 * @param input_length length of input in bytes
 * @param ignore_ws ignore whitespace on input; if false, throw an
@@ -4647,7 +4649,7 @@ size_t BOTAN_DLL base64_decode(uint8_t output[],
 
 /**
 * Perform base64 decoding
-* @param output an array of at least input_length/3*4 bytes
+* @param output an array of at least base64_decode_max_output bytes
 * @param input some base64 input
 * @param ignore_ws ignore whitespace on input; if false, throw an
                    exception if whitespace is encountered
@@ -4678,6 +4680,20 @@ secure_vector<uint8_t> BOTAN_DLL base64_decode(const char input[],
 */
 secure_vector<uint8_t> BOTAN_DLL base64_decode(const std::string& input,
                                            bool ignore_ws = true);
+
+/**
+* Calculate the size of output buffer for base64_encode
+* @param input_length the length of input in bytes
+* @return the size of output buffer in bytes
+*/
+size_t BOTAN_DLL base64_encode_max_output(size_t input_length);
+
+/**
+* Calculate the size of output buffer for base64_decode
+* @param input_length the length of input in bytes
+* @return the size of output buffer in bytes
+*/
+size_t BOTAN_DLL base64_decode_max_output(size_t input_length);
 
 }
 
@@ -5007,6 +5023,38 @@ class BOTAN_DLL BER_Decoder
       BER_Decoder& end_cons();
 
       BER_Decoder& get_next(BER_Object& ber);
+
+      /**
+      * Get next object and copy value to POD type
+      * Asserts value length is equal to POD type sizeof.
+      * Asserts Type tag and optional Class tag according to parameters.
+      * Copy value to POD type (struct, union, C-style array, std::array, etc.).
+      * @param out POD type reference where to copy object value
+      * @param type_tag ASN1_Tag enum to assert type on object read
+      * @param class_tag ASN1_Tag enum to assert class on object read (default: CONTEXT_SPECIFIC)
+      * @return this reference  
+      */
+      template <typename T>
+         BER_Decoder& get_next_value(T &out,
+                                     ASN1_Tag type_tag,
+                                     ASN1_Tag class_tag = CONTEXT_SPECIFIC)
+         {
+         static_assert(std::is_pod<T>::value, "Type must be POD");
+
+         BER_Object obj = get_next_object();
+         obj.assert_is_a(type_tag, class_tag);
+
+         if (obj.value.size() != sizeof(T))
+            throw BER_Decoding_Error(
+                    "Size mismatch. Object value size is " +
+                    std::to_string(obj.value.size()) +
+                    "; Output type size is " +
+                    std::to_string(sizeof(T)));
+
+         copy_mem(reinterpret_cast<uint8_t*>(&out), obj.value.data(), obj.value.size());
+
+         return (*this);
+         }
 
       BER_Decoder& raw_bytes(secure_vector<uint8_t>& v);
       BER_Decoder& raw_bytes(std::vector<uint8_t>& v);
@@ -7837,7 +7885,9 @@ class RandomNumberGenerator;
 class BOTAN_DLL Public_Key
    {
    public:
-      virtual ~Public_Key() {}
+      virtual ~Public_Key() = default;
+
+      virtual Public_Key& operator=(const Public_Key& other) = default;
 
       /**
       * Get the name of the underlying public key scheme.
@@ -7976,6 +8026,10 @@ class BOTAN_DLL Public_Key
 class BOTAN_DLL Private_Key : public virtual Public_Key
    {
    public:
+      virtual ~Private_Key() = default;
+
+      virtual Private_Key& operator=(const Private_Key& other) = default;
+
       /**
       * @return BER encoded private key bits
       */
@@ -9994,8 +10048,11 @@ class BOTAN_DLL ChaCha final : public StreamCipher
 
       void set_iv(const uint8_t iv[], size_t iv_len) override;
 
-      bool valid_iv_length(size_t iv_len) const override
-         { return (iv_len == 8 || iv_len == 12); }
+      /*
+      * ChaCha accepts 0, 8, or 12 byte IVs. The default IV is a 8 zero bytes.
+      * An IV of length 0 is treated the same as the default zero IV.
+      */
+      bool valid_iv_length(size_t iv_len) const override;
 
       Key_Length_Specification key_spec() const override
          {
@@ -10446,9 +10503,22 @@ class BOTAN_DLL Decompression_Filter : public Filter
 namespace Botan {
 
 /**
-* A class handling runtime CPU feature detection
+* A class handling runtime CPU feature detection. It is limited to
+* just the features necessary to implement CPU specific code in Botan,
+* rather than being a general purpose utility.
 *
-* Currently this class supports only x86 (via CPUID) and PowerPC (AltiVec detection)
+* This class supports:
+*
+*  - x86 features using CPUID. x86 is also the only processor with
+*    accurate cache line detection currently.
+*
+*  - PowerPC AltiVec detection on Linux, NetBSD, OpenBSD, and Darwin
+*
+*  - ARM NEON and crypto extensions detection. On Linux and Android
+*    systems which support getauxval, that is used to access CPU
+*    feature information. Otherwise a relatively portable but
+*    thread-unsafe mechanism involving executing probe functions which
+*    catching SIGILL signal is used.
 */
 class BOTAN_DLL CPUID
    {
@@ -10460,14 +10530,29 @@ class BOTAN_DLL CPUID
 
       static bool has_simd_32();
 
+      /**
+      * Deprecated equivalent to
+      * o << "CPUID flags: " << CPUID::to_string() << "\n";
+      */
+      BOTAN_DEPRECATED("Use CPUID::to_string")
       static void print(std::ostream& o);
+
+      /**
+      * Return a possibly empty string containing list of known CPU
+      * extensions. Each name will be seperated by a space, and the ordering
+      * will be arbitrary. This list only contains values that are useful to
+      * Botan (for example FMA instructions are not checked).
+      *
+      * Example outputs "sse2 ssse3 rdtsc", "neon arm_aes", "altivec"
+      */
+      static std::string to_string();
 
       /**
       * Return a best guess of the cache line size
       */
       static size_t cache_line_size()
          {
-         if(!g_initialized)
+         if(g_processor_features == 0)
             {
             initialize();
             }
@@ -10476,38 +10561,60 @@ class BOTAN_DLL CPUID
 
       static bool is_little_endian()
          {
-         if(!g_initialized)
+         if(g_processor_features == 0)
             {
             initialize();
             }
          return g_little_endian;
          }
 
-      enum CPUID_bits {
-#if defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
-         // This matches the layout of cpuid(1)
-         CPUID_RDTSC_BIT = 4,
-         CPUID_SSE2_BIT = 26,
-         CPUID_CLMUL_BIT = 33,
-         CPUID_SSSE3_BIT = 41,
-         CPUID_SSE41_BIT = 51,
-         CPUID_SSE42_BIT = 52,
-         CPUID_AESNI_BIT = 57,
-         CPUID_RDRAND_BIT = 62,
+      static bool is_big_endian()
+         {
+         /*
+         * We do not support PDP endian, so the endian is
+         * always either big or little.
+         */
+         return is_little_endian() == false;
+         }
 
-         CPUID_AVX2_BIT = 64+5,
-         CPUID_BMI2_BIT = 64+8,
-         CPUID_AVX512F_BIT = 64+16,
-         CPUID_RDSEED_BIT = 64+18,
-         CPUID_ADX_BIT = 64+19,
-         CPUID_SHA_BIT = 64+29,
+      enum CPUID_bits : uint64_t {
+#if defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
+         // These values have no relation to cpuid bitfields
+
+         // SIMD instruction sets
+         CPUID_SSE2_BIT    = (1ULL << 0),
+         CPUID_SSSE3_BIT   = (1ULL << 1),
+         CPUID_SSE41_BIT   = (1ULL << 2),
+         CPUID_SSE42_BIT   = (1ULL << 3),
+         CPUID_AVX2_BIT    = (1ULL << 4),
+         CPUID_AVX512F_BIT = (1ULL << 5),
+
+         // Misc useful instructions
+         CPUID_RDTSC_BIT   = (1ULL << 10),
+         CPUID_BMI2_BIT    = (1ULL << 11),
+         CPUID_ADX_BIT     = (1ULL << 12),
+
+         // Crypto-specific ISAs
+         CPUID_AESNI_BIT   = (1ULL << 16),
+         CPUID_CLMUL_BIT   = (1ULL << 17),
+         CPUID_RDRAND_BIT  = (1ULL << 18),
+         CPUID_RDSEED_BIT  = (1ULL << 19),
+         CPUID_SHA_BIT     = (1ULL << 20),
 #endif
 
 #if defined(BOTAN_TARGET_CPU_IS_PPC_FAMILY)
-         CPUID_ALTIVEC_BIT = 0
+         CPUID_ALTIVEC_BIT = (1ULL << 0),
 #endif
 
-         // TODO: ARMv8 feature detection
+#if defined(BOTAN_TARGET_CPU_IS_ARM_FAMILY)
+         CPUID_ARM_NEON_BIT  = (1ULL << 0),
+         CPUID_ARM_AES_BIT   = (1ULL << 16),
+         CPUID_ARM_PMULL_BIT = (1ULL << 17),
+         CPUID_ARM_SHA1_BIT  = (1ULL << 18),
+         CPUID_ARM_SHA2_BIT  = (1ULL << 19),
+#endif
+
+         CPUID_INITIALIZED_BIT = (1ULL << 63)
       };
 
 #if defined(BOTAN_TARGET_CPU_IS_PPC_FAMILY)
@@ -10516,6 +10623,38 @@ class BOTAN_DLL CPUID
       */
       static bool has_altivec()
          { return has_cpuid_bit(CPUID_ALTIVEC_BIT); }
+#endif
+
+#if defined(BOTAN_TARGET_CPU_IS_ARM_FAMILY)
+      /**
+      * Check if the processor supports NEON SIMD
+      */
+      static bool has_neon()
+         { return has_cpuid_bit(CPUID_ARM_NEON_BIT); }
+
+      /**
+      * Check if the processor supports ARMv8 SHA1
+      */
+      static bool has_arm_sha1()
+         { return has_cpuid_bit(CPUID_ARM_SHA1_BIT); }
+
+      /**
+      * Check if the processor supports ARMv8 SHA2
+      */
+      static bool has_arm_sha2()
+         { return has_cpuid_bit(CPUID_ARM_SHA2_BIT); }
+
+      /**
+      * Check if the processor supports ARMv8 AES
+      */
+      static bool has_arm_aes()
+         { return has_cpuid_bit(CPUID_ARM_AES_BIT); }
+
+      /**
+      * Check if the processor supports ARMv8 PMULL
+      */
+      static bool has_arm_pmull()
+         { return has_cpuid_bit(CPUID_ARM_PMULL_BIT); }
 #endif
 
 #if defined(BOTAN_TARGET_CPU_IS_X86_FAMILY)
@@ -10608,26 +10747,31 @@ class BOTAN_DLL CPUID
       /*
       * Clear a CPUID bit
       * Call CPUID::initialize to reset
+      *
+      * This is only exposed for testing, don't use unless you know
+      * what you are doing.
       */
       static void clear_cpuid_bit(CPUID_bits bit)
          {
-         const uint64_t mask = ~(static_cast<uint64_t>(1) << (bit % 64));
-         g_processor_flags[bit/64] &= mask;
+         const uint64_t mask = ~(static_cast<uint64_t>(bit));
+         g_processor_features &= mask;
          }
 
+      /*
+      * Don't call this function, use CPUID::has_xxx above
+      * It is only exposed for the tests.
+      */
       static bool has_cpuid_bit(CPUID_bits elem)
          {
-         if(!g_initialized)
+         if(g_processor_features == 0)
             initialize();
-         const size_t bit = static_cast<size_t>(elem);
-         return ((g_processor_flags[bit/64] >> (bit % 64)) & 1);
+         return ((g_processor_features & static_cast<uint64_t>(elem)) != 0);
          }
 
    private:
-      static bool g_initialized;
       static bool g_little_endian;
       static size_t g_cache_line_size;
-      static uint64_t g_processor_flags[2];
+      static uint64_t g_processor_features;
    };
 
 }
@@ -11565,6 +11709,8 @@ class BOTAN_DLL DL_Scheme_PublicKey : public virtual Public_Key
                           const std::vector<uint8_t>& key_bits,
                           DL_Group::Format group_format);
 
+      DL_Scheme_PublicKey& operator=(const DL_Scheme_PublicKey& other) = default;
+
    protected:
       DL_Scheme_PublicKey() {}
 
@@ -11605,6 +11751,8 @@ class BOTAN_DLL DL_Scheme_PrivateKey : public virtual DL_Scheme_PublicKey,
       DL_Scheme_PrivateKey(const AlgorithmIdentifier& alg_id,
                            const secure_vector<uint8_t>& key_bits,
                            DL_Group::Format group_format);
+
+      DL_Scheme_PrivateKey& operator=(const DL_Scheme_PrivateKey& other) = default;
 
    protected:
       DL_Scheme_PrivateKey() {}
@@ -13009,7 +13157,7 @@ class BOTAN_DLL DSA_PrivateKey : public DSA_PublicKey,
       /**
       * Load a private key.
       * @param alg_id the X.509 algorithm identifier
-      * @param key_bits PKCS#8 structure
+      * @param key_bits DER encoded key bits in ANSI X9.57 format
       */
       DSA_PrivateKey(const AlgorithmIdentifier& alg_id,
                      const secure_vector<uint8_t>& key_bits);
@@ -13532,7 +13680,14 @@ class BOTAN_DLL EC_Group
       * @result the OID
       */
       std::string get_oid() const { return m_oid; }
-
+      
+      /**
+       * Verify EC_Group domain
+       * @returns true if group is valid. false otherwise
+       */
+      bool verify_group(RandomNumberGenerator& rng,
+                            bool strong = false) const;
+      
       bool operator==(const EC_Group& other) const
          {
          return ((get_curve() == other.get_curve()) &&
@@ -13595,6 +13750,8 @@ class BOTAN_DLL EC_PublicKey : public virtual Public_Key
       */
       EC_PublicKey(const AlgorithmIdentifier& alg_id,
                    const std::vector<uint8_t>& key_bits);
+
+      EC_PublicKey& operator=(const EC_PublicKey& other) = default;
 
       /**
       * Get the public point of this key.
@@ -13672,8 +13829,9 @@ class BOTAN_DLL EC_PrivateKey : public virtual EC_PublicKey,
                     bool with_modular_inverse=false);
 
       /*
-      * Creates a new private key object from the given
-      * key_bits. If with_modular_inverse is set,
+      * Creates a new private key object from the
+      * ECPrivateKey structure given in key_bits.
+      * If with_modular_inverse is set,
       * the public key will be calculated by multiplying
       * the base point with the modular inverse of
       * x (as in ECGDSA and ECKCDSA), otherwise by
@@ -13682,6 +13840,8 @@ class BOTAN_DLL EC_PrivateKey : public virtual EC_PublicKey,
       EC_PrivateKey(const AlgorithmIdentifier& alg_id,
                     const secure_vector<uint8_t>& key_bits,
                     bool with_modular_inverse=false);
+
+      EC_PrivateKey& operator=(const EC_PrivateKey& other) = default;
 
       secure_vector<uint8_t> private_key_bits() const override;
 
@@ -13757,9 +13917,9 @@ class BOTAN_DLL ECDH_PrivateKey : public ECDH_PublicKey,
    public:
 
       /**
-      * Create an ECDH public key.
+      * Load a private key.
       * @param alg_id the X.509 algorithm identifier
-      * @param key_bits X.509 subject public key info structure
+      * @param key_bits ECPrivateKey bits
       */
       ECDH_PrivateKey(const AlgorithmIdentifier& alg_id,
                       const secure_vector<uint8_t>& key_bits) :
@@ -13847,7 +14007,7 @@ class BOTAN_DLL ECDSA_PrivateKey : public ECDSA_PublicKey,
       /**
       * Load a private key
       * @param alg_id the X.509 algorithm identifier
-      * @param key_bits PKCS #8 structure
+      * @param key_bits ECPrivateKey bits
       */
       ECDSA_PrivateKey(const AlgorithmIdentifier& alg_id,
                        const secure_vector<uint8_t>& key_bits) :
@@ -13931,7 +14091,7 @@ class BOTAN_DLL ECGDSA_PrivateKey : public ECGDSA_PublicKey,
       /**
       * Load a private key.
       * @param alg_id the X.509 algorithm identifier
-      * @param key_bits PKCS #8 structure
+      * @param key_bits ECPrivateKey bits
       */
       ECGDSA_PrivateKey(const AlgorithmIdentifier& alg_id,
                        const secure_vector<uint8_t>& key_bits) :
@@ -14297,7 +14457,7 @@ class BOTAN_DLL ECKCDSA_PrivateKey : public ECKCDSA_PublicKey,
       /**
       * Load a private key.
       * @param alg_id the X.509 algorithm identifier
-      * @param key_bits PKCS #8 structure
+      * @param key_bits ECPrivateKey bits
       */
       ECKCDSA_PrivateKey(const AlgorithmIdentifier& alg_id,
                        const secure_vector<uint8_t>& key_bits) :
@@ -14374,7 +14534,7 @@ class BOTAN_DLL ElGamal_PrivateKey : public ElGamal_PublicKey,
       /**
       * Load a private key.
       * @param alg_id the X.509 algorithm identifier
-      * @param key_bits PKCS #8 structure
+      * @param key_bits DER encoded key bits in ANSI X9.42 format
       */
       ElGamal_PrivateKey(const AlgorithmIdentifier& alg_id,
                          const secure_vector<uint8_t>& key_bits);
@@ -14991,21 +15151,43 @@ how to provide the cleanest API for such users would be most welcome.
 
 #include <stdint.h>
 
-/*
-* Versioning
+/**
+* Return the version of the currently supported FFI API. This is
+* expressed in the form YYYYMMDD of the release date of this version
+* of the API.
 */
 BOTAN_DLL uint32_t botan_ffi_api_version();
 
-/*
+/**
 * Return 0 (ok) if the version given is one this library supports.
 * botan_ffi_supports_api(botan_ffi_api_version()) will always return 0.
 */
 BOTAN_DLL int botan_ffi_supports_api(uint32_t api_version);
 
+/**
+* Return a free-form version string, e.g., 2.0.0
+*/
 BOTAN_DLL const char* botan_version_string();
+
+/**
+* Return the major version of the library
+*/
 BOTAN_DLL uint32_t botan_version_major();
+
+/**
+* Return the minor version of the library
+*/
 BOTAN_DLL uint32_t botan_version_minor();
+
+/**
+* Return the patch version of the library
+*/
 BOTAN_DLL uint32_t botan_version_patch();
+
+/**
+* Return the date this version was released as
+* an integer, or 0 if an unreleased version
+*/
 BOTAN_DLL uint32_t botan_version_datestamp();
 
 /*
@@ -15050,60 +15232,102 @@ doesn't exactly work well either!
 
 //const char* botan_error_description(int err);
 
-/*
+/**
 * Returns 0 if x[0..len] == y[0..len], or otherwise -1
 */
 BOTAN_DLL int botan_same_mem(const uint8_t* x, const uint8_t* y, size_t len);
 
 #define BOTAN_FFI_HEX_LOWER_CASE 1
 
+/**
+* Perform hex encoding
+* @param x is some binary data
+* @param len length of x in bytes
+* @param out an array of at least x*2 bytes
+* @param flags flags out be upper or lower case?
+* @return 0 on success, 1 on failure
+*/
 BOTAN_DLL int botan_hex_encode(const uint8_t* x, size_t len, char* out, uint32_t flags);
+
 // TODO: botan_hex_decode
 // TODO: botan_base64_encode
 // TODO: botan_base64_decode
 
-/*
-* RNG
+/**
+* RNG type
 */
 typedef struct botan_rng_struct* botan_rng_t;
 
 /**
+* Initialize a random number generator object
+* @param rng rng object
+* @param rng_type type of the rng, possible values:
+*    "system": System_RNG, "user": AutoSeeded_RNG
+* Set rng_type to null or empty string to let the library choose
+*
 * TODO: replace rng_type with simple flags? 
 */
 BOTAN_DLL int botan_rng_init(botan_rng_t* rng, const char* rng_type);
 
 /**
+* Get random bytes from a random number generator
+* @param rng rng object
+* @param out output buffer of size out_len
+* @param out_len number of requested bytes
+* @return 0 on success, negative on failure
+*
 * TODO: better name
 */
 BOTAN_DLL int botan_rng_get(botan_rng_t rng, uint8_t* out, size_t out_len);
+
+/**
+* Reseed a random number generator
+* Uses the System_RNG as a seed generator.
+*
+* @param rng rng object
+* @param bits number of bits to to reseed with
+* @return 0 on success, a negative value on failure
+*/
 BOTAN_DLL int botan_rng_reseed(botan_rng_t rng, size_t bits);
+
+/**
+* Frees all resources of the random number generator object
+* @param rng rng object
+* @return always returns 0
+*/
 BOTAN_DLL int botan_rng_destroy(botan_rng_t rng);
 
 /*
-* Hashing
+* Hash type
 */
 typedef struct botan_hash_struct* botan_hash_t;
 
 /**
-* Initialize a hash object:
-*   botan_hash_t hash
-*   botan_hash_init(&hash, "SHA-384", 0);
+* Initialize a hash function object
+* @param hash hash object
+* @param hash_name name of the hash function, e.g., "SHA-384"
+* @param flags should be 0 in current API revision, all other uses are reserved
+*       and return BOTAN_FFI_ERROR_BAD_FLAG
 *
-* Flags should be 0 in current API revision, all other uses are reserved.
-*  and return BOTAN_FFI_ERROR_BAD_FLAG.
-
 * TODO: since output_length is effectively required to use this API,
 * return it from init as an output parameter
 */
 BOTAN_DLL int botan_hash_init(botan_hash_t* hash, const char* hash_name, uint32_t flags);
 
 /**
-* Writes the output length of the hash object to *output_length
+* Writes the output length of the hash function to *output_length
+* @param hash hash object
+* @param output_length output buffer to hold the hash function output length
+* @return 0 on success, a negative value on failure
 */
 BOTAN_DLL int botan_hash_output_length(botan_hash_t hash, size_t* output_length);
 
 /**
-* Send more input to the hash function.
+* Send more input to the hash function
+* @param hash hash object
+* @param in input buffer
+* @param in_len number of bytes to read from the input buffer
+* @return 0 on success, a negative value on failure
 */
 BOTAN_DLL int botan_hash_update(botan_hash_t hash, const uint8_t* in, size_t in_len);
 
@@ -15111,33 +15335,96 @@ BOTAN_DLL int botan_hash_update(botan_hash_t hash, const uint8_t* in, size_t in_
 * Finalizes the hash computation and writes the output to
 * out[0:botan_hash_output_length()] then reinitializes for computing
 * another digest as if botan_hash_clear had been called.
+* @param hash hash object
+* @param out output buffer
+* @return 0 on success, a negative value on failure
 */
 BOTAN_DLL int botan_hash_final(botan_hash_t hash, uint8_t out[]);
 
 /**
 * Reinitializes the state of the hash computation. A hash can
 * be computed (with update/final) immediately.
+* @param hash hash object
+* @return 0 on success, a negative value on failure
 */
 BOTAN_DLL int botan_hash_clear(botan_hash_t hash);
 
 /**
-* Frees all resources of this object
+* Frees all resources of the hash object
+* @param hash hash object
+* @return always returns 0
 */
 BOTAN_DLL int botan_hash_destroy(botan_hash_t hash);
 
+/**
+* TODO has no implementation
+*/
 BOTAN_DLL int botan_hash_name(botan_hash_t hash, char* name, size_t name_len);
 
 /*
-* Message Authentication
+* Message Authentication type
 */
 typedef struct botan_mac_struct* botan_mac_t;
 
+/**
+* Initialize a message authentication code object
+* @param mac mac object
+* @param mac_name name of the hash function, e.g., "HMAC(SHA-384)"
+* @param flags should be 0 in current API revision, all other uses are reserved
+*       and return a negative value (error code)
+* @return 0 on success, a negative value on failure
+*/
 BOTAN_DLL int botan_mac_init(botan_mac_t* mac, const char* mac_name, uint32_t flags);
+
+/**
+* Writes the output length of the message authentication code to *output_length
+* @param mac mac object
+* @param output_length output buffer to hold the MAC output length
+* @return 0 on success, a negative value on failure
+*/
 BOTAN_DLL int botan_mac_output_length(botan_mac_t mac, size_t* output_length);
+
+/**
+* Sets the key on the MAC
+* @param mac mac object
+* @param key buffer holding the key
+* @param key_len size of the key buffer in bytes
+* @return 0 on success, a negative value on failure
+*/
 BOTAN_DLL int botan_mac_set_key(botan_mac_t mac, const uint8_t* key, size_t key_len);
+
+/**
+* Send more input to the message authentication code
+* @param mac mac object
+* @param buf input buffer
+* @param len number of bytes to read from the input buffer
+* @return 0 on success, a negative value on failure
+*/
 BOTAN_DLL int botan_mac_update(botan_mac_t mac, const uint8_t* buf, size_t len);
+
+/**
+* Finalizes the MAC computation and writes the output to
+* out[0:botan_mac_output_length()] then reinitializes for computing
+* another MAC as if botan_mac_clear had been called.
+* @param mac mac object
+* @param out output buffer
+* @return 0 on success, a negative value on failure
+*/
 BOTAN_DLL int botan_mac_final(botan_mac_t mac, uint8_t out[]);
-BOTAN_DLL int botan_mac_clear(botan_mac_t hash);
+
+/**
+* Reinitializes the state of the MAC computation. A MAC can
+* be computed (with update/final) immediately.
+* @param mac mac object
+* @return 0 on success, a negative value on failure
+*/
+BOTAN_DLL int botan_mac_clear(botan_mac_t mac);
+
+/**
+* Frees all resources of the MAC object
+* @param mac mac object
+* @return always returns 0
+*/
 BOTAN_DLL int botan_mac_destroy(botan_mac_t mac);
 
 /*
@@ -15184,23 +15471,54 @@ BOTAN_DLL int botan_cipher_clear(botan_cipher_t hash);
 BOTAN_DLL int botan_cipher_destroy(botan_cipher_t cipher);
 
 /*
-* PBKDF
+* Derive a key from a passphrase for a number of iterations
+* @param pbkdf_algo PBKDF algorithm, e.g., "PBKDF2"
+* @param out buffer to store the derived key, must be of out_len bytes
+* @param out_len the desired length of the key to produce
+* @param passphrase the password to derive the key from
+* @param salt a randomly chosen salt
+* @param salt_len length of salt in bytes
+* @param iterations the number of iterations to use (use 10K or more)
+* @return 0 on success, a negative value on failure
 */
 BOTAN_DLL int botan_pbkdf(const char* pbkdf_algo,
                           uint8_t out[], size_t out_len,
-                          const char* password,
+                          const char* passphrase,
                           const uint8_t salt[], size_t salt_len,
                           size_t iterations);
 
+/**
+* Derive a key from a passphrase, running until msec time has elapsed.
+* @param pbkdf_algo PBKDF algorithm, e.g., "PBKDF2"
+* @param out buffer to store the derived key, must be of out_len bytes
+* @param out_len the desired length of the key to produce
+* @param passphrase the password to derive the key from
+* @param salt a randomly chosen salt
+* @param salt_len length of salt in bytes
+* @param milliseconds_to_run if iterations is zero, then instead the PBKDF is
+*        run until milliseconds_to_run milliseconds has passed
+* @param out_iterations_used set to the number iterations executed
+* @return 0 on success, a negative value on failure
+*/
 BOTAN_DLL int botan_pbkdf_timed(const char* pbkdf_algo,
                                 uint8_t out[], size_t out_len,
-                                const char* password,
+                                const char* passphrase,
                                 const uint8_t salt[], size_t salt_len,
                                 size_t milliseconds_to_run,
                                 size_t* out_iterations_used);
 
-/*
-* KDF
+/**
+* Derive a key
+* @param kdf_algo KDF algorithm, e.g., "SP800-56C"
+* @param out buffer holding the derived key, must be of length out_len
+* @param out_len the desired output length in bytes
+* @param secret the secret input
+* @param secret_len size of secret in bytes
+* @param salt a diversifier
+* @param salt_len size of salt in bytes
+* @param label purpose for the derived keying material
+* @param label_len size of label in bytes
+* @return 0 on success, a negative value on failure
 */
 BOTAN_DLL int botan_kdf(const char* kdf_algo,
                         uint8_t out[], size_t out_len,
@@ -15208,9 +15526,17 @@ BOTAN_DLL int botan_kdf(const char* kdf_algo,
                         const uint8_t salt[], size_t salt_len,
                         const uint8_t label[], size_t label_len);
 
-/*
-* Bcrypt
-* *out_len should be 64 bytes
+/**
+* Create a password hash using Bcrypt
+* @param out buffer holding the password hash, should be of length 64 bytes
+* @param out_len the desired output length in bytes
+* @param password the password
+* @param rng a random number generator
+* @param work_factor how much work to do to slow down guessing attacks
+* @param flags should be 0 in current API revision, all other uses are reserved
+*       and return BOTAN_FFI_ERROR_BAD_FLAG
+* @return 0 on success, a negative value on failure
+
 * Output is formatted bcrypt $2a$...
 */
 BOTAN_DLL int botan_bcrypt_generate(uint8_t* out, size_t* out_len,
@@ -15219,10 +15545,99 @@ BOTAN_DLL int botan_bcrypt_generate(uint8_t* out, size_t* out_len,
                                     size_t work_factor,
                                     uint32_t flags);
 
+/*
+* Multiple precision integers
+*/
+typedef struct botan_mp_struct* botan_mp_t;
+
+BOTAN_DLL int botan_mp_init(botan_mp_t* mp);
+BOTAN_DLL int botan_mp_destroy(botan_mp_t mp);
+
+// writes botan_mp_num_bytes(mp)*2 + 1 bytes to out[]
+BOTAN_DLL int botan_mp_to_hex(botan_mp_t mp, char* out);
+BOTAN_DLL int botan_mp_to_str(botan_mp_t mp, uint8_t base, char* out, size_t* out_len);
+
+BOTAN_DLL int botan_mp_set_from_int(botan_mp_t mp, int initial_value);
+BOTAN_DLL int botan_mp_set_from_mp(botan_mp_t dest, botan_mp_t source);
+BOTAN_DLL int botan_mp_set_from_str(botan_mp_t dest, const char* str);
+
+BOTAN_DLL int botan_mp_num_bits(botan_mp_t n, size_t* bits);
+BOTAN_DLL int botan_mp_num_bytes(botan_mp_t n, size_t* bytes);
+
+// Writes botan_mp_num_bytes(mp) to vec
+BOTAN_DLL int botan_mp_to_bin(botan_mp_t mp, uint8_t vec[]);
+BOTAN_DLL int botan_mp_from_bin(botan_mp_t mp, const uint8_t vec[], size_t vec_len);
+
+BOTAN_DLL int botan_mp_is_negative(botan_mp_t mp);
+BOTAN_DLL int botan_mp_flip_sign(botan_mp_t mp);
+
+BOTAN_DLL int botan_mp_add(botan_mp_t result, botan_mp_t x, botan_mp_t y);
+BOTAN_DLL int botan_mp_sub(botan_mp_t result, botan_mp_t x, botan_mp_t y);
+BOTAN_DLL int botan_mp_mul(botan_mp_t result, botan_mp_t x, botan_mp_t y);
+
+BOTAN_DLL int botan_mp_div(botan_mp_t quotient,
+                           botan_mp_t remainder,
+                           botan_mp_t x, botan_mp_t y);
+
+BOTAN_DLL int botan_mp_mod_mul(botan_mp_t result, botan_mp_t x, botan_mp_t y, botan_mp_t mod);
+
+/*
+* Returns 0 if x != y
+* Returns 1 if x == y
+* Returns negative number on error
+*/
+BOTAN_DLL int botan_mp_equal(botan_mp_t x, botan_mp_t y);
+
+/*
+* Sets *result to comparison result:
+* -1 if x < y, 0 if x == y, 1 if x > y
+* Returns negative number on error or zero on success
+*/
+BOTAN_DLL int botan_mp_cmp(int* result, botan_mp_t x, botan_mp_t y);
+
+/*
+* Swap two botan_mp_t
+*/
+BOTAN_DLL int botan_mp_swap(botan_mp_t x, botan_mp_t y);
+
+// Return (base^exponent) % modulus
+BOTAN_DLL int botan_mp_powmod(botan_mp_t out, botan_mp_t base, botan_mp_t exponent, botan_mp_t modulus);
+
+BOTAN_DLL int botan_mp_lshift(botan_mp_t out, botan_mp_t in, size_t shift);
+BOTAN_DLL int botan_mp_rshift(botan_mp_t out, botan_mp_t in, size_t shift);
+
+BOTAN_DLL int botan_mp_mod_inverse(botan_mp_t out, botan_mp_t in, botan_mp_t modulus);
+
+BOTAN_DLL int botan_mp_rand_bits(botan_mp_t rand_out, botan_rng_t rng, size_t bits);
+
+BOTAN_DLL int botan_mp_rand_range(botan_mp_t rand_out, botan_rng_t rng,
+                                  botan_mp_t lower_bound, botan_mp_t upper_bound);
+
+BOTAN_DLL int botan_mp_gcd(botan_mp_t out, botan_mp_t x, botan_mp_t y);
+
 /**
-* Returns 0 if if this password/hash combination is valid
-* Returns 1 if the combination is not valid (but otherwise well formed)
-* Returns negative on error
+* Returns 0 if n is not prime
+* Returns 1 if n is prime
+* Returns negative number on error
+*/
+BOTAN_DLL int botan_mp_is_prime(botan_mp_t n, botan_rng_t rng, size_t test_prob);
+
+/**
+* Returns 0 if specified bit of n is not set
+* Returns 1 if specified bit of n is set
+* Returns negative number on error
+*/
+BOTAN_DLL int botan_mp_bit_set(botan_mp_t n, size_t bit);
+
+/* Bcrypt password hashing */
+
+/**
+* Check a previously created password hash
+* @param pass the password to check against
+* @param hash the stored hash to check against
+* @return 0 if if this password/hash combination is valid,
+*       1 if the combination is not valid (but otherwise well formed),
+*       negative on error
 */
 BOTAN_DLL int botan_bcrypt_is_valid(const char* pass, const char* hash);
 
@@ -15236,11 +15651,14 @@ BOTAN_DLL int botan_privkey_create(botan_privkey_t* key,
                                    const char* algo_params,
                                    botan_rng_t rng);
 
+#define BOTAN_CHECK_KEY_EXPENSIVE_TESTS 1
+
+BOTAN_DLL int botan_privkey_check_key(botan_privkey_t key, botan_rng_t rng, uint32_t flags);
+
 BOTAN_DLL int botan_privkey_create_rsa(botan_privkey_t* key, botan_rng_t rng, size_t n_bits);
 BOTAN_DLL int botan_privkey_create_ecdsa(botan_privkey_t* key, botan_rng_t rng, const char* params);
 BOTAN_DLL int botan_privkey_create_ecdh(botan_privkey_t* key, botan_rng_t rng, const char* params);
 BOTAN_DLL int botan_privkey_create_mceliece(botan_privkey_t* key, botan_rng_t rng, size_t n, size_t t);
-
 
 /*
 * Input currently assumed to be PKCS #8 structure;
@@ -15269,12 +15687,39 @@ BOTAN_DLL int botan_privkey_export(botan_privkey_t key,
 /*
 * Set encryption_algo to NULL or "" to have the library choose a default (recommended)
 */
+BOTAN_DEPRECATED("Use botan_privkey_export_encrypted_pbkdf_{msec,iter}")
 BOTAN_DLL int botan_privkey_export_encrypted(botan_privkey_t key,
                                              uint8_t out[], size_t* out_len,
                                              botan_rng_t rng,
                                              const char* passphrase,
                                              const char* encryption_algo,
                                              uint32_t flags);
+
+/*
+* Export a private key, running PBKDF for specified amount of time
+* @param key the private key to export
+*/
+BOTAN_DLL int botan_privkey_export_encrypted_pbkdf_msec(botan_privkey_t key,
+                                                        uint8_t out[], size_t* out_len,
+                                                        botan_rng_t rng,
+                                                        const char* passphrase,
+                                                        uint32_t pbkdf_msec_runtime,
+                                                        size_t* pbkdf_iterations_out,
+                                                        const char* cipher_algo,
+                                                        const char* pbkdf_algo,
+                                                        uint32_t flags);
+
+/*
+* Export a private key using the specified number of iterations.
+*/
+BOTAN_DLL int botan_privkey_export_encrypted_pbkdf_iter(botan_privkey_t key,
+                                                        uint8_t out[], size_t* out_len,
+                                                        botan_rng_t rng,
+                                                        const char* passphrase,
+                                                        size_t pbkdf_iterations,
+                                                        const char* cipher_algo,
+                                                        const char* pbkdf_algo,
+                                                        uint32_t flags);
 
 typedef struct botan_pubkey_struct* botan_pubkey_t;
 
@@ -15286,6 +15731,11 @@ BOTAN_DLL int botan_pubkey_export(botan_pubkey_t key, uint8_t out[], size_t* out
 
 BOTAN_DLL int botan_pubkey_algo_name(botan_pubkey_t key, char out[], size_t* out_len);
 
+/**
+* Returns 0 if key is valid, negative if invalid key or some other error
+*/
+BOTAN_DLL int botan_pubkey_check_key(botan_pubkey_t key, botan_rng_t rng, uint32_t flags);
+
 BOTAN_DLL int botan_pubkey_estimated_strength(botan_pubkey_t key, size_t* estimate);
 
 BOTAN_DLL int botan_pubkey_fingerprint(botan_pubkey_t key, const char* hash,
@@ -15293,6 +15743,27 @@ BOTAN_DLL int botan_pubkey_fingerprint(botan_pubkey_t key, const char* hash,
 
 BOTAN_DLL int botan_pubkey_destroy(botan_pubkey_t key);
 
+
+/*
+* Algorithm specific key operations: RSA
+*/
+BOTAN_DLL int botan_privkey_load_rsa(botan_privkey_t* key,
+                                     botan_mp_t p,
+                                     botan_mp_t q,
+                                     botan_mp_t d);
+
+BOTAN_DLL int botan_privkey_rsa_get_p(botan_mp_t p, botan_privkey_t rsa_key);
+BOTAN_DLL int botan_privkey_rsa_get_q(botan_mp_t q, botan_privkey_t rsa_key);
+BOTAN_DLL int botan_privkey_rsa_get_d(botan_mp_t d, botan_privkey_t rsa_key);
+BOTAN_DLL int botan_privkey_rsa_get_n(botan_mp_t n, botan_privkey_t rsa_key);
+BOTAN_DLL int botan_privkey_rsa_get_e(botan_mp_t e, botan_privkey_t rsa_key);
+
+BOTAN_DLL int botan_pubkey_load_rsa(botan_pubkey_t* key,
+                                    botan_mp_t n,
+                                    botan_mp_t e);
+
+BOTAN_DLL int botan_pubkey_rsa_get_e(botan_mp_t e, botan_pubkey_t rsa_key);
+BOTAN_DLL int botan_pubkey_rsa_get_n(botan_mp_t n, botan_pubkey_t rsa_key);
 
 /*
 * Public Key Encryption
@@ -16357,7 +16828,7 @@ class BOTAN_DLL GOST_3410_PrivateKey : public GOST_3410_PublicKey,
       /**
       * Load a private key.
       * @param alg_id the X.509 algorithm identifier
-      * @param key_bits PKCS #8 structure
+      * @param key_bits ECPrivateKey bits
       */
       GOST_3410_PrivateKey(const AlgorithmIdentifier& alg_id,
                            const secure_vector<uint8_t>& key_bits) :
@@ -18194,7 +18665,7 @@ class BOTAN_DLL CertID final : public ASN1_Object
       CertID() {}
 
       CertID(const X509_Certificate& issuer,
-             const X509_Certificate& subject);
+             const BigInt& subject_serial);
 
       bool is_id_for(const X509_Certificate& issuer,
                      const X509_Certificate& subject) const;
@@ -18258,6 +18729,9 @@ class BOTAN_DLL Request
       Request(const X509_Certificate& issuer_cert,
               const X509_Certificate& subject_cert);
 
+      Request(const X509_Certificate& issuer_cert,
+              const BigInt& subject_serial);
+
       /**
       * @return BER-encoded OCSP request
       */
@@ -18276,12 +18750,12 @@ class BOTAN_DLL Request
       /**
       * @return subject certificate
       */
-      const X509_Certificate& subject() const { return m_subject; }
+      const X509_Certificate& subject() const { throw Not_Implemented("Method have been deprecated"); }
 
       const std::vector<uint8_t>& issuer_key_hash() const
          { return m_certid.issuer_key_hash(); }
    private:
-      X509_Certificate m_issuer, m_subject;
+      X509_Certificate m_issuer;
       CertID m_certid;
    };
 
@@ -18381,6 +18855,11 @@ class BOTAN_DLL Response
    };
 
 #if defined(BOTAN_HAS_HTTP_UTIL)
+
+BOTAN_DLL Response online_check(const X509_Certificate& issuer,
+                                const BigInt& subject_serial,
+                                const std::string& ocsp_responder,
+                                Certificate_Store* trusted_roots);
 
 /**
 * Makes an online OCSP request via HTTP and returns the OCSP response.
@@ -18592,6 +19071,43 @@ BOTAN_DLL pbes2_encrypt(const secure_vector<uint8_t>& key_bits,
                         const std::string& cipher,
                         const std::string& digest,
                         RandomNumberGenerator& rng);
+
+/**
+* Encrypt with PBES2 from PKCS #5 v2.0
+* @param key_bits the input
+* @param passphrase the passphrase to use for encryption
+* @param msec how many milliseconds to run PBKDF2
+* @param out_iterations_if_nonnull if not null, set to the number
+* of PBKDF iterations used
+* @param cipher specifies the block cipher to use to encrypt
+* @param digest specifies the PRF to use with PBKDF2 (eg "HMAC(SHA-1)")
+* @param rng a random number generator
+*/
+std::pair<AlgorithmIdentifier, std::vector<uint8_t>>
+BOTAN_DLL pbes2_encrypt_msec(const secure_vector<uint8_t>& key_bits,
+                             const std::string& passphrase,
+                             std::chrono::milliseconds msec,
+                             size_t* out_iterations_if_nonnull,
+                             const std::string& cipher,
+                             const std::string& digest,
+                             RandomNumberGenerator& rng);
+
+/**
+* Encrypt with PBES2 from PKCS #5 v2.0
+* @param key_bits the input
+* @param passphrase the passphrase to use for encryption
+* @param iterations how many iterations to run PBKDF2
+* @param cipher specifies the block cipher to use to encrypt
+* @param digest specifies the PRF to use with PBKDF2 (eg "HMAC(SHA-1)")
+* @param rng a random number generator
+*/
+std::pair<AlgorithmIdentifier, std::vector<uint8_t>>
+BOTAN_DLL pbes2_encrypt_iter(const secure_vector<uint8_t>& key_bits,
+                             const std::string& passphrase,
+                             size_t iterations,
+                             const std::string& cipher,
+                             const std::string& digest,
+                             RandomNumberGenerator& rng);
 
 /**
 * Decrypt a PKCS #5 v2.0 encrypted stream
@@ -19322,6 +19838,97 @@ PEM_encode(const Private_Key& key,
            const std::string& pbe_algo = "");
 
 /**
+* Encrypt a key using PKCS #8 encryption and a fixed iteration count
+* @param key the key to encode
+* @param rng the rng to use
+* @param pass the password to use for encryption
+* @param pbkdf_iter number of interations to run PBKDF2
+* @param cipher if non-empty specifies the cipher to use. CBC and GCM modes
+*   are supported, for example "AES-128/CBC", "AES-256/GCM", "Serpent/CBC".
+*   If empty a suitable default is chosen.
+* @param pbkdf_hash if non-empty specifies the PBKDF hash function to use.
+*   For example "SHA-256" or "SHA-384". If empty a suitable default is chosen.
+* @return encrypted key in binary BER form
+*/
+BOTAN_DLL std::vector<uint8_t>
+BER_encode_encrypted_pbkdf_iter(const Private_Key& key,
+                                RandomNumberGenerator& rng,
+                                const std::string& pass,
+                                size_t pbkdf_iter,
+                                const std::string& cipher = "",
+                                const std::string& pbkdf_hash = "");
+
+/**
+* Get a string containing a PEM encoded private key, encrypting it with a
+* password.
+* @param key the key to encode
+* @param rng the rng to use
+* @param pass the password to use for encryption
+* @param pbkdf_iter number of iterations to run PBKDF
+* @param cipher if non-empty specifies the cipher to use. CBC and GCM modes
+*   are supported, for example "AES-128/CBC", "AES-256/GCM", "Serpent/CBC".
+*   If empty a suitable default is chosen.
+* @param pbkdf_hash if non-empty specifies the PBKDF hash function to use.
+*   For example "SHA-256" or "SHA-384". If empty a suitable default is chosen.
+* @return encrypted key in PEM form
+*/
+BOTAN_DLL std::string
+PEM_encode_encrypted_pbkdf_iter(const Private_Key& key,
+                                RandomNumberGenerator& rng,
+                                const std::string& pass,
+                                size_t pbkdf_iter,
+                                const std::string& cipher = "",
+                                const std::string& pbkdf_hash = "");
+
+/**
+* Encrypt a key using PKCS #8 encryption and a variable iteration count
+* @param key the key to encode
+* @param rng the rng to use
+* @param pass the password to use for encryption
+* @param pbkdf_msec how long to run PBKDF2
+* @param pbkdf_iterations if non-null, set to the number of iterations used
+* @param cipher if non-empty specifies the cipher to use. CBC and GCM modes
+*   are supported, for example "AES-128/CBC", "AES-256/GCM", "Serpent/CBC".
+*   If empty a suitable default is chosen.
+* @param pbkdf_hash if non-empty specifies the PBKDF hash function to use.
+*   For example "SHA-256" or "SHA-384". If empty a suitable default is chosen.
+* @return encrypted key in binary BER form
+*/
+BOTAN_DLL std::vector<uint8_t>
+BER_encode_encrypted_pbkdf_msec(const Private_Key& key,
+                                RandomNumberGenerator& rng,
+                                const std::string& pass,
+                                std::chrono::milliseconds pbkdf_msec,
+                                size_t* pbkdf_iterations,
+                                const std::string& cipher = "",
+                                const std::string& pbkdf_hash = "");
+
+/**
+* Get a string containing a PEM encoded private key, encrypting it with a
+* password.
+* @param key the key to encode
+* @param rng the rng to use
+* @param pass the password to use for encryption
+* @param pbkdf_msec how long in milliseconds to run PBKDF2
+* @param pbkdf_iterations (output argument) number of iterations of PBKDF
+*  that ended up being used
+* @param cipher if non-empty specifies the cipher to use. CBC and GCM modes
+*   are supported, for example "AES-128/CBC", "AES-256/GCM", "Serpent/CBC".
+*   If empty a suitable default is chosen.
+* @param pbkdf_hash if non-empty specifies the PBKDF hash function to use.
+*   For example "SHA-256" or "SHA-384". If empty a suitable default is chosen.
+* @return encrypted key in PEM form
+*/
+BOTAN_DLL std::string
+PEM_encode_encrypted_pbkdf_msec(const Private_Key& key,
+                                RandomNumberGenerator& rng,
+                                const std::string& pass,
+                                std::chrono::milliseconds pbkdf_msec,
+                                size_t* pbkdf_iterations,
+                                const std::string& cipher = "",
+                                const std::string& pbkdf_hash = "");
+
+/**
 * Load an encrypted key from a data source.
 * @param source the data source providing the encoded key
 * @param rng ignored for compatability
@@ -19807,7 +20414,7 @@ class BOTAN_DLL RSA_PrivateKey : public Private_Key, public RSA_PublicKey
       /**
       * Load a private key.
       * @param alg_id the X.509 algorithm identifier
-      * @param key_bits PKCS #8 structure
+      * @param key_bits PKCS#1 RSAPrivateKey bits
       */
       RSA_PrivateKey(const AlgorithmIdentifier& alg_id,
                      const secure_vector<uint8_t>& key_bits);
@@ -21631,7 +22238,7 @@ Path_Validation_Result BOTAN_DLL x509_path_validate(
 * @param hostname if not empty, compared against the DNS name in end_cert
 * @param usage if not set to UNSPECIFIED, compared against the key usage in end_cert
 * @param validation_time what reference time to use for validation
-* @param ocsp_timeout timeoutput for OCSP operations, 0 disables OCSP check
+* @param ocsp_timeout timeout for OCSP operations, 0 disables OCSP check
 * @param ocsp_resp additional OCSP responses to consider (eg from peer)
 * @return result of the path validation
 */

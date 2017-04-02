@@ -1,7 +1,11 @@
 #ifndef ARGONHASH_H
 #define ARGONHASH_H
 
-#include "botan/botan_all.h"
+#if defined(__clang__)
+#include "botan/clang/botan_all.h"
+#elif defined(__GNUC__) || defined(__GNUG__)
+#include "botan/gcc/botan_all.h"
+#endif
 
 
 std::vector<uint8_t> pwdHashRaw(uint32_t time_cost, uint32_t memory_cost, uint32_t parallelism,

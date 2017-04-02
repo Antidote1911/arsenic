@@ -33,10 +33,6 @@ script:
  - qmake -project
  - qmake arsenic.pro
  - make
- 
-after_success:
- - chmod -R 777 tests.sh
- - ./tests.sh
 
 notifications:
 email: antidote1911@gmail.com

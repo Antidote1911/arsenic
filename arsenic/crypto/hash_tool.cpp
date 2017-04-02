@@ -1,7 +1,13 @@
 #include "hash_tool.h"
-#include "botan/botan_all.h"
 #include <fstream>
 #include <QtCore>
+
+#if defined(__clang__)
+#include "botan/clang/botan_all.h"
+#elif defined(__GNUC__) || defined(__GNUG__)
+#include "botan/gcc/botan_all.h"
+#endif
+
 
 
 Hash_Tool::Hash_Tool(QObject *parent) :

@@ -9,9 +9,14 @@
 #include <vector>
 #include <QStringRef>
 #include <QStringBuilder>
-#include "botan/botan_all.h"
 #include "argonhash.h"
 #include "../preferences/Constants.h"
+
+#if defined(__clang__)
+#include "botan/clang/botan_all.h"
+#elif defined(__GNUC__) || defined(__GNUG__)
+#include "botan/gcc/botan_all.h"
+#endif
 
 
 using namespace std;
