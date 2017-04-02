@@ -1,42 +1,33 @@
 sudo: required
-
-git:
-  depth: 1
-
 language: cpp
+compiler: gcc
+dist: trusty
 
-matrix:
-  include:
-    - os: linux
-      dist: trusty
-      compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-6
-            - g++-6
+branches:
+  only:
+    - master
+
+before_install:
+  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+  - sudo apt-get update -qq
+  - export QMAKE=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
+  
+install:
+  - sudo apt-get install -qq g++-5 # C++14
+  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 90
+  - sudo add-apt-repository -y ppa:beineri/opt-qt58-trusty
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq cmake qt58base qt58declarative qt58graphicaleffects qt58quickcontrols2
+  - source /opt/qt58/bin/qt58-env.sh
+
+before_script:
+  - export PATH=$PATH:/opt/qt58/bin
 
 script:
-  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 100 ; fi
-  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 100 ; fi
-  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then chmod +x build_linux.sh ; fi
-  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then TAG_NAME=${TRAVIS_TAG} CXX="g++-6" CC="gcc-6" ./build_linux.sh ; fi
-
-deploy:
-  - provider: releases
-    file:
-      - build/linux/gcc/x86_64/release/Arsenic_${TRAVIS_TAG}_linux_x86_64_portable.zip
-    overwrite: true
-    skip_cleanup: true
-    on:
-      tags: true
-      condition: $TRAVIS_OS_NAME = linux
+ - qmake --version
+ - qmake -project
+ - qmake arsenic.pro
+ - make
 
 notifications:
-  email:
-    recipients:
-      - antidote1911@gmail.com
-    on_success: change
-on_failure: change
+email: false
