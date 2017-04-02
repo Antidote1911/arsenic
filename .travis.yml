@@ -10,20 +10,30 @@ dist: trusty
 branches:
   only:
     - master
-
 before_install:
-  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+  # g++
+  - if [ "$CXX" == "g++" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
+
+  # clang
+  - if [ "$CXX" == "clang++" ]; then sudo add-apt-repository -y ppa:h-rayflood/llvm; fi
+
   - sudo apt-get update -qq
   - export QMAKE=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
   
 install:
-  - sudo apt-get install -qq g++-5 # C++14
-  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 90
+  # g++
+  - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-5; fi
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-5"; fi
+
+  # clang
+  - if [ "$CXX" == "clang++" ]; then sudo apt-get install --allow-unauthenticated -qq clang-3.4; fi
+  - if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi
+  
+  # Qt5
   - sudo add-apt-repository -y ppa:beineri/opt-qt58-trusty
   - sudo apt-get update -qq
   - sudo apt-get install -qq cmake qt58base qt58declarative qt58graphicaleffects qt58quickcontrols2
   - source /opt/qt58/bin/qt58-env.sh
-  - sudo apt-get install clang
 
 before_script:
   - export PATH=$PATH:/opt/qt58/bin
