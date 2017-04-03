@@ -26,7 +26,7 @@ HEADERS  += \
 
 
         equals(QMAKE_CXX, clang++) {
-             message(clang x86_64)
+             message(Arsenic tests clang x86_64)
 
              SOURCES += ../arsenic/crypto/botan/clang/botan_all.cpp \
                         ../arsenic/crypto/botan/clang/botan_all_aesni.cpp \
@@ -40,7 +40,7 @@ HEADERS  += \
                     }
 
         equals(QMAKE_CXX, g++) {
-            message(g++ x86_64)
+            message(Arsenic tests g++ x86_64)
 
             SOURCES += ../arsenic/crypto/botan/gcc/botan_all.cpp \
                        ../arsenic/crypto/botan/gcc/botan_all_aesni.cpp \

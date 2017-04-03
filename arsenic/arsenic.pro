@@ -6,6 +6,7 @@
 
 QT       += core gui
 CONFIG += c++14
+QMAKE_CXXFLAGS += -std=c++14
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -20,7 +21,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
 
 SOURCES += main.cpp\
         mainwindow.cpp \
@@ -52,7 +52,10 @@ HEADERS  += mainwindow.h \
 
 
         equals(QMAKE_CXX, clang++) {
-             message(clang x86_64)
+             message(Arsenic clang x86_64)
+             QMAKE_CXX = clang
+            QMAKE_LINK = clang
+            QMAKE_CC = clang
              
              SOURCES += crypto/botan/clang/botan_all.cpp \
                         crypto/botan/clang/botan_all_aesni.cpp \
@@ -66,7 +69,10 @@ HEADERS  += mainwindow.h \
                     }
      
         equals(QMAKE_CXX, g++) {
-            message(g++ x86_64)
+            message(Arsenic g++ x86_64)
+            QMAKE_CXX = g++
+            QMAKE_LINK = g++
+            QMAKE_CC = gcc
             
             SOURCES += crypto/botan/gcc/botan_all.cpp \
                        crypto/botan/gcc/botan_all_aesni.cpp \
