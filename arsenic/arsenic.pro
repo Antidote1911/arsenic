@@ -53,9 +53,6 @@ HEADERS  += mainwindow.h \
 
         equals(QMAKE_CXX, clang++) {
              message(Arsenic clang x86_64)
-             QMAKE_CXX = clang
-            QMAKE_LINK = clang
-            QMAKE_CC = clang
              
              SOURCES += crypto/botan/clang/botan_all.cpp \
                         crypto/botan/clang/botan_all_aesni.cpp \
@@ -70,9 +67,6 @@ HEADERS  += mainwindow.h \
      
         equals(QMAKE_CXX, g++) {
             message(Arsenic g++ x86_64)
-            QMAKE_CXX = g++
-            QMAKE_LINK = g++
-            QMAKE_CC = gcc
             
             SOURCES += crypto/botan/gcc/botan_all.cpp \
                        crypto/botan/gcc/botan_all_aesni.cpp \
