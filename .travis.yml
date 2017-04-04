@@ -31,8 +31,6 @@ script:
  - qmake -project
  - qmake arsenic.pro
  - make
- 
-
 
 notifications:
 email: none
