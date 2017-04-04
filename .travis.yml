@@ -19,8 +19,8 @@ addons:
             - clang-3.9
 
     notification_email: none
-#    build_command_prepend: " -O3 -std=c++14 bin2c.cpp -o bin2c"
-#    build_command: $CXX
+    build_command_prepend: " -O3 -std=c++14"
+    build_command: $CXX
 #    branch_pattern: coverity_scan
 
 matrix:
