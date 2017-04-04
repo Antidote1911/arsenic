@@ -29,9 +29,11 @@ before_script:
   - export PATH=$PATH:/opt/qt58/bin
 
 script:
+ - if [ "${CC}" == "clang" ]; then export CC="clang" ; export CXX="clang++" ; echo "Rexported clang" ; fi
+ - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
  - qmake --version
  - qmake -project
- - qmake arsenic.pro
+ - qmake arsenic.pro -spec linux-$CC
  - make
  
 
