@@ -48,10 +48,10 @@ HEADERS  += mainwindow.h \
     crypto/hash_tool.h
 
 # Platform-specific configuration
-
+linux {
 
         equals(QMAKE_CXX, clang++) {
-             message(Arsenic clang x86_64)
+             message(Arsenic linux clang x86_64)
              
              SOURCES += crypto/botan/clang/botan_all.cpp \
                         crypto/botan/clang/botan_all_aesni.cpp \
@@ -76,6 +76,21 @@ HEADERS  += mainwindow.h \
             HEADERS += crypto/botan/gcc/botan_all.h \
                        crypto/botan/gcc/botan_all_internal.h
             }
+}#end linux
+    
+win32 {
+    message(Windows x64)
+
+            SOURCES += crypto/botan/msvc_x64/botan_all.cpp \
+                       crypto/botan/msvc_x64/botan_all_aesni.cpp \
+                       crypto/botan/msvc_x64/botan_all_rdrand.cpp \
+                       crypto/botan/msvc_x64/botan_all_rdseed.cpp \
+                       crypto/botan/msvc_x64/botan_all_ssse3.cpp
+             
+            HEADERS += crypto/botan/msvc_x64/botan_all.h \
+                       crypto/botan/msvc_x64/botan_all_internal.h
+
+} #end windows
 
 
 FORMS    += mainwindow.ui \
