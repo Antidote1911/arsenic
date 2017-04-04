@@ -1,5 +1,7 @@
 #ifndef ARGONHASH_H
 #define ARGONHASH_H
+#include <string>
+#include <vector>
 
 #if defined(__clang__)
 #include "botan/clang/botan_all.h"

@@ -80,6 +80,8 @@ linux {
     
 win32 {
     message(Windows x64)
+            QMAKE_CXXFLAGS += -bigobj
+            LIBS += advapi32.lib user32.lib
 
             SOURCES += crypto/botan/msvc_x64/botan_all.cpp \
                        crypto/botan/msvc_x64/botan_all_aesni.cpp \
@@ -89,8 +91,12 @@ win32 {
              
             HEADERS += crypto/botan/msvc_x64/botan_all.h \
                        crypto/botan/msvc_x64/botan_all_internal.h
+                       
+                       
+    RC_ICONS += images/arsenic.ico
 
 } #end windows
+
 
 
 FORMS    += mainwindow.ui \
@@ -100,3 +106,4 @@ FORMS    += mainwindow.ui \
 TRANSLATIONS = arsenic_en.ts \
                arsenic_fr.ts
 
+RESOURCES += arsenic.qrc

@@ -109,7 +109,7 @@ void Delegate::paint(QPainter* painter,
                                   option.rect.height());
         buttonOption.fontMetrics = QApplication::fontMetrics();
         buttonOption.features = QStyleOptionButton::Flat;
-        const QIcon closeIcon("images/closeFileIcon.svg");
+        const auto closeIcon = QIcon{QStringLiteral(":/images/closeFileIcon.svg")};
         buttonOption.icon = closeIcon;
         buttonOption.iconSize = QSize((int)option.rect.width() * 0.4,
                                       (int)option.rect.height() * 0.4);
