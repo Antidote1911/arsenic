@@ -76,6 +76,7 @@ linux {
             HEADERS += crypto/botan/gcc/botan_all.h \
                        crypto/botan/gcc/botan_all_internal.h
             }
+RC_ICONS += images/arsenic.ico
 }#end linux
     
 win32 {
@@ -93,7 +94,6 @@ win32 {
                        crypto/botan/msvc_x64/botan_all_internal.h
                        
                        
-    RC_ICONS += images/arsenic.ico
 
 } #end windows
 

@@ -10,7 +10,7 @@
  #if defined(__clang__)
    #include "../arsenic/crypto/botan/clang/botan_all.h"
  #elif defined(__GNUC__) || defined(__GNUG__)
-   #include "../arsenic/crypto/gcc/botan_all.h"
+   #include "../arsenic/crypto/botan/gcc/botan_all.h"
 #endif
 #endif
 
