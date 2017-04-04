@@ -24,6 +24,7 @@ install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq cmake qt58base qt58declarative
   - source /opt/qt58/bin/qt58-env.sh
+  - sudo apt-get install -qq llvm-toolchain-3.8
 
 before_script:
   - export PATH=$PATH:/opt/qt58/bin
