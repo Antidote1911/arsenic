@@ -7,15 +7,15 @@
 
 
 #if defined(Q_OS_LINUX)
- #if defined(__clang__)
-   #include "../arsenic/crypto/botan/clang/botan_all.h"
- #elif defined(__GNUC__) || defined(__GNUG__)
-   #include "../arsenic/crypto/botan/gcc/botan_all.h"
+#if defined(__clang__)
+#include "../arsenic/crypto/botan/clang/botan_all.h"
+#elif defined(__GNUC__) || defined(__GNUG__)
+#include "../arsenic/crypto/botan/gcc/botan_all.h"
 #endif
 #endif
 
 #if defined(Q_OS_WIN64)
-  #include "../arsenic/crypto/botan/msvc_x64/botan_all.h"
+#include "../arsenic/crypto/botan/msvc_x64/botan_all.h"
 #endif
 
 using namespace std;
@@ -76,6 +76,7 @@ void TestArsenic::testArgon2()
     uint32_t time_cost     = 2;
     uint32_t memory_cost   = 1<<16; // 65536 KiB (64 MiB)
     uint32_t parallelism   = 4;
+    size_t outputRawLen=24;
 
     string password  = "password";
     string salt      = "somesalt";
@@ -86,11 +87,11 @@ void TestArsenic::testArgon2()
     // ///////////////////////////////
 
 
-    vector<uint8_t> outputRaw(24);
+    vector<uint8_t> outputRaw(outputRawLen);
     vector<char> outputEncoded(256);
 
-    outputRaw     = pwdHashRaw(time_cost,memory_cost,parallelism,password,salt,24);
-    outputEncoded = pwdHashEncoded(time_cost,memory_cost,parallelism,password,salt,24);
+    outputRaw     = pwdHashRaw(time_cost,memory_cost,parallelism,password,salt,outputRawLen);
+    outputEncoded = pwdHashEncoded(time_cost,memory_cost,parallelism,password,salt,outputRawLen);
 
     QVERIFY(Botan::hex_encode(outputRaw) == referenceResultRaw);
     QVERIFY(outputEncoded.data()         == referenceResultEncoded);

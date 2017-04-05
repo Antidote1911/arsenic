@@ -6,7 +6,6 @@
 
 QT       += core gui svg
 CONFIG += c++14
-QMAKE_CXXFLAGS += -std=c++14
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
