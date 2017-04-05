@@ -40,6 +40,8 @@ vector<char> pwdHashEncoded(uint32_t time_cost, uint32_t memory_cost, uint32_t p
                             size_t outlen) {
 
     vector<uint8_t> outputRaw(outlen);
+    size_t encodedlen = argon2_encodedlen(time_cost, memory_cost, parallelism, (uint32_t)user_salt.size(), outlen, Argon2_i);
+    cout<<encodedlen<<endl;
     vector<char> outputEncoded(256);
 
     auto ret = argon2_hash(time_cost, memory_cost, parallelism,
