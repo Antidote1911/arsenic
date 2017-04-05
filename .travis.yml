@@ -27,6 +27,7 @@ install:
 
 before_script:
   - export PATH=$PATH:/opt/qt58/bin
+  - "if [ \"$COMPILER\" = \"clang++\"  ]; then export CXX=\"clang++\" CC=\"clang\";    fi"
 
 script:
  - qmake --version
