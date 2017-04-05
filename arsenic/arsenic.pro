@@ -76,10 +76,11 @@ linux {
             HEADERS += crypto/botan/gcc/botan_all.h \
                        crypto/botan/gcc/botan_all_internal.h
             }
-RC_ICONS += images/arsenic.ico
+
 }#end linux
     
 win32 {
+    RC_ICONS += images/arsenic.ico
     message(Windows x64)
             QMAKE_CXXFLAGS += -bigobj
             LIBS += advapi32.lib user32.lib
@@ -92,7 +93,6 @@ win32 {
              
             HEADERS += crypto/botan/msvc_x64/botan_all.h \
                        crypto/botan/msvc_x64/botan_all_internal.h
-                       
                        
 
 } #end windows

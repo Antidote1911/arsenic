@@ -1,3 +1,22 @@
+/*
+ * This file is part of Arsenic.
+ *
+ * Copyright (C) 2017 Corraire Fabrice <antidote1911@gmail.com>
+ *
+ * Arsenic is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * Arsenic is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with Arsenic. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "Crypto.h"
 #include <QtCore>
 #include <iostream>
@@ -13,15 +32,15 @@
 #include "../preferences/Constants.h"
 
 #if defined(Q_OS_LINUX)
- #if defined(__clang__)
-   #include "botan/clang/botan_all.h"
- #elif defined(__GNUC__) || defined(__GNUG__)
-   #include "botan/gcc/botan_all.h"
+#if defined(__clang__)
+#include "botan/clang/botan_all.h"
+#elif defined(__GNUC__) || defined(__GNUG__)
+#include "botan/gcc/botan_all.h"
 #endif
 #endif
 
 #if defined(Q_OS_WIN64)
-  #include "botan/msvc_x64/botan_all.h"
+#include "botan/msvc_x64/botan_all.h"
 #endif
 
 
@@ -209,7 +228,7 @@ void Crypto_Thread::encryptFile(QString& inputFileName, QString& passphrase, QSt
         size_t CIPHER_IV_LEN;
         if (algorithmName=="ChaCha20Poly1305")
         {
-            CIPHER_IV_LEN = 8;   //16 bytes = 128 bits
+            CIPHER_IV_LEN = 8;   //8 bytes = 96 bits
         }
         else
         {
@@ -367,9 +386,6 @@ void Crypto_Thread::decryptFile(const QString& inputFileName,
         pipe.append(new Botan::DataSink_Stream{out});
 
         executeCipher(inputFileName, pipe, in, out, uniqueOutputFileName);
-
-
-
 
         // Encryption success message if not aborted
         if (aborted != true && cancel != true)
