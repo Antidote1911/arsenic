@@ -1,41 +1,91 @@
-sudo: required
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - ubuntu-sdk-team
+
 language: cpp
-
-compiler:
-  - gcc
-  - clang
-          
-dist: trusty
-
-branches:
-  only:
-    - master
+sudo: required
+services:
+    - docker
+cache:
+    apt: true
+    ccache: true
+    directories:
+        ~/deps
+        ~/repos
+env:
+    global:
+        - > 
+            COMMON_PACKAGES="
+            cmake
+            qt553d 
+            qt55base 
+            libboost-dev 
+            libx11-xcb-dev 
+            libglu1-mesa-dev 
+            libxrender-dev 
+            libxi-dev 
+            libqt5scintilla2-dev 
+            libqt5scintilla2-l10n 
+            libqt5scintilla2-11"
+            LLVM_PACKAGES="clang-3.7 llvm-3.7 llvm-3.7-dev libclang-3.7-dev libc++-dev libc++abi-dev libasan2"
+            GCC_PACKAGES="gcc-5 g++-5 cpp-5"
+matrix:
+    include:
+        - compiler: clang
+          env: >
+            VERSION=3.7
+            PLATFORM_PACKAGES=$LLVM_PACKAGES
+            SPEC=clang
+            BUILD_CONFIG=debug
+        - compiler: clang
+          env: >
+            VERSION=3.7
+            PLATFORM_PACKAGES=$LLVM_PACKAGES
+            SPEC=clang
+            BUILD_CONFIG=release
+        - compiler: gcc
+          env: >
+            VERSION=5
+            PLATFORM_PACKAGES=$GCC_PACKAGES
+            SPEC=g++
+            BUILD_CONFIG=debug
+        - compiler: gcc
+          env: >
+            VERSION=5
+            PLATFORM_PACKAGES=$GCC_PACKAGES
+            SPEC=g++
+            BUILD_CONFIG=release
 
 before_install:
-  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  - sudo apt-get update -qq
-  - export QMAKE=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
-  
+    - export OLD_CC=$CC
+    - export OLD_CXX=$CXX
+    - export CC=$CC-$VERSION
+    - export CXX=$CXX-$VERSION
+    - mkdir -p ~/repos
+    - sudo add-apt-repository -y 'deb http://llvm.org/apt/jessie/ llvm-toolchain-jessie-3.7 main'
+    - sudo add-apt-repository -y 'deb http://ppa.launchpad.net/beineri/opt-qt55-trusty/ubuntu trusty main'
+    - sudo apt-get -qqy update
+    - $TRAVIS_BUILD_DIR/travis/clone.sh glm https://github.com/g-truc/glm.git master
+    - $TRAVIS_BUILD_DIR/travis/clone.sh gli https://github.com/g-truc/gli.git master
+
 install:
-  - sudo apt-get install -qq g++-5 # C++14
-  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 90
-  - sudo add-apt-repository -y ppa:beineri/opt-qt58-trusty
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq cmake qt58base qt58declarative qt58graphicaleffects qt58quickcontrols2
-  - source /opt/qt58/bin/qt58-env.sh
-  - sudo apt-get install clang
+    - sudo apt-get install --no-install-recommends --force-yes --no-upgrade -qqy $COMMON_PACKAGES $PLATFORM_PACKAGES
+    - sudo update-alternatives --install /usr/bin/$OLD_CC $OLD_CC /usr/bin/$CC 100
+    - sudo update-alternatives --install /usr/bin/$OLD_CXX $OLD_CXX /usr/bin/$CXX 100
+    - sudo update-alternatives --install /usr/bin/ld ld /usr/bin/ld.gold 100
+    - sudo update-alternatives --auto $OLD_CC
+    - sudo update-alternatives --auto $OLD_CXX
+    - $TRAVIS_BUILD_DIR/travis/makeit.sh glm
+    - $TRAVIS_BUILD_DIR/travis/makeit.sh gli
+    - update-alternatives --get-selections
 
 before_script:
-  - export PATH=$PATH:/opt/qt58/bin
-  - "if [ \"$COMPILER\" = \"clang++\"  ]; then export CXX=\"clang++\" CC=\"clang\";    fi"
+    - cd $TRAVIS_BUILD_DIR
+    - sudo chmod +x /opt/qt55/bin/qt55-env.sh
+    - /opt/qt55/bin/qt55-env.sh
 
 script:
- - qmake --version
- - qmake -project
- - qmake arsenic.pro -spec linux-$CC
- - make
- 
-
-
-notifications:
-email: antidote1911@gmail.com
+    - /opt/qt55/bin/qmake ./Arsenic/arsenic.pro -spec linux-$SPEC QMAKE_CC=$CC QMAKE_CXX=$CXX CONFIG-=release CONFIG-=debug CONFIG+=$BUILD_CONFIG
+    - make -s -j2
