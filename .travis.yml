@@ -32,7 +32,7 @@ before_script:
 script:
  - qmake --version
  - qmake -project
- - qmake arsenic.pro
+ - qmake arsenic.pro -spec linux-$CC
  - make
  
 
