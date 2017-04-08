@@ -47,7 +47,11 @@ HEADERS  += mainwindow.h \
     crypto/Crypto.h \
     crypto/hash_tool.h
 
+QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3
+
 # Platform-specific configuration
+
+
 linux {
 
         equals(QMAKE_CXX, clang++) {
