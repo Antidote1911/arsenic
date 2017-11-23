@@ -18,9 +18,6 @@ Detailled description
 The user can choose to use ChaCha20Poly1305, AES-256/GCM, or Serpent/GCM to encrypt. The decryption routine automatically detect the good Algorithm with the help of a litle header in the encrypted file.
 The hash-calculator and the encryption/decryption are optimized for big files.
 
-Development is coordinated on `GitHub <https://github.com/Antidote1911/Arsenic>`_
-suggestions and contributions are welcome. For help you can open an `issue on GitHub <https://github.com/Antidote1911/Arsenic/issues>`_
-
 Passphrase Derivation
 ^^^^^^^^^^^^^^^^^^^^^
 The passphrase is extended by Argon2 and a random 16 bytes salt to generate a 48 bytes master_key. This output is split in two parts. One for the 32 bytes encryption_key and one for the 16 bytes Initialisation Vector.
@@ -63,22 +60,10 @@ The output format of the encrypted file is::
  - 8979846513213313   | encoding.
  - 2165161946546516   |
 
-Recommandations
-^^^^^^^^^^^^^^^
-Encryption is not magic and don't protect you if your system is not secure. Most operating systems leave behind cleartext of the data you access (swap files, temp files, hibernation files, browser cache, miniatures picture folder.... )
-
-**A good solution is the full-drive encryption.**
-
-It provides the highest level of security and privacy, because all files, including any temporary files that Windows and applications create on the system partition (typically, without your knowledge or consent), hibernation files, swap files, etc., are always permanently encrypted (even when power supply is suddenly interrupted). Windows also records large amounts of potentially sensitive data, such as the names and locations of files you open, applications you run, etc. All such log files and registry entries are always permanently encrypted as well.
-
-**But don't forget:** Full drive encryption don't protect againt a malware infection like a keylogger !
-Use a robust open source operating system like **Linux distribution with full disk encryption**.
-
-Never, never trust a proprietary OS or security software !!!
 
 Notes for developpers
 ---------------------
-I am not noob in crypto but i am learning C++. Contributions and suggestions are welcomes.
+I am learning C++. Contributions and suggestions are welcomes.
 
 Thanks to `adolby <https://github.com/adolby>`_ for some portions of code. If you need a good and nice multiplatform file
 encryptor that support theming, have a look to `Kryvos <https://github.com/adolby/Kryvos>`_ ! or `here <https://andrewdolby.com/>`_.
