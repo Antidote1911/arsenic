@@ -124,9 +124,9 @@ unix:!macx: PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
 
 DISTFILES += \
+    ../../LICENSE \
     ../../README.md \
     ../../README_FR.md \
-    ../../arsenic_license.txt \
     ../../botan_license.txt \
     ../../quazip-0.8.1.tar.gz \
     ../../screenshots/config.png \
