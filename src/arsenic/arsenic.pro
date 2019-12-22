@@ -129,5 +129,9 @@ DISTFILES += \
     ../../botan_license.txt \
     ../../gpl-3.0.txt \
     ../../quazip-0.8.1.tar.gz \
+    ../../screenshots/config.png \
+    ../../screenshots/hash.png \
+    ../../screenshots/main.png \
+    ../../screenshots/pass_generator.png \
     ../../zlib-1.2.11.tar.gz
 
