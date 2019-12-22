@@ -123,3 +123,11 @@ unix:!macx: PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
 
+DISTFILES += \
+    ../../README.md \
+    ../../README_FR.md \
+    ../../botan_license.txt \
+    ../../gpl-3.0.txt \
+    ../../quazip-0.8.1.tar.gz \
+    ../../zlib-1.2.11.tar.gz
+
