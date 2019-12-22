@@ -30,8 +30,6 @@ typedef std::unique_ptr<MyAbstractBar> MyAbstractBarPtr;
 
 /*******************************************************************************
 
-
-
 *******************************************************************************/
 
 
@@ -50,6 +48,7 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
     connect(ui->actionAbout_Qt, &QAction::triggered, this, &MyMainWindow::aboutQt);
     connect(ui->actionAbout_Arsenic, &QAction::triggered, this, &MyMainWindow::aboutArsenic);
     connect(ui->actionArgon2_tests, &QAction::triggered, this, &MyMainWindow::Argon2_tests);
+    connect(ui->actionPassword_Generator, &QAction::triggered, this, &MyMainWindow::on_generator_clicked);
 
 	// note that some password information will be discarded if the text characters entered use more
 	// than	1 byte per character in UTF-8
@@ -93,8 +92,6 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
 
 /*******************************************************************************
 
-
-
 *******************************************************************************/
 
 
@@ -103,10 +100,7 @@ MyMainWindow::~MyMainWindow()
 	delete ui;
 }
 
-
 /*******************************************************************************
-
-
 
 *******************************************************************************/
 
