@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>about_files/about_arsenic.html</file>
+        <file>pixmaps/icon.png</file>
+        <file>about_files/botan_license.txt</file>
+        <file>about_files/gpl-3.0.html</file>
+    </qresource>
+</RCC>

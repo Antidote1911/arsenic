@@ -1,6 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>images/arsenic.ico</file>
-        <file>images/closeFileIcon.svg</file>
-    </qresource>
-</RCC> 
