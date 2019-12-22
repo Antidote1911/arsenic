@@ -14,7 +14,7 @@
    <bool>true</bool>
   </property>
   <property name="windowTitle">
-   <string>HashCheckDialog</string>
+   <string>Hash Calculator</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>

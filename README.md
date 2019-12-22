@@ -1,6 +1,8 @@
 # Arsenic
 **A simple tool to encrypt files or folders with strong algorithms.**
 
+<img src='screenshots/main.png'/>
+
 ## Simple Description: ##
 Arsenic was intended as a lightweight, portable application, that would encode a list of local files and directories using a pass-phrase. The user can select between three strong algorithms:
 - [XChaCha20Poly1305](https://botan.randombit.net/handbook/api_ref/cipher_modes.html#chacha20poly1305)
@@ -96,3 +98,9 @@ GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+## More Screenshots: ##
+
+<img src='screenshots/pass_generator.png'/>
+<img src='screenshots/hash.png'/>
+<img src='screenshots/config.png'/>
