@@ -126,8 +126,8 @@ unix:!macx: PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
 DISTFILES += \
     ../../README.md \
     ../../README_FR.md \
+    ../../arsenic_license.txt \
     ../../botan_license.txt \
-    ../../gpl-3.0.txt \
     ../../quazip-0.8.1.tar.gz \
     ../../screenshots/config.png \
     ../../screenshots/hash.png \
