@@ -25,6 +25,6 @@ script:
   - qmake -qt=qt5
   - if [ "${CC}" == "clang" ]; then export CC="clang" ; export CXX="clang++" ; echo "Rexported clang" ; fi
   - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
-  - qmake arsenic.pro -spec linux-$CC
+  - make arsenic.pro -spec linux-$CC
   - src/arsenic/./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com src/arsenic/pixmaps/test.jpg
   - src/arsenic/./arsenic -d -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg.arsenic
