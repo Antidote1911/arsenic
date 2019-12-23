@@ -124,6 +124,7 @@ unix:!macx: PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
 
 DISTFILES += \
+    ../../.travis.yml \
     ../../LICENSE \
     ../../README.md \
     ../../README_FR.md \

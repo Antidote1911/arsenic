@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Antidote1911/Arsenic.svg?branch=master)](https://travis-ci.org/Antidote1911/Arsenic)
+
 # Arsenic
 **A simple tool to encrypt files or folders with strong algorithms.**
 
