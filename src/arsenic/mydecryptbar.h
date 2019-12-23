@@ -23,7 +23,7 @@ namespace MyDecryptBarThreadPublic
 namespace MyDecryptBarPublic
 {
 	// used for getting the status of each item after the decryption thread is finished
-    enum : int {ZIP_ERROR = MyCryptMessagesPublic::CRYPT_SUCCESS + 1, NOT_STARTED, NOT_QTCRYPT, NOT_ARSENIC_FILE};
+    enum : int {ZIP_ERROR = MyCryptMessagesPublic::CRYPT_SUCCESS + 1, NOT_STARTED, NOT_ARSENIC_FILE};
 }
 
 

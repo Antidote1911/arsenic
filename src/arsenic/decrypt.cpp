@@ -58,7 +58,7 @@ QString decrypt(QString file, QString pass)
             qz.close();
 
             // unzip to target directory
-            cout << "Decompressing. Please be patient..." << endl;
+            cout << endl<< "Decompressing. Please be patient..." << endl;
             if(JlCompress::extractDir(decrypt_path, unzip_dir).size() != 0)
             {
                 cout << "Successfully decompressed" << endl;
@@ -180,7 +180,14 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     dec->set_key(cipher_key1);
     dec->set_ad(add);
     dec->start(nonce_buffer);
+    try
+    {
     dec->finish(qint64_buffer);
+    }
+    catch(Botan::Exception& e)
+    {
+        return e.what();
+    }
 
     header_size = qFromLittleEndian<qint64>(qint64_buffer.data() + MACBYTES);
 
@@ -193,7 +200,14 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
     dec->set_key(cipher_key2);
     dec->start(nonce_buffer);
+    try
+    {
     dec->finish(main_buffer);
+    }
+    catch(Botan::Exception& e)
+    {
+        return e.what();
+    }
 
     qint64 filesize = qFromLittleEndian<qint64>(main_buffer.data() + MACBYTES);
     len = header_size - MACBYTES - sizeof(qint64);
@@ -237,12 +251,20 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
             dec->update(main_buffer);
             des_stream.writeRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
         }
+
         if (src_stream.atEnd())
         {
 
             main_buffer.resize(MACBYTES);
             len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
+            try
+            {
             dec->finish(main_buffer);
+            }
+            catch(Botan::Exception& e)
+            {
+                return e.what();
+            }
         }
 
             // Calculate progress in percent
@@ -251,5 +273,5 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
             printProgress(p / 100); // show updated progress
         }
 
-    return "Successfully decrypted";
+    return "DECRYPT_SUCCESS";
 }

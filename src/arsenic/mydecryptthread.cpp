@@ -161,6 +161,7 @@ void MyDecryptThread::runHelper()
 
 			// decrypt the file and save the resulting name
             emit updateStatusText("Decrypting " + full_path);
+
             int decrypt_ret_val = myDecryptFile(temp_path, full_path, password, &decrypt_name);
 
 			QString decrypt_path = QDir::cleanPath(QDir::currentPath() + "/temp/" + decrypt_name);
@@ -313,12 +314,10 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
     std::string add_data(userName.toStdString());
     std::vector<uint8_t> add(add_data.data(),add_data.data()+add_data.length());
 
-    if(src_stream.readRawData(reinterpret_cast<char *>(nonce_buffer.data()), NONCEBYTES)
-        < static_cast<int>(NONCEBYTES))
+    if(src_stream.readRawData(reinterpret_cast<char *>(nonce_buffer.data()), NONCEBYTES) < static_cast<int>(NONCEBYTES))
         return SRC_HEADER_READ_ERROR;
 
-    if(src_stream.readRawData(reinterpret_cast<char *>(salt_buffer.data()),
-        SALTBYTES) < static_cast<int>(SALTBYTES))
+    if(src_stream.readRawData(reinterpret_cast<char *>(salt_buffer.data()), SALTBYTES) < static_cast<int>(SALTBYTES))
         return SRC_HEADER_READ_ERROR;
 
     // Convert the QString password to securevector
@@ -335,13 +334,23 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
     // next, get the encrypted header size and decrypt it
     qint64 header_size;
 
-    src_stream.readRawData(reinterpret_cast<char *>(qint64_buffer.data()), 40);
-    qDebug() << "qint64_buffer : "+ QString::fromStdString(Botan::hex_encode(qint64_buffer));
+    if(src_stream.readRawData(reinterpret_cast<char *>(qint64_buffer.data()), 40) <40)
+        return SRC_HEADER_READ_ERROR;
 
     dec->set_key(cipher_key1);
     dec->set_ad(add);
     dec->start(nonce_buffer);
+
+    try
+    {
     dec->finish(qint64_buffer);
+    }
+    catch(Botan::Exception& e)
+    {
+        QString error =e.what();
+        emit updateStatusText(error);
+        return DATA_DECRYPT_ERROR;
+    }
 
     header_size = qFromLittleEndian<qint64>(qint64_buffer.data() + MACBYTES);
 
@@ -354,7 +363,17 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
     Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
     dec->set_key(cipher_key2);
     dec->start(nonce_buffer);
+
+    try
+    {
     dec->finish(main_buffer);
+    }
+    catch(Botan::Exception& e)
+    {
+        QString error =e.what();
+        emit updateStatusText(error);
+        return DATA_DECRYPT_ERROR;
+    }
 
     qint64 filesize = qFromLittleEndian<qint64>(main_buffer.data() + MACBYTES);
     len = header_size - MACBYTES - sizeof(qint64);
@@ -387,6 +406,8 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
     Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
     dec->start(nonce_buffer);
     double processed = 0;
+    try
+                {
     while(!src_stream.atEnd())
     {
         len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), IN_BUFFER_SIZE);
@@ -401,7 +422,16 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
         {
             main_buffer.resize(MACBYTES);
             len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
+            try
+            {
             dec->finish(main_buffer);
+            }
+            catch(Botan::Exception& e)
+            {
+                QString error =e.what();
+                emit updateStatusText(error);
+                return DATA_DECRYPT_ERROR;
+            }
         }
 
         // Calculate and display progress in percent
@@ -410,7 +440,14 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
         emit updateGeneralProgress(p); // show updated progress
 
         }
+}
+    catch(Botan::Exception& e)
+                {
 
+                    QString error =e.what();
+                    emit updateStatusText(error);
+                    return DATA_DECRYPT_ERROR;
+                }
     emit updateGeneralProgress(100);
     emit updateStatusText("Encryption finished.");
     return CRYPT_SUCCESS;

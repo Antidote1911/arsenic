@@ -186,13 +186,10 @@ QString MyDecryptBar::errorCodeToString(int error_code)
 			ret_string += "The file or directory was skipped!";
 			break;
 
-		case NOT_QTCRYPT:
-			ret_string += "The item wasn't a qtcrypt file!";
+        case NOT_ARSENIC_FILE:
+            ret_string += "The item wasn't a Arsenic file!";
 			break;
 
-        case NOT_ARSENIC_FILE:
-            ret_string += "Not a Arsenic File!";
-            break;
 	}
 
 	return ret_string;
