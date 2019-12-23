@@ -22,11 +22,9 @@ before_script:
       - export DISPLAY=:99.0
 
 script:
-  - qmake -qt=qt5
   - if [ "${CC}" == "clang" ]; then export CC="clang" ; export CXX="clang++" ; echo "Rexported clang" ; fi
   - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
-  - qmake --version
-  - qmake -project
-  - make arsenic.pro -spec linux-$CC
+  - qmake -qt=qt5 arsenic.pro -spec linux-$CC
+  - make
   - src/arsenic/./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com src/arsenic/pixmaps/test.jpg
   - src/arsenic/./arsenic -d -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg.arsenic
