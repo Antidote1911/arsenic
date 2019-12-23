@@ -6,6 +6,7 @@ install:
   - sudo apt update -qq
   # Boost
   - sudo apt install -qq libboost-all-dev
+  - sudo apt install -qq qt5
 
 script:
   - qmake
