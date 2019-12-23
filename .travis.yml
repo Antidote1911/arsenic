@@ -22,4 +22,4 @@ script:
   - qmake -qt=qt5
   - make
   - src/arsenic/./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com src/arsenic/pixmaps/test.jpg
-  - src/arsenic/./arsenic -b -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg.arsenic
+  - src/arsenic/./arsenic -d -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg.arsenic
