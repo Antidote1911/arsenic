@@ -15,4 +15,4 @@ install:
 script:
   - qmake -qt=qt5
   - make
-  - ./arsenic
+  - src/arsenic/./arsenic
