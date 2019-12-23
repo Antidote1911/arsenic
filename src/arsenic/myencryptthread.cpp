@@ -395,7 +395,7 @@ int MyEncryptThread::myEncryptFile(const QString &des_path, const QString &src_p
     des_stream << static_cast<qint32>(iterations);
     des_stream << static_cast<QString>(cryptoAlgo);
     des_stream << static_cast<QString>(userName);
-    des_stream.setVersion(QDataStream::Qt_5_12);
+    des_stream.setVersion(QDataStream::Qt_5_0);
 
     // Generate a 24 bytes random initial nonce
     nonce_buffer = rng.random_vec(NONCEBYTES);

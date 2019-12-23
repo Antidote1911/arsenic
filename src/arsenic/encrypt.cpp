@@ -160,7 +160,7 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QStri
     des_stream << static_cast<qint32>(ITERATION_SENSITIVE);
     des_stream << static_cast<QString>(DEFAULT_CRYPTO_ALGO);
     des_stream << static_cast<QString>(userName);
-    des_stream.setVersion(QDataStream::Qt_5_12);
+    des_stream.setVersion(QDataStream::Qt_5_0);
 
     // Generate a 24 bytes random initial nonce
     nonce_buffer = rng.random_vec(NONCEBYTES);

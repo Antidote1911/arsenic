@@ -273,7 +273,7 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
 
     // Read the version
     QString version;
-    src_stream.setVersion(QDataStream::Qt_5_12);
+    src_stream.setVersion(QDataStream::Qt_5_0);
     src_stream >> version;
     qDebug() << "Decryption: Version of the Encrypted file:" << version;
 
@@ -293,21 +293,21 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
 
     // Read Argon2 parameters
     qint32 memlimit;
-    src_stream.setVersion(QDataStream::Qt_5_12);
+    src_stream.setVersion(QDataStream::Qt_5_0);
     src_stream >> memlimit;
 
     qint32 iterations;
-    src_stream.setVersion(QDataStream::Qt_5_12);
+    src_stream.setVersion(QDataStream::Qt_5_0);
     src_stream >> iterations;
 
     // Read crypto algo parameters
     QString cryptoAlgo;
-    src_stream.setVersion(QDataStream::Qt_5_12);
+    src_stream.setVersion(QDataStream::Qt_5_0);
     src_stream >> cryptoAlgo;
 
     // Read additional data (username)
     QString userName;
-    src_stream.setVersion(QDataStream::Qt_5_12);
+    src_stream.setVersion(QDataStream::Qt_5_0);
     src_stream >> userName;
 
     std::unique_ptr<Botan::AEAD_Mode> dec = Botan::AEAD_Mode::create(cryptoAlgo.toStdString(), Botan::DECRYPTION);
