@@ -29,7 +29,7 @@ script:
  - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
  - qmake --version
  - qmake -project
- - qmake arsenic.pro -spec linux-$CC
+ - qmake arsenic.pro -spec linux-$CC -std=c++17
  - make
 
 notifications:
