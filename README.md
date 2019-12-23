@@ -32,10 +32,10 @@ It is released under the permissive Simplified [BSD license](https://botan.rando
 
 ## Command line mode: ##
 **The command line interface doesn't support space in the arguments.**
-Encrypt a file named "test.mkv" with the secret passphrase "mysuperbadpassphrase". Encryption produce the encrypted file "test.kkv.arsenic" but it can be renamed because the original file name is encrypted in the file.
+Encrypt a file named "test.mkv" with the secret passphrase "mysuperbadpassphrase" and user e-mail "myemail@cool.com". Encryption produce the encrypted file "test.mkv.arsenic" but it can be renamed because the original file name is encrypted in the file.
 
 ```bash
-    ./arsenic -e -p mysuperbadpassphrase test.mkv
+    ./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com test.mkv
     # For decrypt this file :
     ./arsenic -d -p mysuperbadpassphrase test.mkv.arsenic
     # View help :
