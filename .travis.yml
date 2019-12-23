@@ -1,29 +1,22 @@
-sudo: required
+---
 language: cpp
-
-compiler:
-  - clang
-  - gcc
-
+compiler: gcc
 dist: bionic
-
-branches:
-  only:
-    - master
 
 before_install:
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq
-  - export QMAKE=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
 
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-7
+      - g++-7
 
 script:
- - if [ "${CC}" == "clang" ]; then export CC="clang" ; export CXX="clang++" ; echo "Rexported clang" ; fi
- - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
- - qmake --version
- - qmake -project
- - qmake arsenic.pro -spec linux-$CC
- - make
-
-notifications:
-email: none
+  - qmake
+  - make
+  - ./arsenic
