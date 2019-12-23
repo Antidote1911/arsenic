@@ -366,7 +366,7 @@ int MyEncryptThread::myEncryptFile(const QString &des_path, const QString &src_p
     // Calculate the encryption key with Argon2
     emit updateStatusText("Argon2 passphrase derivation... Please wait.");
     master_key = calculateHash(pass_buffer, salt_buffer, memlimit, iterations);
-    // Split master_key in tree parts. One for cipher_key, one for iv
+    // Split master_key in tree parts.
             const uint8_t* mk = master_key.begin().base();
             const Botan::SymmetricKey cipher_key1(mk, KEYBYTES);
             const Botan::SymmetricKey cipher_key2(&mk[KEYBYTES], KEYBYTES);

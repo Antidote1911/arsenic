@@ -3,7 +3,7 @@
 
 #include <QString>
 
-QString encrypt(QString file, QString pass);
-QString myEncryptFile(QString src_path, QString encrypt_path, QString key);
+QString encrypt(QString file, QString pass, QString add);
+QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QString name);
 
 #endif // ENCRYPT_H

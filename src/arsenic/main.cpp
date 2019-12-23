@@ -35,6 +35,9 @@ int main(int argc, char *argv[])
     QCommandLineOption decryptOption("d", QCoreApplication::translate("main", "Decrypt the file"));
     parser.addOption(decryptOption);
 
+    QCommandLineOption NameOption(QStringList() << "n" << "name"<< "name", QCoreApplication::translate("main", "The user name or e-mail."),QCoreApplication::translate("main", "name"));
+    parser.addOption(NameOption);
+
     QCommandLineOption passphraseOption(QStringList() << "p" << "passphrase"<< "pass", QCoreApplication::translate("main", "The passphrase for encrypt or decrypt <source>."),QCoreApplication::translate("main", "passphrase"));
     parser.addOption(passphraseOption);
 
@@ -52,6 +55,7 @@ int main(int argc, char *argv[])
         const auto passphrase = parser.value(passphraseOption);
         const auto enc        = parser.isSet(encryptOption);
         const auto dec        = parser.isSet(decryptOption);
+        const auto name       = parser.value(NameOption);
 
         if (enc && dec)
         {
@@ -65,9 +69,16 @@ int main(int argc, char *argv[])
             return (0);
         }
 
-        if (enc)
+        if (enc && name == "")
         {
-            resultat = encrypt(targetFile, passphrase);
+            cout << "For encryption you must specify user name with -n option" << endl;
+            return (0);
+        }
+
+        if (enc && name != "")
+        {
+
+            resultat = encrypt(targetFile, passphrase, name);
             cout << endl << resultat << endl;
             return (0);
         }

@@ -17,7 +17,7 @@
 
 using namespace ARs;
 
-QString encrypt(QString file, QString pass)
+QString encrypt(QString file, QString pass, QString name)
 {
 
 
@@ -87,7 +87,7 @@ QString encrypt(QString file, QString pass)
         // unless the user specified something for encrypt_name
         QString encrypt_path;
         encrypt_path = QDir::cleanPath(file +"." +ARs::DEFAULT_EXTENSION);
-        result = myEncryptFile(zip_path, encrypt_path, pass);
+        result = myEncryptFile(zip_path, encrypt_path, pass,name);
         // delete the intermediate zip file when done
             QFile::remove(zip_path);
     }
@@ -100,16 +100,20 @@ QString encrypt(QString file, QString pass)
 return (result);
 }
 
-QString myEncryptFile(QString src_path, QString encrypt_path, QString key)
+QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QString userName)
 {
 
     Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE);
     Botan::SecureVector<char> pass_buffer(ARs::KEYBYTES);
-    Botan::SecureVector<quint8> master_key(ARs::KEYBYTES);     // 256 bits (32 bytes)
+    Botan::SecureVector<quint8> master_key(ARs::KEYBYTES*3);     // 256 bits (32 bytes)
     Botan::SecureVector<quint8> nonce_buffer(ARs::NONCEBYTES); // 192 bits (24 bytes)
     Botan::SecureVector<quint8> salt_buffer(ARs::SALTBYTES);
     Botan::SecureVector<quint8> qint64_buffer(ARs::MACBYTES + sizeof(qint64));
-    qint64 len;
+    int len;
+
+    std::unique_ptr<Botan::AEAD_Mode> enc = Botan::AEAD_Mode::create("ChaCha20Poly1305", Botan::ENCRYPTION);
+    std::string add_data(userName.toStdString());
+    std::vector<uint8_t> add(add_data.data(),add_data.data()+add_data.length());
 
     QFile src_file(QDir::cleanPath(src_path));
     QFileInfo src_info(src_file);
@@ -130,6 +134,12 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key)
     // Calculate the encryption key with Argon2
     cout << "Generating key by Argon2. Please be patient..." << endl;
     master_key = calculateHash(pass_buffer, salt_buffer, MEMLIMIT_SENSITIVE, ITERATION_SENSITIVE);
+    // Split master_key in tree parts.
+            const uint8_t* mk = master_key.begin().base();
+            const Botan::SymmetricKey cipher_key1(mk, KEYBYTES);
+            const Botan::SymmetricKey cipher_key2(&mk[KEYBYTES], KEYBYTES);
+            const Botan::SymmetricKey cipher_key3(&mk[KEYBYTES+KEYBYTES], KEYBYTES);
+
     cout << "Key generated successfully" << endl;
 
     // create the new file, the path should normally be to the same directory as the source
@@ -143,11 +153,13 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key)
 
     QDataStream des_stream(&des_file);
 
-    // Write a header with a "magic number" and a version
+    // Write a header with a "magic number" , arsenic version, argon2 parameters, crypto algorithm
     des_stream << static_cast<quint32> (ARs::MAGIC_NUMBER);
     des_stream << static_cast<QString> (ARs::APP_VERSION);
     des_stream << static_cast<qint32>(MEMLIMIT_SENSITIVE);
     des_stream << static_cast<qint32>(ITERATION_SENSITIVE);
+    des_stream << static_cast<QString>("ChaCha20Poly1305");
+    des_stream << static_cast<QString>(userName);
     des_stream.setVersion(QDataStream::Qt_5_12);
 
     // Generate a 24 bytes random initial nonce
@@ -177,65 +189,63 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key)
     quint64 header_size = MACBYTES + sizeof(quint64) + len;
     qToLittleEndian<quint64>(header_size, qint64_buffer.data() + MACBYTES);
 
-    std::unique_ptr<Botan::Cipher_Mode> enc = Botan::Cipher_Mode::create("ChaCha20/Poly1305", Botan::ENCRYPTION);
-    enc->set_key(master_key);
+    enc->set_key(cipher_key1);
+    enc->set_ad(add);
     enc->start(nonce_buffer);
-    enc->finish(qint64_buffer);
-
-    if(des_stream.writeRawData(reinterpret_cast<char *>(qint64_buffer.data()), MACBYTES +
-        sizeof(quint64)) <	static_cast<int>(MACBYTES + sizeof(quint64)))
-        return "DES_HEADER_WRITE_ERROR";
+    Botan::secure_vector<uint8_t> out_buf1(qint64_buffer.begin(), qint64_buffer.end());
+    enc->finish(out_buf1); // 40
+    des_stream.writeRawData(reinterpret_cast<char *>(out_buf1.data()),out_buf1.size());
 
     // finally, encrypt and write in the file size and filename
     Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
+    Botan::secure_vector<uint8_t> out_buf2(main_buffer.begin(), main_buffer.end());
+    enc->set_key(cipher_key2);
     enc->start(nonce_buffer);
-    enc->finish(main_buffer);
+    enc->finish(out_buf2); // 65552
 
-    if(des_stream.writeRawData(reinterpret_cast<char *>(main_buffer.data()), header_size) < static_cast<int>(header_size))
-        return "DES_HEADER_WRITE_ERROR";
+    des_stream.writeRawData(reinterpret_cast<char *>(out_buf2.data()), out_buf2.size());
 
     // now, move on to the actual data
     QDataStream src_stream(&src_file);
 
-    qint64 curr_read = 0;
-    double processed = 0;
-
+    // for percent progress calculation
+    size_t fileindex = 0;
+    qint64 percent = -1;
+    ///////////////////////
     cout << "Encryption. Please be patient..." << endl;
-    while(1)
+    //std::unique_ptr<Botan::AEAD_Mode> enc2 = Botan::AEAD_Mode::create("ChaCha20Poly1305", Botan::ENCRYPTION);
+    enc->set_key(cipher_key3);
+    enc->set_ad(add);
+    Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
+    enc->start(nonce_buffer);
+    double processed = 0;
+    while(!src_stream.atEnd())
     {
 
-        len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data() + MACBYTES),
-            ARs::BUFFER_SIZE_WITHOUT_MAC);
-        curr_read += len;
+            len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), IN_BUFFER_SIZE);
 
-        if(len == -1)
-            return ("DES_HEADER_WRITE_ERROR");
+            // increment the nonce, encrypt and write the cipertext to the destination file
 
-        else if(len == 0)
-        {
-            if(curr_read != filesize)
-                return "SRC_BODY_READ_ERROR";
-            else
-                break;
+            Botan::secure_vector<uint8_t> buf3(main_buffer.begin(), main_buffer.end());
+            if (!src_stream.atEnd())
+            {
+                enc->update(buf3);  //65536
+                des_stream.writeRawData(reinterpret_cast<char *>(buf3.data()), buf3.size());
+            }
+
+            if (src_stream.atEnd())
+            {
+                enc->finish(buf3);  //65536+16
+                des_stream.writeRawData(reinterpret_cast<char *>(buf3.data()), buf3.size());
+            }
+
+            // Calculate and display progress in percent
+            processed += len;
+            double p = (processed / filesize) * 100; // calculate percentage proccessed
+            printProgress(p / 100); // show updated progress
+
         }
-        else if(curr_read > filesize)
-            return "SRC_BODY_READ_ERROR";
 
-        // increment the nonce, encrypt and write the cipertext to the destination file
-        Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
-        enc->start(nonce_buffer);
-        enc->finish(main_buffer);
-
-        if(des_stream.writeRawData(reinterpret_cast<char *>(main_buffer.data()), len +
-            MACBYTES) < len + MACBYTES)
-            return "DES_BODY_WRITE_ERROR";
-
-        processed += len;
-        double p = (processed / filesize) * 100; // calculate percentage proccessed
-        printProgress(p / 100); // show updated progress
-
-    }
-    cout << endl << "Successfully encrypted" << endl;
     return "CRYPT_SUCCESS";
 }
 

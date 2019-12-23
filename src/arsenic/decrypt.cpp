@@ -80,22 +80,23 @@ QString decrypt(QString file, QString pass)
 
 QString myDecryptFile(QString des_path, QString src_path, QString key, QString *decrypt_name)
 {
-    Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE);
-    Botan::SecureVector<quint8> master_key(ARs::KEYBYTES);     // 256 bits (32 bytes)
+    Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE+MACBYTES);
+
+    Botan::SecureVector<quint8> master_key(ARs::KEYBYTES*3);
     Botan::SecureVector<char> pass_buffer(KEYBYTES);
-    Botan::SecureVector<quint8> nonce_buffer(NONCEBYTES);      // 192 bits (24 bytes)
+    Botan::SecureVector<quint8> nonce_buffer(NONCEBYTES);
     Botan::SecureVector<quint8> salt_buffer(SALTBYTES);
-    Botan::SecureVector<quint8> qint64_buffer(MACBYTES + sizeof(qint64));
+    Botan::SecureVector<quint8> qint64_buffer(40);
     qint64 len;
 
     QFile src_file(QDir::cleanPath(src_path));
     QFileInfo src_info(src_file);
 
     if(!src_file.exists() || !src_info.isFile())
-        return ("SRC_NOT_FOUND");
+        return "SRC_NOT_FOUND";
 
     if (!src_file.open(QIODevice::ReadOnly))
-        return ("SRC_CANNOT_OPEN_READ");
+        return "SRC_CANNOT_OPEN_READ";
 
     // open the source file and extract the initial nonce and password salt
     QDataStream src_stream(&src_file);
@@ -105,29 +106,27 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     src_stream >> magic;
     if (magic != 0x41525345)
     {
-        return ("NOT_ARSENIC_FILE");
+        return "NOT_ARSENIC_FILE";
     }
 
     // Read the version
     QString version;
     src_stream.setVersion(QDataStream::Qt_5_12);
     src_stream >> version;
+    qDebug() << "Decryption: Version of the Encrypted file:" << version;
 
-    QTextStream cout(stdout);
-    cout << "Decryption: Version of the Encrypted file:" << version << endl;
-
-    if (version < ARs::APP_VERSION)
+    if (version < APP_VERSION)
     {
         qDebug() << "Decryption: Warning, this is file is encrypted by an old Arsenic Version:";
         qDebug() << "Version of encrypted file:" << version;
-        qDebug() << "Version of your Arsenic:" << ARs::APP_VERSION;
+        qDebug() << "Version of your Arsenic:" << APP_VERSION;
     }
 
-    if (version > ARs::APP_VERSION)
+    if (version > APP_VERSION)
     {
         qDebug() << "Decryption: Warning, this file is encrypted with a more recent version of Arsenic:";
         qDebug() << "Version of encrypted file:" << version;
-        qDebug() << "Version of your Arsenic:" << ARs::APP_VERSION;
+        qDebug() << "Version of your Arsenic:" << APP_VERSION;
     }
 
     // Read Argon2 parameters
@@ -139,8 +138,19 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     src_stream.setVersion(QDataStream::Qt_5_12);
     src_stream >> iterations;
 
-    qDebug() << "Decryption: Argon MemLimit:" << memlimit;
-    qDebug() << "Decryption: Argon OpsLimit:" << iterations;
+    // Read crypto algo parameters
+    QString cryptoAlgo;
+    src_stream.setVersion(QDataStream::Qt_5_12);
+    src_stream >> cryptoAlgo;
+
+    // Read additional data (username)
+    QString userName;
+    src_stream.setVersion(QDataStream::Qt_5_12);
+    src_stream >> userName;
+
+    std::unique_ptr<Botan::AEAD_Mode> dec = Botan::AEAD_Mode::create(cryptoAlgo.toStdString(), Botan::DECRYPTION);
+    std::string add_data(userName.toStdString());
+    std::vector<uint8_t> add(add_data.data(),add_data.data()+add_data.length());
 
     if(src_stream.readRawData(reinterpret_cast<char *>(nonce_buffer.data()), NONCEBYTES)
         < static_cast<int>(NONCEBYTES))
@@ -154,20 +164,21 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     pass_buffer = convertStringToSecureVector(key);
 
     // Calculate the encryption key with Argon2
-    cout << "Generating key by Argon2. Please be patient..." << endl;
+    cout << "Argon2 passphrase derivation... Please wait." << endl;
     master_key = calculateHash(pass_buffer, salt_buffer, memlimit, iterations);
-
-    cout << "Key generated successfully" << endl;
+    const uint8_t* mk = master_key.begin().base();
+    const Botan::SymmetricKey cipher_key1(mk, KEYBYTES);
+    const Botan::SymmetricKey cipher_key2(&mk[KEYBYTES], KEYBYTES);
+    const Botan::SymmetricKey cipher_key3(&mk[KEYBYTES+KEYBYTES], KEYBYTES);
 
     // next, get the encrypted header size and decrypt it
     qint64 header_size;
 
-    if(src_stream.readRawData(reinterpret_cast<char *>(qint64_buffer.data()), MACBYTES +
-        sizeof(qint64)) <	static_cast<int>(MACBYTES + sizeof(qint64)))
-        return "SRC_HEADER_READ_ERROR";
+    src_stream.readRawData(reinterpret_cast<char *>(qint64_buffer.data()), 40);
+    qDebug() << "qint64_buffer : "+ QString::fromStdString(Botan::hex_encode(qint64_buffer));
 
-    std::unique_ptr<Botan::Cipher_Mode> dec = Botan::Cipher_Mode::create("ChaCha20/Poly1305", Botan::DECRYPTION);
-    dec->set_key(master_key);
+    dec->set_key(cipher_key1);
+    dec->set_ad(add);
     dec->start(nonce_buffer);
     dec->finish(qint64_buffer);
 
@@ -176,11 +187,11 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     if(header_size <= static_cast<int>(MACBYTES + sizeof(qint64)) || header_size > IN_BUFFER_SIZE)
         return "SRC_HEADER_DECRYPT_ERROR";
 
-    if(src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), header_size) < header_size)
-        return "SRC_HEADER_READ_ERROR";
+    src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
 
     // get the file size and filename of original item
     Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
+    dec->set_key(cipher_key2);
     dec->start(nonce_buffer);
     dec->finish(main_buffer);
 
@@ -198,59 +209,51 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     QFile des_file(QDir::cleanPath(des_path + "/" + des_name));
 
     if(des_file.exists())
-        return ("DES_FILE_EXISTS");
+        return "DES_FILE_EXISTS";
 
     if(!des_file.open(QIODevice::WriteOnly))
-        return ("DES_CANNOT_OPEN_WRITE");
+        return "DES_CANNOT_OPEN_WRITE";
 
     QDataStream des_stream(&des_file);
 
-    qint64 curr_read = 0;
-
+    // for percent progress calculation
+    size_t fileindex = 0;
+    qint64 percent = -1;
     ///////////////////////
     // start decrypting the actual data
-    cout << "Decryption. Please be patient..." << endl;
+    cout << "Decryption... Please wait." << endl;
+    dec->set_key(cipher_key3);
+    dec->set_ad(add);
+
+    // increment the nonce, decrypt and write the plaintext block to the destination
+    Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
+    dec->start(nonce_buffer);
     double processed = 0;
-    while(1)
+    while(!src_stream.atEnd())
     {
-        // curr_read is the cumulative amount of the ciphertext (without the MAC) read so far
         len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), IN_BUFFER_SIZE);
-        curr_read += std::max(len - MACBYTES, static_cast<qint64>(0));
 
-        if(len == -1)
-            return ("SRC_BODY_READ_ERROR");
-        else if(len == 0)
+        if (!src_stream.atEnd())
         {
-            if(curr_read != filesize)
-                return ("SRC_FILE_CORRUPT");
-            else
-                break;
+
+
+            dec->update(main_buffer);
+            des_stream.writeRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
         }
-        else if(len <= MACBYTES)
-            return ("SRC_FILE_CORRUPT");
-        else if(len < IN_BUFFER_SIZE)
+        if (src_stream.atEnd())
         {
-            if(curr_read != filesize)
-                return "SRC_FILE_CORRUPT";
+
+            main_buffer.resize(MACBYTES);
+            len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
+            dec->finish(main_buffer);
         }
-        else if(curr_read > filesize)
-            return "SRC_FILE_CORRUPT";
 
-        // increment the nonce, decrypt and write the plaintext block to the destination
-        Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
-        dec->start(nonce_buffer);
-        dec->finish(main_buffer);
+            // Calculate progress in percent
+                processed += len;
+                double p = (processed / filesize) * 100; // calculate percentage proccessed
+                printProgress(p / 100); // show updated progress
+        }
 
-        if(des_stream.writeRawData(reinterpret_cast<char *>(main_buffer.data() + MACBYTES),
-            len - MACBYTES) < len - MACBYTES)
-            return "DES_BODY_WRITE_ERROR";
-
-        processed += len;
-        double p = (processed / filesize) * 100; // calculate percentage proccessed
-        printProgress(p / 100); // show updated progress
-
-    }
-
-    cout << endl << "Successfully decrypted" << endl;
+    cout << "Successfully decrypted" << endl;
     return "DECRYPT_SUCCESS";
 }
