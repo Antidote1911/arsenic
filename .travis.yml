@@ -15,4 +15,4 @@ install:
 script:
   - qmake -qt=qt5
   - make
-  - src/arsenic/./arsenic
+  - src/arsenic/./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com pixmaps/test.jpg

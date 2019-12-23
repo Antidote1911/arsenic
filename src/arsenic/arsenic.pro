@@ -137,5 +137,6 @@ DISTFILES += \
     ../../screenshots/hash.png \
     ../../screenshots/main.png \
     ../../screenshots/pass_generator.png \
-    ../../zlib-1.2.11.tar.gz
+    ../../zlib-1.2.11.tar.gz \
+    pixmaps/test.jpg
 
