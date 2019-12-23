@@ -5,7 +5,7 @@ compiler:
   - clang
   - gcc
 
-dist: trusty
+dist: Bionic
 
 branches:
   only:
@@ -23,7 +23,7 @@ install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq cmake qt58base qt58declarative qt58graphicaleffects qt58quickcontrols2
   - source /opt/qt58/bin/qt58-env.sh
-  - sudo apt-get install clang-3.8
+  - sudo apt-get install clang
 
 before_script:
   - export PATH=$PATH:/opt/qt58/bin
@@ -33,7 +33,7 @@ script:
  - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
  - qmake --version
  - qmake -project
- - qmake arsenic.pro -spec linux-$CC
+ - qmake arsenic.pro -spec linux-$CC -std=c++17
  - make
 
 notifications:
