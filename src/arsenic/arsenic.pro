@@ -128,6 +128,7 @@ DISTFILES += \
     ../../README.md \
     ../../README_FR.md \
     ../../botan_license.txt \
+    ../../build.sh \
     ../../quazip-0.8.1.tar.gz \
     ../../screenshots/config.png \
     ../../screenshots/hash.png \
