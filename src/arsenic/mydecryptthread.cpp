@@ -377,10 +377,6 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
 
     QDataStream des_stream(&des_file);
 
-    // for percent progress calculation
-    size_t fileindex = 0;
-    qint64 percent = -1;
-    ///////////////////////
     // start decrypting the actual data
     emit updateStatusText("Decryption... Please wait.");
     //std::unique_ptr<Botan::Cipher_Mode> dec2 = Botan::Cipher_Mode::create("ChaCha20/Poly1305", Botan::DECRYPTION);
@@ -390,36 +386,29 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
     // increment the nonce, decrypt and write the plaintext block to the destination
     Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
     dec->start(nonce_buffer);
+    double processed = 0;
     while(!src_stream.atEnd())
     {
         len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), IN_BUFFER_SIZE);
 
         if (!src_stream.atEnd())
         {
-
-
             dec->update(main_buffer);
             des_stream.writeRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
         }
+
         if (src_stream.atEnd())
         {
-
             main_buffer.resize(MACBYTES);
             len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
             dec->finish(main_buffer);
         }
 
-            // Calculate progress in percent
-            fileindex += len;
-            const auto nextFraction = static_cast<double>(fileindex) /
-                                      static_cast<double>(filesize);
+        // Calculate and display progress in percent
+        processed += len;
+        double p = (processed / filesize) * 100; // calculate percentage proccessed
+        emit updateGeneralProgress(p); // show updated progress
 
-            const qint64 nextPercent = static_cast<qint64>(nextFraction * 100);
-            if (nextPercent > percent && nextPercent < 100)
-            {
-                percent = nextPercent;
-                emit updateGeneralProgress(percent);
-            }
         }
 
     emit updateGeneralProgress(100);

@@ -216,9 +216,6 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
 
     QDataStream des_stream(&des_file);
 
-    // for percent progress calculation
-    size_t fileindex = 0;
-    qint64 percent = -1;
     ///////////////////////
     // start decrypting the actual data
     cout << "Decryption... Please wait." << endl;
@@ -249,11 +246,10 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
         }
 
             // Calculate progress in percent
-                processed += len;
-                double p = (processed / filesize) * 100; // calculate percentage proccessed
-                printProgress(p / 100); // show updated progress
+            processed += len;
+            double p = (processed / filesize) * 100; // calculate percentage proccessed
+            printProgress(p / 100); // show updated progress
         }
 
-    cout << "Successfully decrypted" << endl;
-    return "DECRYPT_SUCCESS";
+    return "Successfully decrypted";
 }

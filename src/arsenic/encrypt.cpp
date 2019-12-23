@@ -111,7 +111,7 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QStri
     Botan::SecureVector<quint8> qint64_buffer(ARs::MACBYTES + sizeof(qint64));
     int len;
 
-    std::unique_ptr<Botan::AEAD_Mode> enc = Botan::AEAD_Mode::create("ChaCha20Poly1305", Botan::ENCRYPTION);
+    std::unique_ptr<Botan::AEAD_Mode> enc = Botan::AEAD_Mode::create(DEFAULT_CRYPTO_ALGO.toStdString(), Botan::ENCRYPTION);
     std::string add_data(userName.toStdString());
     std::vector<uint8_t> add(add_data.data(),add_data.data()+add_data.length());
 
@@ -158,7 +158,7 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QStri
     des_stream << static_cast<QString> (ARs::APP_VERSION);
     des_stream << static_cast<qint32>(MEMLIMIT_SENSITIVE);
     des_stream << static_cast<qint32>(ITERATION_SENSITIVE);
-    des_stream << static_cast<QString>("ChaCha20Poly1305");
+    des_stream << static_cast<QString>(DEFAULT_CRYPTO_ALGO);
     des_stream << static_cast<QString>(userName);
     des_stream.setVersion(QDataStream::Qt_5_12);
 
@@ -208,12 +208,8 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QStri
     // now, move on to the actual data
     QDataStream src_stream(&src_file);
 
-    // for percent progress calculation
-    size_t fileindex = 0;
-    qint64 percent = -1;
     ///////////////////////
     cout << "Encryption. Please be patient..." << endl;
-    //std::unique_ptr<Botan::AEAD_Mode> enc2 = Botan::AEAD_Mode::create("ChaCha20Poly1305", Botan::ENCRYPTION);
     enc->set_key(cipher_key3);
     enc->set_ad(add);
     Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
@@ -246,6 +242,6 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QStri
 
         }
 
-    return "CRYPT_SUCCESS";
+    return "Successfully encrypted";
 }
 

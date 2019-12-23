@@ -443,9 +443,6 @@ int MyEncryptThread::myEncryptFile(const QString &des_path, const QString &src_p
     // now, move on to the actual data
     QDataStream src_stream(&src_file);
 
-    // for percent progress calculation
-    size_t fileindex = 0;
-    qint64 percent = -1;
     ///////////////////////
     emit updateStatusText("Encryption... Please wait.");
     //std::unique_ptr<Botan::AEAD_Mode> enc2 = Botan::AEAD_Mode::create("ChaCha20Poly1305", Botan::ENCRYPTION);
@@ -453,6 +450,7 @@ int MyEncryptThread::myEncryptFile(const QString &des_path, const QString &src_p
     enc->set_ad(add);
     Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
     enc->start(nonce_buffer);
+    double processed = 0;
     while(!src_stream.atEnd())
     {
 
@@ -473,17 +471,10 @@ int MyEncryptThread::myEncryptFile(const QString &des_path, const QString &src_p
                 des_stream.writeRawData(reinterpret_cast<char *>(buf3.data()), buf3.size());
             }
 
-            // Calculate progress in percent
-            fileindex += static_cast<unsigned long long >(len);
-            const auto nextFraction = static_cast<double>(fileindex) /
-                                      static_cast<double>(filesize);
-
-            const qint64 nextPercent = static_cast<qint64>(nextFraction * 100);
-            if (nextPercent > percent && nextPercent < 100)
-            {
-                percent = nextPercent;
-                emit updateGeneralProgress(percent);
-            }
+            // Calculate and display progress in percent
+            processed += len;
+            double p = (processed / filesize) * 100; // calculate percentage proccessed
+            emit updateGeneralProgress(p); // show updated progress
 
         }
 
