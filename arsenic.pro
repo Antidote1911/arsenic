@@ -6,7 +6,7 @@
 
 TEMPLATE      = subdirs
 CONFIG += ordered
-
+QMAKE_CXXFLAGS += -std=c++17
 
 SUBDIRS += src/zlib/zlib.pro \
            src/quazip/quazip.pro \
