@@ -21,4 +21,4 @@ before_script:
 script:
   - qmake -qt=qt5
   - make
-  - src/arsenic/./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com pixmaps/test.jpg
+  - src/arsenic/./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com src/arsenic/pixmaps/test.jpg
