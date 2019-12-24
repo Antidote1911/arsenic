@@ -29,7 +29,7 @@ environment:
 
     # MSVC 2017 DLL x86-32
     - CC: VC2017
-    - QTDIR: C:\Qt\5.11\msvc2017_64
+      QTDIR: C:\Qt\5.11\msvc2017_64
       PLATFORM: x86
       TARGET: shared
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
@@ -41,7 +41,7 @@ environment:
 
     # MSVC 2017 DLL x86-64
     - CC: VC2017
-    - QTDIR: C:\Qt\5.11\msvc2017_64
+      QTDIR: C:\Qt\5.11\msvc2017_64
       PLATFORM: x86_amd64
       TARGET: shared
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
@@ -53,7 +53,7 @@ environment:
 
     # MSVC 2017 static x86-64
     - CC: VC2017
-    - QTDIR: C:\Qt\5.11\msvc2017_64
+      QTDIR: C:\Qt\5.11\msvc2017_64
       PLATFORM: x86_amd64
       TARGET: static
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
@@ -65,7 +65,7 @@ environment:
 
     # MSVC 2019 static x86-64 w/debug iterators
     - CC: VC2019
-    - QTDIR: C:\Qt\5.11\msvc2017_64
+      QTDIR: C:\Qt\5.11\msvc2017_64
       PLATFORM: x86_amd64
       TARGET: sanitizer
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
@@ -74,7 +74,7 @@ environment:
 
     # MSVC 2019 x86-64 preview
     - CC: VC2019p
-    - QTDIR: C:\Qt\5.11\msvc2017_64
+      QTDIR: C:\Qt\5.11\msvc2017_64
       PLATFORM: x86_amd64
       TARGET: static
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019 Preview
