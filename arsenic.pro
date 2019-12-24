@@ -45,4 +45,5 @@ DISTFILES += \
     screenshots/main.png \
     screenshots/pass_generator.png \
     zlib-1.2.11.tar.gz \
+    build_windows_msvc.cmd \
     src/arsenic/pixmaps/test.jpg

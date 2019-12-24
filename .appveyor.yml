@@ -1,18 +1,17 @@
-branches:
-  only:
-    - master
+image: Visual Studio 2017
 
-install:
-  - set QTDIR=C:\Qt\5.13.2\mingw73_32
-  - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw73_32\bin;%PATH%;
+environment:
+  matrix:
+  - QTPATH: C:\Qt\5.13.0\msvc2017_64
+    PLATFORM: amd64
+    COMPILER: msvc
+    VSVER: 15
+
+clone_depth: 1
+
+init:
+  - set TAG_NAME=Arsenic
+
 build_script:
-  - qmake arsenic.pro
-  - mingw32-make
-after_build:
-  - rm release/*.o
-  - rm release/*.cpp
+  - call "build_windows_msvc.cmd"
 
-artifacts:
-  - path: Output\arsenic-*.exe
-  - path: release
-    type: zip
