@@ -23,14 +23,15 @@ install:
 # Run qmake
 before_build:
   - cd %APPVEYOR_BUILD_FOLDER%
-  - cd arsenic
+  - dir %APPVEYOR_BUILD_FOLDER%
+  - cd project
   - qmake arsenic.pro
 
 
 # Build the projects
 build_script:
   - cd %APPVEYOR_BUILD_FOLDER%
-  - cd arsenic
+  - cd project
   - nmake
 
 
