@@ -83,6 +83,10 @@ environment:
 
 install:
   - call setup_appveyor.bat
+  - git submodule update --init --recursive
+  - dir %QTDIR%
+  - call %CMD_VCVARSALL%
+  - set PATH=%PATH%;%QTDIR%\bin
 
 # Run qmake
 before_build:
