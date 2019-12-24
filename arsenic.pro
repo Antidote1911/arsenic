@@ -30,6 +30,8 @@ CONFIG(debug, debug|release) {
     message(Building clang Debug (Qt $${QT_VERSION}))}
 }
 
+QMAKE_QMAKE = $(QTDIR)/bin/qmake.exe
+
 DISTFILES += \
     .appveyor.yml \
     .travis.yml \
