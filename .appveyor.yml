@@ -1,17 +1,46 @@
-image: Visual Studio 2017
-
 environment:
   matrix:
-  - QTPATH: C:\Qt\5.13.0\msvc2017_64
-    PLATFORM: amd64
-    COMPILER: msvc
-    VSVER: 15
+    #- QTDIR: C:\Qt\5.11\msvc2015
+    #  CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86'
+    #  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    #  MSVC_PLATFORM: "x86"
+    - QTDIR: C:\Qt\5.11\msvc2017_64
+      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      MSVC_PLATFORM: "x64"
 
-clone_depth: 1
+configuration:
+  - release
 
-init:
-  - set TAG_NAME=%APPVEYOR_REPO_TAG_NAME%
+# Get the project submodules
+# Set the environment variables and paths to make
+install:
+  - git submodule update --init --recursive
+  - dir %QTDIR%
+  - call %CMD_VCVARSALL%
+  - set PATH=%PATH%;%QTDIR%\bin
 
+# Run qmake
+before_build:
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - cd project
+  - qmake arsenic.pro
+
+
+# Build the projects
 build_script:
-  - call "build_windows_msvc.cmd"
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - cd project
+  - nmake
+
+
+after_build:
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - cd project\
+  - mkdir OurRelease\
+  - xcopy %APPVEYOR_BUILD_FOLDER%\project\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\project\OurRelease\
+  - cd OurRelease\
+  - windeployqt arsenic.exe
+  - cd ../../
+  - 7z a %MSVC_PLATFORM%-release.zip %APPVEYOR_BUILD_FOLDER%\project\OurRelease\*
 
