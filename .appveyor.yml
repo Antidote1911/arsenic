@@ -7,7 +7,7 @@ install:
   - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw73_64\bin;%PATH%;
 build_script:
   - qmake arsenic.pro
-  - mingw32-make
+  - mingw64-make
 after_build:
   - rm release/*.o
   - rm release/*.cpp
