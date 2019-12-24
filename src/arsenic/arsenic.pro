@@ -96,47 +96,34 @@ SOURCES += \
 RESOURCES += \
     rsc.qrc
 
-unix:!macx: LIBS += -L$$OUT_PWD/../quazip/ -lquazip
+linux {
+LIBS += -L$$OUT_PWD/../quazip/ -lquazip
 INCLUDEPATH += $$PWD/../quazip/
 DEPENDPATH += $$PWD/../quazip/
-unix:!macx: PRE_TARGETDEPS += $$OUT_PWD/../quazip/libquazip.a
+PRE_TARGETDEPS += $$OUT_PWD/../quazip/libquazip.a
 
-unix:!macx: LIBS += -L$$OUT_PWD/../zlib/ -lzlib
+LIBS += -L$$OUT_PWD/../zlib/ -lzlib
 INCLUDEPATH += $$PWD/../zlib/
 DEPENDPATH += $$PWD/../zlib/
-unix:!macx: PRE_TARGETDEPS += $$OUT_PWD/../zlib/libzlib.a
+PRE_TARGETDEPS += $$OUT_PWD/../zlib/libzlib.a
 
 
 equals(QMAKE_CXX, clang++) {
-unix:!macx: LIBS += -L$$OUT_PWD/../botan/ -lbotan
+LIBS += -L$$OUT_PWD/../botan/ -lbotan
 INCLUDEPATH += $$PWD/../botan/clang/
 DEPENDPATH += $$PWD/../botan/clang/
-unix:!macx: PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
+PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
 }
 
 equals(QMAKE_CXX, g++) {
-unix:!macx: LIBS += -L$$OUT_PWD/../botan/ -lbotan
+LIBS += -L$$OUT_PWD/../botan/ -lbotan
 INCLUDEPATH += $$PWD/../botan/gcc/
 DEPENDPATH += $$PWD/../botan/gcc/
-unix:!macx: PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
+PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
 }
-
+}
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
 
-DISTFILES += \
-    ../../.travis.yml \
-    ../../LICENSE \
-    ../../README.md \
-    ../../README_FR.md \
-    ../../botan_license.txt \
-    ../../build_clang.sh \
-    ../../build_gcc.sh \
-    ../../quazip-0.8.1.tar.gz \
-    ../../screenshots/config.png \
-    ../../screenshots/hash.png \
-    ../../screenshots/main.png \
-    ../../screenshots/pass_generator.png \
-    ../../zlib-1.2.11.tar.gz \
-    pixmaps/test.jpg
+
 

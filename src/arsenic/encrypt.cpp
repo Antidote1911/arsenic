@@ -181,7 +181,7 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QStri
     qint64 filesize = src_info.size();
     qToLittleEndian<qint64>(filesize, main_buffer.data() + MACBYTES);
 
-    len = std::min(static_cast<long unsigned int>(src_name.size()), BUFFER_SIZE_WITHOUT_MAC -
+    len = std::min<int>(static_cast<long unsigned int>(src_name.size()), BUFFER_SIZE_WITHOUT_MAC -
         sizeof(qint64));
     memcpy(main_buffer.data() + MACBYTES + sizeof(quint64), src_name.constData(), len);
 
