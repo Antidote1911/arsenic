@@ -22,11 +22,11 @@ install:
 
 # Run qmake
 before_build:
-  - qmake %APPVEYOR_BUILD_FOLDER%\arsenic.pro
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\zlib\zlib.pro
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\quazip\quazip.pro
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\tests\tests.pro
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\botan\botan.pro
+  - qmake %APPVEYOR_BUILD_FOLDER%\arsenic.pro -spec win32-msvc CONFIG+=x86_64
+  - qmake %APPVEYOR_BUILD_FOLDER%\src\zlib\zlib.pro -spec win32-msvc CONFIG+=x86_64
+  - qmake %APPVEYOR_BUILD_FOLDER%\src\quazip\quazip.pro -spec win32-msvc CONFIG+=x86_64
+  - qmake %APPVEYOR_BUILD_FOLDER%\src\tests\tests.pro -spec win32-msvc CONFIG+=x86_64
+  - qmake %APPVEYOR_BUILD_FOLDER%\src\botan\botan.pro -spec win32-msvc CONFIG+=x86_64
 
 
 # Build the projects
