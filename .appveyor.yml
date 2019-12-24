@@ -1,38 +1,34 @@
+version: 1.5.{build}
+build:
+  verbosity: minimal
+
 environment:
-SCCACHE_CACHE_SIZE: 160M
-  SCCACHE_VERSION: 0.2.12
-  APPVEYOR_SAVE_CACHE_ON_ERROR: true
-matrix:
-    #- QTDIR: C:\Qt\5.11\msvc2015
-    #  CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86'
-    #  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-    #  MSVC_PLATFORM: "x86"
-    - QTDIR: C:\Qt\5.11\msvc2017_64
-      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64'
+    matrix:
+    # Qt 5.9
+    - QTDIR: C:\Qt\5.9\msvc2015_64
+      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall" x64'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+    # Qt 5.10
+    - QTDIR: C:\Qt\5.10\msvc2017_64
+      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_PLATFORM: "x86_amd64"
+    # Qt 5.11
+    - QTDIR: C:\Qt\5.11\msvc2017_64
+      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    # Qt 5.12
+    - QTDIR: C:\Qt\5.12\msvc2017_64
+      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
 
-configuration:
-  - release
-
-# Get the project submodules
-# Set the environment variables and paths to make
+branches:
+  only:
+    - master
 install:
-  - git submodule update --init --recursive
-  - dir %QTDIR%
   - call %CMD_VCVARSALL%
   - set PATH=%PATH%;%QTDIR%\bin
-
-# Run qmake
-before_build:
-  - qmake %APPVEYOR_BUILD_FOLDER%\arsenic.pro -spec win32-msvc CONFIG+=x86_64
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\zlib\zlib.pro -spec win32-msvc CONFIG+=x86_64
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\quazip\quazip.pro -spec win32-msvc CONFIG+=x86_64
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\tests\tests.pro -spec win32-msvc CONFIG+=x86_64
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\botan\botan.pro -spec win32-msvc CONFIG+=x86_64
-
-
-# Build the projects
 build_script:
-  - cd %APPVEYOR_BUILD_FOLDER%
+  - qmake
   - nmake
+  - nmake check
+
