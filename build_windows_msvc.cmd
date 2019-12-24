@@ -8,4 +8,5 @@ call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary
 
 echo "Building Arsenic..."
 %QTPATH%\bin\qmake.exe -spec win32-msvc CONFIG+=x86_64 CONFIG-=debug CONFIG+=release
-nmake.exe
+qmake arsenic.pro
+nmake release
