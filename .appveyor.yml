@@ -1,18 +1,15 @@
+image: Visual Studio 2017
 branches:
   only:
     - master
 
 install:
-  - set QTDIR=C:\Qt\5.8\mingw53_32
-  - choco install -y InnoSetup
-  - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw530_32\bin;%PATH%;"C:\Program Files (x86)\Inno Setup 5"
+  - set QTDIR=C:\Qt\5.10.1\msvc2017_64
+  - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw530_32\bin;%PATH%;
 build_script:
   - qmake arsenic.pro
   - mingw32-make
 after_build:
-  - windeployqt release/fastqt.exe
-  - cmd: cp LICENSE release/LICENSE.txt"
-  - iscc innosetup.iss
   - rm release/*.o
   - rm release/*.cpp
 
