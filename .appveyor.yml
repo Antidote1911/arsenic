@@ -4,7 +4,7 @@ branches:
     - master
 
 install:
-  - set QTDIR=C:\Qt\5.10.1\msvc2017_64
+  - set QTDIR=C:\Qt\5.8\mingw53_32
   - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw530_32\bin;%PATH%;
 build_script:
   - qmake arsenic.pro
