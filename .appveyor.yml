@@ -1,5 +1,9 @@
 environment:
-  matrix:
+    SCCACHE_CACHE_SIZE: 160M
+    SCCACHE_VERSION: 0.2.12
+    APPVEYOR_SAVE_CACHE_ON_ERROR: true
+
+matrix:
     #- QTDIR: C:\Qt\5.11\msvc2015
     #  CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86'
     #  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
