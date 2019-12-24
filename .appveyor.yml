@@ -31,4 +31,7 @@ build_script:
   - cd %APPVEYOR_BUILD_FOLDER%\src\zlib
   - qmake
   - nmake
+  - cd %APPVEYOR_BUILD_FOLDER%\src\quazip
+  - qmake
+  - nmake
 
