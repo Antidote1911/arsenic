@@ -97,30 +97,32 @@ RESOURCES += \
     rsc.qrc
 
 linux {
-LIBS += -L$$OUT_PWD/../quazip/ -lquazip
-INCLUDEPATH += $$PWD/../quazip/
-DEPENDPATH += $$PWD/../quazip/
-PRE_TARGETDEPS += $$OUT_PWD/../quazip/libquazip.a
+    LIBS += -L$$OUT_PWD/../quazip/ -lquazip
+    INCLUDEPATH += $$PWD/../quazip/
+    DEPENDPATH += $$PWD/../quazip/
+    PRE_TARGETDEPS += $$OUT_PWD/../quazip/libquazip.a
 
-LIBS += -L$$OUT_PWD/../zlib/ -lzlib
-INCLUDEPATH += $$PWD/../zlib/
-DEPENDPATH += $$PWD/../zlib/
-PRE_TARGETDEPS += $$OUT_PWD/../zlib/libzlib.a
+    LIBS += -L$$OUT_PWD/../zlib/ -lzlib
+    INCLUDEPATH += $$PWD/../zlib/
+    DEPENDPATH += $$PWD/../zlib/
+    PRE_TARGETDEPS += $$OUT_PWD/../zlib/libzlib.a
 
 
-equals(QMAKE_CXX, clang++) {
-LIBS += -L$$OUT_PWD/../botan/ -lbotan
-INCLUDEPATH += $$PWD/../botan/clang/
-DEPENDPATH += $$PWD/../botan/clang/
-PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
-}
+    equals(QMAKE_CXX, clang++)
+    {
+        LIBS += -L$$OUT_PWD/../botan/ -lbotan
+        INCLUDEPATH += $$PWD/../botan/clang/
+        DEPENDPATH += $$PWD/../botan/clang/
+        PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
+        }
 
-equals(QMAKE_CXX, g++) {
-LIBS += -L$$OUT_PWD/../botan/ -lbotan
-INCLUDEPATH += $$PWD/../botan/gcc/
-DEPENDPATH += $$PWD/../botan/gcc/
-PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
-}
+    equals(QMAKE_CXX, g++)
+    {
+        LIBS += -L$$OUT_PWD/../botan/ -lbotan
+        INCLUDEPATH += $$PWD/../botan/gcc/
+        DEPENDPATH += $$PWD/../botan/gcc/
+        PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
+    }
 }
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
