@@ -3,11 +3,11 @@ branches:
     - master
 
 install:
-  - set QTDIR=C:\Qt\5.10\mingw53_32
-  - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw530_32\bin;%PATH%;
+  - set QTDIR=C:\Qt\5.10\mingw53_64
+  - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw530_64\bin;%PATH%;
 build_script:
   - qmake arsenic.pro
-  - mingw32-make
+  - mingw64-make
 after_build:
   - rm release/*.o
   - rm release/*.cpp
