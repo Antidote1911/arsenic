@@ -30,6 +30,6 @@ before_build:
 
 
 # Build the projects
-#build_script:
-#  - cd %APPVEYOR_BUILD_FOLDER%
-#  - nmake
+build_script:
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - nmake
