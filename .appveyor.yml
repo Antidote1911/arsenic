@@ -98,7 +98,7 @@ build_script:
   - cd %APPVEYOR_BUILD_FOLDER%
   - nmake
 
-build_script:
+
 #  - python src\scripts\ci_build.py --os=windows --cc=%TARGET_CC% --without-python3 --compiler-cache=sccache --make-tool=%MAKE_TOOL% --cpu=%PLATFORM% %EXTRA_FLAGS% %TARGET%
 
 # whitelist branches to avoid testing feature branches twice (as branch and as pull request)
