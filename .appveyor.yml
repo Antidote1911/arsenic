@@ -22,22 +22,14 @@ install:
 
 # Run qmake
 before_build:
-  - cd %APPVEYOR_BUILD_FOLDER%
-  - qmake arsenic.pro
+  - qmake %APPVEYOR_BUILD_FOLDER%\arsenic.pro
+  - qmake %APPVEYOR_BUILD_FOLDER%\src\zlib\zlib.pro
+  - qmake %APPVEYOR_BUILD_FOLDER%\src\quazip\quazip.pro
+  - qmake %APPVEYOR_BUILD_FOLDER%\src\tests\tests.pro
+  - qmake %APPVEYOR_BUILD_FOLDER%\src\botan\botan.pro
 
 
 # Build the projects
-build_script:
-  - cd %APPVEYOR_BUILD_FOLDER%
-  - nmake
-
-
-after_build:
-  - cd %APPVEYOR_BUILD_FOLDER%
-  - mkdir OurRelease\
-  - xcopy %APPVEYOR_BUILD_FOLDER%\project\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\project\OurRelease\
-  - cd OurRelease\
-  - windeployqt arsenic.exe
-  - cd ../../
-  - 7z a %MSVC_PLATFORM%-release.zip %APPVEYOR_BUILD_FOLDER%\project\OurRelease\*
-
+#build_script:
+#  - cd %APPVEYOR_BUILD_FOLDER%
+#  - nmake
