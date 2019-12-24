@@ -28,10 +28,10 @@ install:
   - call %CMD_VCVARSALL%
   - set PATH=%PATH%;%QTDIR%\bin
 build_script:
-  - qmake %APPVEYOR_BUILD_FOLDER%\arsenic.pro -spec win32-msvc CONFIG+=x86_64
   - qmake %APPVEYOR_BUILD_FOLDER%\src\zlib\zlib.pro -spec win32-msvc CONFIG+=x86_64
   - qmake %APPVEYOR_BUILD_FOLDER%\src\quazip\quazip.pro -spec win32-msvc CONFIG+=x86_64
   - qmake %APPVEYOR_BUILD_FOLDER%\src\tests\tests.pro -spec win32-msvc CONFIG+=x86_64
   - qmake %APPVEYOR_BUILD_FOLDER%\src\botan\botan.pro -spec win32-msvc CONFIG+=x86_64
+  - qmake %APPVEYOR_BUILD_FOLDER%\arsenic.pro -spec win32-msvc CONFIG+=x86_64
   - nmake
 
