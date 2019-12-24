@@ -28,10 +28,7 @@ install:
   - call %CMD_VCVARSALL%
   - set PATH=%PATH%;%QTDIR%\bin
 build_script:
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\zlib\zlib.pro
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\quazip\quazip.pro
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\tests\tests.pro
-  - qmake %APPVEYOR_BUILD_FOLDER%\src\botan\botan.pro
-  - qmake %APPVEYOR_BUILD_FOLDER%\arsenic.pro -spec
+  - cd %APPVEYOR_BUILD_FOLDER%\src\zlib
+  - qmake
   - nmake
 
