@@ -5,9 +5,9 @@ environment:
     #  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
     #  MSVC_PLATFORM: "x86"
     - QTDIR: C:\Qt\5.11\msvc2017_64
-      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64'
+      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_PLATFORM: "amd64"
+      MSVC_PLATFORM: "x86_amd64"
 
 configuration:
   - release
