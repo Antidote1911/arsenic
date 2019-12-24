@@ -6,7 +6,7 @@ TEMPLATE = lib
 CONFIG += staticlib
 CONFIG += warn_off
 
-linux {
+unix {
 
         equals(QMAKE_CXX, clang++) {
              message(Botan clang)
@@ -42,6 +42,23 @@ linux {
             }
 
 }#end linux
+
+win32 {
+             SOURCES += win/botan_all.cpp \
+                        win/botan_all_aesni_sse2_ssse3.cpp \
+                        win/botan_all_avx2.cpp \
+                        win/botan_all_bmi2.cpp \
+                        win/botan_all_rdrand.cpp \
+                        win/botan_all_rdseed_sse2.cpp \
+                        win/botan_all_sha_sse2_sse41_ssse3.cpp \
+                        win/botan_all_sha_sse2_ssse3.cpp \
+                        win/botan_all_sse2_ssse3.cpp
+
+             HEADERS += win/botan_all.h \
+                        win/botan_all_internal.h
+
+
+}
 
 QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3 -mavx2
 QMAKE_LFLAGS += -fstack-protector

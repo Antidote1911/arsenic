@@ -124,6 +124,24 @@ linux {
         PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
     }
 }
+
+win32 {
+    LIBS += -L$$OUT_PWD/../quazip/ -lquazip
+    INCLUDEPATH += $$PWD/../quazip/
+    DEPENDPATH += $$PWD/../quazip/
+    PRE_TARGETDEPS += $$OUT_PWD/../quazip/libquazip.a
+
+    LIBS += -L$$OUT_PWD/../zlib/ -lzlib
+    INCLUDEPATH += $$PWD/../zlib/
+    DEPENDPATH += $$PWD/../zlib/
+    PRE_TARGETDEPS += $$OUT_PWD/../zlib/libzlib.a
+
+    LIBS += -L$$OUT_PWD/../botan/ -lbotan
+    INCLUDEPATH += $$PWD/../botan/win/
+    DEPENDPATH += $$PWD/../botan/win/
+    PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
+
+}
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
 
