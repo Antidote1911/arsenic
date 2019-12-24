@@ -17,6 +17,6 @@ after_build:
   - rm release/*.cpp
 
 artifacts:
-  - path: Output\arsenic.exe
+  - path: Output\arsenic-*.exe
   - path: release
     type: zip

@@ -31,6 +31,7 @@ CONFIG(debug, debug|release) {
 }
 
 DISTFILES += \
+    .appveyor.yml \
     .travis.yml \
     LICENSE \
     README.md \
@@ -44,5 +45,4 @@ DISTFILES += \
     screenshots/main.png \
     screenshots/pass_generator.png \
     zlib-1.2.11.tar.gz \
-    appveyor.yml \
     src/arsenic/pixmaps/test.jpg
