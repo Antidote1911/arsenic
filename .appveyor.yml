@@ -10,7 +10,7 @@ environment:
 clone_depth: 1
 
 init:
-  - set TAG_NAME=Arsenic
+  - set TAG_NAME=%APPVEYOR_REPO_TAG_NAME%
 
 build_script:
   - call "build_windows_msvc.cmd"

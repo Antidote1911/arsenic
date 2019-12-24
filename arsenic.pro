@@ -36,6 +36,7 @@ DISTFILES += \
     LICENSE \
     README.md \
     README_FR.md \
+    CNAME \
     botan_license.txt \
     build_clang.sh \
     build_gcc.sh \
