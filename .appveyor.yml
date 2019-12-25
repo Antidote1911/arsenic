@@ -1,17 +1,9 @@
-version: 1.5.{build}
-build:
-  verbosity: minimal
-
 environment:
-matrix:
-    #- QTDIR: C:\Qt\5.11\msvc2015
-    #  CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86'
-    #  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-    #  MSVC_PLATFORM: "x86"
+  matrix:
     - QTDIR: C:\Qt\5.11\msvc2017_64
-      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64'
+      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_PLATFORM: "x86_amd64"
+      MSVC_PLATFORM: "x64"
 
 configuration:
   - release
@@ -22,11 +14,12 @@ install:
   - git submodule update --init --recursive
   - dir %QTDIR%
   - call %CMD_VCVARSALL%
-  - set PATH=%PATH%;%QTDIR%\bin
+  - set PATH=%PATH%;%QTDIR%\bin;%APPVEYOR_BUILD_FOLDER%\OpenCV\bin
 
 # Run qmake
 before_build:
-  - qmake %APPVEYOR_BUILD_FOLDER%\arsenic.pro
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - qmake arsenic.pro
 
 
 # Build the projects
