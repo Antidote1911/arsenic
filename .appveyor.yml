@@ -3,27 +3,34 @@ build:
   verbosity: minimal
 
 environment:
-    matrix:
-    # MinGW GCC
-    - CC: MinGW
-      PLATFORM: x86_amd64
-      QTDIR: C:\Qt\5.13.2
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      MAKE_TOOL: mingw32-make
-      TARGET_CC: gcc
-    # Qt 5.9
-    - QTDIR: C:\Qt\5.9\msvc2015_64
-      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall" x64'
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+matrix:
+    #- QTDIR: C:\Qt\5.11\msvc2015
+    #  CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86'
+    #  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    #  MSVC_PLATFORM: "x86"
+    - QTDIR: C:\Qt\5.11\msvc2017_64
+      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      MSVC_PLATFORM: "x86_amd64"
 
-branches:
-  only:
-    - master
+configuration:
+  - release
+
+# Get the project submodules
+# Set the environment variables and paths to make
 install:
+  - git submodule update --init --recursive
+  - dir %QTDIR%
   - call %CMD_VCVARSALL%
   - set PATH=%PATH%;%QTDIR%\bin
+
+# Run qmake
+before_build:
+  - qmake %APPVEYOR_BUILD_FOLDER%\arsenic.pro
+
+
+# Build the projects
 build_script:
-  - cd %APPVEYOR_BUILD_FOLDER%\
-  - qmake
-  - make
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - nmake
 
