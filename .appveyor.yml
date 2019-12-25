@@ -1,29 +1,47 @@
+version: 0.9.{build}
+
 environment:
   matrix:
-    - QTDIR: C:\Qt\5.11\msvc2017_64
-      CMD_VCVARSALL: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64'
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_PLATFORM: "x64"
+    - QTDIR: C:\Qt\5.6\msvc2013
+      cname: Win32-VS2013
+      VSVER: 12.0
+      PT: v120
+    - QTDIR: C:\Qt\5.11\mingw53_32
+      cname: mingw
+    - QTDIR: C:\Qt\5.6\msvc2013_64
+      cname: Win64-VS2013
+      VSVER: 12.0
+      PT: v120
+    - QTDIR: C:\Qt\5.11\msvc2015_64
+      cname: Win64-VS2015
+      VSVER: 14.0
+      PT: v140
+    - QTDIR: C:\Qt\5.11\msvc2015
+      cname: Win32-VS2015
+      VSVER: 14.0
+      PT: v140
 
 configuration:
   - release
 
-# Get the project submodules
-# Set the environment variables and paths to make
 install:
-  - git submodule update --init --recursive
-  - dir %QTDIR%
-  - call %CMD_VCVARSALL%
-  - set PATH=%PATH%;%QTDIR%\bin;%APPVEYOR_BUILD_FOLDER%\OpenCV\bin
+  - '%QTDIR%\bin\qtenv2.bat'
+  - qmake -v
+  - if %QTDIR:_64=%==%QTDIR% ( set ARCH=x86 ) else set ARCH=x64
+  - if %cname%==mingw set make=mingw32-make.exe
+  - if %cname%==mingw g++ --version
+  - if %cname%==mingw %make% --version
+  - if not %cname%==mingw call "%ProgramFiles(x86)%\Microsoft Visual Studio %VSVER%\VC\vcvarsall.bat" %ARCH%
+  - if not %cname%==mingw set make=nmake.exe
+  - if not %cname%==mingw %make% /? > nul
 
-# Run qmake
 before_build:
+  - if %cname%==mingw set PATH=%PATH%;%QTDIR%\bin;C:\MinGW\bin;C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\shared
   - cd %APPVEYOR_BUILD_FOLDER%
-  - qmake arsenic.pro
+  - qmake CONFIG+=%CONFIGURATION%
 
-
-# Build the projects
 build_script:
   - cd %APPVEYOR_BUILD_FOLDER%
-  - nmake
+  - '%make%'
+  # Also, build vcxproj (without qt)
 
