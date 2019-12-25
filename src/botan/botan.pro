@@ -5,6 +5,8 @@ TEMPLATE = lib
 # Use this for static botan rather than the default dynamic
 CONFIG += staticlib
 CONFIG += warn_off
+CONFIG += c++17
+QMAKE_CXXFLAGS += -std=c++17
 
 unix {
 
