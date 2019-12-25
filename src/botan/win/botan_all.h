@@ -37,12 +37,12 @@
 
 /*
 * This file was automatically generated running
-* 'configure.py --cpu=x86_64 --cc=msvc --os=windows --amalgamation --disable-shared --disable-modules=pkcs11'
+* 'configure.py --cpu=x86_32 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11'
 *
 * Target
-*  - Compiler: cl  /EHs /GR /D_ENABLE_EXTENDED_ALIGNED_STORAGE /MD /bigobj /O2 /Oi
-*  - Arch: x86_64
-*  - OS: windows
+*  - Compiler: g++ -m32 -pthread -std=c++11 -D_REENTRANT -O3
+*  - Arch: x86_32
+*  - OS: mingw
 */
 
 #define BOTAN_VERSION_MAJOR 2
@@ -57,14 +57,14 @@
 #define BOTAN_DISTRIBUTION_INFO "unspecified"
 
 /* How many bits per limb in a BigInt */
-#define BOTAN_MP_WORD_BITS 64
+#define BOTAN_MP_WORD_BITS 32
 
 
-#define BOTAN_INSTALL_PREFIX R"(c:\Botan)"
+#define BOTAN_INSTALL_PREFIX R"(/mingw)"
 #define BOTAN_INSTALL_HEADER_DIR R"(include/botan-2)"
-#define BOTAN_INSTALL_LIB_DIR R"(c:\Botan/lib)"
-#define BOTAN_LIB_LINK "crypt32.lib user32.lib ws2_32.lib"
-#define BOTAN_LINK_FLAGS ""
+#define BOTAN_INSTALL_LIB_DIR R"(/mingw/lib)"
+#define BOTAN_LIB_LINK "-lws2_32"
+#define BOTAN_LINK_FLAGS "-m32 -pthread"
 
 #define BOTAN_SYSTEM_CERT_BUNDLE "/etc/ssl/certs/ca-certificates.crt"
 
@@ -74,28 +74,24 @@
 
 /* Target identification and feature test macros */
 
-#define BOTAN_TARGET_OS_IS_WINDOWS
+#define BOTAN_TARGET_OS_IS_MINGW
 
-#define BOTAN_TARGET_OS_HAS_CERTIFICATE_STORE
 #define BOTAN_TARGET_OS_HAS_FILESYSTEM
 #define BOTAN_TARGET_OS_HAS_RTLGENRANDOM
-#define BOTAN_TARGET_OS_HAS_RTLSECUREZEROMEMORY
 #define BOTAN_TARGET_OS_HAS_THREAD_LOCAL
 #define BOTAN_TARGET_OS_HAS_THREADS
 #define BOTAN_TARGET_OS_HAS_VIRTUAL_LOCK
 #define BOTAN_TARGET_OS_HAS_WIN32
-#define BOTAN_TARGET_OS_HAS_WINSOCK2
 
 
-#define BOTAN_BUILD_COMPILER_IS_MSVC
+#define BOTAN_BUILD_COMPILER_IS_GCC
 
 
 
 
-#define BOTAN_TARGET_ARCH_IS_X86_64
+#define BOTAN_TARGET_ARCH_IS_X86_32
 #define BOTAN_TARGET_CPU_IS_LITTLE_ENDIAN
 #define BOTAN_TARGET_CPU_IS_X86_FAMILY
-#define BOTAN_TARGET_CPU_HAS_NATIVE_64BIT
 
 #define BOTAN_TARGET_SUPPORTS_AESNI
 #define BOTAN_TARGET_SUPPORTS_AVX2
@@ -126,6 +122,7 @@
 #define BOTAN_HAS_AEAD_SIV 20131202
 #define BOTAN_HAS_AES 20131128
 #define BOTAN_HAS_AES_NI 20131128
+#define BOTAN_HAS_AES_VPERM 20190901
 #define BOTAN_HAS_ANSI_X919_MAC 20131128
 #define BOTAN_HAS_ARGON2 20190824
 #define BOTAN_HAS_ARIA 20170415
@@ -151,7 +148,6 @@
 #define BOTAN_HAS_CERTSTOR_FLATFILE 20190410
 #define BOTAN_HAS_CERTSTOR_SQL 20160818
 #define BOTAN_HAS_CERTSTOR_SYSTEM 20190411
-#define BOTAN_HAS_CERTSTOR_WINDOWS 20190430
 #define BOTAN_HAS_CHACHA 20180807
 #define BOTAN_HAS_CHACHA_AVX2 20180418
 #define BOTAN_HAS_CHACHA_RNG 20170728
@@ -201,6 +197,7 @@
 #define BOTAN_HAS_FFI 20191214
 #define BOTAN_HAS_FILTERS 20160415
 #define BOTAN_HAS_FPE_FE1 20131128
+#define BOTAN_HAS_GCM_CLMUL_CPU 20131227
 #define BOTAN_HAS_GCM_CLMUL_SSSE3 20171020
 #define BOTAN_HAS_GMAC 20160207
 #define BOTAN_HAS_GOST_28147_89 20131128
@@ -273,15 +270,20 @@
 #define BOTAN_HAS_SCRYPT 20180902
 #define BOTAN_HAS_SEED 20131128
 #define BOTAN_HAS_SERPENT 20131128
+#define BOTAN_HAS_SERPENT_AVX2 20180824
 #define BOTAN_HAS_SERPENT_SIMD 20160903
 #define BOTAN_HAS_SHA1 20131128
 #define BOTAN_HAS_SHA1_SSE2 20160803
+#define BOTAN_HAS_SHA1_X86_SHA_NI 20170518
 #define BOTAN_HAS_SHA2_32 20131128
+#define BOTAN_HAS_SHA2_32_X86 20170518
+#define BOTAN_HAS_SHA2_32_X86_BMI2 20180526
 #define BOTAN_HAS_SHA2_64 20131128
 #define BOTAN_HAS_SHA3 20161018
 #define BOTAN_HAS_SHACAL2 20170813
 #define BOTAN_HAS_SHACAL2_AVX2 20180826
 #define BOTAN_HAS_SHACAL2_SIMD 20170813
+#define BOTAN_HAS_SHACAL2_X86 20170814
 #define BOTAN_HAS_SHAKE 20161009
 #define BOTAN_HAS_SHAKE_CIPHER 20161018
 #define BOTAN_HAS_SIMD_32 20131128
@@ -10053,62 +10055,6 @@ class BOTAN_PUBLIC_API(2,11) System_Certificate_Store final : public Certificate
       std::shared_ptr<Certificate_Store> m_system_store;
    };
 
-}
-
-namespace Botan {
-/**
-* Certificate Store that is backed by the system trust store on Windows.
-*/
-class BOTAN_PUBLIC_API(2, 11) Certificate_Store_Windows final : public Certificate_Store
-   {
-   public:
-      Certificate_Store_Windows();
-
-      Certificate_Store_Windows(const Certificate_Store_Windows&) = default;
-      Certificate_Store_Windows(Certificate_Store_Windows&&) = default;
-      Certificate_Store_Windows& operator=(const Certificate_Store_Windows&) = default;
-      Certificate_Store_Windows& operator=(Certificate_Store_Windows&&) = default;
-
-      /**
-      * @return DNs for all certificates managed by the store
-      */
-      std::vector<X509_DN> all_subjects() const override;
-
-      /**
-      * Find a certificate by Subject DN and (optionally) key identifier
-      * @return the first certificate that matches
-      */
-      std::shared_ptr<const X509_Certificate> find_cert(
-         const X509_DN& subject_dn,
-         const std::vector<uint8_t>& key_id) const override;
-
-      /**
-      * Find all certificates with a given Subject DN.
-      * Subject DN and even the key identifier might not be unique.
-      */
-      std::vector<std::shared_ptr<const X509_Certificate>> find_all_certs(
-               const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const override;
-
-      /**
-      * Find a certificate by searching for one with a matching SHA-1 hash of
-      * public key.
-      * @return a matching certificate or nullptr otherwise
-      */
-      std::shared_ptr<const X509_Certificate>
-      find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const override;
-
-      /**
-       * @throws Botan::Not_Implemented
-       */
-      std::shared_ptr<const X509_Certificate>
-      find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& subject_hash) const override;
-
-      /**
-       * Not Yet Implemented
-       * @return nullptr;
-       */
-      std::shared_ptr<const X509_CRL> find_crl_for(const X509_Certificate& subject) const override;
-   };
 }
 
 BOTAN_FUTURE_INTERNAL_HEADER(cfb.h)
