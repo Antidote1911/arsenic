@@ -43,7 +43,7 @@ unix {
 
 }#end linux
 
-win32 {
+win32-msvc {
                 LIBS += -ladvapi32 -luser32 -lws2_32
 
                 QMAKE_CXXFLAGS += -bigobj -arch:AVX2
