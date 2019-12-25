@@ -44,6 +44,9 @@ unix {
 }#end linux
 
 win32 {
+                LIBS += -ladvapi32 -luser32 -lws2_32
+
+                QMAKE_CXXFLAGS += -bigobj -arch:AVX2
              SOURCES += win/botan_all.cpp \
                         win/botan_all_aesni_sse2_ssse3.cpp \
                         win/botan_all_avx2.cpp \
