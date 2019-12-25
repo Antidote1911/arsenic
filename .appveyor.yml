@@ -30,5 +30,5 @@ install:
 build_script:
   - cd %APPVEYOR_BUILD_FOLDER%\
   - qmake
-  - nmake
+  - make
 

@@ -21,6 +21,5 @@ SOURCES += \
 
 
 HEADERS += catch.hpp
-QMAKE_CXXFLAGS += -fstack-protector
 
 
