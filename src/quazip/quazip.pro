@@ -23,7 +23,7 @@ QMAKE_PKGCONFIG_REQUIRES = Qt5Core
 # the VERSION variable will stay the same.
 
 # For example:
-
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # QuaZIP 1.0 is released after some 0.x, keeping binary compatibility.
 # VERSION stays 1.0.0.
 # Then some binary incompatible change is introduced. QuaZIP goes up to
@@ -61,6 +61,8 @@ unix:!symbian {
 }
 
 win32 {
+    INCLUDEPATH += $$PWD/../zlib/
+    DEPENDPATH += $$PWD/../zlib/
     headers.path=$$PREFIX/include/quazip
     headers.files=$$HEADERS
     INSTALLS += headers target
