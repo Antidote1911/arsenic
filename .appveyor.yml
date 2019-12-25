@@ -21,8 +21,8 @@ environment:
       VSVER: 14.0
       PT: v140
 
-configuration:
-  - release
+#configuration:
+  #- release
 
 install:
   - '%QTDIR%\bin\qtenv2.bat'
@@ -38,10 +38,10 @@ install:
 before_build:
   - if %cname%==mingw set PATH=%PATH%;%QTDIR%\bin;C:\MinGW\bin;C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\shared
   - cd %APPVEYOR_BUILD_FOLDER%
-  - qmake CONFIG+=%CONFIGURATION%
+  - qmake
 
 build_script:
   - cd %APPVEYOR_BUILD_FOLDER%
   - '%make%'
-  # Also, build vcxproj (without qt)
+   Also, build vcxproj (without qt)
 
