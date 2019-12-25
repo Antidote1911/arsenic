@@ -8,9 +8,6 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-CONFIG += c++17
-QMAKE_CXXFLAGS += -std=c++17
-
 CONFIG(release, debug|release): TARGET = arsenic
 CONFIG(debug, debug | release): TARGET = arsenicD
 
