@@ -137,7 +137,7 @@ win32 {
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win/
     DEPENDPATH += $$PWD/../botan/win/
-    PRE_TARGETDEPS += $$OUT_PWD/../botan/release/libbotan.a
+    PRE_TARGETDEPS += $$OUT_PWD/../botan/release/libbotan.a -lpthread
 
 }
 
