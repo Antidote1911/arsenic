@@ -3,9 +3,8 @@ QT       -= core gui
 TARGET = botan
 TEMPLATE = lib
 # Use this for static botan rather than the default dynamic
-CONFIG += staticlib
+CONFIG += static c++14
 CONFIG += warn_off
-CONFIG += c++17
 
 unix {
 
