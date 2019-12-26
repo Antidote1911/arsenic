@@ -8,10 +8,6 @@ environment:
       cname: Win64-VS2015
       VSVER: 14.0
       PT: v140
-    - QTDIR: C:\Qt\5.11\msvc2015
-      cname: Win32-VS2015
-      VSVER: 14.0
-      PT: v140
 
 configuration:
   - release
