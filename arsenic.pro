@@ -33,7 +33,6 @@ CONFIG(debug, debug|release) {
 DISTFILES += \
     .appveyor.yml \
     .travis.yml \
-    setup_appveyor.bat \
     LICENSE \
     README.md \
     README_FR.md \
