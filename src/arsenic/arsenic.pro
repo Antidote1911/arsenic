@@ -25,9 +25,9 @@ CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 #LIBS += -lsodium
 
-#DEFINES += QUAZIP_STATIC
-#DEFINES += ZLIB_STATIC
-#DEFINES += BOTAN_STATIC
+DEFINES += QUAZIP_STATIC
+DEFINES += ZLIB_STATIC
+DEFINES += BOTAN_STATIC
 
 FORMS += \
     AboutDialog.ui \
@@ -148,3 +148,4 @@ QMAKE_LFLAGS += -fstack-protector
 
 
 
+LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread

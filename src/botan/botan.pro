@@ -45,7 +45,7 @@ unix {
 }#end linux
 
 win32 {
-                LIBS += -ladvapi32 -luser32 -lws2_32
+                LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 
              SOURCES += win/botan_all.cpp \
                         win/botan_all_aesni_sse2_ssse3.cpp \
@@ -59,9 +59,6 @@ win32 {
 
              HEADERS += win/botan_all.h \
                         win/botan_all_internal.h
-QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3 -mavx2
-QMAKE_LFLAGS += -fstack-protector
-
 }
 
 QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3 -mavx2
