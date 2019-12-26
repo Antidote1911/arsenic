@@ -107,15 +107,15 @@ linux {
     equals(QMAKE_CXX, clang++)
     {
         LIBS += -L$$OUT_PWD/../botan/ -lbotan
-        INCLUDEPATH += $$PWD/../botan/clang/
-        DEPENDPATH += $$PWD/../botan/clang/
+        INCLUDEPATH += $$PWD/../botan/linux_clang64/
+        DEPENDPATH += $$PWD/../botan/linux_clang64/
         }
 
     equals(QMAKE_CXX, g++)
     {
         LIBS += -L$$OUT_PWD/../botan/ -lbotan
-        INCLUDEPATH += $$PWD/../botan/gcc/
-        DEPENDPATH += $$PWD/../botan/gcc/
+        INCLUDEPATH += $$PWD/../botan/linux_gcc64/
+        DEPENDPATH += $$PWD/../botan/linux_gcc64/
     }
 }
 
@@ -129,8 +129,8 @@ win32 {
     DEPENDPATH += $$PWD/../zlib/
 
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
-    INCLUDEPATH += $$PWD/../botan/win/
-    DEPENDPATH += $$PWD/../botan/win/
+    INCLUDEPATH += $$PWD/../botan/win_mingw64/
+    DEPENDPATH += $$PWD/../botan/win_mingw64/
 
 LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 
