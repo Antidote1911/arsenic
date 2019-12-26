@@ -61,7 +61,9 @@ win32-g++ {
 }
 
 win32-msvc {
-    QMAKE_CXXFLAGS += -Wa,-mbig-obj
+    LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
+
+    QMAKE_CXXFLAGS += -bigobj -arch:AVX2
 
              SOURCES += win_msvc_64/botan_all.cpp \
                         win_msvc_64/botan_all_aesni_sse2_ssse3.cpp \
