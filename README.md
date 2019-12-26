@@ -75,10 +75,14 @@ The application was primarily built around the Qt 5.13.2-1 framework. Other depe
 To update Botan, you must regenerate the amalgamation build from source:
 
 ```bash
-    #for clang
+    # for linux clang
     ./configure.py --cc=clang --amalgamation --disable-shared --disable-modules=pkcs11
-    #for gcc
+    # for linux gcc
     ./configure.py --cc=gcc --amalgamation --disable-shared --disable-modules=pkcs11
+    # for Windows MinGW x86
+    python configure.py --cpu=x86_64 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11
+    # for Windows MinGW x32
+    python configure.py --cpu=x86_32 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11
 ```
 
 To build the program from source, the appropriate Qt version should be installed and configured for the target platform, including any tools such as Qt Creator.<br>

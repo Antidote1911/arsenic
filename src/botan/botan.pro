@@ -46,7 +46,7 @@ unix {
 win32 {
     QMAKE_CXXFLAGS += -Wa,-mbig-obj
 
-    contains(QT_ARCH, x86_64){
+    contains(QMAKE_HOST.arch, x86_64){
 
              SOURCES += win_mingw64/botan_all.cpp \
                         win_mingw64/botan_all_aesni_sse2_ssse3.cpp \
@@ -60,7 +60,7 @@ win32 {
                         win_mingw64/botan_all_internal.h
                 }
 
-    contains(QT_ARCH, x86_32){
+    contains(QMAKE_HOST.arch, x86_32){
 
 
 
