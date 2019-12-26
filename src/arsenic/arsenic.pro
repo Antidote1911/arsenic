@@ -98,12 +98,10 @@ linux {
     LIBS += -L$$OUT_PWD/../quazip/ -lquazip
     INCLUDEPATH += $$PWD/../quazip/
     DEPENDPATH += $$PWD/../quazip/
-    PRE_TARGETDEPS += $$OUT_PWD/../quazip/libquazip.a
 
     LIBS += -L$$OUT_PWD/../zlib/ -lzlib
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
-    PRE_TARGETDEPS += $$OUT_PWD/../zlib/libzlib.a
 
 
     equals(QMAKE_CXX, clang++)
@@ -111,7 +109,6 @@ linux {
         LIBS += -L$$OUT_PWD/../botan/ -lbotan
         INCLUDEPATH += $$PWD/../botan/clang/
         DEPENDPATH += $$PWD/../botan/clang/
-        PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
         }
 
     equals(QMAKE_CXX, g++)
@@ -119,7 +116,6 @@ linux {
         LIBS += -L$$OUT_PWD/../botan/ -lbotan
         INCLUDEPATH += $$PWD/../botan/gcc/
         DEPENDPATH += $$PWD/../botan/gcc/
-        PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
     }
 }
 
@@ -127,17 +123,14 @@ win32 {
     LIBS += -L$$OUT_PWD/../quazip/release/ -lquazip
     INCLUDEPATH += $$PWD/../quazip/
     DEPENDPATH += $$PWD/../quazip/
-    PRE_TARGETDEPS += $$OUT_PWD/../quazip/release/libquazip.a
 
     LIBS += -L$$OUT_PWD/../zlib/release/ -lzlib
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
-    PRE_TARGETDEPS += $$OUT_PWD/../zlib/release/libzlib.a
 
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win/
     DEPENDPATH += $$PWD/../botan/win/
-
 
 LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 
