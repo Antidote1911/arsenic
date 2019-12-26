@@ -128,14 +128,14 @@ win32 {
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
 
-    contains(QMAKE_HOST.arch, x86_64){
+    mingw64{
 
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
     }
 
-    contains(QMAKE_HOST.arch, x86_32){
+    mingw32{
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw32/
     DEPENDPATH += $$PWD/../botan/win_mingw32/
