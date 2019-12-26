@@ -128,18 +128,26 @@ win32-g++ {
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
 
-    contains(QT_ARCH, x86_64){
-
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
-    }
 
-    !contains(QT_ARCH, x86_64){
+LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
+
+}
+
+win32-msvc {
+    LIBS += -L$$OUT_PWD/../quazip/release/ -lquazip
+    INCLUDEPATH += $$PWD/../quazip/
+    DEPENDPATH += $$PWD/../quazip/
+
+    LIBS += -L$$OUT_PWD/../zlib/release/ -lzlib
+    INCLUDEPATH += $$PWD/../zlib/
+    DEPENDPATH += $$PWD/../zlib/
+
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
-    INCLUDEPATH += $$PWD/../botan/win_mingw32/
-    DEPENDPATH += $$PWD/../botan/win_mingw32/
-    }
+    INCLUDEPATH += $$PWD/../botan/win_msvc_64/
+    DEPENDPATH += $$PWD/../botan/win_msvc_64/
 
 LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 

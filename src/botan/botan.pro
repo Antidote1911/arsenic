@@ -46,8 +46,6 @@ unix {
 win32-g++ {
     QMAKE_CXXFLAGS += -Wa,-mbig-obj
 
-    contains(QT_ARCH, x86_64){
-
              SOURCES += win_mingw64/botan_all.cpp \
                         win_mingw64/botan_all_aesni_sse2_ssse3.cpp \
                         win_mingw64/botan_all_avx2.cpp \
@@ -58,21 +56,24 @@ win32-g++ {
 
              HEADERS += win_mingw64/botan_all.h \
                         win_mingw64/botan_all_internal.h
-                }
+               
 
-    !contains(QT_ARCH, x86_64){
+}
 
-             SOURCES += win_mingw32/botan_all.cpp \
-                        win_mingw32/botan_all_aesni_sse2_ssse3.cpp \
-                        win_mingw32/botan_all_avx2.cpp \
-                        win_mingw32/botan_all_bmi2.cpp \
-                        win_mingw32/botan_all_rdrand.cpp \
-                        win_mingw32/botan_all_rdseed_sse2.cpp \
-                        win_mingw32/botan_all_sse2_ssse3.cpp
+win32-msvc {
+    QMAKE_CXXFLAGS += -Wa,-mbig-obj
 
-             HEADERS += win_mingw32/botan_all.h \
-                        win_mingw32/botan_all_internal.h
-                }
+             SOURCES += win_msvc_64/botan_all.cpp \
+                        win_msvc_64/botan_all_aesni_sse2_ssse3.cpp \
+                        win_msvc_64/botan_all_avx2.cpp \
+                        win_msvc_64/botan_all_rdrand.cpp \
+                        win_msvc_64/botan_all_rdseed_sse2.cpp \
+                        win_msvc_64/botan_all_sse2_ssse3.cpp
+
+             HEADERS += win_msvc_64/botan_all.h \
+                        win_msvc_64/botan_all_internal.h
+
+
 }
 
 QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3 -mavx2
