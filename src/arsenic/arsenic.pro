@@ -140,6 +140,9 @@ win32 {
     PRE_TARGETDEPS += $$OUT_PWD/../botan/release/libbotan.a
 
 }
+
+QMAKE_CXXFLAGS += -fstack-protector
+QMAKE_LFLAGS += -fstack-protector
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
 
