@@ -123,10 +123,10 @@ linux {
 }
 
 win32 {
-    LIBS += -L$$OUT_PWD/../quazip/ -lquazip
+    LIBS += -L$$OUT_PWD/../quazip/release/ -lquazip
     INCLUDEPATH += $$PWD/../quazip/
     DEPENDPATH += $$PWD/../quazip/
-    PRE_TARGETDEPS += $$OUT_PWD/../quazip/libquazip.a
+    PRE_TARGETDEPS += $$OUT_PWD/../quazip/release/libquazip.a
 
     LIBS += -L$$OUT_PWD/../zlib/ -lzlib
     INCLUDEPATH += $$PWD/../zlib/
