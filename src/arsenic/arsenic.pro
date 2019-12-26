@@ -128,15 +128,15 @@ win32 {
     DEPENDPATH += $$PWD/../quazip/
     PRE_TARGETDEPS += $$OUT_PWD/../quazip/release/libquazip.a
 
-    LIBS += -L$$OUT_PWD/../zlib/ -lzlib
+    LIBS += -L$$OUT_PWD/../zlib/release/ -lzlib
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
-    PRE_TARGETDEPS += $$OUT_PWD/../zlib/libzlib.a
+    PRE_TARGETDEPS += $$OUT_PWD/../zlib/release/libzlib.a
 
-    LIBS += -L$$OUT_PWD/../botan/ -lbotan
+    LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win/
     DEPENDPATH += $$PWD/../botan/win/
-    PRE_TARGETDEPS += $$OUT_PWD/../botan/libbotan.a
+    PRE_TARGETDEPS += $$OUT_PWD/../botan/release/libbotan.a
 
 }
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
