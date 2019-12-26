@@ -45,4 +45,6 @@ DISTFILES += \
     screenshots/main.png \
     screenshots/pass_generator.png \
     zlib-1.2.11.tar.gz \
+    src/arsenic/pixmaps/icon.png \
+    src/arsenic/pixmaps/icon.ico \
     src/arsenic/pixmaps/test.jpg
