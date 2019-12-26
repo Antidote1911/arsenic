@@ -5,9 +5,7 @@ environment:
     - QTDIR: C:\Qt\5.13.2\mingw73_32
       cname: mingw
     - QTDIR: C:\Qt\5.13.2\mingw73_64
-      cname: Win64-VS2019
-      VSVER: 12.0
-      PT: v120
+      cname: mingw
     - QTDIR: C:\Qt\5.11\msvc2015_64
       cname: Win64-VS2015
       VSVER: 14.0
@@ -17,8 +15,8 @@ environment:
       VSVER: 14.0
       PT: v140
 
-#configuration:
-  #- release
+configuration:
+  - release
 
 install:
   - '%QTDIR%\bin\qtenv2.bat'

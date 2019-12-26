@@ -44,7 +44,8 @@ unix {
 }#end linux
 
 win32 {
-                LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
+
+QMAKE_CXXFLAGS += -Wa,-mbig-obj
 
              SOURCES += win/botan_all.cpp \
                         win/botan_all_aesni_sse2_ssse3.cpp \
@@ -52,8 +53,6 @@ win32 {
                         win/botan_all_bmi2.cpp \
                         win/botan_all_rdrand.cpp \
                         win/botan_all_rdseed_sse2.cpp \
-                        win/botan_all_sha_sse2_sse41_ssse3.cpp \
-                        win/botan_all_sha_sse2_ssse3.cpp \
                         win/botan_all_sse2_ssse3.cpp
 
              HEADERS += win/botan_all.h \
