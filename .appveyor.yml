@@ -4,10 +4,6 @@ environment:
   matrix:
     - QTDIR: C:\Qt\5.13.2\mingw73_64
       cname: mingw
-    - QTDIR: C:\Qt\5.13.2\msvc2017_64
-      cname: Win64-VS2017
-      VSVER: 15.0
-      PT: v150
 
 configuration:
   - release
