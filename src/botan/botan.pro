@@ -10,35 +10,35 @@ unix {
 
         equals(QMAKE_CXX, clang++) {
              message(Botan clang)
-             SOURCES += clang/botan_all.cpp \
-                        clang/botan_all_aesni_sse2_ssse3.cpp \
-                        clang/botan_all_avx2.cpp \
-                        clang/botan_all_bmi2.cpp \
-                        clang/botan_all_rdrand.cpp \
-                        clang/botan_all_rdseed_sse2.cpp \
-                        clang/botan_all_sha_sse2_sse41_ssse3.cpp \
-                        clang/botan_all_sha_sse2_ssse3.cpp \
-                        clang/botan_all_sse2_ssse3.cpp
+             SOURCES += linux_clang64/botan_all.cpp \
+                        linux_clang64/botan_all_aesni_sse2_ssse3.cpp \
+                        linux_clang64/botan_all_avx2.cpp \
+                        linux_clang64/botan_all_bmi2.cpp \
+                        linux_clang64/botan_all_rdrand.cpp \
+                        linux_clang64/botan_all_rdseed_sse2.cpp \
+                        linux_clang64/botan_all_sha_sse2_sse41_ssse3.cpp \
+                        linux_clang64/botan_all_sha_sse2_ssse3.cpp \
+                        linux_clang64/botan_all_sse2_ssse3.cpp
              
-             HEADERS += clang/botan_all.h \
-                        clang/botan_all_internal.h
+             HEADERS += linux_clang64/botan_all.h \
+                        linux_clang64/botan_all_internal.h
     
                     }
      
         equals(QMAKE_CXX, g++) {
             message(Botan gcc)
-            SOURCES += gcc/botan_all.cpp \
-                       gcc/botan_all_aesni_sse2_ssse3.cpp \
-                       gcc/botan_all_avx2.cpp \
-                       gcc/botan_all_bmi2.cpp \
-                       gcc/botan_all_rdrand.cpp \
-                       gcc/botan_all_rdseed_sse2.cpp \
-                       gcc/botan_all_sha_sse2_sse41_ssse3.cpp \
-                       gcc/botan_all_sha_sse2_ssse3.cpp \
-                       gcc/botan_all_sse2_ssse3.cpp
+            SOURCES += linux_gcc64/botan_all.cpp \
+                       linux_gcc64/botan_all_aesni_sse2_ssse3.cpp \
+                       linux_gcc64/botan_all_avx2.cpp \
+                       linux_gcc64/botan_all_bmi2.cpp \
+                       linux_gcc64/botan_all_rdrand.cpp \
+                       linux_gcc64/botan_all_rdseed_sse2.cpp \
+                       linux_gcc64/botan_all_sha_sse2_sse41_ssse3.cpp \
+                       linux_gcc64/botan_all_sha_sse2_ssse3.cpp \
+                       linux_gcc64/botan_all_sse2_ssse3.cpp
              
-            HEADERS += gcc/botan_all.h \
-                       gcc/botan_all_internal.h
+            HEADERS += linux_gcc64/botan_all.h \
+                       linux_gcc64/botan_all_internal.h
             }
 
 }#end linux
@@ -47,16 +47,16 @@ win32 {
 
 QMAKE_CXXFLAGS += -Wa,-mbig-obj
 
-             SOURCES += win/botan_all.cpp \
-                        win/botan_all_aesni_sse2_ssse3.cpp \
-                        win/botan_all_avx2.cpp \
-                        win/botan_all_bmi2.cpp \
-                        win/botan_all_rdrand.cpp \
-                        win/botan_all_rdseed_sse2.cpp \
-                        win/botan_all_sse2_ssse3.cpp
+             SOURCES += win_mingw64/botan_all.cpp \
+                        win_mingw64/botan_all_aesni_sse2_ssse3.cpp \
+                        win_mingw64/botan_all_avx2.cpp \
+                        win_mingw64/botan_all_bmi2.cpp \
+                        win_mingw64/botan_all_rdrand.cpp \
+                        win_mingw64/botan_all_rdseed_sse2.cpp \
+                        win_mingw64/botan_all_sse2_ssse3.cpp
 
-             HEADERS += win/botan_all.h \
-                        win/botan_all_internal.h
+             HEADERS += win_mingw64/botan_all.h \
+                        win_mingw64/botan_all_internal.h
 }
 
 QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3 -mavx2
