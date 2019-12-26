@@ -137,7 +137,9 @@ win32 {
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win/
     DEPENDPATH += $$PWD/../botan/win/
-    PRE_TARGETDEPS += $$OUT_PWD/../botan/release/libbotan.a
+
+
+LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 
 }
 
@@ -148,4 +150,4 @@ QMAKE_LFLAGS += -fstack-protector
 
 
 
-LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
+
