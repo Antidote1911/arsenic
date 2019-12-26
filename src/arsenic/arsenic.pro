@@ -119,7 +119,7 @@ linux {
     }
 }
 
-win32 {
+win32-g++ {
     LIBS += -L$$OUT_PWD/../quazip/release/ -lquazip
     INCLUDEPATH += $$PWD/../quazip/
     DEPENDPATH += $$PWD/../quazip/
@@ -128,14 +128,14 @@ win32 {
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
 
-    !contains(QMAKE_TARGET.arch, x86_64){
+    contains(QT_ARCH, x86_64){
 
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
     }
 
-    contains(QMAKE_TARGET.arch, x86_64){
+    contains(QT_ARCH, i386){
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw32/
     DEPENDPATH += $$PWD/../botan/win_mingw32/
