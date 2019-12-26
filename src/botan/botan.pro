@@ -60,24 +60,6 @@ win32-g++ {
 
 }
 
-win32-msvc {
-    LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
-
-    QMAKE_CXXFLAGS += -bigobj -arch:AVX2
-
-             SOURCES += win_msvc_64/botan_all.cpp \
-                        win_msvc_64/botan_all_aesni_sse2_ssse3.cpp \
-                        win_msvc_64/botan_all_avx2.cpp \
-                        win_msvc_64/botan_all_rdrand.cpp \
-                        win_msvc_64/botan_all_rdseed_sse2.cpp \
-                        win_msvc_64/botan_all_sse2_ssse3.cpp
-
-             HEADERS += win_msvc_64/botan_all.h \
-                        win_msvc_64/botan_all_internal.h
-
-
-}
-
 QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3 -mavx2
 QMAKE_LFLAGS += -fstack-protector
 

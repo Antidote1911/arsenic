@@ -136,23 +136,6 @@ LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 
 }
 
-win32-msvc {
-    LIBS += -L$$OUT_PWD/../quazip/release/ -lquazip
-    INCLUDEPATH += $$PWD/../quazip/
-    DEPENDPATH += $$PWD/../quazip/
-
-    LIBS += -L$$OUT_PWD/../zlib/release/ -lzlib
-    INCLUDEPATH += $$PWD/../zlib/
-    DEPENDPATH += $$PWD/../zlib/
-
-    LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
-    INCLUDEPATH += $$PWD/../botan/win_msvc_64/
-    DEPENDPATH += $$PWD/../botan/win_msvc_64/
-
-LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
-
-}
-
 QMAKE_CXXFLAGS += -fstack-protector
 QMAKE_LFLAGS += -fstack-protector
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
