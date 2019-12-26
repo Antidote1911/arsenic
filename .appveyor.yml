@@ -2,8 +2,6 @@ version: 0.9.{build}
 
 environment:
   matrix:
-    - QTDIR: C:\Qt\5.13.2\mingw73_32
-      cname: mingw
     - QTDIR: C:\Qt\5.13.2\mingw73_64
       cname: mingw
     - QTDIR: C:\Qt\5.11\msvc2015_64
