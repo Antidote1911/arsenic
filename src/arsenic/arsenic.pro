@@ -128,9 +128,18 @@ win32 {
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
 
+    win32-g++-64{
+
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
+    }
+
+    win32-g++-32{
+    LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
+    INCLUDEPATH += $$PWD/../botan/win_mingw32/
+    DEPENDPATH += $$PWD/../botan/win_mingw32/
+    }
 
 LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 
