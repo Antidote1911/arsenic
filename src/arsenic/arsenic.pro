@@ -135,7 +135,7 @@ win32-g++ {
     DEPENDPATH += $$PWD/../botan/win_mingw64/
     }
 
-    contains(QT_ARCH, i386){
+    !contains(QT_ARCH, x86_64){
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw32/
     DEPENDPATH += $$PWD/../botan/win_mingw32/

@@ -60,7 +60,7 @@ win32-g++ {
                         win_mingw64/botan_all_internal.h
                 }
 
-    contains(QT_ARCH, i386){
+    !contains(QT_ARCH, x86_64){
 
              SOURCES += win_mingw32/botan_all.cpp \
                         win_mingw32/botan_all_aesni_sse2_ssse3.cpp \
