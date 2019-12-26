@@ -128,14 +128,14 @@ win32 {
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
 
-    mingw64{
+    MINGW64{
 
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
     }
 
-    mingw32{
+    MINGW32{
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw32/
     DEPENDPATH += $$PWD/../botan/win_mingw32/
