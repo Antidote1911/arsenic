@@ -44,8 +44,9 @@ unix {
 }#end linux
 
 win32 {
+    QMAKE_CXXFLAGS += -Wa,-mbig-obj
 
-QMAKE_CXXFLAGS += -Wa,-mbig-obj
+    win32-g++-64{
 
              SOURCES += win_mingw64/botan_all.cpp \
                         win_mingw64/botan_all_aesni_sse2_ssse3.cpp \
@@ -57,6 +58,23 @@ QMAKE_CXXFLAGS += -Wa,-mbig-obj
 
              HEADERS += win_mingw64/botan_all.h \
                         win_mingw64/botan_all_internal.h
+                }
+
+    win32-g++-32{
+
+
+
+             SOURCES += win_mingw32/botan_all.cpp \
+                        win_mingw32/botan_all_aesni_sse2_ssse3.cpp \
+                        win_mingw32/botan_all_avx2.cpp \
+                        win_mingw32/botan_all_bmi2.cpp \
+                        win_mingw32/botan_all_rdrand.cpp \
+                        win_mingw32/botan_all_rdseed_sse2.cpp \
+                        win_mingw32/botan_all_sse2_ssse3.cpp
+
+             HEADERS += win_mingw32/botan_all.h \
+                        win_mingw32/botan_all_internal.h
+                }
 }
 
 QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3 -mavx2
