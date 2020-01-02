@@ -2,76 +2,77 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/eid3dqq4c28u7sf4?svg=true)](https://ci.appveyor.com/project/Antidote1911/arsenic)
 
 # Arsenic
-**A simple tool to encrypt files or folders with strong algorithms.**
+**Un outil simple pour chiffrer vos fichiers et dossiers.**
 
 
 <img src='screenshots/main.png'/>
 
 ## Simple Description: ##
-Arsenic was intended as a lightweight, portable application, that would encode a list of local files and directories using a pass-phrase. The user can select between three strong algorithms:
+Arsenic et un logiciel simple et legé destiné à chiffrer localement des listes de fichiers ou meme des dossiers entiers. L'utilisateur peu choisir entre trois algorithmes:
+
 - [XChaCha20Poly1305](https://botan.randombit.net/handbook/api_ref/cipher_modes.html#chacha20poly1305)
 - [AES256](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard)/[GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
 - [Serpent](https://en.wikipedia.org/wiki/Serpent_(cipher))/[GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
 
-Some useful tools are included. Hash calculator, password generator etc...
+Quelques outils sont inclus : calculateur de hash, generateur de mot de passe etc...
 
-Arsenic was originally forked from [QtCrypt](https://github.com/trashctor/QtCrypt) published in 2015 by [trashctor](https://github.com/trashctor).<br>
+A l'origine, Arsenic est un fork de [QtCrypt](https://github.com/trashctor/QtCrypt) publié en 2015 par [trashctor](https://github.com/trashctor).<br>
 https://github.com/trashctor/QtCrypt<br>
 
-- Updated from Qt4 to Qt5
-- Switch from an old [libsodium](https://github.com/jedisct1/libsodium "Strong cryptographic library") version to [Botan](https://botan.randombit.net/ "Strong cryptographic library").
-- Key derivation is now calculated by [Argon2](https://en.wikipedia.org/wiki/Argon2)
-- The user can now select between 3 [AEAD encryption algorithms](https://en.wikipedia.org/wiki/Authenticated_encryption).
+Voici les ajouts ou modification apportés par Arsenic:
+- Passage de Qt4 to Qt5
+- Remplacemment d'une vieille version de [libsodium](https://github.com/jedisct1/libsodium "Strong cryptographic library") à une version recente de [Botan](https://botan.randombit.net/ "Strong cryptographic library").
+- La dérivation de la clé à partir du mot de passe est maintenant confiée à [Argon2](https://en.wikipedia.org/wiki/Argon2)
+- L'utilisateur peu maintenant choisir entre trois algorithmes de chiffrement [AEAD](https://en.wikipedia.org/wiki/Authenticated_encryption).
 ([XChaCha20Poly1305](https://botan.randombit.net/handbook/api_ref/cipher_modes.html#chacha20poly1305), [AES256](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard)/[GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode), or [Serpent](https://en.wikipedia.org/wiki/Serpent_(cipher))/[GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode))
-- Support GUI mode and command-line mode
-- add Options and configuration
-- Add a Password generator
-- Add a Hash calculator :
+- Le logiciel peu désormais être utilisé en ligne de commande
+- ajout d'un paneau de configuration pour les utilisateurs avancés
+- ajout d'un generateur de mot de passe
+- Ajout d'un calculateur de hash pour les algoritmes suivants :
 <em>(SHA-3, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512-256, Skein-512, Keccak-1600, Whirlpool, Blake2b, SHAKE-128, SHAKE-256, GOST-34.11, SM3, Tiger, Streebog-256, Streebog-512, RIPEMD-160, Adler32, MD4, MD5, CRC24, CRC32)</em>
-- Add a dark skin
+- Ajout d'un skin sombre
 
-Thanks to :
-- [trashctor](https://github.com/trashctor) for the original QtCrypt.
-- [Jack Lloyd from randombit.net](https://botan.randombit.net) for the powerful Botan C++ cryptographic library. You can find the Github [here](https://github.com/randombit/botan).<br>
-It is released under the permissive Simplified [BSD license](https://botan.randombit.net/license.txt)
+Un grand merci à :
+- [trashctor](https://github.com/trashctor) pour QtCrypt.
+- [Jack Lloyd de randombit.net](https://botan.randombit.net) pour la superbe bibliotheque cryptographique c++, Botan. Vous pouvez trouver son Github [ici](https://github.com/randombit/botan).<br>
+Botan est distribuée sous license simplifée [BSD license](https://botan.randombit.net/license.txt)
 
-## Command line mode: ##
-**The command line interface doesn't support space in the arguments.**
-Encrypt a file named "test.mkv" with the secret passphrase "mysuperbadpassphrase" and user e-mail "myemail@cool.com". Encryption produce the encrypted file "test.mkv.arsenic" but it can be renamed because the original file name is encrypted in the file.
+## Mode ligne de commande: ##
+**ATTENTION, le mode ligne de commande ne supporte pas les espaces dans les parametres. (nom de fichier, mot de passe)**
+L'exemple suivant chiffre le fichier "test.mkv" avec le mot de passe "mysuperbadpassphrase" et l'e-mail "myemail@cool.com". Le resultat est un fichier nommé "test.mkv.arsenic" mais il peu être renommé car le nom original à été écrit dans le fichier chiffré.
 
 ```bash
     ./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com test.mkv
-    # For decrypt this file :
+    # Pour déchiffrer ce fichier :
     ./arsenic -d -p mysuperbadpassphrase test.mkv.arsenic
-    # View help :
+    # Voir l'aide :
     ./arsenic -h
-    # View Arsenic version :
+    # Voir la version d'arsenic :
     ./arsenic -v
 ```
 
-## Technical description: ##
-- First, the file or directory is zipped
-- A 96 bytes Master key is generated by Argon2 from the user pass-phrase and a 16 bytes (128 bits) random salt
-- The master key is split in three 32 bytes keys. Key1, Key2, Key3
-- A 128 bits initial random nonce (or initialization vector) is generated
-- Write in the encrypted file a "magic number"
-- Write in the encrypted file the version of Arsenic
-- Write Argon2 parameters (memory limit, iterations, salt)
-- Write the name of the selected AEAD algorithm
-- Write additional data (user name or e-mail)
-- Write the initial nonce
-- encrypt (with key1 and nonce) the header size, and write it
-- encrypt (with key2 and nonce+) original file name and file size
-- encrypt (with key3 and nonce++) the encrypted file.
-- Write the 16 bytes authentication tag.
+## Description technique: ##
+- Premierement, le fichier ou dossier est compressé au format zip
+- Une clé maitre de 96 bytes est générée par Argon2 à partir du mot de passe et d'un "sel" aléatoire de 16 bytes (128 bits)
+- Cette clée est splitée en trois clées de 32 bytes chacunes. clée1, clée2, clée3
+- Un vecteur d'initialisation (ou nonce) de 128 bits est généré.
+- Ecriture en tete de fichier d'un "magic number"
+- Ecriture de la version d'Arsenic
+- Ecriture des parametres d'Argon2 parameters (memory limit, iterations, sel)
+- Ecriture du nom de l'algorithme utilisé
+- Ecriture de l'email
+- Ecriture du vecteur d'initialisation (VI)
+- chiffrage (avec clé1 et VI) de la taille de l'entete du fichier, et écriture
+- chiffrage (avec clé2 et VI +1) du nom du fichier et de sa taille
+- chiffrage (avec clé3 and VI +2) du fichier original.
+- Ecriture du tag d'authentication de 16 bytes.
 
-Notes:
-The initial nonce is incremented before all encryption operations to ensure it is never reused with the same key.<br>
-Additional data is NOT a secret and it is written in clear. It is only used by the authentication algorithm. You can read more informations
-on AEAD encryption [on wikipedia](https://en.wikipedia.org/wiki/Authenticated_encryption)
-The encryption is optimized for big files. Arsenic read and encrypt chunk by chunk.
+Notes:<br>
+Le vecteur d'initialisation est incrémenté avant chaque utilisation pour etre certain de ne jamais être réutilisé avec une même clé.<br>
+L'ecriture de l'email ou du pseudo, se fait en clair et n'est pas secret. Ils sont uniquemment utilisé par l'algoritme d'authentification. Vous pouvez lire plus d'information à ce sujet sur [wikipedia](https://en.wikipedia.org/wiki/Authenticated_encryption)<br>
+Le processus est optimisé pour les gros fichiers. Arsenic lit et ecrit les fichiers morceaux par morceaux.
 
-## Developers: ##
+## Developeurs: ##
 The application was primarily built around the Qt 5.13.2-1 framework. Other dependencies include QuaZIP 0.8.1, zlib 1.2.11, used for zipping and unzipping directories, and Botan 2.12. Since these libraries do not depend on anything besides Qt, they should theoretically compile on any platform that Qt supports.
 To update Botan, you must regenerate the amalgamation build from source:
 
@@ -89,16 +90,16 @@ To update Botan, you must regenerate the amalgamation build from source:
 To build the program from source, the appropriate Qt version should be installed and configured for the target platform, including any tools such as Qt Creator.<br>
 Arsenic work well but it need some code simplifications, code comments, orthographic corrections ,etc.<br> Any suggestions or help are welcome.
 
-## CAUTION: ##
-A simple tool to encrypt file is not magic. If You use an unsecure system, Arsenic (and all encryption tools) are useless. Arsenic do not protect you from key-logger, disk analyze, virus, vignetting cache etc...
+## AVERTISSEMENT: ##
+Un logiciel de chiffrage n'est pas magique ou ultime. Si vous utilisez un systeme d'exploitation vulnérable, Arsenic ou même n'importe quel outil cryptographique ne sert à rien. Arsenic ne vous protege pas contre les virus, les keyloggers, l'annalyse de disque dur, le cache des mignatures etc...
 
-## More Screenshots: ##
+## Plus de capture d'ecran: ##
 
 <img src='screenshots/pass_generator.png'/>
 <img src='screenshots/hash.png'/>
 <img src='screenshots/config.png'/>
 
-## License: ##
+## License d'utilisation: ##
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
