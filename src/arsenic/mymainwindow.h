@@ -6,6 +6,7 @@
 
 #include "myfilesystemmodel.h"
 #include "preferences.h"
+#include "skin.h"
 
 
 /*******************************************************************************
@@ -58,6 +59,7 @@ private slots:
     void aboutQt();
     void aboutArsenic();
     void Argon2_tests();
+    void dark_theme();
 
 protected:
 	void closeEvent(QCloseEvent *event) Q_DECL_OVERRIDE;
@@ -72,6 +74,7 @@ private:
 	Ui::MyMainWindow *ui;
 	MyFileSystemModel *file_model;
 	QString password;
+    Skin skin;
 };
 
 #endif // MYMAINWINDOW_H

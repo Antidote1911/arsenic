@@ -11,6 +11,7 @@ namespace ARs
 struct Preferences
 {
     Preferences() : showPassword(DEFAULT_SHOW_PSW)
+      ,darkTheme(DEFAULT_DARK_THEME)
       ,extension(DEFAULT_EXTENSION)
       ,argonMemory(DEFAULT_ARGON_MEM_LIMIT)
       ,argonItr(DEFAULT_ARGON_ITR_LIMIT)
@@ -20,6 +21,7 @@ struct Preferences
     {}
 
     bool showPassword;
+    bool darkTheme;
     QString extension;
     int argonMemory;
     int argonItr;

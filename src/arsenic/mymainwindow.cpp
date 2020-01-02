@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 
 #include <QMessageBox>
 #include <QCloseEvent>
@@ -49,6 +49,7 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
     connect(ui->actionAbout_Arsenic, &QAction::triggered, this, &MyMainWindow::aboutArsenic);
     connect(ui->actionArgon2_tests, &QAction::triggered, this, &MyMainWindow::Argon2_tests);
     connect(ui->actionPassword_Generator, &QAction::triggered, this, &MyMainWindow::on_generator_clicked);
+    connect(ui->actionDark_Theme,  &QAction::triggered, this, [=]{ dark_theme(); });
 
 	// note that some password information will be discarded if the text characters entered use more
 	// than	1 byte per character in UTF-8
@@ -71,6 +72,16 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
     {
         ui->password_0->setEchoMode(QLineEdit::Password);
         ui->password_1->setEchoMode(QLineEdit::Password);
+    }
+
+    ui->actionDark_Theme->setChecked(m_prefs->darkTheme);
+    if (m_prefs->darkTheme)
+    {
+        skin.setSkin("dark");
+    }
+    else
+    {
+        skin.setSkin("notheme");
     }
 
 
@@ -107,16 +118,18 @@ MyMainWindow::~MyMainWindow()
 void MyMainWindow::loadPreferences()
 {
     m_prefs->showPassword  = settings->value("showPassword", ARs::DEFAULT_SHOW_PSW).toBool();
+    m_prefs->darkTheme     = settings->value("darkTheme", ARs::DEFAULT_DARK_THEME).toBool();
     m_prefs->extension     = settings->value("extension"    , ARs::DEFAULT_EXTENSION).toString();
     m_prefs->argonMemory   = settings->value("argonMemory" , ARs::DEFAULT_ARGON_MEM_LIMIT).toInt();
     m_prefs->argonItr      = settings->value("argonItr"    , ARs::DEFAULT_ARGON_ITR_LIMIT).toInt();
-    m_prefs->cryptoAlgo      = settings->value("cryptoAlgo"    , ARs::DEFAULT_CRYPTO_ALGO).toString();
-    m_prefs->userName     = settings->value("userName"    , ARs::DEFAULT_USER_NAME).toString();
+    m_prefs->cryptoAlgo    = settings->value("cryptoAlgo"    , ARs::DEFAULT_CRYPTO_ALGO).toString();
+    m_prefs->userName      = settings->value("userName"    , ARs::DEFAULT_USER_NAME).toString();
 }
 
 void MyMainWindow::savePreferences()
 {
     settings->setValue("showPassword" , m_prefs->showPassword);
+    settings->setValue("darkTheme" , m_prefs->darkTheme);
     settings->setValue("extension"     , m_prefs->extension);
     settings->setValue("argonMemory"  , m_prefs->argonMemory);
     settings->setValue("argonItr"     , m_prefs->argonItr);
@@ -804,4 +817,23 @@ void MyMainWindow::Argon2_tests()
 {
     auto* Argon2_tests = new Argontests(this);
     Argon2_tests->open();
+}
+
+void MyMainWindow::dark_theme()
+{
+
+    if (ui->actionDark_Theme->isChecked())
+    {
+
+        skin.setSkin("dark");
+        m_prefs->darkTheme = true;
+    }
+    else
+    {
+        skin.setSkin("notheme");
+        m_prefs->darkTheme = false;
+    }
+
+
+
 }

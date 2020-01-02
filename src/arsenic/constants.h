@@ -25,6 +25,7 @@ const QString DEFAULT_USER_NAME      {""};
 const int DEFAULT_ARGON_ITR_LIMIT    {0};
 const int DEFAULT_ARGON_MEM_LIMIT    {0};
 const bool DEFAULT_SHOW_PSW          {false};
+const bool DEFAULT_DARK_THEME        {false};
 const QString BOTAN_VERSION          {QString::fromStdString(Botan::version_string())};
 const QString ZLIB_Version           {ZLIB_VERSION};
 

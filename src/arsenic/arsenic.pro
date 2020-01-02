@@ -65,7 +65,8 @@ HEADERS += \
     mysavethread.h \
     passgenerator.h \
     preferences.h \
-    progressbar.h
+    progressbar.h \
+    skin.h
 
 SOURCES += \
     AboutDialog.cpp \
@@ -90,7 +91,8 @@ SOURCES += \
     mysavebar.cpp \
     mysavethread.cpp \
     passgenerator.cpp \
-    progressbar.cpp
+    progressbar.cpp \
+    skin.cpp
 
 RESOURCES += \
     rsc.qrc
