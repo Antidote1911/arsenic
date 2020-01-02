@@ -28,6 +28,7 @@ https://github.com/trashctor/QtCrypt<br>
 - Add a Password generator
 - Add a Hash calculator :
 <em>(SHA-3, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512-256, Skein-512, Keccak-1600, Whirlpool, Blake2b, SHAKE-128, SHAKE-256, GOST-34.11, SM3, Tiger, Streebog-256, Streebog-512, RIPEMD-160, Adler32, MD4, MD5, CRC24, CRC32)</em>
+- Add a dark skin
 
 Thanks to :
 - [trashctor](https://github.com/trashctor) for the original QtCrypt.
