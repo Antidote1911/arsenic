@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MyMainWindow</string>
+   <string notr="true">MyMainWindow</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -106,10 +106,13 @@
       <item row="0" column="1">
        <widget class="QLineEdit" name="password_0">
         <property name="text">
-         <string>Maximum lenght 32</string>
+         <string notr="true">Maximum lenght 32</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
+        </property>
+        <property name="placeholderText">
+         <string notr="true"/>
         </property>
        </widget>
       </item>
@@ -123,10 +126,13 @@
       <item row="1" column="1">
        <widget class="QLineEdit" name="password_1">
         <property name="text">
-         <string>Maximum lenght 32</string>
+         <string notr="true">Maximum lenght 32</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
+        </property>
+        <property name="placeholderText">
+         <string notr="true"/>
         </property>
        </widget>
       </item>
@@ -217,7 +223,7 @@
      <x>0</x>
      <y>0</y>
      <width>832</width>
-     <height>23</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -245,8 +251,14 @@
     <property name="title">
      <string>Config</string>
     </property>
+    <widget class="QMenu" name="menuLanguage">
+     <property name="title">
+      <string>Language</string>
+     </property>
+    </widget>
     <addaction name="actionConfiguration"/>
     <addaction name="actionDark_Theme"/>
+    <addaction name="menuLanguage"/>
    </widget>
    <widget class="QMenu" name="menuPassword_Generator">
     <property name="title">
@@ -364,6 +376,16 @@
    </property>
    <property name="text">
     <string>Dark Theme</string>
+   </property>
+  </action>
+  <action name="actionEnglish">
+   <property name="text">
+    <string>English</string>
+   </property>
+  </action>
+  <action name="actionFrench">
+   <property name="text">
+    <string>French</string>
    </property>
   </action>
  </widget>

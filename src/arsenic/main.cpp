@@ -5,6 +5,7 @@
 #include <QStyleFactory>
 #include <QDebug>
 #include <QCommandLineParser>
+#include <QTranslator>
 #include "encrypt.h"
 #include "decrypt.h"
 

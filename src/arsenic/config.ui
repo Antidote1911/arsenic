@@ -74,19 +74,22 @@
       </item>
       <item row="0" column="1">
        <widget class="QComboBox" name="comboMemory">
+        <property name="currentText">
+         <string notr="true">Interactive</string>
+        </property>
         <item>
          <property name="text">
-          <string>Interactive</string>
+          <string notr="true">Interactive</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Moderate</string>
+          <string notr="true">Moderate</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Sensitive</string>
+          <string notr="true">Sensitive</string>
          </property>
         </item>
        </widget>
@@ -100,19 +103,22 @@
       </item>
       <item row="1" column="1">
        <widget class="QComboBox" name="comboOps">
+        <property name="currentText">
+         <string notr="true">Interactive</string>
+        </property>
         <item>
          <property name="text">
-          <string>Interactive</string>
+          <string notr="true">Interactive</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Moderate</string>
+          <string notr="true">Moderate</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Sensitive</string>
+          <string notr="true">Sensitive</string>
          </property>
         </item>
        </widget>
@@ -141,19 +147,22 @@
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QComboBox" name="comboAlgo">
+        <property name="currentText">
+         <string notr="true">ChaCha20Poly1305</string>
+        </property>
         <item>
          <property name="text">
-          <string>ChaCha20Poly1305</string>
+          <string notr="true">ChaCha20Poly1305</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>AES-256/GCM</string>
+          <string notr="true">AES-256/GCM</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Serpent/GCM</string>
+          <string notr="true">Serpent/GCM</string>
          </property>
         </item>
        </widget>

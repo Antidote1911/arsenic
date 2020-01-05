@@ -144,6 +144,4 @@ QMAKE_LFLAGS += -fstack-protector
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
 
-
-
-
+TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_en.ts

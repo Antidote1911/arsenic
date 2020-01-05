@@ -17,6 +17,7 @@ struct Preferences
       ,argonItr(DEFAULT_ARGON_ITR_LIMIT)
       ,cryptoAlgo(DEFAULT_CRYPTO_ALGO)
       ,userName(DEFAULT_USER_NAME)
+      ,langage(DEFAULT_LANGUAGE)
 
     {}
 
@@ -27,6 +28,7 @@ struct Preferences
     int argonItr;
     QString cryptoAlgo;
     QString userName;
+    QString langage;
 
 };
 

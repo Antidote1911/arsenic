@@ -94,124 +94,127 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QComboBox" name="hashSelector">
+       <property name="currentText">
+        <string notr="true">SHA-3</string>
+       </property>
        <item>
         <property name="text">
-         <string>SHA-3</string>
+         <string notr="true">SHA-3</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>SHA-1</string>
+         <string notr="true">SHA-1</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>SHA-224</string>
+         <string notr="true">SHA-224</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>SHA-256</string>
+         <string notr="true">SHA-256</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>SHA-384</string>
+         <string notr="true">SHA-384</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>SHA-512</string>
+         <string notr="true">SHA-512</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>SHA-512-256</string>
+         <string notr="true">SHA-512-256</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Skein-512</string>
+         <string notr="true">Skein-512</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Keccak-1600</string>
+         <string notr="true">Keccak-1600</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Whirlpool</string>
+         <string notr="true">Whirlpool</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Blake2b</string>
+         <string notr="true">Blake2b</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>SHAKE-128</string>
+         <string notr="true">SHAKE-128</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>SHAKE-256</string>
+         <string notr="true">SHAKE-256</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>GOST-34.11</string>
+         <string notr="true">GOST-34.11</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>SM3</string>
+         <string notr="true">SM3</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Tiger</string>
+         <string notr="true">Tiger</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Streebog-256</string>
+         <string notr="true">Streebog-256</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Streebog-512</string>
+         <string notr="true">Streebog-512</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>RIPEMD-160</string>
+         <string notr="true">RIPEMD-160</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Adler32</string>
+         <string notr="true">Adler32</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>MD4</string>
+         <string notr="true">MD4</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>MD5</string>
+         <string notr="true">MD5</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>CRC24</string>
+         <string notr="true">CRC24</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>CRC32</string>
+         <string notr="true">CRC32</string>
         </property>
        </item>
       </widget>

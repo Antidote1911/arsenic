@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QSettings>
+#include <QTranslator>
 
 #include "myfilesystemmodel.h"
 #include "preferences.h"
@@ -61,8 +62,14 @@ private slots:
     void Argon2_tests();
     void dark_theme();
 
+protected slots:
+  // this slot is called by the language menu actions
+  void slotLanguageChanged(QAction* action);
+
 protected:
 	void closeEvent(QCloseEvent *event) Q_DECL_OVERRIDE;
+    // this event is called, when a new translator is loaded or the system language is changed
+      void changeEvent(QEvent*);
 
 private:
     ARs::Preferences *m_prefs;
@@ -75,6 +82,15 @@ private:
 	MyFileSystemModel *file_model;
 	QString password;
     Skin skin;
+    // creates the language menu dynamically from the content of m_langPath
+      void createLanguageMenu(void);
+      QString m_langPath; // Path of language files. This is always fixed to /languages.
+      // loads a language by the given language shortcur (e.g. de, en)
+        void loadLanguage(const QString& rLanguage);
+        QString m_currLang; // contains the currently loaded language
+        QTranslator m_translator; // contains the translations for this application
+          QTranslator m_translatorQt; // contains the translations for qt
+          void switchTranslator(QTranslator& translator, const QString& filename);
 };
 
 #endif // MYMAINWINDOW_H

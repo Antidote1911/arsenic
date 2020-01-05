@@ -75,7 +75,7 @@
      <item row="1" column="2">
       <widget class="QLabel" name="descriptionLabel">
        <property name="text">
-        <string>${DESCRIPTION}</string>
+        <string notr="true">${DESCRIPTION}</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -273,7 +273,7 @@
             <x>0</x>
             <y>0</y>
             <width>569</width>
-            <height>388</height>
+            <height>398</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">

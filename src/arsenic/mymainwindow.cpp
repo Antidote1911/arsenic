@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QListWidgetItem>
 
+
 #include "quazip.h"
 #include "config.h"
 #include "passgenerator.h"
@@ -41,6 +42,8 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
     settings = new QSettings;
 
     MyMainWindow::loadPreferences();
+    MyMainWindow::createLanguageMenu();
+    loadLanguage(m_prefs->langage);
 
     setWindowTitle(ARs::APP_NAME);
 
@@ -50,6 +53,7 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
     connect(ui->actionArgon2_tests, &QAction::triggered, this, &MyMainWindow::Argon2_tests);
     connect(ui->actionPassword_Generator, &QAction::triggered, this, &MyMainWindow::on_generator_clicked);
     connect(ui->actionDark_Theme,  &QAction::triggered, this, [=]{ dark_theme(); });
+
 
 	// note that some password information will be discarded if the text characters entered use more
 	// than	1 byte per character in UTF-8
@@ -124,11 +128,13 @@ void MyMainWindow::loadPreferences()
     m_prefs->argonItr      = settings->value("argonItr"    , ARs::DEFAULT_ARGON_ITR_LIMIT).toInt();
     m_prefs->cryptoAlgo    = settings->value("cryptoAlgo"    , ARs::DEFAULT_CRYPTO_ALGO).toString();
     m_prefs->userName      = settings->value("userName"    , ARs::DEFAULT_USER_NAME).toString();
+    m_prefs->langage      = settings->value("langage"    , ARs::DEFAULT_LANGUAGE).toString();
 }
 
 void MyMainWindow::savePreferences()
 {
     settings->setValue("showPassword" , m_prefs->showPassword);
+    settings->setValue("langage" , m_prefs->langage);
     settings->setValue("darkTheme" , m_prefs->darkTheme);
     settings->setValue("extension"     , m_prefs->extension);
     settings->setValue("argonMemory"  , m_prefs->argonMemory);
@@ -280,7 +286,7 @@ void MyMainWindow::start_crypto(int crypto_type)
         if(pass.toUtf8().size() < ARs::MIN_PASS_LENGTH)
 		{
             QString num_text = QString::number(ARs::MIN_PASS_LENGTH);
-			QString warn_text = QString("The password entered was too short. ") + "Please enter a longer "
+            QString warn_text = QString(tr("The password entered was too short. ")) + "Please enter a longer "
 			"one (at least " + num_text + " ASCII characters/bytes) before continuing.";
 
 			QMessageBox::warning(this, "Password too short!", warn_text);
@@ -290,9 +296,9 @@ void MyMainWindow::start_crypto(int crypto_type)
 		else if(!checked)
 		{
             QString crypto_text = (crypto_type == ARs::START_ENCRYPT) ? "encryption!" : "decryption!";
-			QString warn_text = QString("There were no items selected for " + crypto_text);
+            QString warn_text = QString(tr("There were no items selected for ") + crypto_text);
 
-			QMessageBox::warning(this, "Nothing selected!", warn_text);
+            QMessageBox::warning(this, tr("Nothing selected!"), warn_text);
 		}
 
 		else
@@ -309,7 +315,7 @@ void MyMainWindow::start_crypto(int crypto_type)
                 // check if a username is set for additionnal data encryption
                 if(m_prefs->userName=="")
                 {
-                    QMessageBox::warning(this, "No user name", "You must set a user name or e-mail in configuration !");
+                    QMessageBox::warning(this, tr("No user name"), tr("You must set a user name or e-mail in configuration !"));
                     return;
                 }
 				// check if the user wants to rename the encrypted files to something else
@@ -339,8 +345,8 @@ void MyMainWindow::start_crypto(int crypto_type)
 		}
 	}
 	else
-		QMessageBox::warning(this, "Passwords do not match!", "The password fields do not match! "
-			"Please make sure they were entered correctly and try again.");
+        QMessageBox::warning(this, tr("Passwords do not match!"), tr("The password fields do not match! "
+            "Please make sure they were entered correctly and try again."));
 }
 
 
@@ -383,8 +389,8 @@ void MyMainWindow::on_add_file_clicked()
 	if(red_list.size() > 0)
 	{
 		// create message
-		QString warn_title = "File(s) already added!";
-		QString warn_text = "The following file(s) were already added. They will not be added again.";
+        QString warn_title = tr("File(s) already added!");
+        QString warn_text = tr("The following file(s) were already added. They will not be added again.");
 		QString warn_detail;
 
 		for(int i = 0; i < red_list.size(); i++)
@@ -546,7 +552,7 @@ void MyMainWindow::closeEvent(QCloseEvent *event)
 	// if there was a problem saving the list, ask the user before exiting
 	if(ret_val == MyAbstractBarPublic::EXEC_FAILURE)
 	{
-		ret_val = QMessageBox::warning(this, "Error saving session!", "QtCrypt wasn't able to save "
+        ret_val = QMessageBox::warning(this, "Error saving session!", "Arsenic wasn't able to save "
 			"your current file and directory list. Do you still want to quit?", QMessageBox::Yes |
 			QMessageBox::Cancel, QMessageBox::Cancel);
 
@@ -590,8 +596,8 @@ void MyMainWindow::on_delete_checked_clicked()
 
 	if(total_items != 0)
 	{
-		QMessageBox::StandardButton ret_val = QMessageBox::question(this, "Delete items?", "Are you "
-			"sure you wish to permanently delete the selected items?", QMessageBox::Ok |
+        QMessageBox::StandardButton ret_val = QMessageBox::question(this, tr("Delete items?"), tr("Are you "
+            "sure you wish to permanently delete the selected items?"), QMessageBox::Ok |
 			QMessageBox::Cancel, QMessageBox::Cancel);
 
 		if(ret_val == QMessageBox::Ok)
@@ -608,25 +614,25 @@ void MyMainWindow::on_delete_checked_clicked()
 					if(QFile::remove(full_path))
 					{
 						file_model->removeItem(full_path);
-						result_list.push_back("Successfully deleted file!");
+                        result_list.push_back(tr("Successfully deleted file!"));
 					}
 					else
-						result_list.push_back("Error deleting file!");
+                        result_list.push_back(tr("Error deleting file!"));
 				}
 				else if(item_type == MyFileInfo::typeToString(MyFileInfoPublic::MFIT_DIR))
 				{
 					if(QDir(full_path).removeRecursively())
 					{
 						file_model->removeItem(full_path);
-						result_list.push_back("Successfully deleted directory!");
+                        result_list.push_back(tr("Successfully deleted directory!"));
 					}
 					else
-						result_list.push_back("Error deleting directory!");
+                        result_list.push_back(tr("Error deleting directory!"));
 				}
 				else
 				{
 					file_model->removeItem(full_path);
-					result_list.push_back("Item was not found!");
+                    result_list.push_back(tr("Item was not found!"));
 				}
 			}
 
@@ -824,7 +830,6 @@ void MyMainWindow::dark_theme()
 
     if (ui->actionDark_Theme->isChecked())
     {
-
         skin.setSkin("dark");
         m_prefs->darkTheme = true;
     }
@@ -834,6 +839,103 @@ void MyMainWindow::dark_theme()
         m_prefs->darkTheme = false;
     }
 
+}
 
+// we create the menu entries dynamically, dependent on the existing translations.
+void MyMainWindow::createLanguageMenu(void)
+{
+ QActionGroup* langGroup = new QActionGroup(ui->menuLanguage);
+ langGroup->setExclusive(true);
 
+ connect(langGroup, SIGNAL (triggered(QAction *)), this, SLOT (slotLanguageChanged(QAction *)));
+
+ // format systems language
+ QString defaultLocale = QLocale::system().name(); // e.g. "de_DE"
+ defaultLocale.truncate(defaultLocale.lastIndexOf('_')); // e.g. "de"
+
+ m_langPath = QApplication::applicationDirPath();
+ m_langPath.append("/languages");
+ QDir dir(m_langPath);
+ QStringList fileNames = dir.entryList(QStringList("arsenic_*.qm"));
+
+ for (int i = 0; i < fileNames.size(); ++i) {
+  // get locale extracted by filename
+  QString locale;
+  locale = fileNames[i]; // "TranslationExample_de.qm"
+  locale.truncate(locale.lastIndexOf('.')); // "TranslationExample_de"
+  locale.remove(0, locale.indexOf('_') + 1); // "de"
+
+ QString lang = QLocale::languageToString(QLocale(locale).language());
+ QIcon ico(QString("%1/%2.svg").arg(m_langPath).arg(locale));
+
+ QAction *action = new QAction(ico, lang, this);
+ action->setCheckable(true);
+ action->setData(locale);
+
+ ui->menuLanguage->addAction(action);
+ langGroup->addAction(action);
+
+ // set default translators and language checked
+ if (m_prefs->langage == locale)
+ {
+ action->setChecked(true);
+ }
+ }
+}
+
+// Called every time, when a menu entry of the language menu is called
+void MyMainWindow::slotLanguageChanged(QAction* action)
+{
+ if(0 != action) {
+  // load the language dependant on the action content
+  loadLanguage(action->data().toString());
+  //setWindowIcon(action->icon());
+ }
+}
+
+void MyMainWindow::loadLanguage(const QString& rLanguage)
+{
+ if(m_currLang != rLanguage) {
+  m_currLang = rLanguage;
+  QLocale locale = QLocale(m_currLang);
+  QLocale::setDefault(locale);
+  QString languageName = QLocale::languageToString(locale.language());
+  switchTranslator(m_translator, QString("arsenic_%1.qm").arg(rLanguage));
+  switchTranslator(m_translatorQt, QString("qt_%1.qm").arg(rLanguage));
+  //ui->statusBar->showMessage(tr("Current Language changed to %1").arg(languageName));
+  m_prefs->langage =rLanguage;
+ }
+}
+
+void MyMainWindow::switchTranslator(QTranslator& translator, const QString& filename)
+{
+ // remove the old translator
+ qApp->removeTranslator(&translator);
+
+ // load the new translator
+QString path = QApplication::applicationDirPath();
+    path.append("/languages/");
+ if(translator.load(path + filename)) //Here Path and Filename has to be entered because the system didn't find the QM Files else
+  qApp->installTranslator(&translator);
+}
+void MyMainWindow::changeEvent(QEvent* event)
+{
+ if(0 != event) {
+  switch(event->type()) {
+   // this event is send if a translator is loaded
+   case QEvent::LanguageChange:
+    ui->retranslateUi(this);
+    break;
+
+   // this event is send, if the system, language changes
+   case QEvent::LocaleChange:
+   {
+    QString locale = QLocale::system().name();
+    locale.truncate(locale.lastIndexOf('_'));
+    loadLanguage(locale);
+   }
+   break;
+  }
+ }
+ QMainWindow::changeEvent(event);
 }

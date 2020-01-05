@@ -22,6 +22,7 @@ const quint32 MAGIC_NUMBER           {0x41525345};
 // Default constants for Arsenic preferences
 const QString DEFAULT_EXTENSION      {"arsenic"};
 const QString DEFAULT_USER_NAME      {""};
+const QString DEFAULT_LANGUAGE      {"en"};
 const int DEFAULT_ARGON_ITR_LIMIT    {0};
 const int DEFAULT_ARGON_MEM_LIMIT    {0};
 const bool DEFAULT_SHOW_PSW          {false};
