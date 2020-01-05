@@ -45,7 +45,7 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
     MyMainWindow::createLanguageMenu();
     loadLanguage(m_prefs->langage);
 
-    setWindowTitle(ARs::APP_NAME);
+    setWindowTitle(ARs::APP_LONG_NAME);
 
 	setModel(new MyFileSystemModel(nullptr));
     connect(ui->actionAbout_Qt, &QAction::triggered, this, &MyMainWindow::aboutQt);

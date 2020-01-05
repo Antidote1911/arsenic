@@ -20,8 +20,7 @@ void Skin::setSkin(const QString &key)
 
     if (key=="dark")
     {
-        // modify palette to dark
-        qApp->setStyle("Fusion");
+        // modify palette to dark        
         QPalette darkPalette;
         darkPalette.setColor(QPalette::Window,QColor(53,53,53));
         darkPalette.setColor(QPalette::WindowText,Qt::white);

@@ -100,6 +100,7 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
 
     // open the source file and extract the initial nonce and password salt
     QDataStream src_stream(&src_file);
+    src_stream.setVersion(QDataStream::Qt_5_0);
 
     // Read and check the header
     quint32 magic;
@@ -110,8 +111,7 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     }
 
     // Read the version
-    QString version;
-    src_stream.setVersion(QDataStream::Qt_5_0);
+    QString version;    
     src_stream >> version;
     qDebug() << "Decryption: Version of the Encrypted file:" << version;
 
@@ -131,21 +131,17 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
 
     // Read Argon2 parameters
     qint32 memlimit;
-    src_stream.setVersion(QDataStream::Qt_5_0);
     src_stream >> memlimit;
 
     qint32 iterations;
-    src_stream.setVersion(QDataStream::Qt_5_0);
     src_stream >> iterations;
 
     // Read crypto algo parameters
     QString cryptoAlgo;
-    src_stream.setVersion(QDataStream::Qt_5_0);
     src_stream >> cryptoAlgo;
 
     // Read additional data (username)
     QString userName;
-    src_stream.setVersion(QDataStream::Qt_5_0);
     src_stream >> userName;
 
     std::unique_ptr<Botan::AEAD_Mode> dec = Botan::AEAD_Mode::create(cryptoAlgo.toStdString(), Botan::DECRYPTION);

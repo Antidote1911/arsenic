@@ -64,7 +64,7 @@ AboutDialog::AboutDialog(QWidget* parent)
     m_ui->nameLabel->setFont(nameLabelFont);
 
     QString debugInfo;
-    debugInfo.append(ARs::APP_NAME).append("\n");
+    debugInfo.append(ARs::APP_LONG_NAME).append("\n");
     debugInfo.append("Qt ").append(QString::fromLocal8Bit(qVersion())).append("\n");
     debugInfo.append(QObject::tr("Operating system: %1\nCPU architecture: %2\nKernel: %3 %4 \nHostname: %5\n")
                                  .arg(QSysInfo::prettyProductName(),

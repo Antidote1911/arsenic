@@ -204,6 +204,10 @@
         <property name="text">
          <string>Encrypt</string>
         </property>
+        <property name="icon">
+         <iconset resource="rsc.qrc">
+          <normaloff>:/pixmaps/icon.png</normaloff>:/pixmaps/icon.png</iconset>
+        </property>
        </widget>
       </item>
       <item>
@@ -398,6 +402,8 @@
   <tabstop>encrypt_rename</tabstop>
   <tabstop>encrypt_filename</tabstop>
  </tabstops>
- <resources/>
+ <resources>
+  <include location="rsc.qrc"/>
+ </resources>
  <connections/>
 </ui>

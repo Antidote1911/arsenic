@@ -19,10 +19,11 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     app.setOrganizationName(ARs::APP_ORGANIZATION);
-    app.setOrganizationDomain(ARs::APP_URL);
-    app.setApplicationName(ARs::APP_NAME);
+    app.setOrganizationDomain(ARs::APP_URL);    
     app.setApplicationVersion(ARs::APP_VERSION);
+    app.setApplicationName(ARs::APP_LONG_NAME);
     app.setWindowIcon(QIcon(":/pixmaps/icon.png"));
+    app.setStyle("Fusion");
 
     QCommandLineParser parser;
     parser.setApplicationDescription(ARs::APP_DESCRIPTION);
