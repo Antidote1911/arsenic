@@ -12,18 +12,7 @@ namespace MyEncryptBarThreadPublic
 }
 
 
-/*******************************************************************************
 
-
-
-*******************************************************************************/
-
-
-namespace MyEncryptBarPublic
-{
-	// used for getting the status of each item after the encryption thread is finished
-    enum : int {ZIP_ERROR = MyCryptMessagesPublic::CRYPT_SUCCESS + 1, NOT_STARTED};
-}
 
 
 /*******************************************************************************
@@ -52,7 +41,6 @@ protected:
 private:
 	QString createDetailedText();
 	void cleanModel();
-	QString errorCodeToString(int error_code);
 	MyEncryptBarThreadPublic::MyEncryptThread *worker_thread;
 	MyFileSystemModel *ptr_model;
 };

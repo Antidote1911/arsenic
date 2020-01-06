@@ -66,12 +66,10 @@ AboutDialog::AboutDialog(QWidget* parent)
     QString debugInfo;
     debugInfo.append(ARs::APP_LONG_NAME).append("\n");
     debugInfo.append("Qt ").append(QString::fromLocal8Bit(qVersion())).append("\n");
-    debugInfo.append(QObject::tr("Operating system: %1\nCPU architecture: %2\nKernel: %3 %4 \nHostname: %5\n")
-                                 .arg(QSysInfo::prettyProductName(),
-                                      QSysInfo::currentCpuArchitecture(),
-                                      QSysInfo::kernelType(),
-                                      QSysInfo::kernelVersion(),
-                                      QSysInfo::machineHostName()));
+    debugInfo.append("Operating system: "+QSysInfo::prettyProductName()).append("\n");
+    debugInfo.append("CPU architecture: "+QSysInfo::currentCpuArchitecture()).append("\n");
+    debugInfo.append("Kernel: "+QSysInfo::kernelType()).append(QSysInfo::kernelVersion()).append("\n");
+    debugInfo.append("Hostname: "+QSysInfo::machineHostName()).append("\n");
     debugInfo.append(ARs::BOTAN_VERSION).append("\n");
     debugInfo.append("Zlib "+ARs::ZLIB_Version).append("\n");
 

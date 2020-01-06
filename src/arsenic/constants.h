@@ -16,8 +16,7 @@ namespace ARs  // for Arsenic Preferences
 const QString APP_VERSION            {"1.0"};
 const QString APP_SHORT_NAME         {"Arsenic"};
 const QString APP_LONG_NAME          {"Arsenic "+APP_VERSION};
-const QString APP_ORGANIZATION       {"Team1911"};
-const QString APP_DESCRIPTION        {QObject::tr("Strongs files or directory encryption")};
+const QString APP_DESCRIPTION        {"Strongs files or directory encryption"};
 const QString APP_URL                {"https://github.com/Antidote1911"};
 const quint32 MAGIC_NUMBER           {0x41525345};
 

@@ -14,10 +14,9 @@
 #include "botan_all.h"
 
 using namespace MyDecryptBarThreadPublic;
-using namespace MyDecryptBarPublic;
 using namespace MyAbstractBarPublic;
 using namespace MyFileSystemModelPublic;
-using namespace MyCryptMessagesPublic;
+using namespace MyMessagesPublic;
 
 using namespace ARs;
 
@@ -170,7 +169,7 @@ void MyDecryptThread::runHelper()
 			QString unzip_path = QDir::cleanPath(item_list[i]->getPath() + "/" + unzip_name);
 
 			// check if there was an error. if so, do nothing else
-			if(decrypt_ret_val != CRYPT_SUCCESS)
+            if(decrypt_ret_val != DECRYPT_SUCCESS)
 				status_list[i] = decrypt_ret_val;
 			// otherwise, decryption was successful. unzip the file into the encrypted file's directory
 			else
@@ -199,7 +198,7 @@ void MyDecryptThread::runHelper()
 					if(JlCompress::extractDir(decrypt_path, unzip_dir).size() != 0)
 					{
 						// unzipping was a success, process is finished. add in the decrypted item
-						status_list[i] = CRYPT_SUCCESS;
+                        status_list[i] = DECRYPT_SUCCESS;
 
 						if(item_type == MyFileInfo::typeToString(MyFileInfoPublic::MFIT_FILE))
 							ptr_model->insertItem(ptr_model->rowCount(), unzip_path);
@@ -345,13 +344,10 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
     {
         QString error =e.what();
         emit updateStatusText(error);
-        return DATA_DECRYPT_ERROR;
+        return SRC_HEADER_DECRYPT_ERROR;
     }
 
     header_size = qFromLittleEndian<qint64>(qint64_buffer.data() + MACBYTES);
-
-    if(header_size <= static_cast<int>(MACBYTES + sizeof(qint64)) || header_size > IN_BUFFER_SIZE)
-        return SRC_HEADER_DECRYPT_ERROR;
 
     src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
 
@@ -368,7 +364,7 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
     {
         QString error =e.what();
         emit updateStatusText(error);
-        return DATA_DECRYPT_ERROR;
+        return SRC_HEADER_DECRYPT_ERROR;
     }
 
     qint64 filesize = qFromLittleEndian<qint64>(main_buffer.data() + MACBYTES);
@@ -445,6 +441,6 @@ int MyDecryptThread::myDecryptFile(const QString &des_path, const QString &src_p
                     return DATA_DECRYPT_ERROR;
                 }
     emit updateGeneralProgress(100);
-    emit updateStatusText("Encryption finished.");
-    return CRYPT_SUCCESS;
+    emit updateStatusText("Decryption finished.");
+    return DECRYPT_SUCCESS;
 }

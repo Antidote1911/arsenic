@@ -16,10 +16,9 @@
 
 
 using namespace MyEncryptBarThreadPublic;
-using namespace MyEncryptBarPublic;
 using namespace MyAbstractBarPublic;
 using namespace MyFileSystemModelPublic;
-using namespace MyCryptMessagesPublic;
+using namespace MyMessagesPublic;
 
 using namespace ARs;
 

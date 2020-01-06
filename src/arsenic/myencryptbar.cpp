@@ -2,11 +2,11 @@
 #include "myencryptbar.h"
 #include "myencryptthread.h"
 #include "myfilesystemmodel.h"
+#include "divers.h"
 
 using namespace MyAbstractBarPublic;
-using namespace MyEncryptBarPublic;
 using namespace MyEncryptBarThreadPublic;
-using namespace MyCryptMessagesPublic;
+using namespace MyMessagesPublic;
 
 
 
@@ -21,11 +21,11 @@ MyEncryptBar::MyEncryptBar(QWidget *parent, MyFileSystemModel *arg_ptr_model, co
     &arg_password,const QString &arg_userName, QString ext,QString cryptoAlgo,int argonMemory,int argonOps,bool delete_success, const QString *encrypt_name) : MyAbstractBar(parent),
 	ptr_model(arg_ptr_model)
 {
-	setWindowTitle("Encrypting...");
+    setWindowTitle(tr("Encrypting..."));
 
 	// the message displayed when the user wants to cancel the operation
-	ptr_stop_msg->setWindowTitle("Stop execution?");
-	ptr_stop_msg->setText("Are you sure you want to stop encrypting?");
+    ptr_stop_msg->setWindowTitle(tr("Stop execution?"));
+    ptr_stop_msg->setText(tr("Are you sure you want to stop encrypting?"));
 
 	// create the appropriate thread
     worker_thread = new MyEncryptThread(ptr_model, arg_password,arg_userName ,ext,cryptoAlgo,argonMemory,argonOps,delete_success, encrypt_name);
@@ -35,7 +35,7 @@ MyEncryptBar::MyEncryptBar(QWidget *parent, MyFileSystemModel *arg_ptr_model, co
     connect(worker_thread, &MyEncryptThread::updateGeneralProgress, this, &MyAbstractBar::updateGeneralProgress);
     connect(worker_thread, &MyEncryptThread::updateStatusText, this, &MyAbstractBar::updateStatusText);
 
-	ui->label->setText("Encrypting list...");
+    ui->label->setText(tr("Encrypting list..."));
 
 	worker_thread->start();
 }
@@ -67,11 +67,11 @@ void MyEncryptBar::handleError(int error)
 
 	QMessageBox *error_msg = new QMessageBox(static_cast<MyMainWindow *>(this->parent()));
 	error_msg->setAttribute(Qt::WA_DeleteOnClose);
-	error_msg->setWindowTitle("Encryption interrupted!");
+    error_msg->setWindowTitle(tr("Encryption interrupted!"));
 	error_msg->setIcon(QMessageBox::Warning);
 	error_msg->setStandardButtons(QMessageBox::Close);
-	error_msg->setText("The encryption process was interrupted. Some files or directories might not "
-		"have been finished. Click below to show details.");
+    error_msg->setText(tr("The encryption process was interrupted. Some files or directories might not "
+        "have been finished. Click below to show details."));
 
 	// wait for the worker thread to completely finish
 	worker_thread->wait();
@@ -79,7 +79,7 @@ void MyEncryptBar::handleError(int error)
 	QString detailed_text = createDetailedText();
 
 	if(detailed_text == QString())
-		detailed_text = "No existing items were found!";
+        detailed_text = tr("No existing items were found!");
 
 	error_msg->setDetailedText(detailed_text);
 	error_msg->show();
@@ -124,92 +124,16 @@ QString MyEncryptBar::createDetailedText()
 *******************************************************************************/
 
 
-QString MyEncryptBar::errorCodeToString(int error_code)
-{
-	QString ret_string;
-
-	switch(error_code)
-	{
-        case EMPTY_FOLDER:
-            ret_string += "Folder is empty!";
-            break;
-
-		case SRC_NOT_FOUND:
-			ret_string += "The intermediate file was not found!";
-			break;
-
-		case SRC_CANNOT_OPEN_READ:
-			ret_string += "The intermediate file could not be opened for reading!";
-			break;
-
-		case PASS_HASH_FAIL:
-			ret_string += "The password could not be hashed!";
-			break;
-
-		case DES_HEADER_ENCRYPT_ERROR:
-			ret_string += "The intermediate file header could not be encrypted!";
-			break;
-
-		case DES_FILE_EXISTS:
-			ret_string += "The encrypted file already exists!";
-			break;
-
-		case DES_CANNOT_OPEN_WRITE:
-			ret_string += "The encrypted file could not be opened for writing!";
-			break;
-
-		case DES_HEADER_WRITE_ERROR:
-			ret_string += "The encrypted file could not be written to!";
-			break;
-
-		case SRC_BODY_READ_ERROR:
-			ret_string += "The intermediate file could not be read!";
-			break;
-
-		case DATA_ENCRYPT_ERROR:
-			ret_string += "The intermediate file's data could not be encrypted!";
-			break;
-
-		case DES_BODY_WRITE_ERROR:
-			ret_string += "The encrypted file could not be written to!";
-			break;
-
-		case CRYPT_SUCCESS:
-			ret_string += "The file or directory was successfully encrypted!";
-			break;
-
-
-		case ZIP_ERROR:
-			ret_string += "The file or directory could not be zipped!";
-			break;
-
-		case NOT_STARTED:
-			ret_string += "The file or directory was skipped!";
-			break;
-
-	}
-
-	return ret_string;
-}
-
-
-/*******************************************************************************
-
-
-
-*******************************************************************************/
-
-
 void MyEncryptBar::handleFinished()
 {
 	// the encryption process was finished, create a list of what was successful and wasn't
 
 	QMessageBox *error_msg = new QMessageBox(static_cast<MyMainWindow *>(this->parent()));
 	error_msg->setAttribute(Qt::WA_DeleteOnClose);
-	error_msg->setWindowTitle("Encryption finished!");
+    error_msg->setWindowTitle(tr("Encryption finished!"));
 	error_msg->setIcon(QMessageBox::Warning);
 	error_msg->setStandardButtons(QMessageBox::Close);
-	error_msg->setText("The encryption process was finished. Click below to show details.");
+    error_msg->setText(tr("The encryption process was finished. Click below to show details."));
 
 	// wait for the worker thread to completely finished
 	worker_thread->wait();
@@ -217,7 +141,7 @@ void MyEncryptBar::handleFinished()
 	QString detailed_text = createDetailedText();
 
 	if(detailed_text == QString())
-		detailed_text = "No existing items were found!";
+        detailed_text = tr("No existing items were found!");
 
 	error_msg->setDetailedText(detailed_text);
 	error_msg->show();

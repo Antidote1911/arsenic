@@ -2,11 +2,11 @@
 #include "mydecryptbar.h"
 #include "mydecryptthread.h"
 #include "myfilesystemmodel.h"
+#include "divers.h"
 
 using namespace MyAbstractBarPublic;
-using namespace MyDecryptBarPublic;
 using namespace MyDecryptBarThreadPublic;
-using namespace MyCryptMessagesPublic;
+using namespace MyMessagesPublic;
 
 
 /*******************************************************************************
@@ -19,11 +19,11 @@ using namespace MyCryptMessagesPublic;
 MyDecryptBar::MyDecryptBar(QWidget *parent, MyFileSystemModel *arg_ptr_model, const QString
     &arg_password,bool delete_success) : MyAbstractBar(parent), ptr_model(arg_ptr_model)
 {
-	setWindowTitle("Decrypting...");
+    setWindowTitle(tr("Decrypting..."));
 
 	// the message displayed when the user wants to cancel the operation
-	ptr_stop_msg->setWindowTitle("Stop execution?");
-	ptr_stop_msg->setText("Are you sure you want to stop decrypting?");
+    ptr_stop_msg->setWindowTitle(tr("Stop execution?"));
+    ptr_stop_msg->setText(tr("Are you sure you want to stop decrypting?"));
 
 	// create the appropriate thread
     worker_thread = new MyDecryptThread(ptr_model, arg_password, delete_success);
@@ -33,7 +33,7 @@ MyDecryptBar::MyDecryptBar(QWidget *parent, MyFileSystemModel *arg_ptr_model, co
     connect(worker_thread, &MyDecryptThread::updateStatusText, this, &MyAbstractBar::updateStatusText);
 
 
-	ui->label->setText("Decrypting list...");
+    ui->label->setText(tr("Decrypting list..."));
 
 	worker_thread->start();
 }
@@ -65,19 +65,19 @@ void MyDecryptBar::handleError(int error)
 
 	QMessageBox *error_msg = new QMessageBox(static_cast<MyMainWindow *>(this->parent()));
 	error_msg->setAttribute(Qt::WA_DeleteOnClose);
-	error_msg->setWindowTitle("Decryption interrupted!");
+    error_msg->setWindowTitle(tr("Decryption interrupted!"));
 	error_msg->setIcon(QMessageBox::Warning);
 	error_msg->setStandardButtons(QMessageBox::Close);
-	error_msg->setText("The decryption process was interrupted. Some files or directories might not "
-		"have been finished. Click below to show details.");
+    error_msg->setText(tr("The decryption process was interrupted. Some files or directories might not "
+        "have been finished. Click below to show details."));
 
 	// wait for the worker thread to completely finish
 	worker_thread->wait();
 
-	QString detailed_text = createDetailedText();
+    QString detailed_text = createDetailedText();
 
 	if(detailed_text == QString())
-		detailed_text = "No existing items were found!";
+        detailed_text = tr("No existing items were found!");
 
 	error_msg->setDetailedText(detailed_text);
 	error_msg->show();
@@ -95,105 +95,27 @@ void MyDecryptBar::handleError(int error)
 
 QString MyDecryptBar::createDetailedText()
 {
-	QString ret_string;
+    QString ret_string;
 
-	// get the decryption status of each item from the worker thread
-	std::vector<int> status_list = worker_thread->getStatus();
-	const std::vector<MyFileInfoPtr> &item_list = worker_thread->getItemList();
+    // get the decryption status of each item from the worker thread
+    std::vector<int> status_list = worker_thread->getStatus();
+    const std::vector<MyFileInfoPtr> &item_list = worker_thread->getItemList();
 
-	// go through each one and list the result right after the full path of the item
+    // go through each one and list the result right after the full path of the item
     for(unsigned int i = 0; i < item_list.size(); i++)
-	{
-		ret_string += item_list[i]->getFullPath();
-		ret_string += "\n" + errorCodeToString(status_list[i]);
+    {
+        ret_string += item_list[i]->getFullPath();
+        ret_string += "\n" + errorCodeToString(status_list[i]);
 
-		if(i < status_list.size() - 1)
-			ret_string += "\n\n";
-	}
+        if(i < status_list.size() - 1)
+            ret_string += "\n\n";
+    }
 
-	return ret_string;
+    return ret_string;
 }
 
 
-/*******************************************************************************
 
-
-
-*******************************************************************************/
-
-
-QString MyDecryptBar::errorCodeToString(int error_code)
-{
-	QString ret_string;
-
-	switch(error_code)
-	{
-		case SRC_NOT_FOUND:
-			ret_string += "The encrypted file was not found!";
-			break;
-
-		case SRC_CANNOT_OPEN_READ:
-			ret_string += "The encrypted file could not be opened for reading!";
-			break;
-
-		case SRC_HEADER_READ_ERROR:
-			ret_string += "The encrypted file header could not be read!";
-			break;
-
-		case PASS_HASH_FAIL:
-			ret_string += "The password could not be hashed!";
-			break;
-
-		case SRC_HEADER_DECRYPT_ERROR:
-			ret_string += "The encrypted file header could not be decrypted! Password is most likely "
-				"incorrect or the header has been modified.";
-			break;
-
-		case DES_FILE_EXISTS:
-			ret_string += "The decrypted file already exists!";
-			break;
-
-		case DES_CANNOT_OPEN_WRITE:
-			ret_string += "The decrypted file could not be opened for writing!";
-			break;
-
-		case SRC_BODY_READ_ERROR:
-			ret_string += "There was an error reading the encrypted file's data!";
-			break;
-
-		case SRC_FILE_CORRUPT:
-			ret_string += "The encrypted file's size is invalid!";
-			break;
-
-		case DATA_DECRYPT_ERROR:
-			ret_string += "The encrypted file's data could not be decrypted! The data has most likely "
-				"been modified.";
-			break;
-
-		case DES_BODY_WRITE_ERROR:
-			ret_string += "The decrypted file could not be written to!";
-			break;
-
-		case CRYPT_SUCCESS:
-			ret_string += "The file or directory was successfully decrypted!";
-			break;
-
-		case ZIP_ERROR:
-			ret_string += "The intermediate file could not be unzipped!";
-			break;
-
-		case NOT_STARTED:
-			ret_string += "The file or directory was skipped!";
-			break;
-
-        case NOT_ARSENIC_FILE:
-            ret_string += "The item wasn't a Arsenic file!";
-			break;
-
-	}
-
-	return ret_string;
-}
 
 
 /*******************************************************************************
@@ -209,23 +131,23 @@ void MyDecryptBar::handleFinished()
 
 	QMessageBox *error_msg = new QMessageBox(static_cast<MyMainWindow *>(this->parent()));
 	error_msg->setAttribute(Qt::WA_DeleteOnClose);
-	error_msg->setWindowTitle("Decryption finished!");
+    error_msg->setWindowTitle(tr("Decryption finished!"));
 	error_msg->setIcon(QMessageBox::Warning);
 	error_msg->setStandardButtons(QMessageBox::Close);
-	error_msg->setText("The decryption process was finished. Click below to show details.");
+    error_msg->setText(tr("The decryption process was finished. Click below to show details."));
 
 	// wait for the worker thread to completely finished
 	worker_thread->wait();
 
-	QString detailed_text = createDetailedText();
+    QString detailed_text = createDetailedText();
 
 	if(detailed_text == QString())
-		detailed_text = "No existing items were found!";
+        detailed_text = tr("No existing items were found!");
 
 	error_msg->setDetailedText(detailed_text);
 	error_msg->show();
 
-	ptr_model->startAllDirThread();
+    ptr_model->startAllDirThread();
 }
 
 

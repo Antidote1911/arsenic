@@ -41,8 +41,8 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
     m_prefs = new ARs::Preferences;
     settings = new QSettings;
 
-    MyMainWindow::loadPreferences();
-    MyMainWindow::createLanguageMenu();
+    loadPreferences();
+    createLanguageMenu();
     loadLanguage(m_prefs->langage);
 
     setWindowTitle(ARs::APP_LONG_NAME);
@@ -359,7 +359,7 @@ void MyMainWindow::start_crypto(int crypto_type)
 
 void MyMainWindow::on_add_file_clicked()
 {
-	QList<QString> file_list = QFileDialog::getOpenFileNames(this, "Open File(s)", QString(),
+    QList<QString> file_list = QFileDialog::getOpenFileNames(this, tr("Open File(s)"), QString(),
 		QString(), nullptr, QFileDialog::DontResolveSymlinks);
 	QList<QString> red_list = QList<QString>();
 
@@ -418,7 +418,7 @@ void MyMainWindow::on_add_file_clicked()
 
 void MyMainWindow::on_add_directory_clicked()
 {
-	QString dir = QFileDialog::getExistingDirectory(this, "Open Directory", QString(),
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"), QString(),
 		QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
 	if(dir != QString())
@@ -430,8 +430,8 @@ void MyMainWindow::on_add_directory_clicked()
         // don't let the Windows user add a root directory
         if( QDir(QDir(dir).absolutePath()).isRoot() )
         {
-            warn_title = "Can't add a root directory!";
-            warn_text = "The root directory (" + dir + ") cannot be added.";
+            warn_title = tr("Can't add a root directory!");
+            warn_text = tr("The root directory (") + dir + tr(") cannot be added.");
 
             QMessageBox msg_box(QMessageBox::Warning, warn_title, warn_text, QMessageBox::Close, this);
             msg_box.exec();
@@ -441,8 +441,8 @@ void MyMainWindow::on_add_directory_clicked()
         // don't let the user add an empty directory
         if(QDir(dir).entryList(QDir::NoDotAndDotDot|QDir::AllEntries).count() == 0)
         {
-            warn_title = "Can't add empty directory!";
-            warn_text = "The directory (" + dir + ") cannot be added.";
+            warn_title = tr("Can't add empty directory!");
+            warn_text = tr("The directory (") + dir + tr(") cannot be added.");
 
             QMessageBox msg_box(QMessageBox::Warning, warn_title, warn_text, QMessageBox::Close, this);
             msg_box.exec();
@@ -453,8 +453,8 @@ void MyMainWindow::on_add_directory_clicked()
         if(file_model->isRedundant(dir))
 		{
 			// create message
-			warn_title = "Directory already added!";
-			warn_text = "The following directory was already added. It will not be added again.";
+            warn_title = tr("Directory already added!");
+            warn_text = tr("The following directory was already added. It will not be added again.");
 			warn_detail = dir;
 
 			// display in message box
@@ -472,10 +472,10 @@ void MyMainWindow::on_add_directory_clicked()
 			{
 				// ask if they want to add the directory. if so, the redundant items will be removed
 
-				warn_title = "Directory makes item(s) redundant!";
-				warn_text = "The directory chosen (" + dir + ") contains item(s) inside it that "
+                warn_title = tr("Directory makes item(s) redundant!");
+                warn_text = tr("The directory chosen (") + dir + tr(") contains item(s) inside it that "
 				"were added previously. If you add this new directory, the following redundant items will "
-				"be removed.";
+                "be removed.");
 
                 for(unsigned int i = 0; i < red_list.size(); i++)
 				{
@@ -671,7 +671,7 @@ void MyMainWindow::on_actionAuto_resize_columns_triggered(bool checked)
 void MyMainWindow::on_actionLoadList_triggered()
 {
     QString list_path = QFileDialog::getOpenFileName(this, "Open List", QDir::currentPath(),
-        "QtCrypt list files (*.qtlist)", nullptr, QFileDialog::DontResolveSymlinks);
+        "Arsenic list files (*.arslist)", nullptr, QFileDialog::DontResolveSymlinks);
 
     // check if the user actually selected a file
     if(list_path != QString())
@@ -701,7 +701,7 @@ void MyMainWindow::on_actionQuit_triggered()
 void MyMainWindow::on_actionSave_item_list_triggered()
 {
     QString list_path = QFileDialog::getSaveFileName(this, "Save List", QDir::currentPath(),
-        "QtCrypt list files (*.qtlist)", nullptr, QFileDialog::DontResolveSymlinks);
+        "Arsenic list files (*.arslist)", nullptr, QFileDialog::DontResolveSymlinks);
 
     // check if the user actually selected a file
     if(list_path != QString())

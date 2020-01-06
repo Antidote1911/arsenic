@@ -171,7 +171,6 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     qint64 header_size;
 
     src_stream.readRawData(reinterpret_cast<char *>(qint64_buffer.data()), 40);
-    qDebug() << "qint64_buffer : "+ QString::fromStdString(Botan::hex_encode(qint64_buffer));
 
     dec->set_key(cipher_key1);
     dec->set_ad(add);
@@ -186,9 +185,6 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
     }
 
     header_size = qFromLittleEndian<qint64>(qint64_buffer.data() + MACBYTES);
-
-    if(header_size <= static_cast<int>(MACBYTES + sizeof(qint64)) || header_size > IN_BUFFER_SIZE)
-        return "SRC_HEADER_DECRYPT_ERROR";
 
     src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
 

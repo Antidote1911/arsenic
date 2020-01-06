@@ -12,6 +12,11 @@
 #include <QComboBox>
 
 #include "botan_all.h"
+#include "divers.h"
+
+#include "messages.h"
+using namespace MyMessagesPublic;
+
 
 HashCheckDialog::HashCheckDialog(QWidget *parent) :
     QDialog(parent),
@@ -123,7 +128,7 @@ void HashCheckDialog::calculate(const QString &text)
 
     } else
         {
-            ui->checksumEdit->setText("Invalid file");
+            ui->checksumEdit->setText(errorCodeToString(SRC_CANNOT_OPEN_READ));
         }
 
     ui->open->setDisabled(false);
@@ -183,6 +188,6 @@ void HashCheckDialog::textChanged(const QString &text)
         ui->calculateButton->setEnabled(true);
     } else {
         ui->calculateButton->setEnabled(false);
-        ui->checksumEdit->setText("Invalid file");
+        ui->checksumEdit->setText(errorCodeToString(SRC_CANNOT_OPEN_READ));
     }
 }

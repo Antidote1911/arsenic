@@ -13,18 +13,7 @@ namespace MyDecryptBarThreadPublic
 }
 
 
-/*******************************************************************************
 
-
-
-*******************************************************************************/
-
-
-namespace MyDecryptBarPublic
-{
-	// used for getting the status of each item after the decryption thread is finished
-    enum : int {ZIP_ERROR = MyCryptMessagesPublic::CRYPT_SUCCESS + 1, NOT_STARTED, NOT_ARSENIC_FILE};
-}
 
 
 /*******************************************************************************
@@ -52,9 +41,8 @@ protected:
 	void deleteProgressThread();
 
 private:
-	QString createDetailedText();
+    QString createDetailedText();
 	void cleanModel();
-	QString errorCodeToString(int error_code);
 	MyDecryptBarThreadPublic::MyDecryptThread *worker_thread;
 	MyFileSystemModel *ptr_model;
 

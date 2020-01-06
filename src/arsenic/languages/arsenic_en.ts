@@ -14,76 +14,32 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="106"/>
-        <source>Arsenic is distributed under the GNU</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../AboutDialog.ui" line="129"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Report bugs &lt;a href=&quot;https://github.com/Antidote1911/Arsenic/issues&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;Here&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../AboutDialog.ui" line="155"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This software use the powerful library &lt;a href=&quot;https://botan.randombit.net/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;Botan&lt;/span&gt;&lt;/a&gt; from &lt;a href=&quot;https://botan.randombit.net/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;randombit.net&lt;/span&gt;&lt;/a&gt; for cryptographic primitives.&lt;br/&gt;The authenticated encryption algorithms used are :&lt;br/&gt;&lt;a href=&quot;https://botan.randombit.net/handbook/api_ref/cipher_modes.html#chacha20poly1305&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;XChaCha20&lt;/span&gt;&lt;/a&gt;/&lt;a href=&quot;https://en.wikipedia.org/wiki/Poly1305&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;Poly1305&lt;/span&gt;&lt;/a&gt;&lt;a href=&quot;https://botan.randombit.net/handbook/api_ref/cipher_modes.html#chacha20poly1305&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;&lt;br/&gt;&lt;/span&gt;&lt;/a&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/Advanced_Encryption_Standard&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;AES 256&lt;/span&gt;&lt;/a&gt;/&lt;a href=&quot;https://en.wikipedia.org/wiki/Galois/Counter_Mode&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;GCM&lt;br/&gt;&lt;/span&gt;&lt;/a&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/Serpent_(cipher)&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;Serpent&lt;/span&gt;&lt;/a&gt;/&lt;a href=&quot;https://en.wikipedia.org/wiki/Galois/Counter_Mode&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;GCM&lt;/span&gt;&lt;/a&gt;&lt;br/&gt;The internal encryption key is generated from the user passphrase by &lt;a href=&quot;https://en.wikipedia.org/wiki/Argon2&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;Argon2&lt;/span&gt;&lt;/a&gt;.&lt;br/&gt;The winner of the &lt;a href=&quot;https://en.wikipedia.org/wiki/Password_Hashing_Competition&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;Password Hashing Competition&lt;/span&gt;&lt;/a&gt; in July 2015.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../AboutDialog.ui" line="171"/>
-        <source>Arsenic is distributed under the terms of the GNU General Public License (GPL) version 3.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../AboutDialog.ui" line="197"/>
-        <source>Project Maintainers:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../AboutDialog.ui" line="229"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Arsenic is originaly forked from &lt;a href=&quot;https://github.com/trashctor/QtCrypt&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;QtCrypt&lt;/span&gt;&lt;/a&gt;. Special thanks to &lt;a href=&quot;https://github.com/trashctor&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;ftrashctor&lt;/span&gt;&lt;/a&gt; for creating &lt;a href=&quot;https://github.com/trashctor/QtCrypt&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;QtCrypt&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../AboutDialog.ui" line="262"/>
+        <location filename="../AboutDialog.ui" line="255"/>
         <source>Contributors</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="318"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/Antidote1911/Arsenic/graphs/contributors&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;See Contributions on GitHub&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../AboutDialog.ui" line="332"/>
+        <location filename="../AboutDialog.ui" line="325"/>
         <source>Debug Info</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="344"/>
+        <location filename="../AboutDialog.ui" line="337"/>
         <source>Include the following information whenever you report a bug:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="364"/>
+        <location filename="../AboutDialog.ui" line="360"/>
         <source>Copy to clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="372"/>
+        <location filename="../AboutDialog.ui" line="368"/>
         <source>GPL3 Lisense</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="384"/>
-        <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:&apos;Noto Sans&apos;; font-size:10pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:&apos;Noto Sans&apos;;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../AboutDialog.ui" line="402"/>
+        <location filename="../AboutDialog.ui" line="398"/>
         <source>Botan Lisense</source>
         <translation type="unfinished"></translation>
     </message>
@@ -189,12 +145,12 @@ p, li { white-space: pre-wrap; }
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="60"/>
+        <location filename="../hashcheckdialog.cpp" line="65"/>
         <source>Load file...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="147"/>
+        <location filename="../hashcheckdialog.cpp" line="152"/>
         <source>error</source>
         <translation type="unfinished"></translation>
     </message>
@@ -213,6 +169,104 @@ p, li { white-space: pre-wrap; }
     </message>
 </context>
 <context>
+    <name>MyDecryptBar</name>
+    <message>
+        <location filename="../mydecryptbar.cpp" line="22"/>
+        <source>Decrypting...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mydecryptbar.cpp" line="25"/>
+        <source>Stop execution?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mydecryptbar.cpp" line="26"/>
+        <source>Are you sure you want to stop decrypting?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mydecryptbar.cpp" line="36"/>
+        <source>Decrypting list...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mydecryptbar.cpp" line="68"/>
+        <source>Decryption interrupted!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mydecryptbar.cpp" line="71"/>
+        <source>The decryption process was interrupted. Some files or directories might not have been finished. Click below to show details.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mydecryptbar.cpp" line="80"/>
+        <location filename="../mydecryptbar.cpp" line="145"/>
+        <source>No existing items were found!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mydecryptbar.cpp" line="134"/>
+        <source>Decryption finished!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mydecryptbar.cpp" line="137"/>
+        <source>The decryption process was finished. Click below to show details.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MyEncryptBar</name>
+    <message>
+        <location filename="../myencryptbar.cpp" line="24"/>
+        <source>Encrypting...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../myencryptbar.cpp" line="27"/>
+        <source>Stop execution?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../myencryptbar.cpp" line="28"/>
+        <source>Are you sure you want to stop encrypting?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../myencryptbar.cpp" line="38"/>
+        <source>Encrypting list...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../myencryptbar.cpp" line="70"/>
+        <source>Encryption interrupted!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../myencryptbar.cpp" line="73"/>
+        <source>The encryption process was interrupted. Some files or directories might not have been finished. Click below to show details.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../myencryptbar.cpp" line="82"/>
+        <location filename="../myencryptbar.cpp" line="144"/>
+        <source>No existing items were found!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../myencryptbar.cpp" line="133"/>
+        <source>Encryption finished!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../myencryptbar.cpp" line="136"/>
+        <source>The encryption process was finished. Click below to show details.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>MyMainWindow</name>
     <message>
         <location filename="../mymainwindow.ui" line="39"/>
@@ -226,19 +280,19 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../mymainwindow.ui" line="53"/>
-        <location filename="../mymainwindow.ui" line="317"/>
+        <location filename="../mymainwindow.ui" line="321"/>
         <source>Remove checked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../mymainwindow.ui" line="60"/>
-        <location filename="../mymainwindow.ui" line="322"/>
+        <location filename="../mymainwindow.ui" line="326"/>
         <source>Delete checked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../mymainwindow.ui" line="80"/>
-        <location filename="../mymainwindow.ui" line="327"/>
+        <location filename="../mymainwindow.ui" line="331"/>
         <source>Check All</source>
         <translation type="unfinished"></translation>
     </message>
@@ -287,123 +341,123 @@ p, li { white-space: pre-wrap; }
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="212"/>
+        <location filename="../mymainwindow.ui" line="216"/>
         <source>Decrypt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="231"/>
+        <location filename="../mymainwindow.ui" line="235"/>
         <source>File</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="243"/>
+        <location filename="../mymainwindow.ui" line="247"/>
         <source>List</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="252"/>
+        <location filename="../mymainwindow.ui" line="256"/>
         <source>Config</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="256"/>
+        <location filename="../mymainwindow.ui" line="260"/>
         <source>Language</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="265"/>
+        <location filename="../mymainwindow.ui" line="269"/>
         <source>Utils</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="273"/>
+        <location filename="../mymainwindow.ui" line="277"/>
         <source>Infos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="287"/>
+        <location filename="../mymainwindow.ui" line="291"/>
         <source>Add File(s)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="292"/>
+        <location filename="../mymainwindow.ui" line="296"/>
         <source>Add Directory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="297"/>
+        <location filename="../mymainwindow.ui" line="301"/>
         <source>Load item list</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="302"/>
+        <location filename="../mymainwindow.ui" line="306"/>
         <source>Quit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="307"/>
+        <location filename="../mymainwindow.ui" line="311"/>
         <source>Save item list</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="312"/>
+        <location filename="../mymainwindow.ui" line="316"/>
         <source>Refresh view</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="332"/>
+        <location filename="../mymainwindow.ui" line="336"/>
         <source>Uncheck All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="340"/>
+        <location filename="../mymainwindow.ui" line="344"/>
         <source>Auto resize columns</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="345"/>
+        <location filename="../mymainwindow.ui" line="349"/>
         <source>Configuration</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="350"/>
+        <location filename="../mymainwindow.ui" line="354"/>
         <source>Password Generator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="355"/>
+        <location filename="../mymainwindow.ui" line="359"/>
         <source>Hash Calculator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="360"/>
+        <location filename="../mymainwindow.ui" line="364"/>
         <source>About Arsenic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="365"/>
+        <location filename="../mymainwindow.ui" line="369"/>
         <location filename="../mymainwindow.cpp" line="148"/>
         <source>About Qt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="370"/>
+        <location filename="../mymainwindow.ui" line="374"/>
         <source>Argon2 tests</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="378"/>
+        <location filename="../mymainwindow.ui" line="382"/>
         <source>Dark Theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="383"/>
+        <location filename="../mymainwindow.ui" line="387"/>
         <source>English</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="388"/>
+        <location filename="../mymainwindow.ui" line="392"/>
         <source>French</source>
         <translation type="unfinished"></translation>
     </message>
@@ -443,6 +497,11 @@ p, li { white-space: pre-wrap; }
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../mymainwindow.cpp" line="362"/>
+        <source>Open File(s)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../mymainwindow.cpp" line="392"/>
         <source>File(s) already added!</source>
         <translation type="unfinished"></translation>
@@ -450,6 +509,62 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../mymainwindow.cpp" line="393"/>
         <source>The following file(s) were already added. They will not be added again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="421"/>
+        <source>Open Directory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="433"/>
+        <source>Can&apos;t add a root directory!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="434"/>
+        <source>The root directory (</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="434"/>
+        <location filename="../mymainwindow.cpp" line="445"/>
+        <source>) cannot be added.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="444"/>
+        <source>Can&apos;t add empty directory!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="445"/>
+        <source>The directory (</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="456"/>
+        <source>Directory already added!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="457"/>
+        <source>The following directory was already added. It will not be added again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="475"/>
+        <source>Directory makes item(s) redundant!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="476"/>
+        <source>The directory chosen (</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="476"/>
+        <source>) contains item(s) inside it that were added previously. If you add this new directory, the following redundant items will be removed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -485,11 +600,6 @@ p, li { white-space: pre-wrap; }
     <message>
         <location filename="../mymainwindow.cpp" line="635"/>
         <source>Item was not found!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../mymainwindow.cpp" line="905"/>
-        <source>Current Language changed to %1</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -529,49 +639,120 @@ p, li { white-space: pre-wrap; }
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../AboutDialog.cpp" line="69"/>
-        <source>Operating system: %1
-CPU architecture: %2
-Kernel: %3 %4 
-Hostname: %5
-</source>
+        <location filename="../divers.cpp" line="95"/>
+        <source>The encrypted file was not found!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="99"/>
+        <source>The file could not be opened for reading!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="103"/>
+        <source>The encrypted file header could not be read!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="107"/>
+        <source>The password could not be hashed!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="111"/>
+        <source>The encrypted file header could not be decrypted! Password is most likely incorrect or the header has been modified.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="116"/>
+        <source>The decrypted file already exists!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="120"/>
+        <source>The file could not be opened for writing!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="124"/>
+        <source>There was an error reading the encrypted file&apos;s data!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="128"/>
+        <source>The encrypted file&apos;s size is invalid!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="132"/>
+        <source>The encrypted file&apos;s data could not be decrypted! The data has most likely been modified.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="137"/>
+        <source>The decrypted file could not be written to!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="141"/>
+        <source>The file or directory was successfully encrypted!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="145"/>
+        <source>The file or directory was successfully decrypted!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="149"/>
+        <source>The intermediate file could not be unzipped!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="153"/>
+        <source>The file or directory was skipped!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../divers.cpp" line="157"/>
+        <source>The item wasn&apos;t a Arsenic file!</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>main</name>
     <message>
-        <location filename="../main.cpp" line="31"/>
+        <location filename="../main.cpp" line="32"/>
         <source>Source file to encrypt or decrypt.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="33"/>
+        <location filename="../main.cpp" line="34"/>
         <source>Encrypt the file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="36"/>
+        <location filename="../main.cpp" line="37"/>
         <source>Decrypt the file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="39"/>
+        <location filename="../main.cpp" line="40"/>
         <source>The user name or e-mail.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="39"/>
+        <location filename="../main.cpp" line="40"/>
         <source>name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="42"/>
+        <location filename="../main.cpp" line="43"/>
         <source>The passphrase for encrypt or decrypt &lt;source&gt;.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="42"/>
+        <location filename="../main.cpp" line="43"/>
         <source>passphrase</source>
         <translation type="unfinished"></translation>
     </message>

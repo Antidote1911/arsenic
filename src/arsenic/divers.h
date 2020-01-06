@@ -18,6 +18,7 @@ Botan::SecureVector<quint8> calculateHash(Botan::SecureVector<char> pass_buffer,
                                           size_t iterations);
 
 Botan::SecureVector<char> convertStringToSecureVector(QString password);
+QString errorCodeToString(int error_code);
 
 
 #endif // DIVERS_H
