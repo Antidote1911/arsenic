@@ -22,9 +22,7 @@ install:
 
 before_build:
     # Prepare the out-of-source build directory.
-  - mkdir %APPVEYOR_BUILD_FOLDER%-build
-  - cd %APPVEYOR_BUILD_FOLDER%-build
-  - qmake -r -Wall -Wlogic -Wparser CONFIG+=%CONFIGURATION% %APPVEYOR_BUILD_FOLDER%
+  - qmake arsenic.pro
 
 build_script:
   - '%make%'
@@ -34,8 +32,10 @@ build_script:
 
 after_build:
   - if [%CONFIGURATION%]==[release] (
-    windeployqt arsenic\%CONFIGURATION%\arsenic\arsenic.exe --dir distrib &&
-    cp arsenic\%CONFIGURATION%\arsenic\arsenic.exe distrib &&
-    7z a -y %CONFIGURATION%-distrib.zip distrib &&
-    appveyor PushArtifact %CONFIGURATION%-distrib.zip
+    windeployqt release/arsenic.exe
     )
+
+artifacts:
+  - path: Output\arsenic-*.exe
+  - path: release
+    type: zip
