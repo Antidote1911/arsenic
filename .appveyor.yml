@@ -32,3 +32,10 @@ build_script:
   #- arsenic.exe -e -p mysuperbadpassphrase -n myemail@cool.com pixmaps/test.jpg
   #- arsenic.exe -d -p mysuperbadpassphrase pixmaps/test.jpg.arsenic
 
+after_build:
+  - if [%CONFIGURATION%]==[release] (
+    windeployqt arsenic\%CONFIGURATION%\arsenic.exe --dir distrib &&
+    cp app\%CONFIGURATION%\arsenic.exe distrib &&
+    7z a -y %CONFIGURATION%-distrib.zip distrib &&
+    appveyor PushArtifact %CONFIGURATION%-distrib.zip
+    )
