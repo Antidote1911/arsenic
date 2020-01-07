@@ -108,14 +108,14 @@ linux {
 
     equals(QMAKE_CXX, clang++)
     {
-        LIBS += -L$$OUT_PWD/../botan/ -lbotan
+        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
         INCLUDEPATH += $$PWD/../botan/linux_clang64/
         DEPENDPATH += $$PWD/../botan/linux_clang64/
         }
 
     equals(QMAKE_CXX, g++)
     {
-        LIBS += -L$$OUT_PWD/../botan/ -lbotan
+        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
         INCLUDEPATH += $$PWD/../botan/linux_gcc64/
         DEPENDPATH += $$PWD/../botan/linux_gcc64/
     }
@@ -130,7 +130,7 @@ win32-g++ {
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
 
-    LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
+    LIBS += -L$$OUT_PWD/../botan/release/ -larsenic_core
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
 

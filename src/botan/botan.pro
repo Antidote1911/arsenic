@@ -1,6 +1,6 @@
 QT       -= core gui
 
-TARGET = botan
+TARGET = arsenic_core
 TEMPLATE = lib
 # Use this for static botan rather than the default dynamic
 CONFIG += c++14 warn_off #static
