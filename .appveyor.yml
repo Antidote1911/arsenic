@@ -22,7 +22,8 @@ install:
 
 before_build:
     # Prepare the out-of-source build directory.
-  - qmake arsenic.pro
+    - cd %APPVEYOR_BUILD_FOLDER%
+    - qmake arsenic.pro
 
 build_script:
   - '%make%'
