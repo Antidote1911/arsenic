@@ -18,16 +18,17 @@ install:
   - if not %cname%==mingw call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" %ARCH%
   - if not %cname%==mingw set make=nmake.exe
   - if not %cname%==mingw %make% /? > nul
+  - if %cname%==mingw set PATH=%PATH%;%QTDIR%\bin;C:\MinGW\bin;C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\shared
 
 before_build:
-  - if %cname%==mingw set PATH=%PATH%;%QTDIR%\bin;C:\MinGW\bin;C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\shared
-  - cd %APPVEYOR_BUILD_FOLDER%
-  - qmake
+    # Prepare the out-of-source build directory.
+  - mkdir %APPVEYOR_BUILD_FOLDER%-build
+  - cd %APPVEYOR_BUILD_FOLDER%-build
+  - qmake -r -Wall -Wlogic -Wparser CONFIG+=%CONFIGURATION% %APPVEYOR_BUILD_FOLDER%
 
 build_script:
-  - cd %APPVEYOR_BUILD_FOLDER%
   - '%make%'
-  - cd %APPVEYOR_BUILD_FOLDER%/release
-  - arsenic.exe -e -p mysuperbadpassphrase -n myemail@cool.com pixmaps/test.jpg
-  - arsenic.exe -d -p mysuperbadpassphrase pixmaps/test.jpg.arsenic
+  #- cd %APPVEYOR_BUILD_FOLDER%/release
+  #- arsenic.exe -e -p mysuperbadpassphrase -n myemail@cool.com pixmaps/test.jpg
+  #- arsenic.exe -d -p mysuperbadpassphrase pixmaps/test.jpg.arsenic
 
