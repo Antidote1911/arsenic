@@ -37,6 +37,6 @@ after_build:
     )
 
 artifacts:
-  - path: %APPVEYOR_BUILD_FOLDER%\src\arsenic\%CONFIGURATION%\arsenic-*.exe
+  - path: \src\arsenic\release\arsenic-*.exe
   - path: release
     type: zip
