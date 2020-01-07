@@ -35,7 +35,7 @@ build_script:
 after_build:
   - if [%CONFIGURATION%]==[release] (
     windeployqt arsenic\%CONFIGURATION%\arsenic\arsenic.exe --dir distrib &&
-    cp app\%CONFIGURATION%\arsenic\arsenic.exe distrib &&
+    cp arsenic\%CONFIGURATION%\arsenic\arsenic.exe distrib &&
     7z a -y %CONFIGURATION%-distrib.zip distrib &&
     appveyor PushArtifact %CONFIGURATION%-distrib.zip
     )
