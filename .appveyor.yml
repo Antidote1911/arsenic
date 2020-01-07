@@ -33,7 +33,11 @@ build_script:
 
 after_build:
   - if [%CONFIGURATION%]==[release] (
-    windeployqt %APPVEYOR_BUILD_FOLDER%\src\arsenic\%CONFIGURATION%\arsenic.exe
+    cd %APPVEYOR_BUILD_FOLDER%
+    mkdir release
+    cd release
+    xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\arsenic.exe %APPVEYOR_BUILD_FOLDER%\release\
+    windeployqt arsenic.exe
     )
 
 artifacts:
