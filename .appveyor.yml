@@ -33,10 +33,10 @@ build_script:
 
 after_build:
   - if [%CONFIGURATION%]==[release] (
-    windeployqt %CONFIGURATION%\arsenic.exe
+    windeployqt %APPVEYOR_BUILD_FOLDER%\src\arsenic\%CONFIGURATION%\arsenic.exe
     )
 
 artifacts:
-  - path: Output\arsenic-*.exe
+  - path: %APPVEYOR_BUILD_FOLDER%\src\arsenic\%CONFIGURATION%\arsenic-*.exe
   - path: release
     type: zip
