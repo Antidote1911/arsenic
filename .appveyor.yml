@@ -33,7 +33,7 @@ build_script:
 
 after_build:
   - if [%CONFIGURATION%]==[release] (
-    windeployqt release/arsenic.exe
+    windeployqt arsenic.exe
     )
 
 artifacts:
