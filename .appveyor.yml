@@ -27,5 +27,6 @@ before_build:
 build_script:
   - cd %APPVEYOR_BUILD_FOLDER%
   - '%make%'
-   #Also, build vcxproj (without qt)
+  - arsenic.exe -e -p mysuperbadpassphrase -n myemail@cool.com pixmaps/test.jpg
+  - arsenic.exe -d -p mysuperbadpassphrase pixmaps/test.jpg.arsenic
 
