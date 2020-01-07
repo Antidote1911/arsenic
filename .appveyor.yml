@@ -27,6 +27,7 @@ before_build:
 build_script:
   - cd %APPVEYOR_BUILD_FOLDER%
   - '%make%'
+  - cd %APPVEYOR_BUILD_FOLDER%
   - arsenic.exe -e -p mysuperbadpassphrase -n myemail@cool.com pixmaps/test.jpg
   - arsenic.exe -d -p mysuperbadpassphrase pixmaps/test.jpg.arsenic
 
