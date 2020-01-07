@@ -31,6 +31,7 @@ Voici les ajouts ou modification apportés par Arsenic:
 - Ajout d'un calculateur de hash pour les algoritmes suivants :
 <em>(SHA-3, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512-256, Skein-512, Keccak-1600, Whirlpool, Blake2b, SHAKE-128, SHAKE-256, GOST-34.11, SM3, Tiger, Streebog-256, Streebog-512, RIPEMD-160, Adler32, MD4, MD5, CRC24, CRC32)</em>
 - Ajout d'un skin sombre
+- Ajout de la gestion multi-langage
 
 Un grand merci à :
 - [trashctor](https://github.com/trashctor) pour QtCrypt.

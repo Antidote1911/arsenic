@@ -9,10 +9,10 @@
 #include "botan_all_internal.h"
 
 #if defined(__GNUG__) && !defined(__clang__)
-#pragma GCC target ("aes,pclmul")
+#pragma GCC target ("sse2")
 #endif
 #if defined(__GNUG__) && !defined(__clang__)
-#pragma GCC target ("sse2")
+#pragma GCC target ("aes,pclmul")
 #endif
 #if defined(__GNUG__) && !defined(__clang__)
 #pragma GCC target ("ssse3")
