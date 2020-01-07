@@ -3,8 +3,7 @@ QT       -= core gui
 TARGET = botan
 TEMPLATE = lib
 # Use this for static botan rather than the default dynamic
-CONFIG += static c++14
-CONFIG += warn_off
+CONFIG += c++14 warn_off #static
 
 unix {
 
@@ -60,6 +59,4 @@ win32-g++ {
 
 }
 
-QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3 -mavx2
-QMAKE_LFLAGS += -fstack-protector
 

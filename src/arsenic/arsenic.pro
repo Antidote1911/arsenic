@@ -28,7 +28,6 @@ win32:RC_ICONS += pixmaps/icon.ico
 
 DEFINES += QUAZIP_STATIC
 DEFINES += ZLIB_STATIC
-DEFINES += BOTAN_STATIC
 
 FORMS += \
     AboutDialog.ui \
@@ -139,8 +138,6 @@ LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 
 }
 
-QMAKE_CXXFLAGS += -fstack-protector
-QMAKE_LFLAGS += -fstack-protector
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
 
