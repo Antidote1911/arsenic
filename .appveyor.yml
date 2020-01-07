@@ -37,6 +37,6 @@ after_build:
     )
 
 artifacts:
-  - path: \src\arsenic\release\arsenic-*.exe
+  - path: \release\arsenic-*.exe
   - path: release
     type: zip
