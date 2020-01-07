@@ -26,5 +26,6 @@ script:
   - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
   - qmake -qt=qt5 arsenic.pro -spec linux-$CC
   - make
+  - cp src/botan/libbotan.so src/arsenic/libbotan.so
   - src/arsenic/./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com src/arsenic/pixmaps/test.jpg
   - src/arsenic/./arsenic -d -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg.arsenic
