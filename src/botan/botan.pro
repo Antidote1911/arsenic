@@ -63,5 +63,3 @@ win32-g++ {
 QMAKE_CXXFLAGS += -fstack-protector -maes -mpclmul -mssse3 -mavx2
 QMAKE_LFLAGS += -fstack-protector
 
-CONFIG += warn_off
-

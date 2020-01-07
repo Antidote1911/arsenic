@@ -9,10 +9,10 @@
 #include "botan_all_internal.h"
 
 #if defined(__GNUG__) && !defined(__clang__)
-#pragma GCC target ("sse2")
+#pragma GCC target ("rdseed")
 #endif
 #if defined(__GNUG__) && !defined(__clang__)
-#pragma GCC target ("rdseed")
+#pragma GCC target ("sse2")
 #endif
 /*
 * Entropy Source Using Intel's rdseed instruction
