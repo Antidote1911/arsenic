@@ -37,7 +37,7 @@ after_build:
     - cd release
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\release\
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\botan\release\arsenic_core.dll %APPVEYOR_BUILD_FOLDER%\release\
-    - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\languages %APPVEYOR_BUILD_FOLDER%\release\
+    - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\languages %APPVEYOR_BUILD_FOLDER%\release\languages
     - windeployqt arsenic.exe
 
 artifacts:
