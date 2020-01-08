@@ -42,5 +42,5 @@ after_build:
 
 artifacts:
   #- path: \release\arsenic-*.exe
-  - path: release
+  - path: arsenic_win_x64
     type: zip
