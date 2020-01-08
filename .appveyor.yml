@@ -41,6 +41,6 @@ after_build:
     - windeployqt arsenic.exe
 
 artifacts:
-  - path: \release\arsenic-*.exe
+  #- path: \release\arsenic-*.exe
   - path: release
     type: zip
