@@ -13,8 +13,6 @@ unix {
                         linux_clang64/botan_all_aesni_sse2_ssse3.cpp \
                         linux_clang64/botan_all_avx2.cpp \
                         linux_clang64/botan_all_bmi2.cpp \
-                        linux_clang64/botan_all_rdrand.cpp \
-                        linux_clang64/botan_all_rdseed_sse2.cpp \
                         linux_clang64/botan_all_sha_sse2_sse41_ssse3.cpp \
                         linux_clang64/botan_all_sha_sse2_ssse3.cpp \
                         linux_clang64/botan_all_sse2_ssse3.cpp
@@ -30,8 +28,6 @@ unix {
                        linux_gcc64/botan_all_aesni_sse2_ssse3.cpp \
                        linux_gcc64/botan_all_avx2.cpp \
                        linux_gcc64/botan_all_bmi2.cpp \
-                       linux_gcc64/botan_all_rdrand.cpp \
-                       linux_gcc64/botan_all_rdseed_sse2.cpp \
                        linux_gcc64/botan_all_sha_sse2_sse41_ssse3.cpp \
                        linux_gcc64/botan_all_sha_sse2_ssse3.cpp \
                        linux_gcc64/botan_all_sse2_ssse3.cpp
@@ -49,8 +45,6 @@ win32-g++ {
                         win_mingw64/botan_all_aesni_sse2_ssse3.cpp \
                         win_mingw64/botan_all_avx2.cpp \
                         win_mingw64/botan_all_bmi2.cpp \
-                        win_mingw64/botan_all_rdrand.cpp \
-                        win_mingw64/botan_all_rdseed_sse2.cpp \
                         win_mingw64/botan_all_sse2_ssse3.cpp
 
              HEADERS += win_mingw64/botan_all.h \

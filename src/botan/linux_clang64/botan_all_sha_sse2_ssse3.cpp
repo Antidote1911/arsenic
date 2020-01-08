@@ -12,10 +12,10 @@
 #pragma GCC target ("sha")
 #endif
 #if defined(__GNUG__) && !defined(__clang__)
-#pragma GCC target ("ssse3")
+#pragma GCC target ("sse2")
 #endif
 #if defined(__GNUG__) && !defined(__clang__)
-#pragma GCC target ("sse2")
+#pragma GCC target ("ssse3")
 #endif
 /*
 * SHACAL-2 using x86 SHA extensions

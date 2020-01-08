@@ -12,13 +12,13 @@
 #pragma GCC target ("sha")
 #endif
 #if defined(__GNUG__) && !defined(__clang__)
-#pragma GCC target ("ssse3")
+#pragma GCC target ("sse4.1")
 #endif
 #if defined(__GNUG__) && !defined(__clang__)
 #pragma GCC target ("sse2")
 #endif
 #if defined(__GNUG__) && !defined(__clang__)
-#pragma GCC target ("sse4.1")
+#pragma GCC target ("ssse3")
 #endif
 /*
 * SHA-1 using Intel SHA intrinsic
