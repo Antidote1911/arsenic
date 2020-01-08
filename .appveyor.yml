@@ -36,7 +36,7 @@ after_build:
     - mkdir release
     - cd release
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\release\
-    - windeployqt \%APPVEYOR_BUILD_FOLDER%\release\arsenic.exe
+    - windeployqt arsenic.exe
 
 artifacts:
   - path: \release\arsenic-*.exe
