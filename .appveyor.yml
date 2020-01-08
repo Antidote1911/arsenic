@@ -37,7 +37,7 @@ after_build:
     mkdir release &&
     cd release &&
     xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\arsenic.exe %APPVEYOR_BUILD_FOLDER%\release\ &&
-    windeployqt arsenic.exe
+    windeployqt \%APPVEYOR_BUILD_FOLDER%\release\arsenic.exe
     )
 
 artifacts:
