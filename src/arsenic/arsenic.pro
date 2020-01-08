@@ -145,4 +145,9 @@ TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_en.ts
 
 DISTFILES += \
     languages/en.svg \
-    languages/fr.svg
+    languages/fr.svg \
+    languages/arsenic_en.qm \
+    languages/arsenic_fr.qm \
+    pixmaps/icon.png \
+    pixmaps/icon.ico \
+    pixmaps/test.jpg
