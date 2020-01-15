@@ -1,21 +1,16 @@
-#ifndef MYMAINWINDOW_H
+﻿#ifndef MYMAINWINDOW_H
 #define MYMAINWINDOW_H
 
 #include <QMainWindow>
-#include <QSettings>
 #include <QTranslator>
 
 #include "myfilesystemmodel.h"
-#include "preferences.h"
 #include "skin.h"
 
 
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 namespace Ui {
 class MyMainWindow;
@@ -63,34 +58,29 @@ private slots:
     void dark_theme();
 
 protected slots:
-  // this slot is called by the language menu actions
-  void slotLanguageChanged(QAction* action);
+    // this slot is called by the language menu actions
+    void slotLanguageChanged(QAction* action);
+    void setPassword(QString);
 
 protected:
 	void closeEvent(QCloseEvent *event) Q_DECL_OVERRIDE;
     // this event is called, when a new translator is loaded or the system language is changed
-      void changeEvent(QEvent*);
+    void changeEvent(QEvent *event) Q_DECL_OVERRIDE;
 
 private:
-    ARs::Preferences *m_prefs;
-    QSettings *settings;
-
+    const QScopedPointer<Ui::MyMainWindow> m_ui;
 	void start_crypto(int crypto_type);
     void loadPreferences();
     void savePreferences();
-	Ui::MyMainWindow *ui;
 	MyFileSystemModel *file_model;
-	QString password;
-    Skin skin;
-    // creates the language menu dynamically from the content of m_langPath
-      void createLanguageMenu(void);
-      QString m_langPath; // Path of language files. This is always fixed to /languages.
-      // loads a language by the given language shortcur (e.g. de, en)
-        void loadLanguage(const QString& rLanguage);
-        QString m_currLang; // contains the currently loaded language
-        QTranslator m_translator; // contains the translations for this application
-          QTranslator m_translatorQt; // contains the translations for qt
-          void switchTranslator(QTranslator& translator, const QString& filename);
+    Skin skin;    
+    void createLanguageMenu(void); // creates the language menu dynamically from the content of m_langPath
+    QString m_langPath; // Path of language files. This is always fixed to /languages.
+    void loadLanguage(const QString& rLanguage); // loads a language by the given language shortcur (e.g. de, en)
+    QString m_currLang; // contains the currently loaded language
+    QTranslator m_translator; // contains the translations for this application
+    QTranslator m_translatorQt; // contains the translations for qt
+    void switchTranslator(QTranslator& translator, const QString& filename);
 };
 
 #endif // MYMAINWINDOW_H

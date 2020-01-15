@@ -1,5 +1,5 @@
 #ifndef SKIN_H
-#define SKKIN_H
+#define SKIN_H
 
 #include <QObject>
 

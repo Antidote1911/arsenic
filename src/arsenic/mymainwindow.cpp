@@ -9,11 +9,12 @@
 
 
 #include "quazip.h"
-#include "config.h"
-#include "passgenerator.h"
+#include "conf.h"
 #include "hashcheckdialog.h"
 #include "AboutDialog.h"
 #include "argontests.h"
+#include "PasswordGeneratorWidget.h"
+#include "constants.h"
 
 #include "mymainwindow.h"
 #include "ui_mymainwindow.h"
@@ -25,35 +26,32 @@
 #include "myloadthread.h"
 #include "myencryptbar.h"
 #include "mydecryptbar.h"
+#include "Config.h"
+
+using namespace  ARs;
 
 typedef std::unique_ptr<MyAbstractBar> MyAbstractBarPtr;
-
 
 /*******************************************************************************
 
 *******************************************************************************/
 
-
 MyMainWindow::MyMainWindow(QWidget *parent) :
-    QMainWindow(parent), ui(new Ui::MyMainWindow), file_model(nullptr)
+    QMainWindow(parent), m_ui(new Ui::MyMainWindow), file_model(nullptr)
 {
-	ui->setupUi(this);
-    m_prefs = new ARs::Preferences;
-    settings = new QSettings;
+    m_ui->setupUi(this);
 
-    loadPreferences();
     createLanguageMenu();
-    loadLanguage(m_prefs->langage);
+    loadPreferences();
 
-    setWindowTitle(ARs::APP_LONG_NAME);
+    setWindowTitle(APP_LONG_NAME);
 
 	setModel(new MyFileSystemModel(nullptr));
-    connect(ui->actionAbout_Qt, &QAction::triggered, this, &MyMainWindow::aboutQt);
-    connect(ui->actionAbout_Arsenic, &QAction::triggered, this, &MyMainWindow::aboutArsenic);
-    connect(ui->actionArgon2_tests, &QAction::triggered, this, &MyMainWindow::Argon2_tests);
-    connect(ui->actionPassword_Generator, &QAction::triggered, this, &MyMainWindow::on_generator_clicked);
-    connect(ui->actionDark_Theme,  &QAction::triggered, this, [=]{ dark_theme(); });
-
+    connect(m_ui->actionAbout_Qt, &QAction::triggered, this, &MyMainWindow::aboutQt);
+    connect(m_ui->actionAbout_Arsenic, &QAction::triggered, this, &MyMainWindow::aboutArsenic);
+    connect(m_ui->actionArgon2_tests, &QAction::triggered, this, &MyMainWindow::Argon2_tests);
+    connect(m_ui->actionPassword_Generator, &QAction::triggered, this, &MyMainWindow::on_generator_clicked);
+    connect(m_ui->actionDark_Theme,  &QAction::triggered, this, [=]{ dark_theme(); });
 
 	// note that some password information will be discarded if the text characters entered use more
 	// than	1 byte per character in UTF-8
@@ -63,31 +61,8 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
 	// initialize the zipping text codec, specifically, for use in encryption and decryption
 	QuaZip::setDefaultFileNameCodec("UTF-8");
 
-    ui->encrypt_filename->setMaxLength(ARs::MAX_ENCRYPT_NAME_LENGTH);
-    ui->actionAuto_resize_columns->setChecked(true);
-
-    ui->viewpass->setChecked(m_prefs->showPassword);
-    if (m_prefs->showPassword)
-    {
-        ui->password_0->setEchoMode(QLineEdit::Normal);
-        ui->password_1->setEchoMode(QLineEdit::Normal);
-    }
-    else
-    {
-        ui->password_0->setEchoMode(QLineEdit::Password);
-        ui->password_1->setEchoMode(QLineEdit::Password);
-    }
-
-    ui->actionDark_Theme->setChecked(m_prefs->darkTheme);
-    if (m_prefs->darkTheme)
-    {
-        skin.setSkin("dark");
-    }
-    else
-    {
-        skin.setSkin("notheme");
-    }
-
+    m_ui->encrypt_filename->setMaxLength(ARs::MAX_ENCRYPT_NAME_LENGTH);
+    m_ui->actionAuto_resize_columns->setChecked(true);
 
 	// create the temp directory and session.qtlist if they don't exist already
 	QDir curr_dir = QDir::current();
@@ -104,15 +79,36 @@ MyMainWindow::MyMainWindow(QWidget *parent) :
 
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
+MyMainWindow::~MyMainWindow()
+{
+
+}
 
 /*******************************************************************************
 
 *******************************************************************************/
 
-
-MyMainWindow::~MyMainWindow()
+void MyMainWindow::on_generator_clicked()
 {
-	delete ui;
+        auto pwGenerator = new PasswordGeneratorWidget;
+        pwGenerator->setStandaloneMode(true);
+        connect(pwGenerator, SIGNAL(appliedPassword(QString)), SLOT(setPassword(QString)));
+        connect(pwGenerator, SIGNAL(dialogTerminated()), pwGenerator, SLOT(close()));
+        pwGenerator->exec();
+}
+
+/*******************************************************************************
+
+*******************************************************************************/
+
+void MyMainWindow::setPassword(QString pass)
+{
+    m_ui->password_0->setText(pass);
+    m_ui->password_1->setText(pass);
 }
 
 /*******************************************************************************
@@ -121,27 +117,65 @@ MyMainWindow::~MyMainWindow()
 
 void MyMainWindow::loadPreferences()
 {
-    m_prefs->showPassword  = settings->value("showPassword", ARs::DEFAULT_SHOW_PSW).toBool();
-    m_prefs->darkTheme     = settings->value("darkTheme", ARs::DEFAULT_DARK_THEME).toBool();
-    m_prefs->extension     = settings->value("extension"    , ARs::DEFAULT_EXTENSION).toString();
-    m_prefs->argonMemory   = settings->value("argonMemory" , ARs::DEFAULT_ARGON_MEM_LIMIT).toInt();
-    m_prefs->argonItr      = settings->value("argonItr"    , ARs::DEFAULT_ARGON_ITR_LIMIT).toInt();
-    m_prefs->cryptoAlgo    = settings->value("cryptoAlgo"    , ARs::DEFAULT_CRYPTO_ALGO).toString();
-    m_prefs->userName      = settings->value("userName"    , ARs::DEFAULT_USER_NAME).toString();
-    m_prefs->langage      = settings->value("langage"    , ARs::DEFAULT_LANGUAGE).toString();
+    if (config()->hasAccessError()) {
+            QString warn_text = QString(tr("Access error for config file %1").arg(config()->getFileName()));
+            QMessageBox::warning(this, tr("Could not load configuration"), warn_text);
+        }
+
+    if (isVisible()) {
+        config()->set("GUI/MainWindowGeometry", saveGeometry());
+        config()->set("GUI/MainWindowState", saveState());
+    }
+
+    loadLanguage(config()->get("GUI/Language").toString());
+
+    restoreGeometry(config()->get("GUI/MainWindowGeometry").toByteArray());
+    restoreState(config()->get("GUI/MainWindowState").toByteArray());
+
+    if (config()->get("GUI/darkTheme").toBool())
+    {
+        m_ui->actionDark_Theme->setChecked(true);
+        skin.setSkin("dark");
+    }
+    else
+    {
+        m_ui->actionDark_Theme->setChecked(false);
+        skin.setSkin("notheme");
+    }
+
+    if (config()->get("GUI/showPassword").toBool())
+    {
+        m_ui->viewpass->setChecked(true);
+        m_ui->password_0->setEchoMode(QLineEdit::Normal);
+        m_ui->password_1->setEchoMode(QLineEdit::Normal);
+    }
+    else
+    {
+        m_ui->viewpass->setChecked(false);
+        m_ui->password_0->setEchoMode(QLineEdit::Password);
+        m_ui->password_1->setEchoMode(QLineEdit::Password);
+    }
+
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::savePreferences()
 {
-    settings->setValue("showPassword" , m_prefs->showPassword);
-    settings->setValue("langage" , m_prefs->langage);
-    settings->setValue("darkTheme" , m_prefs->darkTheme);
-    settings->setValue("extension"     , m_prefs->extension);
-    settings->setValue("argonMemory"  , m_prefs->argonMemory);
-    settings->setValue("argonItr"     , m_prefs->argonItr);
-    settings->setValue("cryptoAlgo"     , m_prefs->cryptoAlgo);
-    settings->setValue("userName"     , m_prefs->userName);
+    if (isVisible()) {
+        config()->set("GUI/MainWindowGeometry", saveGeometry());
+        config()->set("GUI/MainWindowState", saveState());
+    }
+    config()->set("GUI/darkTheme",m_ui->actionDark_Theme->isChecked());
+    config()->set("GUI/showPassword", m_ui->viewpass->isChecked());
+    config()->set("GUI/Language", m_currLang);
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::aboutQt()
 {
@@ -152,6 +186,10 @@ void MyMainWindow::aboutArsenic()
     auto* aboutDialog = new AboutDialog(this);
     aboutDialog->open();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::session()
 {
@@ -176,13 +214,9 @@ void MyMainWindow::session()
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void MyMainWindow::setModel(MyFileSystemModel *ptr_model)
 {
@@ -192,81 +226,69 @@ void MyMainWindow::setModel(MyFileSystemModel *ptr_model)
 	{
 		int width_array[MyFileSystemModelPublic::COLUMN_NUM];
 
-        if(!ui->actionAuto_resize_columns->isChecked())
+        if(!m_ui->actionAuto_resize_columns->isChecked())
 		{
 			// save the current widths before switching over to the new model, which will reset them
 			for(int i = 0; i < MyFileSystemModelPublic::COLUMN_NUM; i++)
-				width_array[i] = ui->tree_view->columnWidth(i);
+                width_array[i] = m_ui->tree_view->columnWidth(i);
 		}
 
 		// use it to replace the old model
-		ui->tree_view->setModel(nullptr);
+        m_ui->tree_view->setModel(nullptr);
 		delete file_model;
 		file_model = ptr_model;
 		file_model->setParent(this);
 
 		// setup the view for the new model
-		ui->tree_view->setModel(file_model);
-		ui->tree_view->hideColumn(MyFileSystemModelPublic::FULL_PATH_HEADER);
-		ui->tree_view->hideColumn(MyFileSystemModelPublic::TYPE_HEADER);
+        m_ui->tree_view->setModel(file_model);
+        m_ui->tree_view->hideColumn(MyFileSystemModelPublic::FULL_PATH_HEADER);
+        m_ui->tree_view->hideColumn(MyFileSystemModelPublic::TYPE_HEADER);
 
-        if(!ui->actionAuto_resize_columns->isChecked())
+        if(!m_ui->actionAuto_resize_columns->isChecked())
 		{
 			// restore the previous column settings
 			for(int i = 0; i < MyFileSystemModelPublic::COLUMN_NUM; i++)
-				ui->tree_view->setColumnWidth(i, width_array[i]);
+                m_ui->tree_view->setColumnWidth(i, width_array[i]);
 		}
 	}
 
 	// configure the new width to the contents
-    if(ui->actionAuto_resize_columns->isChecked())
+    if(m_ui->actionAuto_resize_columns->isChecked())
 		for(int i = 0; i < MyFileSystemModelPublic::COLUMN_NUM; i++)
 		{
-			ui->tree_view->resizeColumnToContents(i);
-            ui->tree_view->setColumnWidth(i, ui->tree_view->columnWidth(i) + ARs::EXTRA_COLUMN_SPACE);
+            m_ui->tree_view->resizeColumnToContents(i);
+            m_ui->tree_view->setColumnWidth(i, m_ui->tree_view->columnWidth(i) + ARs::EXTRA_COLUMN_SPACE);
         }
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void MyMainWindow::on_encrypt_clicked()
 {
     start_crypto(ARs::START_ENCRYPT);
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void MyMainWindow::on_decrypt_clicked()
 {
     start_crypto(ARs::START_DECRYPT);
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void MyMainWindow::start_crypto(int crypto_type)
 {
 	// check if the password fields match
-	if(ui->password_0->text() == ui->password_1->text())
+    if(m_ui->password_0->text() == m_ui->password_1->text())
 	{
-		QString pass = ui->password_0->text();
+        QString pass = m_ui->password_0->text();
 		QString encrypt_name;
 
 		bool checked = false;
@@ -304,7 +326,7 @@ void MyMainWindow::start_crypto(int crypto_type)
 		else
 		{            
 			// start the encryption process
-			bool delete_success = ui->delete_success->isChecked();
+            bool delete_success = m_ui->delete_success->isChecked();
 
 			MyFileSystemModelPtr clone_model(file_model->cloneByValue());
 
@@ -313,21 +335,21 @@ void MyMainWindow::start_crypto(int crypto_type)
             if(crypto_type == ARs::START_ENCRYPT)
 			{
                 // check if a username is set for additionnal data encryption
-                if(m_prefs->userName=="")
+                if(config()->get("userName").toString()=="")
                 {
                     QMessageBox::warning(this, tr("No user name"), tr("You must set a user name or e-mail in configuration !"));
                     return;
                 }
 				// check if the user wants to rename the encrypted files to something else
-				if(ui->encrypt_rename->isChecked())
+                if(m_ui->encrypt_rename->isChecked())
 				{
-					encrypt_name = ui->encrypt_filename->text();
-                    ptr_mpb = MyAbstractBarPtr(new MyEncryptBar(this, clone_model.get(), pass,m_prefs->userName,m_prefs->extension,m_prefs->cryptoAlgo ,m_prefs->argonMemory,m_prefs->argonItr,delete_success,
+                    encrypt_name = m_ui->encrypt_filename->text();
+                    ptr_mpb = MyAbstractBarPtr(new MyEncryptBar(this, clone_model.get(), pass,config()->get("userName").toString(),config()->get("extension").toString(),config()->get("CRYPTO/cryptoAlgo").toString() ,config()->get("CRYPTO/argonMemory").toInt(),config()->get("CRYPTO/argonItr").toInt(),delete_success,
 						&encrypt_name));
 				}
 				else
 				{
-                    ptr_mpb = MyAbstractBarPtr(new MyEncryptBar(this, clone_model.get(), pass,m_prefs->userName,m_prefs->extension,m_prefs->cryptoAlgo,m_prefs->argonMemory,m_prefs->argonItr,delete_success));
+                    ptr_mpb = MyAbstractBarPtr(new MyEncryptBar(this, clone_model.get(), pass,config()->get("userName").toString(),config()->get("extension").toString(),config()->get("CRYPTO/cryptoAlgo").toString(),config()->get("CRYPTO/argonMemory").toInt(),config()->get("CRYPTO/argonItr").toInt(),delete_success));
 				}
 			}
 			else
@@ -339,9 +361,9 @@ void MyMainWindow::start_crypto(int crypto_type)
 			// after crypto, replace the old model with the new one
 			setModel(clone_model.release());
 
-			// clear the password fields when done
-            // ui->password_0->clear();
-            // ui->password_1->clear();
+            // clear the password fields when done
+            m_ui->password_0->clear();
+            m_ui->password_1->clear();
 		}
 	}
 	else
@@ -349,13 +371,9 @@ void MyMainWindow::start_crypto(int crypto_type)
             "Please make sure they were entered correctly and try again."));
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void MyMainWindow::on_add_file_clicked()
 {
@@ -408,13 +426,9 @@ void MyMainWindow::on_add_file_clicked()
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void MyMainWindow::on_add_directory_clicked()
 {
@@ -514,29 +528,20 @@ void MyMainWindow::on_add_directory_clicked()
 	}	// if(dir != QString())
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void MyMainWindow::on_remove_checked_clicked()
 {
 	// go through the entire model and remove any checked items
 	file_model->removeCheckedItems();
 	setModel(file_model);
-
 }
-
 
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void MyMainWindow::closeEvent(QCloseEvent *event)
 {
@@ -564,17 +569,13 @@ void MyMainWindow::closeEvent(QCloseEvent *event)
 
 	// successfully saved the list, quit
 	else
-		event->accept();
+    event->accept();
     savePreferences();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void MyMainWindow::on_delete_checked_clicked()
 {
@@ -662,11 +663,18 @@ void MyMainWindow::on_delete_checked_clicked()
 	}
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_actionAuto_resize_columns_triggered(bool checked)
 {
     on_actionRefresh_view_triggered();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::on_actionLoadList_triggered()
 {
@@ -693,10 +701,18 @@ void MyMainWindow::on_actionLoadList_triggered()
     }	// list_path != QString()
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_actionQuit_triggered()
 {
     close();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::on_actionSave_item_list_triggered()
 {
@@ -714,6 +730,10 @@ void MyMainWindow::on_actionSave_item_list_triggered()
     }
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_actionRefresh_view_triggered()
 {
     // creating a new model will recreate and update all the internal MyFileInfo objects
@@ -728,6 +748,10 @@ void MyMainWindow::on_actionRefresh_view_triggered()
     file_model->startAllDirThread();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_actionCheck_All_triggered()
 {
     int n = file_model->rowCount();
@@ -736,88 +760,112 @@ void MyMainWindow::on_actionCheck_All_triggered()
         file_model->setData(file_model->index(i), Qt::Checked, Qt::CheckStateRole);
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_actionUncheck_All_triggered()
 {
     int n = file_model->rowCount();
-
     for(int i = 0; i < n; i++)
         file_model->setData(file_model->index(i), Qt::Unchecked, Qt::CheckStateRole);
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::on_actionAdd_File_triggered()
 {
     on_add_file_clicked();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_actionAdd_Directory_triggered()
 {
     on_add_directory_clicked();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::on_actionRemove_checked_triggered()
 {
     on_remove_checked_clicked();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_actionDelete_checked_triggered()
 {
     on_delete_checked_clicked();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_actionConfiguration_triggered()
 {
-    bool accepted = Config::getPreferences(* m_prefs, this);
-    if (accepted)
-        {
-            savePreferences();
-        }
+    auto* confDialog = new Conf(this);
+    confDialog->exec();
 }
 
+/*******************************************************************************
 
+*******************************************************************************/
 
 void MyMainWindow::on_checkAll_clicked()
 {
     on_actionCheck_All_triggered();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_uncheckAll_clicked()
 {
     on_actionUncheck_All_triggered();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::on_viewpass_stateChanged(int state)
 {
     if (state == 0)
     {
-        ui->password_0->setEchoMode(QLineEdit::Password);
-        ui->password_1->setEchoMode(QLineEdit::Password);
+        m_ui->password_0->setEchoMode(QLineEdit::Password);
+        m_ui->password_1->setEchoMode(QLineEdit::Password);
     }
     else
     {
-        ui->password_0->setEchoMode(QLineEdit::Normal);
-        ui->password_1->setEchoMode(QLineEdit::Normal);
+        m_ui->password_0->setEchoMode(QLineEdit::Normal);
+        m_ui->password_1->setEchoMode(QLineEdit::Normal);
     }
-    m_prefs->showPassword = state;
 }
 
-void MyMainWindow::on_generator_clicked()
-{
-    PassGenerator fenetre;
-    if (fenetre.exec()==QDialog::Accepted)
+/*******************************************************************************
 
-        {
-            ui->password_0->setText(fenetre.getPassword());
-            ui->password_1->setText(fenetre.getPassword());
-        }
-
-}
+*******************************************************************************/
 
 void MyMainWindow::on_actionHash_Calculator_triggered()
 {
-
     auto* hashdlg = new HashCheckDialog(this);
     hashdlg->exec();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::Argon2_tests()
 {
@@ -825,117 +873,148 @@ void MyMainWindow::Argon2_tests()
     Argon2_tests->open();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::dark_theme()
 {
-
-    if (ui->actionDark_Theme->isChecked())
+    if (m_ui->actionDark_Theme->isChecked())
     {
         skin.setSkin("dark");
-        m_prefs->darkTheme = true;
     }
     else
     {
         skin.setSkin("notheme");
-        m_prefs->darkTheme = false;
     }
-
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 // we create the menu entries dynamically, dependent on the existing translations.
 void MyMainWindow::createLanguageMenu(void)
 {
- QActionGroup* langGroup = new QActionGroup(ui->menuLanguage);
- langGroup->setExclusive(true);
+    QActionGroup* langGroup = new QActionGroup(m_ui->menuLanguage);
+    langGroup->setExclusive(true);
 
- connect(langGroup, SIGNAL (triggered(QAction *)), this, SLOT (slotLanguageChanged(QAction *)));
+    connect(langGroup, SIGNAL (triggered(QAction *)), this, SLOT (slotLanguageChanged(QAction *)));
 
- // format systems language
- QString defaultLocale = QLocale::system().name(); // e.g. "de_DE"
- defaultLocale.truncate(defaultLocale.lastIndexOf('_')); // e.g. "de"
+    // format systems language
+    QString defaultLocale = QLocale::system().name(); // e.g. "de_DE"
+    defaultLocale.truncate(defaultLocale.lastIndexOf('_')); // e.g. "de"
 
- m_langPath = QApplication::applicationDirPath();
- m_langPath.append("/languages");
- QDir dir(m_langPath);
- QStringList fileNames = dir.entryList(QStringList("arsenic_*.qm"));
+    m_langPath = QApplication::applicationDirPath();
+    m_langPath.append("/languages");
+    QDir dir(m_langPath);
+    QStringList fileNames = dir.entryList(QStringList("arsenic_*.qm"));
 
- for (int i = 0; i < fileNames.size(); ++i) {
-  // get locale extracted by filename
-  QString locale;
-  locale = fileNames[i]; // "TranslationExample_de.qm"
-  locale.truncate(locale.lastIndexOf('.')); // "TranslationExample_de"
-  locale.remove(0, locale.indexOf('_') + 1); // "de"
+    for (int i = 0; i < fileNames.size(); ++i)
+    {
+        // get locale extracted by filename
+        QString locale;
+        locale = fileNames[i]; // "TranslationExample_de.qm"
+        locale.truncate(locale.lastIndexOf('.')); // "TranslationExample_de"
+        locale.remove(0, locale.indexOf('_') + 1); // "de"
 
- QString lang = QLocale::languageToString(QLocale(locale).language());
- QIcon ico(QString("%1/%2.svg").arg(m_langPath).arg(locale));
+        QString lang = QLocale::languageToString(QLocale(locale).language());
+        QIcon ico(QString("%1/%2.svg").arg(m_langPath).arg(locale));
 
- QAction *action = new QAction(ico, lang, this);
- action->setCheckable(true);
- action->setData(locale);
+        QAction *action = new QAction(ico, lang, this);
+        action->setCheckable(true);
+        action->setData(locale);
 
- ui->menuLanguage->addAction(action);
- langGroup->addAction(action);
+        m_ui->menuLanguage->addAction(action);
+        langGroup->addAction(action);
 
- // set default translators and language checked
- if (m_prefs->langage == locale)
- {
- action->setChecked(true);
- }
- }
+        // set default translators and language checked
+        if (config()->get("GUI/Language").toString() == locale)
+        {
+            action->setChecked(true);
+        }
+    }
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 // Called every time, when a menu entry of the language menu is called
 void MyMainWindow::slotLanguageChanged(QAction* action)
 {
- if(0 != action) {
-  // load the language dependant on the action content
-  loadLanguage(action->data().toString());
-  //setWindowIcon(action->icon());
- }
+    if(0 != action)
+    {
+        // load the language dependant on the action content
+        loadLanguage(action->data().toString());
+        //setWindowIcon(action->icon());
+    }
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::loadLanguage(const QString& rLanguage)
 {
- if(m_currLang != rLanguage) {
-  m_currLang = rLanguage;
-  QLocale locale = QLocale(m_currLang);
-  QLocale::setDefault(locale);
-  QString languageName = QLocale::languageToString(locale.language());
-  switchTranslator(m_translator, QString("arsenic_%1.qm").arg(rLanguage));
-  switchTranslator(m_translatorQt, QString("qt_%1.qm").arg(rLanguage));
-  //ui->statusBar->showMessage(tr("Current Language changed to %1").arg(languageName));
-  m_prefs->langage =rLanguage;
- }
+    if(m_currLang != rLanguage)
+    {
+        m_currLang = rLanguage;
+        QLocale locale = QLocale(m_currLang);
+        QLocale::setDefault(locale);
+        QString languageName = QLocale::languageToString(locale.language());
+        switchTranslator(m_translator, QString("arsenic_%1.qm").arg(rLanguage));
+        switchTranslator(m_translatorQt, QString("qt_%1.qm").arg(rLanguage));
+        //ui->statusBar->showMessage(tr("Current Language changed to %1").arg(languageName));
+    }
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void MyMainWindow::switchTranslator(QTranslator& translator, const QString& filename)
 {
- // remove the old translator
- qApp->removeTranslator(&translator);
+    // remove the old translator
+    qApp->removeTranslator(&translator);
 
- // load the new translator
-QString path = QApplication::applicationDirPath();
+    // load the new translator
+    QString path = QApplication::applicationDirPath();
     path.append("/languages/");
- if(translator.load(path + filename)) //Here Path and Filename has to be entered because the system didn't find the QM Files else
-  qApp->installTranslator(&translator);
+    if(translator.load(path + filename)) //Here Path and Filename has to be entered because the system didn't find the QM Files else
+    qApp->installTranslator(&translator);
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
+
 void MyMainWindow::changeEvent(QEvent* event)
 {
- if(0 != event) {
-  switch(event->type()) {
-   // this event is send if a translator is loaded
-   case QEvent::LanguageChange:
-    ui->retranslateUi(this);
-    break;
+    if(0 != event)
+    {
+        switch(event->type())
+        {
+            // this event is send if a translator is loaded
+        case QEvent::LanguageChange:
+        m_ui->retranslateUi(this);
+            default:
+            break;
+        break;
 
    // this event is send, if the system, language changes
-   case QEvent::LocaleChange:
-   {
-    QString locale = QLocale::system().name();
-    locale.truncate(locale.lastIndexOf('_'));
-    loadLanguage(locale);
-   }
-   break;
-  }
- }
- QMainWindow::changeEvent(event);
+        case QEvent::LocaleChange:
+        {
+            QString locale = QLocale::system().name();
+            locale.truncate(locale.lastIndexOf('_'));
+            loadLanguage(locale);
+        }
+        break;
+        }
+    }
+    QMainWindow::changeEvent(event);
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui svg
 CONFIG += c++17
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -31,17 +31,21 @@ DEFINES += ZLIB_STATIC
 
 FORMS += \
     AboutDialog.ui \
+    PasswordGeneratorWidget.ui \
     argontests.ui \
-    config.ui \
+    conf.ui \
     hashcheckdialog.ui \
     myabstractbar.ui \
-    mymainwindow.ui \
-    passgenerator.ui
+    mymainwindow.ui
 
 HEADERS += \
     AboutDialog.h \
+    Clipboard.h \
+    Config.h \
+    PasswordGenerator.h \
+    PasswordGeneratorWidget.h \
     argontests.h \
-    config.h \
+    conf.h \
     constants.h \
     decrypt.h \
     divers.h \
@@ -62,15 +66,17 @@ HEADERS += \
     mymainwindow.h \
     mysavebar.h \
     mysavethread.h \
-    passgenerator.h \
-    preferences.h \
     progressbar.h \
     skin.h
 
 SOURCES += \
     AboutDialog.cpp \
+    Clipboard.cpp \
+    Config.cpp \
+    PasswordGenerator.cpp \
+    PasswordGeneratorWidget.cpp \
     argontests.cpp \
-    config.cpp \
+    conf.cpp \
     decrypt.cpp \
     divers.cpp \
     encrypt.cpp \
@@ -89,7 +95,6 @@ SOURCES += \
     mymainwindow.cpp \
     mysavebar.cpp \
     mysavethread.cpp \
-    passgenerator.cpp \
     progressbar.cpp \
     skin.cpp
 
@@ -104,6 +109,10 @@ linux {
     LIBS += -L$$OUT_PWD/../zlib/ -lzlib
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
+
+    LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
+    INCLUDEPATH += $$PWD/../zxcvbn/
+    DEPENDPATH += $$PWD/../zxcvbn/
 
 
     equals(QMAKE_CXX, clang++)
@@ -129,6 +138,10 @@ win32-g++ {
     LIBS += -L$$OUT_PWD/../zlib/release/ -lzlib
     INCLUDEPATH += $$PWD/../zlib/
     DEPENDPATH += $$PWD/../zlib/
+
+    LIBS += -L$$OUT_PWD/../zxcvbn/release/ -lzxcvbn
+    INCLUDEPATH += $$PWD/../zxcvbn/
+    DEPENDPATH += $$PWD/../zxcvbn/
 
     LIBS += -L$$OUT_PWD/../botan/release/ -larsenic_core
     INCLUDEPATH += $$PWD/../botan/win_mingw64/

@@ -61,50 +61,101 @@
     <message>
         <location filename="../argontests.ui" line="84"/>
         <source>NOT IMPLEMENTED</source>
-        <translation type="unfinished"></translation>
+        <translation>Pas encore implémenté</translation>
+    </message>
+</context>
+<context>
+    <name>Conf</name>
+    <message>
+        <location filename="../conf.ui" line="14"/>
+        <source>Arsenic Configuration</source>
+        <translation>Arsenic Configuration</translation>
+    </message>
+    <message>
+        <location filename="../conf.ui" line="20"/>
+        <source>General</source>
+        <translation>Général</translation>
+    </message>
+    <message>
+        <location filename="../conf.ui" line="26"/>
+        <source>Extension for Arsenic files:</source>
+        <translation>Extension pour les fichiers chiffrés :</translation>
+    </message>
+    <message>
+        <location filename="../conf.ui" line="33"/>
+        <source>E-mail or pseudo</source>
+        <translation>Email ou pseudo</translation>
+    </message>
+    <message>
+        <location filename="../conf.ui" line="40"/>
+        <source>Empty clopboard after</source>
+        <translation>Vider le presse papier aprés</translation>
+    </message>
+    <message>
+        <location filename="../conf.ui" line="50"/>
+        <source> sec</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../conf.ui" line="101"/>
+        <source>Passphrase derivation</source>
+        <translation>Dérivation du mot de passe par Argon2</translation>
+    </message>
+    <message>
+        <location filename="../conf.ui" line="107"/>
+        <source>Iterations</source>
+        <translation>Iterations</translation>
+    </message>
+    <message>
+        <location filename="../conf.ui" line="136"/>
+        <source>Memory Limit:</source>
+        <translation>Limite Mémoire :</translation>
+    </message>
+    <message>
+        <location filename="../conf.ui" line="181"/>
+        <source>Encryption Algorithm</source>
+        <translation>Algorithme de chiffrage</translation>
+    </message>
+    <message>
+        <location filename="../conf.cpp" line="28"/>
+        <source>Access error for config file %1</source>
+        <translation>Impossible de lire le fichier de configuration %1</translation>
+    </message>
+    <message>
+        <location filename="../conf.cpp" line="29"/>
+        <source>Could not load configuration</source>
+        <translation>Impossible de lire la configuration</translation>
     </message>
 </context>
 <context>
     <name>Config</name>
     <message>
-        <location filename="../config.ui" line="14"/>
-        <source>Arsenic Configuration</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../config.ui" line="20"/>
         <source>General</source>
-        <translation>Général</translation>
+        <translation type="vanished">Général</translation>
     </message>
     <message>
-        <location filename="../config.ui" line="26"/>
         <source>E-mail or pseudo</source>
-        <translation>Email ou pseudo</translation>
+        <translation type="vanished">Email ou pseudo</translation>
     </message>
     <message>
-        <location filename="../config.ui" line="33"/>
         <source>Extension for Arsenic files:</source>
-        <translation>Extension pour les fichiers chiffrés :</translation>
+        <translation type="vanished">Extension pour les fichiers chiffrés :</translation>
     </message>
     <message>
-        <location filename="../config.ui" line="65"/>
         <source>Passphrase derivation</source>
-        <translation>Dérivation du mot de passe par Argon2</translation>
+        <translation type="vanished">Dérivation du mot de passe par Argon2</translation>
     </message>
     <message>
-        <location filename="../config.ui" line="71"/>
         <source>Iterations</source>
-        <translation>Iterations</translation>
+        <translation type="vanished">Iterations</translation>
     </message>
     <message>
-        <location filename="../config.ui" line="100"/>
         <source>Memory Limit:</source>
-        <translation>Limite Mémoire :</translation>
+        <translation type="vanished">Limite Mémoire :</translation>
     </message>
     <message>
-        <location filename="../config.ui" line="145"/>
         <source>Encryption Algorithm</source>
-        <translation>Algorithme de chiffrage</translation>
+        <translation type="vanished">Algorithme de chiffrage</translation>
     </message>
 </context>
 <context>
@@ -433,7 +484,7 @@
     </message>
     <message>
         <location filename="../mymainwindow.ui" line="369"/>
-        <location filename="../mymainwindow.cpp" line="148"/>
+        <location filename="../mymainwindow.cpp" line="191"/>
         <source>About Qt</source>
         <translation>A propos de Qt</translation>
     </message>
@@ -458,143 +509,153 @@
         <translation>Français</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="289"/>
+        <location filename="../mymainwindow.cpp" line="130"/>
+        <source>Access error for config file %1</source>
+        <translation>Impossible de lire le fichier de configuration %1</translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="131"/>
+        <source>Could not load configuration</source>
+        <translation>Impossible de lire la configuration</translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="320"/>
         <source>The password entered was too short. </source>
         <translation>Le mot de passe est trop court. </translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="299"/>
+        <location filename="../mymainwindow.cpp" line="330"/>
         <source>There were no items selected for </source>
         <translation>Il n&apos;y a rien de selectionné pour </translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="301"/>
+        <location filename="../mymainwindow.cpp" line="332"/>
         <source>Nothing selected!</source>
         <translation>Rien de Selectionné !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="318"/>
+        <location filename="../mymainwindow.cpp" line="349"/>
         <source>No user name</source>
         <translation>Pas de nom d&apos;utilisateur</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="318"/>
+        <location filename="../mymainwindow.cpp" line="349"/>
         <source>You must set a user name or e-mail in configuration !</source>
         <translation>Vous devez entrer un email ou nom d&apos;utilisateur dans le menu de configuration !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="348"/>
+        <location filename="../mymainwindow.cpp" line="379"/>
         <source>Passwords do not match!</source>
         <translation>Les mots de passes ne corespondent pas !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="348"/>
+        <location filename="../mymainwindow.cpp" line="379"/>
         <source>The password fields do not match! Please make sure they were entered correctly and try again.</source>
         <translation>Les mots de passe ne corespondent pas ! Merci de verifier.</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="362"/>
+        <location filename="../mymainwindow.cpp" line="389"/>
         <source>Open File(s)</source>
-        <translation type="unfinished"></translation>
+        <translation>Ouvrir Fichier(s)</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="392"/>
+        <location filename="../mymainwindow.cpp" line="419"/>
         <source>File(s) already added!</source>
         <translation>Fichier(s) deja ajouté !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="393"/>
+        <location filename="../mymainwindow.cpp" line="420"/>
         <source>The following file(s) were already added. They will not be added again.</source>
         <translation>Ces fichiers sont déja dans la liste. Ils ne seronts pas ajoutés.</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="421"/>
-        <source>Open Directory</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../mymainwindow.cpp" line="433"/>
-        <source>Can&apos;t add a root directory!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../mymainwindow.cpp" line="434"/>
-        <source>The root directory (</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../mymainwindow.cpp" line="434"/>
-        <location filename="../mymainwindow.cpp" line="445"/>
-        <source>) cannot be added.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../mymainwindow.cpp" line="444"/>
-        <source>Can&apos;t add empty directory!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../mymainwindow.cpp" line="445"/>
-        <source>The directory (</source>
-        <translation type="unfinished"></translation>
+        <source>Open Directory</source>
+        <translation>Ouvrir Dossier</translation>
     </message>
     <message>
         <location filename="../mymainwindow.cpp" line="456"/>
-        <source>Directory already added!</source>
-        <translation type="unfinished"></translation>
+        <source>Can&apos;t add a root directory!</source>
+        <translation>Impossible d&apos;ajouter un dossier systeme !</translation>
     </message>
     <message>
         <location filename="../mymainwindow.cpp" line="457"/>
+        <source>The root directory (</source>
+        <translation>Le dossier root (</translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="457"/>
+        <location filename="../mymainwindow.cpp" line="468"/>
+        <source>) cannot be added.</source>
+        <translation>) ne peut être ajouté.</translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="467"/>
+        <source>Can&apos;t add empty directory!</source>
+        <translation>Impossible d&apos;ajouter un dossier vide !</translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="468"/>
+        <source>The directory (</source>
+        <translation>Le dossier (</translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="479"/>
+        <source>Directory already added!</source>
+        <translation>Dossier deja ajouté !</translation>
+    </message>
+    <message>
+        <location filename="../mymainwindow.cpp" line="480"/>
         <source>The following directory was already added. It will not be added again.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ce dossier est déja dans la liste. Il ne sera pas ajoutés.</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="475"/>
+        <location filename="../mymainwindow.cpp" line="498"/>
         <source>Directory makes item(s) redundant!</source>
-        <translation type="unfinished"></translation>
+        <translation>L&apos;ajout du dossier créer des fichiers redondants !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="476"/>
+        <location filename="../mymainwindow.cpp" line="499"/>
         <source>The directory chosen (</source>
-        <translation type="unfinished"></translation>
+        <translation>Le dossier (</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="476"/>
+        <location filename="../mymainwindow.cpp" line="499"/>
         <source>) contains item(s) inside it that were added previously. If you add this new directory, the following redundant items will be removed.</source>
-        <translation type="unfinished"></translation>
+        <translation>) contient des fichiers qui ont déja étés ajoutés. Si vous l&apos;ajoutez, les fichiers redondants seront retirés de la liste.</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="599"/>
+        <location filename="../mymainwindow.cpp" line="610"/>
         <source>Delete items?</source>
         <translation>Supprimer les fichiers ?</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="599"/>
+        <location filename="../mymainwindow.cpp" line="610"/>
         <source>Are you sure you wish to permanently delete the selected items?</source>
         <translation>Etes-vous certain de vouloir supprimer definitivement les fichiers selectionnés ?</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="617"/>
+        <location filename="../mymainwindow.cpp" line="628"/>
         <source>Successfully deleted file!</source>
         <translation>Le fichier a bien été supprimé !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="620"/>
+        <location filename="../mymainwindow.cpp" line="631"/>
         <source>Error deleting file!</source>
         <translation>Erreur de suppression du fichier !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="627"/>
+        <location filename="../mymainwindow.cpp" line="638"/>
         <source>Successfully deleted directory!</source>
         <translation>Le dossier à bien été supprimé !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="630"/>
+        <location filename="../mymainwindow.cpp" line="641"/>
         <source>Error deleting directory!</source>
         <translation>Erreur de suppression du dossier !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="635"/>
+        <location filename="../mymainwindow.cpp" line="646"/>
         <source>Item was not found!</source>
         <translation>Fichier introuvable !</translation>
     </message>
@@ -606,34 +667,343 @@
 <context>
     <name>PassGenerator</name>
     <message>
-        <location filename="../passgenerator.ui" line="14"/>
         <source>Arsenic Password Generator</source>
-        <translation>Arsenic Generateur de mot de passe</translation>
+        <translation type="vanished">Arsenic Generateur de mot de passe</translation>
     </message>
     <message>
-        <location filename="../passgenerator.ui" line="22"/>
         <source>&amp;Generate</source>
-        <translation>&amp;Generer</translation>
+        <translation type="vanished">&amp;Generer</translation>
     </message>
     <message>
-        <location filename="../passgenerator.ui" line="32"/>
         <source>&amp;Copy</source>
-        <translation>&amp;Copier</translation>
+        <translation type="vanished">&amp;Copier</translation>
     </message>
     <message>
-        <location filename="../passgenerator.ui" line="50"/>
         <source>password length (min 8 max 500)</source>
-        <translation>Longueur du mot de passe (min 8, max 500)</translation>
+        <translation type="vanished">Longueur du mot de passe (min 8, max 500)</translation>
     </message>
     <message>
-        <location filename="../passgenerator.ui" line="111"/>
         <source>content</source>
-        <translation>Elements à inclure</translation>
+        <translation type="vanished">Elements à inclure</translation>
     </message>
     <message>
-        <location filename="../passgenerator.ui" line="140"/>
         <source>&amp;symbols</source>
-        <translation>&amp;symboles</translation>
+        <translation type="vanished">&amp;symboles</translation>
+    </message>
+</context>
+<context>
+    <name>PasswordGeneratorWidget</name>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="14"/>
+        <source>Dialog</source>
+        <translation>Arsenic Générateur de mot de passe</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="74"/>
+        <source>%p%</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="81"/>
+        <source>Password:</source>
+        <translation>Mot de passe:</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="105"/>
+        <source>strength</source>
+        <comment>Password strength</comment>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="140"/>
+        <source>entropy</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="155"/>
+        <source>Generated password</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="165"/>
+        <source>Toggle password visibility</source>
+        <translation>Visibilité du mot de passe</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="191"/>
+        <source>&amp;Length:</source>
+        <translation>&amp;Longueur:</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="201"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="226"/>
+        <source>Password length</source>
+        <translation>Longueur du mot de passe</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="255"/>
+        <source>Character Types</source>
+        <translation>Types de caractéres</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="293"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="296"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="511"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="514"/>
+        <source>Upper-case letters</source>
+        <translation>Lettres majuscules</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="324"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="327"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="539"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="542"/>
+        <source>Lower-case letters</source>
+        <translation>Lettres minuscules</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="355"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="358"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="574"/>
+        <source>Numbers</source>
+        <translation>Nombres</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="389"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="392"/>
+        <source>Special characters</source>
+        <translation>Caractéres spéciaux</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="423"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="426"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="785"/>
+        <source>Extended ASCII</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="429"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="788"/>
+        <source>ExtendedASCII</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="461"/>
+        <source>Switch to advanced mode</source>
+        <translation>Passer au mode avancé</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="464"/>
+        <source>Advanced</source>
+        <translation>Avancé</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="517"/>
+        <source>A-Z</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="545"/>
+        <source>a-z</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="577"/>
+        <source>0-9</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="599"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="602"/>
+        <source>Braces</source>
+        <translation>Parenthéses et crochets</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="605"/>
+        <source>{[(</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="634"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="637"/>
+        <source>Punctuation</source>
+        <translation>Ponctuation</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="640"/>
+        <source>.,:;</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="662"/>
+        <source>Quotes</source>
+        <translation>Guillemets</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="665"/>
+        <source>&quot; &apos;</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="694"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="697"/>
+        <source>Math Symbols</source>
+        <translation>Symboles mathématiques</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="700"/>
+        <source>&lt;*+!?=</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="722"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="725"/>
+        <source>Dashes and Slashes</source>
+        <translation>Tirets et barres</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="728"/>
+        <source>\_|-/</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="757"/>
+        <location filename="../PasswordGeneratorWidget.ui" line="760"/>
+        <source>Logograms</source>
+        <translation>Logogrammes</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="763"/>
+        <source>#$%&amp;&amp;@^`~</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="827"/>
+        <source>Switch to simple mode</source>
+        <translation>Passer en mode simple</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="830"/>
+        <source>Simple</source>
+        <translation></translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="869"/>
+        <source>Character set to exclude from generated password</source>
+        <translation>Caractéres exclus du générateur</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="872"/>
+        <source>Excluded characters</source>
+        <translation>Caractéres exclus</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="882"/>
+        <source>Do not include:</source>
+        <translation>Ne pas inclure:</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="895"/>
+        <source>Add non-hex letters to &quot;do not include&quot; list</source>
+        <translation>Ajoutter les caractéres non-hexadécimales à la liste d&apos;exclusion</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="898"/>
+        <source>Hex Passwords</source>
+        <translation>mot de passe Hexadécimal</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="901"/>
+        <source>Hex</source>
+        <translation>Haxa</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="924"/>
+        <source>Excluded characters: &quot;0&quot;, &quot;1&quot;, &quot;l&quot;, &quot;I&quot;, &quot;O&quot;, &quot;|&quot;, &quot;﹒&quot;</source>
+        <translation>Caractéres exclus: &quot;0&quot;, &quot;1&quot;, &quot;l&quot;, &quot;I&quot;, &quot;O&quot;, &quot;|&quot;, &quot;﹒&quot;</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="927"/>
+        <source>Exclude look-alike characters</source>
+        <translation>Exclure les charactéres ressamblants</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="937"/>
+        <source>Pick characters from every group</source>
+        <translation>Prendre des caractéres dans chaques groupes</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="967"/>
+        <source>Copy password</source>
+        <translation>Copier le mot de passe dans le presse papier</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="973"/>
+        <source>Copy</source>
+        <translation>Copier</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="983"/>
+        <source>Accept password</source>
+        <translation>Accepter le mot de passe</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="989"/>
+        <location filename="../PasswordGeneratorWidget.cpp" line="177"/>
+        <source>Accept</source>
+        <translation>Accepter</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="996"/>
+        <source>Regenerate password</source>
+        <translation>Régénérer le mot de passe</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.ui" line="1002"/>
+        <source>Regenerate</source>
+        <translation>Régénérer</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.cpp" line="174"/>
+        <source>Close</source>
+        <translation>Fermer</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.cpp" line="221"/>
+        <source>Entropy: %1 bit</source>
+        <translation>Entropie: %1 bit</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.cpp" line="337"/>
+        <location filename="../PasswordGeneratorWidget.cpp" line="340"/>
+        <location filename="../PasswordGeneratorWidget.cpp" line="343"/>
+        <location filename="../PasswordGeneratorWidget.cpp" line="346"/>
+        <source>Password Quality: %1</source>
+        <translation>Qualité du password: %1</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.cpp" line="337"/>
+        <source>Poor</source>
+        <comment>Password quality</comment>
+        <translation>Nul</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.cpp" line="340"/>
+        <source>Weak</source>
+        <comment>Password quality</comment>
+        <translation>Faible</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.cpp" line="343"/>
+        <source>Good</source>
+        <comment>Password quality</comment>
+        <translation>Bon</translation>
+    </message>
+    <message>
+        <location filename="../PasswordGeneratorWidget.cpp" line="346"/>
+        <source>Excellent</source>
+        <comment>Password quality</comment>
+        <translation></translation>
     </message>
 </context>
 <context>
