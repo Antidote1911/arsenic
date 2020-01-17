@@ -1,4 +1,4 @@
-#include "mymainwindow.h"
+#include "mainwindow.h"
 #include <QApplication>
 #include <QtGlobal>
 #include <QUnhandledException>
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     {
 
 
-        MyMainWindow w;
+        MainWindow w;
         w.session();
         return app.exec();
     }

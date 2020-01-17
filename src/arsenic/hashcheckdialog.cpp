@@ -15,7 +15,7 @@
 #include "divers.h"
 
 #include "messages.h"
-using namespace MyMessagesPublic;
+using namespace MessagesPublic;
 
 
 HashCheckDialog::HashCheckDialog(QWidget *parent) :

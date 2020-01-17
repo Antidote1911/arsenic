@@ -7,7 +7,7 @@
 #include "messages.h"
 
 using namespace ARs;
-using namespace MyMessagesPublic;
+using namespace MessagesPublic;
 
 
 

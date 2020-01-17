@@ -30,72 +30,72 @@ DEFINES += QUAZIP_STATIC
 DEFINES += ZLIB_STATIC
 
 FORMS += \
-    AboutDialog.ui \
-    PasswordGeneratorWidget.ui \
+    aboutDialog.ui \
+    abstractbarDialog.ui \
     argontests.ui \
-    conf.ui \
+    configDialog.ui \
     hashcheckdialog.ui \
-    myabstractbar.ui \
-    mymainwindow.ui
+    mainwindow.ui \
+    passwordGeneratorDialog.ui
 
 HEADERS += \
-    AboutDialog.h \
-    Clipboard.h \
     Config.h \
-    PasswordGenerator.h \
-    PasswordGeneratorWidget.h \
+    aboutDialog.h \
+    abstractbarDialog.h \
     argontests.h \
-    conf.h \
+    clipboard.h \
+    configDialog.h \
     constants.h \
     decrypt.h \
+    decryptbar.h \
+    decryptthread.h \
+    dirthread.h \
     divers.h \
     encrypt.h \
+    encryptbar.h \
+    encryptthread.h \
+    fileinfo.h \
+    filesystemmodel.h \
     hashcheckdialog.h \
+    interrupt.h \
+    loadbar.h \
+    loadthread.h \
+    mainwindow.h \
     messages.h \
-    myabstractbar.h \
-    mydecryptbar.h \
-    mydecryptthread.h \
-    mydirthread.h \
-    myencryptbar.h \
-    myencryptthread.h \
-    myfileinfo.h \
-    myfilesystemmodel.h \
-    myinterrupt.h \
-    myloadbar.h \
-    myloadthread.h \
-    mymainwindow.h \
-    mysavebar.h \
-    mysavethread.h \
+    passwordGenerator.h \
+    passwordGeneratorDialog.h \
     progressbar.h \
+    savebar.h \
+    savethread.h \
     skin.h
 
 SOURCES += \
-    AboutDialog.cpp \
-    Clipboard.cpp \
     Config.cpp \
-    PasswordGenerator.cpp \
-    PasswordGeneratorWidget.cpp \
+    aboutDialog.cpp \
+    abstractbarDialog.cpp \
     argontests.cpp \
-    conf.cpp \
+    clipboard.cpp \
+    configDialog.cpp \
     decrypt.cpp \
+    decryptbar.cpp \
+    decryptthread.cpp \
+    dirthread.cpp \
     divers.cpp \
     encrypt.cpp \
+    encryptbar.cpp \
+    encryptthread.cpp \
+    fileinfo.cpp \
+    filesystemmodel.cpp \
     hashcheckdialog.cpp \
+    loadbar.cpp \
+    loadthread.cpp \
     main.cpp \
-    myabstractbar.cpp \
-    mydecryptbar.cpp \
-    mydecryptthread.cpp \
-    mydirthread.cpp \
-    myencryptbar.cpp \
-    myencryptthread.cpp \
-    myfileinfo.cpp \
-    myfilesystemmodel.cpp \
-    myloadbar.cpp \
-    myloadthread.cpp \
-    mymainwindow.cpp \
-    mysavebar.cpp \
-    mysavethread.cpp \
+    mainwindow.cpp \
+    passwordGenerator.cpp \
+    passwordGeneratorDialog.cpp \
     progressbar.cpp \
+    savebar.cpp \
+    savethread.cpp \
     skin.cpp
 
 RESOURCES += \
