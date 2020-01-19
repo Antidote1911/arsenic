@@ -4,5 +4,7 @@
         <file>pixmaps/icon.png</file>
         <file>about_files/botan_license.txt</file>
         <file>about_files/gpl-3.0.html</file>
+        <file>pixmaps/password-show-off.svg</file>
+        <file>pixmaps/password-show-on.svg</file>
     </qresource>
 </RCC>

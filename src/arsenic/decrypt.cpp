@@ -13,6 +13,10 @@
 
 using namespace ARs;
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 QString decrypt(QString file, QString pass)
 {
     QString result;
@@ -77,6 +81,10 @@ QString decrypt(QString file, QString pass)
     QFile::remove(decrypt_path);
     return result;
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 QString myDecryptFile(QString des_path, QString src_path, QString key, QString *decrypt_name)
 {
@@ -267,3 +275,7 @@ QString myDecryptFile(QString des_path, QString src_path, QString key, QString *
 
     return "DECRYPT_SUCCESS";
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

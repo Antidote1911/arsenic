@@ -35,7 +35,7 @@ EncryptBar::EncryptBar(QWidget *parent, FileSystemModel *arg_ptr_model, const QS
     connect(worker_thread, &EncryptThread::updateGeneralProgress, this, &AbstractBarDialog::updateGeneralProgress);
     connect(worker_thread, &EncryptThread::updateStatusText, this, &AbstractBarDialog::updateStatusText);
 
-    ui->label->setText(tr("Encrypting list..."));
+    m_ui->label->setText(tr("Encrypting list..."));
 
 	worker_thread->start();
 }

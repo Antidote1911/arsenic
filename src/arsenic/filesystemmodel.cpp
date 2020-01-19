@@ -3,13 +3,9 @@
 using namespace FileSystemModelPublic;
 using namespace FileInfoPublic;
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 namespace
 {
@@ -18,46 +14,31 @@ namespace
 
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 FileSystemModel::FileSystemModel(QObject *parent) : QAbstractListModel(parent) {}
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 int FileSystemModel::rowCount(const QModelIndex &parent) const
 {
 	return file_list.size();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 int FileSystemModel::columnCount(const QModelIndex &parent) const
 {
 	return COLUMN_NUM;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 {
@@ -125,13 +106,9 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 	return QVariant();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 bool FileSystemModel::removeRows(int row, int count, const QModelIndex &parent)
 {
@@ -150,13 +127,9 @@ bool FileSystemModel::removeRows(int row, int count, const QModelIndex &parent)
 	return false;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::removeCheckedItems()
 {
@@ -175,13 +148,9 @@ void FileSystemModel::removeCheckedItems()
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 bool FileSystemModel::insertRows(int row, int count, const QModelIndex &parent)
 {
@@ -200,13 +169,9 @@ bool FileSystemModel::insertRows(int row, int count, const QModelIndex &parent)
 	return false;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 bool FileSystemModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
@@ -229,13 +194,9 @@ bool FileSystemModel::setData(const QModelIndex &index, const QVariant &value, i
 	return false;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
@@ -248,13 +209,9 @@ QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, i
 	return QVariant();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 Qt::ItemFlags FileSystemModel::flags(const QModelIndex &index) const
 {
@@ -264,13 +221,9 @@ Qt::ItemFlags FileSystemModel::flags(const QModelIndex &index) const
 		return QAbstractListModel::flags(index);
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 bool FileSystemModel::isRedundant(const QString &full_path) const
 {
@@ -286,13 +239,9 @@ bool FileSystemModel::isRedundant(const QString &full_path) const
 	return false;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 std::vector<QString> FileSystemModel::makesRedundant(const QString &full_path) const
 {
@@ -309,13 +258,9 @@ std::vector<QString> FileSystemModel::makesRedundant(const QString &full_path) c
 	return red_list;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 FileSystemModelPtr FileSystemModel::cloneByValue() const
 {
@@ -337,13 +282,9 @@ FileSystemModelPtr FileSystemModel::cloneByValue() const
 	return ret_model;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::sorting()
 {
@@ -378,13 +319,9 @@ void FileSystemModel::sorting()
 	endRemoveRows();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::reset()
 {
@@ -393,13 +330,9 @@ void FileSystemModel::reset()
 	endRemoveRows();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::removeItem(const QString &name)
 {
@@ -416,13 +349,9 @@ void FileSystemModel::removeItem(const QString &name)
 		}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::removeItems(const std::vector<QString> &rem_list)
 {
@@ -432,13 +361,9 @@ void FileSystemModel::removeItems(const std::vector<QString> &rem_list)
 		removeItem(rem_list[i]);
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::removeEmpty()
 {
@@ -459,13 +384,9 @@ void FileSystemModel::removeEmpty()
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::removeRedundant()
 {
@@ -493,13 +414,9 @@ void FileSystemModel::removeRedundant()
 
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::removeRootDir()
 {
@@ -522,13 +439,9 @@ void FileSystemModel::removeRootDir()
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::insertItem(int pos, const QString &name)
 {
@@ -545,13 +458,9 @@ void FileSystemModel::insertItem(int pos, const QString &name)
 	//file_list[pos]->startDirThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::insertItems(int pos, const std::vector<QString> &ins_list)
 {
@@ -561,39 +470,27 @@ void FileSystemModel::insertItems(int pos, const std::vector<QString> &ins_list)
 		insertItem(pos + i, ins_list[i]);
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::startDirThread(int pos)
 {
 	file_list[pos]->startDirThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::stopDirThread(int pos)
 {
 	file_list[pos]->stopDirThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::startAllDirThread()
 {
@@ -601,13 +498,9 @@ void FileSystemModel::startAllDirThread()
 		(*it)->startDirThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::stopAllDirThread()
 {
@@ -618,10 +511,7 @@ void FileSystemModel::stopAllDirThread()
 
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void FileSystemModel::checkItem(const QModelIndex &index)
 {
@@ -631,3 +521,7 @@ void FileSystemModel::checkItem(const QModelIndex &index)
 		file_list[index.row()]->setChecked(new_state);
 		emit dataChanged(index, index);
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

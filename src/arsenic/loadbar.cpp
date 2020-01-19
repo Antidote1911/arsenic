@@ -7,13 +7,9 @@ using namespace AbstractBarDialogPublic;
 using namespace LoadBarThreadPublic;
 using namespace LoadBarPublic;
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 LoadBar::LoadBar(QWidget *parent, FileSystemModel *arg_ptr_model, QString arg_list_path) :
         AbstractBarDialog(parent), ptr_model(arg_ptr_model), list_path(arg_list_path)
@@ -30,31 +26,23 @@ LoadBar::LoadBar(QWidget *parent, FileSystemModel *arg_ptr_model, QString arg_li
     //connect(worker_thread, &MyLoadThread::updateProgress, this, &updateProgress);
     connect(worker_thread, &LoadThread::updateProgress, this, &AbstractBarDialog::updateProgress);
 
-	ui->label->setText("Loading list...");
+        m_ui->label->setText("Loading list...");
 
 	worker_thread->start();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 LoadBar::~LoadBar()
 {
 	deleteProgressThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void LoadBar::handleError(int error)
 {
@@ -84,13 +72,9 @@ void LoadBar::handleError(int error)
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void LoadBar::handleFinished()
 {
@@ -98,13 +82,9 @@ void LoadBar::handleFinished()
 	ptr_model->startAllDirThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void LoadBar::deleteProgressThread()
 {
@@ -115,10 +95,7 @@ void LoadBar::deleteProgressThread()
 	delete worker_thread;
 }
 
-
 /*******************************************************************************
-
-
 
 *******************************************************************************/
 
@@ -127,3 +104,7 @@ void LoadBar::handleRejectYes()
 	worker_thread->requestInterruption();
 	worker_thread->wait();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

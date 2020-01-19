@@ -20,27 +20,17 @@ using namespace MessagesPublic;
 
 using namespace ARs;
 
-
-
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 DecryptThread::DecryptThread(FileSystemModel *arg_model, const QString &arg_password,bool
     arg_delete_success) : ptr_model(arg_model), password(arg_password),
 	delete_success(arg_delete_success) {}
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 std::vector<int> DecryptThread::getStatus() const
 {
@@ -50,13 +40,9 @@ std::vector<int> DecryptThread::getStatus() const
 		return status_list;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 const std::vector<FileInfoPtr> &DecryptThread::getItemList() const
 {
@@ -66,13 +52,9 @@ const std::vector<FileInfoPtr> &DecryptThread::getItemList() const
 		return item_list;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void DecryptThread::interruptionPoint()
 {
@@ -84,13 +66,9 @@ void DecryptThread::interruptionPoint()
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void DecryptThread::run()
 {
@@ -104,13 +82,9 @@ void DecryptThread::run()
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void DecryptThread::runHelper()
 {
@@ -236,6 +210,10 @@ void DecryptThread::runHelper()
 	emit updateProgress(FINISHED);
     emit updateStatusText("Decrypted succesfully ");
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 int DecryptThread::myDecryptFile(const QString &des_path, const QString &src_path, const QString &key, QString
     *decrypt_name)
@@ -444,3 +422,7 @@ int DecryptThread::myDecryptFile(const QString &des_path, const QString &src_pat
     emit updateStatusText("Decryption finished.");
     return DECRYPT_SUCCESS;
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

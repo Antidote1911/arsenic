@@ -15,76 +15,100 @@
 #include "divers.h"
 
 #include "messages.h"
+
 using namespace MessagesPublic;
 
+/*******************************************************************************
+
+*******************************************************************************/
 
 HashCheckDialog::HashCheckDialog(QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::HashCheckDialog)
+    m_ui(new Ui::HashCheckDialog)
 {
-    ui->setupUi(this);
+    m_ui->setupUi(this);
 
-    ui->cancelButton->hide();
-    ui->progressBar->hide();
+    m_ui->cancelButton->hide();
+    m_ui->progressBar->hide();
 
     setFixedHeight(sizeHint().height());
 
 
     qRegisterMetaType<QMessageBox::Icon>("QMessageBox::Icon");
 
-    connect(ui->open, &QPushButton::clicked, this, &HashCheckDialog::openFile);
+    connect(m_ui->open, &QPushButton::clicked, this, &HashCheckDialog::openFile);
     //connect(ui->closeButton, &QPushButton::clicked, this, &HashCheckDialog::close);
-    connect(ui->calculateButton, &QPushButton::clicked, this, [=]{ calculate(ui->hashSelector->currentText()); });
+    connect(m_ui->calculateButton, &QPushButton::clicked, this, [=]{ calculate(m_ui->hashSelector->currentText()); });
 
-    connect(ui->hashSelector, static_cast<void(QComboBox::*)(const QString &)>(&QComboBox::currentTextChanged),
+    connect(m_ui->hashSelector, static_cast<void(QComboBox::*)(const QString &)>(&QComboBox::currentTextChanged),
         [=](QString text){ calculate(text); });
 
-    connect(ui->copyButton, &QPushButton::clicked, this, &HashCheckDialog::copyToClipboard);
-    connect(ui->fileEdit, &QLineEdit::textChanged, this, &HashCheckDialog::textChanged);
-    connect(ui->cancelButton, &QPushButton::clicked, this, &HashCheckDialog::cancel);
+    connect(m_ui->copyButton, &QPushButton::clicked, this, &HashCheckDialog::copyToClipboard);
+    connect(m_ui->fileEdit, &QLineEdit::textChanged, this, &HashCheckDialog::textChanged);
+    connect(m_ui->cancelButton, &QPushButton::clicked, this, &HashCheckDialog::cancel);
 
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void HashCheckDialog::cancel()
 {
     cancel_calculation = true;
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 HashCheckDialog::~HashCheckDialog()
 {
-           delete ui;
+
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void HashCheckDialog::copyToClipboard()
 {
-    QApplication::clipboard()->setText(ui->checksumEdit->text());
+    QApplication::clipboard()->setText(m_ui->checksumEdit->text());
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void HashCheckDialog::openFile()
 {
     QString filename = QFileDialog::getOpenFileName(this, tr("Load file..."));
     if(!filename.isEmpty()) {
-        ui->fileEdit->setText(filename);
+        m_ui->fileEdit->setText(filename);
     }
     QFileInfo f_info(filename);
     if(f_info.isFile()) {
-        ui->calculateButton->click();
+        m_ui->calculateButton->click();
     }
 
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void HashCheckDialog::calculate(const QString &text)
 {
 
-    ui->progressBar->show();
-    ui->cancelButton->show();
-    ui->calculateButton->hide();
-    ui->checksumEdit->hide();
-    ui->open->setDisabled(true);
-    ui->checksumEdit->setText("");
+    m_ui->progressBar->show();
+    m_ui->cancelButton->show();
+    m_ui->calculateButton->hide();
+    m_ui->checksumEdit->hide();
+    m_ui->open->setDisabled(true);
+    m_ui->checksumEdit->setText("");
 
-    QFile file(ui->fileEdit->text());
-    QFileInfo f_info(ui->fileEdit->text());
+    QFile file(m_ui->fileEdit->text());
+    QFileInfo f_info(m_ui->fileEdit->text());
     if(f_info.isFile())
     {
         file.open(QIODevice::ReadOnly);
@@ -95,8 +119,8 @@ void HashCheckDialog::calculate(const QString &text)
 
         int progress_max = file.size()/block_size;
         progress_max = (progress_max > 0) ? progress_max : 1;
-        ui->progressBar->setMaximum(progress_max);
-        ui->progressBar->reset();
+        m_ui->progressBar->setMaximum(progress_max);
+        m_ui->progressBar->reset();
 
         Botan::SecureVector<uint8_t> buf(10*1024);
 
@@ -112,36 +136,39 @@ void HashCheckDialog::calculate(const QString &text)
             //hash.addData(buffer, bytes_read);
 
             hash2->update(buf.data(),bytes_read);
-            ui->progressBar->setValue(ui->progressBar->value()+1);
+            m_ui->progressBar->setValue(m_ui->progressBar->value()+1);
             QCoreApplication::processEvents();
         }
 
         if (hash2 && !cancel_calculation)
         {
             QString result = QString::fromStdString(Botan::hex_encode(hash2->final()));
-            ui->checksumEdit->setText(result);
+            m_ui->checksumEdit->setText(result);
         }
         if (!hash2)
         {
-            ui->checksumEdit->setText("Invalid algo");
+            m_ui->checksumEdit->setText("Invalid algo");
         }
 
     } else
         {
-            ui->checksumEdit->setText(errorCodeToString(SRC_CANNOT_OPEN_READ));
+            m_ui->checksumEdit->setText(errorCodeToString(SRC_CANNOT_OPEN_READ));
         }
 
-    ui->open->setDisabled(false);
-    ui->progressBar->hide();
-    ui->checksumEdit->show();
+    m_ui->open->setDisabled(false);
+    m_ui->progressBar->hide();
+    m_ui->checksumEdit->show();
 
-    ui->cancelButton->hide();
-    ui->calculateButton->show();
+    m_ui->cancelButton->hide();
+    m_ui->calculateButton->show();
     file.close();
     isCalculating = false;
 
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
 
 void HashCheckDialog::messageBox(QMessageBox::Icon icon, const QString& title, const QString& message)
 {
@@ -149,10 +176,13 @@ void HashCheckDialog::messageBox(QMessageBox::Icon icon, const QString& title, c
     box->show();
     if(icon == QMessageBox::Critical)
     {
-        ui->checksumEdit->setText(tr("error"));
+        m_ui->checksumEdit->setText(tr("error"));
     }
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
 
 void HashCheckDialog::closeEvent(QCloseEvent *event)
 {
@@ -164,11 +194,20 @@ void HashCheckDialog::closeEvent(QCloseEvent *event)
         event->accept();
 
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
+
 void HashCheckDialog::dragEnterEvent(QDragEnterEvent *event)
 {
     if (event->mimeData()->hasFormat("text/uri-list"))
         event->acceptProposedAction();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void HashCheckDialog::dropEvent(QDropEvent *event)
 {
@@ -177,17 +216,25 @@ void HashCheckDialog::dropEvent(QDropEvent *event)
         return;
 
     QString fileName = urls.first().toLocalFile();
-    ui->fileEdit->setText(fileName);
-    ui->calculateButton->click();
+    m_ui->fileEdit->setText(fileName);
+    m_ui->calculateButton->click();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void HashCheckDialog::textChanged(const QString &text)
 {
     QFileInfo f_info(text);
     if(f_info.isFile()) {
-        ui->calculateButton->setEnabled(true);
+        m_ui->calculateButton->setEnabled(true);
     } else {
-        ui->calculateButton->setEnabled(false);
-        ui->checksumEdit->setText(errorCodeToString(SRC_CANNOT_OPEN_READ));
+        m_ui->calculateButton->setEnabled(false);
+        m_ui->checksumEdit->setText(errorCodeToString(SRC_CANNOT_OPEN_READ));
     }
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

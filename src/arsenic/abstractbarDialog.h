@@ -47,7 +47,7 @@ protected:
     virtual void handleError(int error) = 0;
 	virtual void handleRejectYes() = 0;
 
-    Ui::AbstractBarDialog *ui;
+    const QScopedPointer<Ui::AbstractBarDialog> m_ui;
 	QMessageBox *ptr_stop_msg;
 
 public slots:
@@ -58,6 +58,9 @@ public slots:
 private slots:
 	void on_cancel_clicked();
 	void reject() Q_DECL_OVERRIDE;
+
+private:
+
 };
 
 #endif // ABSTRACTBARDIALOG_H

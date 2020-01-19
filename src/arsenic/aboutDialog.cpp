@@ -22,6 +22,10 @@
 
 #include <QClipboard>
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 static const QString aboutMaintainers = R"(
 <p><ul>
     <li>Fabrice Corraire (<a href="https://github.com/Antidote1911">Antidote1911</a>)</li>
@@ -29,6 +33,10 @@ static const QString aboutMaintainers = R"(
     <li>Sony Legrand (English traduction)</li>
 </ul></p>
 )";
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 static const QString aboutContributors = R"(
 <h3>VIP Patreon Supporters:</h3>
@@ -46,6 +54,10 @@ static const QString aboutContributors = R"(
     <li><strong>Français</strong>: Liloutronic</li>
 </ul>
 )";
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 AboutDialog::AboutDialog(QWidget* parent)
     : QDialog(parent)
@@ -98,12 +110,24 @@ AboutDialog::AboutDialog(QWidget* parent)
     connect(m_ui->copyToClipboard, SIGNAL(clicked()), SLOT(copyToClipboard()));
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 AboutDialog::~AboutDialog()
 {
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void AboutDialog::copyToClipboard()
 {
     QClipboard* clipboard = QApplication::clipboard();
     clipboard->setText(m_ui->debugInfo->toPlainText());
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

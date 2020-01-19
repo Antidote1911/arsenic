@@ -8,13 +8,9 @@ using namespace AbstractBarDialogPublic;
 using namespace DecryptBarThreadPublic;
 using namespace MessagesPublic;
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 DecryptBar::DecryptBar(QWidget *parent, FileSystemModel *arg_ptr_model, const QString
     &arg_password,bool delete_success) : AbstractBarDialog(parent), ptr_model(arg_ptr_model)
@@ -33,31 +29,23 @@ DecryptBar::DecryptBar(QWidget *parent, FileSystemModel *arg_ptr_model, const QS
     connect(worker_thread, &DecryptThread::updateStatusText, this, &AbstractBarDialog::updateStatusText);
 
 
-    ui->label->setText(tr("Decrypting list..."));
+    m_ui->label->setText(tr("Decrypting list..."));
 
 	worker_thread->start();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 DecryptBar::~DecryptBar()
 {
 	deleteProgressThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void DecryptBar::handleError(int error)
 {
@@ -85,13 +73,9 @@ void DecryptBar::handleError(int error)
 	ptr_model->startAllDirThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 QString DecryptBar::createDetailedText()
 {
@@ -114,16 +98,9 @@ QString DecryptBar::createDetailedText()
     return ret_string;
 }
 
-
-
-
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void DecryptBar::handleFinished()
 {
@@ -150,13 +127,9 @@ void DecryptBar::handleFinished()
     ptr_model->startAllDirThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void DecryptBar::deleteProgressThread()
 {
@@ -167,10 +140,7 @@ void DecryptBar::deleteProgressThread()
 	delete worker_thread;
 }
 
-
 /*******************************************************************************
-
-
 
 *******************************************************************************/
 
@@ -179,3 +149,7 @@ void DecryptBar::handleRejectYes()
 	worker_thread->requestInterruption();
 	worker_thread->wait();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

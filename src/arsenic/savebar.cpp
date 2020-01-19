@@ -7,13 +7,9 @@ using namespace AbstractBarDialogPublic;
 using namespace SaveBarThreadPublic;
 using namespace SaveBarPublic;
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 SaveBar::SaveBar(QWidget *parent, FileSystemModel *arg_ptr_model, QString arg_list_path) :
     AbstractBarDialog(parent), ptr_model(arg_ptr_model), list_path(arg_list_path)
@@ -30,7 +26,7 @@ SaveBar::SaveBar(QWidget *parent, FileSystemModel *arg_ptr_model, QString arg_li
     //connect(worker_thread, &MySaveThread::updateProgress, this, &updateProgress);
     connect(worker_thread, &SaveThread::updateProgress, this, &AbstractBarDialog::updateProgress);
 
-	ui->label->setText("Saving list...");
+        m_ui->label->setText("Saving list...");
 
 	worker_thread->start();
 }
@@ -44,13 +40,9 @@ SaveBar::~SaveBar()
 	deleteProgressThread();
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void SaveBar::handleError(int error)
 {
@@ -80,23 +72,15 @@ void SaveBar::handleError(int error)
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void SaveBar::handleFinished() {}
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void SaveBar::deleteProgressThread()
 {
@@ -107,10 +91,7 @@ void SaveBar::deleteProgressThread()
 	delete worker_thread;
 }
 
-
 /*******************************************************************************
-
-
 
 *******************************************************************************/
 
@@ -119,3 +100,7 @@ void SaveBar::handleRejectYes()
 	worker_thread->requestInterruption();
 	worker_thread->wait();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

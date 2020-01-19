@@ -12,7 +12,7 @@
 #include "configDialog.h"
 #include "hashcheckdialog.h"
 #include "aboutDialog.h"
-#include "argontests.h"
+#include "argonTests.h"
 #include "passwordGeneratorDialog.h"
 #include "constants.h"
 #include "filesystemmodel.h"
@@ -866,7 +866,7 @@ void MainWindow::on_actionHash_Calculator_triggered()
 
 void MainWindow::Argon2_tests()
 {
-    auto* Argon2_tests = new Argontests(this);
+    auto* Argon2_tests = new ArgonTests(this);
     Argon2_tests->open();
 }
 

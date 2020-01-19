@@ -8,35 +8,38 @@
 
 using namespace AbstractBarDialogPublic;
 
-
 /*******************************************************************************
-
-
 
 *******************************************************************************/
 
-
-AbstractBarDialog::AbstractBarDialog(QWidget *parent) : QDialog(parent), ui(new Ui::AbstractBarDialog),
+AbstractBarDialog::AbstractBarDialog(QWidget *parent) : QDialog(parent), m_ui(new Ui::AbstractBarDialog),
 	ptr_stop_msg(new QMessageBox(this))
 {
 	// setup the basic progress bar and message box layout
 
-	ui->setupUi(this);
+    m_ui->setupUi(this);
 
 	setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
-	ui->progress_bar->setRange(MIN, MAX);
-	ui->progress_bar->setValue(MIN);
+    m_ui->progress_bar->setRange(MIN, MAX);
+    m_ui->progress_bar->setValue(MIN);
 
 	ptr_stop_msg->setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
 	ptr_stop_msg->setIcon(QMessageBox::Question);
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 AbstractBarDialog::~AbstractBarDialog()
 {
-	delete ui;
 	delete ptr_stop_msg;
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void AbstractBarDialog::updateProgress(int curr)
 {
@@ -69,19 +72,30 @@ void AbstractBarDialog::updateProgress(int curr)
 
 	// otherwise, the signal was an update to the progress bar
 	else
-		ui->progress_bar->setValue(curr);
+        m_ui->progress_bar->setValue(curr);
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void AbstractBarDialog::updateGeneralProgress(int val)
 {
-    ui->progress_Bar_current->setValue(val);
+    m_ui->progress_Bar_current->setValue(val);
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void AbstractBarDialog::updateStatusText(QString text)
 {
-    ui->plainTextProgress->appendPlainText(text);
+    m_ui->plainTextProgress->appendPlainText(text);
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
 
 void AbstractBarDialog::on_cancel_clicked()
 {
@@ -89,6 +103,9 @@ void AbstractBarDialog::on_cancel_clicked()
 	reject();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
 
 void AbstractBarDialog::reject()
 {
@@ -100,3 +117,7 @@ void AbstractBarDialog::reject()
 			handleRejectYes();
 	}
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

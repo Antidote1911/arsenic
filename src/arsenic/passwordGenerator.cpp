@@ -21,6 +21,9 @@
 #include "botan_all.h"
 #include "zxcvbn.h"
 
+/*******************************************************************************
+
+*******************************************************************************/
 
 const char* PasswordGenerator::DefaultExcludedChars = "";
 
@@ -32,10 +35,18 @@ PasswordGenerator::PasswordGenerator()
 {
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 double PasswordGenerator::estimateEntropy(const QString& password)
 {
     return ZxcvbnMatch(password.toLatin1(), nullptr, nullptr);
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGenerator::setLength(int length)
 {
@@ -46,6 +57,10 @@ void PasswordGenerator::setLength(int length)
     m_length = length;
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGenerator::setCharClasses(const CharClasses& classes)
 {
     if (classes == 0) {
@@ -55,15 +70,27 @@ void PasswordGenerator::setCharClasses(const CharClasses& classes)
     m_classes = classes;
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGenerator::setFlags(const GeneratorFlags& flags)
 {
     m_flags = flags;
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGenerator::setExcludedChars(const QString& chars)
 {
     m_excluded = chars;
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 QString PasswordGenerator::generatePassword() const
 {
@@ -112,6 +139,10 @@ QString PasswordGenerator::generatePassword() const
     return password;
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 bool PasswordGenerator::isValid() const
 {
     if (m_classes == 0) {
@@ -126,6 +157,10 @@ bool PasswordGenerator::isValid() const
 
     return !passwordGroups().isEmpty();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 {
@@ -291,6 +326,10 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
     return passwordGroups;
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 int PasswordGenerator::numCharClasses() const
 {
     int numClasses = 0;
@@ -328,3 +367,7 @@ int PasswordGenerator::numCharClasses() const
 
     return numClasses;
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

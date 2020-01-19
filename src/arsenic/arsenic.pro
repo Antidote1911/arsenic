@@ -32,7 +32,7 @@ DEFINES += ZLIB_STATIC
 FORMS += \
     aboutDialog.ui \
     abstractbarDialog.ui \
-    argontests.ui \
+    argonTests.ui \
     configDialog.ui \
     hashcheckdialog.ui \
     mainwindow.ui \
@@ -42,7 +42,7 @@ HEADERS += \
     Config.h \
     aboutDialog.h \
     abstractbarDialog.h \
-    argontests.h \
+    argonTests.h \
     clipboard.h \
     configDialog.h \
     constants.h \
@@ -73,7 +73,7 @@ SOURCES += \
     Config.cpp \
     aboutDialog.cpp \
     abstractbarDialog.cpp \
-    argontests.cpp \
+    argonTests.cpp \
     clipboard.cpp \
     configDialog.cpp \
     decrypt.cpp \

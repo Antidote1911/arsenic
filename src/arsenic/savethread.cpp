@@ -11,13 +11,9 @@ using namespace SaveBarThreadPublic;
 using namespace SaveBarPublic;
 using namespace FileSystemModelPublic;
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 SaveThread::SaveThread(FileSystemModel *arg_model, const QString &arg_path) :
 	ptr_model(arg_model), list_path(arg_path), status(RESET) {}
@@ -25,10 +21,7 @@ SaveThread::SaveThread(FileSystemModel *arg_model, const QString &arg_path) :
 
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 int SaveThread::getStatus() const
 {
@@ -38,13 +31,9 @@ int SaveThread::getStatus() const
 		return status;
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void SaveThread::interruptionPoint(QFile *list_file)
 {
@@ -58,13 +47,9 @@ void SaveThread::interruptionPoint(QFile *list_file)
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void SaveThread::run()
 {
@@ -78,13 +63,9 @@ void SaveThread::run()
 	}
 }
 
-
 /*******************************************************************************
 
-
-
 *******************************************************************************/
-
 
 void SaveThread::runHelper()
 {
@@ -150,3 +131,7 @@ void SaveThread::runHelper()
 	status = FINISHED;
 	emit updateProgress(FINISHED);
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

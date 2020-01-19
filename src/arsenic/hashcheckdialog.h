@@ -16,11 +16,6 @@ public:
     explicit HashCheckDialog(QWidget *parent = nullptr);
     ~HashCheckDialog() Q_DECL_OVERRIDE;
 
-private:
-    Ui::HashCheckDialog *ui;
-    bool cancel_calculation;
-    bool isCalculating;
-
 protected:
     void closeEvent(QCloseEvent *event) Q_DECL_OVERRIDE;
     void dragEnterEvent(QDragEnterEvent *event) Q_DECL_OVERRIDE;
@@ -34,6 +29,11 @@ private slots:
     void messageBox(QMessageBox::Icon icon, const QString& title, const QString& message);
     void textChanged(const QString &text);
     void copyToClipboard();
+
+private:
+    const QScopedPointer<Ui::HashCheckDialog> m_ui;
+    bool cancel_calculation;
+    bool isCalculating;
 
 };
 

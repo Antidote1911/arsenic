@@ -27,6 +27,9 @@
 #include "Config.h"
 #include "clipboard.h"
 
+/*******************************************************************************
+
+*******************************************************************************/
 
 PasswordGeneratorDialog::PasswordGeneratorDialog(QDialog* parent)
     : QDialog(parent)
@@ -35,6 +38,8 @@ PasswordGeneratorDialog::PasswordGeneratorDialog(QDialog* parent)
     , m_ui(new Ui::PasswordGeneratorDialog())
 {
     m_ui->setupUi(this);
+
+    //m_ui->togglePasswordButton->setIcon(filePath()->onOffIcon("actions", "password-show"));
 
     connect(m_ui->editNewPassword, SIGNAL(textChanged(QString)), SLOT(updateButtonsEnabled(QString)));
         connect(m_ui->editNewPassword, SIGNAL(textChanged(QString)), SLOT(updatePasswordStrength(QString)));
@@ -63,21 +68,30 @@ PasswordGeneratorDialog::PasswordGeneratorDialog(QDialog* parent)
         m_ui->strengthLabel->setFont(defaultFont);
     }
 
-
-
-
     loadSettings();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 PasswordGeneratorDialog::~PasswordGeneratorDialog()
 {
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
     reset();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::loadSettings()
 {
@@ -123,6 +137,10 @@ void PasswordGeneratorDialog::loadSettings()
 
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGeneratorDialog::saveSettings()
 {
     // Password config
@@ -153,6 +171,10 @@ void PasswordGeneratorDialog::saveSettings()
 
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGeneratorDialog::reset(int length)
 {
     m_ui->editNewPassword->setText("");
@@ -167,6 +189,10 @@ void PasswordGeneratorDialog::reset(int length)
     updateGenerator();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGeneratorDialog::setStandaloneMode(bool standalone)
 {
     m_standalone = standalone;
@@ -178,10 +204,18 @@ void PasswordGeneratorDialog::setStandaloneMode(bool standalone)
     }
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 QString PasswordGeneratorDialog::getGeneratedPassword()
 {
     return m_ui->editNewPassword->text();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::keyPressEvent(QKeyEvent* e)
 {
@@ -191,6 +225,10 @@ void PasswordGeneratorDialog::keyPressEvent(QKeyEvent* e)
         e->ignore();
     }
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::regeneratePassword()
 {
@@ -203,6 +241,10 @@ void PasswordGeneratorDialog::regeneratePassword()
 
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGeneratorDialog::updateButtonsEnabled(const QString& password)
 {
     if (!m_standalone) {
@@ -210,6 +252,10 @@ void PasswordGeneratorDialog::updateButtonsEnabled(const QString& password)
     }
     m_ui->buttonCopy->setEnabled(!password.isEmpty());
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::updatePasswordStrength(const QString& password)
 {
@@ -228,6 +274,10 @@ void PasswordGeneratorDialog::updatePasswordStrength(const QString& password)
         colorStrengthIndicator(entropy);
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGeneratorDialog::applyPassword()
 {
     saveSettings();
@@ -235,10 +285,18 @@ void PasswordGeneratorDialog::applyPassword()
     emit dialogTerminated();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGeneratorDialog::copyPassword()
 {
     clipboard()->setText(m_ui->editNewPassword->text());
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::passwordSliderMoved()
 {
@@ -250,6 +308,10 @@ void PasswordGeneratorDialog::passwordSliderMoved()
 
     updateGenerator();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::passwordSpinBoxChanged()
 {
@@ -267,19 +329,36 @@ void PasswordGeneratorDialog::passwordSpinBoxChanged()
     updateGenerator();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::setPasswordVisible(bool visible)
 {
-    m_ui->editNewPassword->setEchoMode(QLineEdit::Normal);
-    bool blockSignals = m_ui->togglePasswordButton->blockSignals(true);
-    m_ui->togglePasswordButton->setChecked(visible);
-    m_ui->togglePasswordButton->blockSignals(blockSignals);
+    if (visible)
+    {
+        m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-off.svg"));
+        m_ui->editNewPassword->setEchoMode(QLineEdit::Normal);
+    }
+    else
+    {
+        m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-on.svg"));
+        m_ui->editNewPassword->setEchoMode(QLineEdit::Password);
+    }
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 bool PasswordGeneratorDialog::isPasswordVisible() const
 {
     return m_ui->togglePasswordButton->isChecked();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::selectSimpleMode()
 {
@@ -296,6 +375,10 @@ void PasswordGeneratorDialog::selectSimpleMode()
     m_ui->checkBoxExtASCII->setChecked(m_ui->checkBoxExtASCIIAdv->isChecked());
     m_ui->simpleBar->show();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::selectAdvancedMode()
 {
@@ -316,10 +399,18 @@ void PasswordGeneratorDialog::selectAdvancedMode()
     m_ui->checkBoxEnsureEvery->show();
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 void PasswordGeneratorDialog::excludeHexChars()
 {
     m_ui->editExcludedChars->setText("GHIJKLMNOPQRSTUVWXYZghijklmnopqrstuvwxyz");
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::colorStrengthIndicator(double entropy)
 {
@@ -346,6 +437,10 @@ void PasswordGeneratorDialog::colorStrengthIndicator(double entropy)
         m_ui->strengthLabel->setText(tr("Password Quality: %1").arg(tr("Excellent", "Password quality")));
     }
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 PasswordGenerator::CharClasses PasswordGeneratorDialog::charClasses()
 {
@@ -416,6 +511,10 @@ PasswordGenerator::CharClasses PasswordGeneratorDialog::charClasses()
     return classes;
 }
 
+/*******************************************************************************
+
+*******************************************************************************/
+
 PasswordGenerator::GeneratorFlags PasswordGeneratorDialog::generatorFlags()
 {
     PasswordGenerator::GeneratorFlags flags;
@@ -430,6 +529,10 @@ PasswordGenerator::GeneratorFlags PasswordGeneratorDialog::generatorFlags()
 
     return flags;
 }
+
+/*******************************************************************************
+
+*******************************************************************************/
 
 void PasswordGeneratorDialog::updateGenerator()
 {
@@ -500,3 +603,7 @@ void PasswordGeneratorDialog::updateGenerator()
 
     regeneratePassword();
 }
+
+/*******************************************************************************
+
+*******************************************************************************/

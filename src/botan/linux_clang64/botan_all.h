@@ -41,11 +41,11 @@
 #define BOTAN_VERSION_MAJOR 2
 #define BOTAN_VERSION_MINOR 13
 #define BOTAN_VERSION_PATCH 0
-#define BOTAN_VERSION_DATESTAMP 20200106
+#define BOTAN_VERSION_DATESTAMP 0
 
-#define BOTAN_VERSION_RELEASE_TYPE "release"
+#define BOTAN_VERSION_RELEASE_TYPE "unreleased"
 
-#define BOTAN_VERSION_VC_REVISION "git:ed360ab268544fd801b8ea68ff08b07610680052"
+#define BOTAN_VERSION_VC_REVISION "unknown"
 
 #define BOTAN_DISTRIBUTION_INFO "unspecified"
 
@@ -3458,8 +3458,6 @@ class BOTAN_PUBLIC_API(2,8) PasswordHashFamily
 }
 
 namespace Botan {
-
-BOTAN_FUTURE_INTERNAL_HEADER(argon2.h)
 
 class RandomNumberGenerator;
 

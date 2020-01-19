@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Argontests</class>
- <widget class="QDialog" name="Argontests">
+ <class>ArgonTests</class>
+ <widget class="QDialog" name="ArgonTests">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -90,7 +90,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>Argontests</receiver>
+   <receiver>ArgonTests</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -106,7 +106,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>Argontests</receiver>
+   <receiver>ArgonTests</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
