@@ -2,6 +2,7 @@
 #define ARGONTESTS_H
 
 #include <QDialog>
+#include <memory>
 
 namespace Ui {
 class ArgonTests;
