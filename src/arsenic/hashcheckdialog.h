@@ -3,6 +3,7 @@
 
 #include <QDialog>
 #include <QMessageBox>
+#include <memory>
 
 namespace Ui {
 class HashCheckDialog;

@@ -22,6 +22,7 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QDialog>
+#include <memory>
 
 #include "passwordGenerator.h"
 
