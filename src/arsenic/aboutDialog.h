@@ -20,7 +20,7 @@
 #define ABOUTDIALOG_H
 
 #include <QDialog>
-#include <QScopedPointer>
+#include <memory>
 
 namespace Ui
 {
