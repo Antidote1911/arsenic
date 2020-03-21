@@ -3,6 +3,7 @@
 
 #include <QMessageBox>
 #include <QDialog>
+#include <memory>
 
 #include "ui_abstractbarDialog.h"
 
