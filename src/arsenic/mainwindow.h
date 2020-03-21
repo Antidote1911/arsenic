@@ -25,6 +25,7 @@ public:
     ~MainWindow() override;
 
 	void session();
+    void loadFile(const QString &fileName);
 
 private slots:
 
@@ -52,10 +53,18 @@ private slots:
     void on_viewpass_stateChanged(int arg1);
     void on_generator_clicked();
     void on_actionHash_Calculator_triggered();
-    void aboutQt();
     void aboutArsenic();
     void Argon2_tests();
-    void dark_theme();
+    void dark_theme(bool checked);
+    void openFile();
+    bool actionSave_triggered();
+    bool actionSave_as_triggered();
+
+private :
+    bool maybeSave();
+    void setCurrentFile(const QString &fileName);
+    QString curFile;
+    bool saveFile(const QString &fileName);
 
 protected slots:
     // this slot is called by the language menu actions
@@ -68,7 +77,7 @@ protected:
     void changeEvent(QEvent *event) Q_DECL_OVERRIDE;
 
 private:
-    const QScopedPointer<Ui::MainWindow> m_ui;
+    const std::unique_ptr<Ui::MainWindow> m_ui;
 	void start_crypto(int crypto_type);
     void loadPreferences();
     void savePreferences();

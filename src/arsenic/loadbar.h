@@ -2,6 +2,7 @@
 #define LOADBAR_H
 
 #include "abstractbarDialog.h"
+#include <memory>
 
 // forward declarations
 class FileSystemModel;

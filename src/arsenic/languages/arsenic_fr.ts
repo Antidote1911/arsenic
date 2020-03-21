@@ -4,127 +4,131 @@
 <context>
     <name>AboutDialog</name>
     <message>
-        <location filename="../AboutDialog.ui" line="14"/>
+        <location filename="../aboutDialog.ui" line="14"/>
         <source>About Arsenic</source>
         <translation>A propos d&apos;Arsenic</translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="100"/>
+        <location filename="../aboutDialog.ui" line="100"/>
         <source>About</source>
         <translation>A Propos</translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="255"/>
+        <location filename="../aboutDialog.ui" line="255"/>
         <source>Contributors</source>
         <translation>Contributeurs</translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="325"/>
+        <location filename="../aboutDialog.ui" line="325"/>
         <source>Debug Info</source>
         <translation>Infos debug</translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="337"/>
+        <location filename="../aboutDialog.ui" line="337"/>
         <source>Include the following information whenever you report a bug:</source>
         <translation>Pour rapporter un bug, merci d&apos;inclure les infos ci-dessous:</translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="360"/>
+        <location filename="../aboutDialog.ui" line="360"/>
         <source>Copy to clipboard</source>
         <translation>Copier dans le presse-papier</translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="368"/>
+        <location filename="../aboutDialog.ui" line="368"/>
         <source>GPL3 Lisense</source>
         <translation>Licence Arsenic</translation>
     </message>
     <message>
-        <location filename="../AboutDialog.ui" line="398"/>
+        <location filename="../aboutDialog.ui" line="398"/>
         <source>Botan Lisense</source>
         <translation>Licence de Botan</translation>
     </message>
 </context>
 <context>
-    <name>Argontests</name>
+    <name>AbstractBarDialog</name>
     <message>
-        <location filename="../argontests.ui" line="14"/>
+        <location filename="../abstractbarDialog.ui" line="14"/>
+        <source>Dialog</source>
+        <translation type="unfinished">Arsenic Générateur de mot de passe</translation>
+    </message>
+    <message>
+        <location filename="../abstractbarDialog.ui" line="47"/>
+        <source>Cancel</source>
+        <translation type="unfinished">Annuler</translation>
+    </message>
+</context>
+<context>
+    <name>ArgonTests</name>
+    <message>
+        <location filename="../argonTests.ui" line="14"/>
         <source>Argon2 Test</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../argontests.ui" line="45"/>
-        <location filename="../argontests.ui" line="55"/>
-        <location filename="../argontests.ui" line="65"/>
+        <location filename="../argonTests.ui" line="45"/>
+        <location filename="../argonTests.ui" line="55"/>
+        <location filename="../argonTests.ui" line="65"/>
         <source>TextLabel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../argontests.ui" line="84"/>
+        <location filename="../argonTests.ui" line="84"/>
         <source>NOT IMPLEMENTED</source>
-        <translation>Pas encore implémenté</translation>
+        <translation type="unfinished">Pas encore implémenté</translation>
+    </message>
+</context>
+<context>
+    <name>Argontests</name>
+    <message>
+        <source>NOT IMPLEMENTED</source>
+        <translation type="vanished">Pas encore implémenté</translation>
     </message>
 </context>
 <context>
     <name>Conf</name>
     <message>
-        <location filename="../conf.ui" line="14"/>
         <source>Arsenic Configuration</source>
-        <translation>Arsenic Configuration</translation>
+        <translation type="vanished">Arsenic Configuration</translation>
     </message>
     <message>
-        <location filename="../conf.ui" line="20"/>
         <source>General</source>
-        <translation>Général</translation>
+        <translation type="vanished">Général</translation>
     </message>
     <message>
-        <location filename="../conf.ui" line="26"/>
         <source>Extension for Arsenic files:</source>
-        <translation>Extension pour les fichiers chiffrés :</translation>
+        <translation type="vanished">Extension pour les fichiers chiffrés :</translation>
     </message>
     <message>
-        <location filename="../conf.ui" line="33"/>
         <source>E-mail or pseudo</source>
-        <translation>Email ou pseudo</translation>
+        <translation type="vanished">Email ou pseudo</translation>
     </message>
     <message>
-        <location filename="../conf.ui" line="40"/>
         <source>Empty clopboard after</source>
-        <translation>Vider le presse papier aprés</translation>
+        <translation type="vanished">Vider le presse papier aprés</translation>
     </message>
     <message>
-        <location filename="../conf.ui" line="50"/>
-        <source> sec</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="../conf.ui" line="101"/>
         <source>Passphrase derivation</source>
-        <translation>Dérivation du mot de passe par Argon2</translation>
+        <translation type="vanished">Dérivation du mot de passe par Argon2</translation>
     </message>
     <message>
-        <location filename="../conf.ui" line="107"/>
         <source>Iterations</source>
-        <translation>Iterations</translation>
+        <translation type="vanished">Iterations</translation>
     </message>
     <message>
-        <location filename="../conf.ui" line="136"/>
         <source>Memory Limit:</source>
-        <translation>Limite Mémoire :</translation>
+        <translation type="vanished">Limite Mémoire :</translation>
     </message>
     <message>
-        <location filename="../conf.ui" line="181"/>
         <source>Encryption Algorithm</source>
-        <translation>Algorithme de chiffrage</translation>
+        <translation type="vanished">Algorithme de chiffrage</translation>
     </message>
     <message>
-        <location filename="../conf.cpp" line="28"/>
         <source>Access error for config file %1</source>
-        <translation>Impossible de lire le fichier de configuration %1</translation>
+        <translation type="vanished">Impossible de lire le fichier de configuration %1</translation>
     </message>
     <message>
-        <location filename="../conf.cpp" line="29"/>
         <source>Could not load configuration</source>
-        <translation>Impossible de lire la configuration</translation>
+        <translation type="vanished">Impossible de lire la configuration</translation>
     </message>
 </context>
 <context>
@@ -156,6 +160,167 @@
     <message>
         <source>Encryption Algorithm</source>
         <translation type="vanished">Algorithme de chiffrage</translation>
+    </message>
+</context>
+<context>
+    <name>ConfigDialog</name>
+    <message>
+        <location filename="../configDialog.ui" line="14"/>
+        <source>Arsenic Configuration</source>
+        <translation type="unfinished">Arsenic Configuration</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="20"/>
+        <source>General</source>
+        <translation type="unfinished">Général</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="26"/>
+        <source>Extension for Arsenic files:</source>
+        <translation type="unfinished">Extension pour les fichiers chiffrés :</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="33"/>
+        <source>E-mail or pseudo</source>
+        <translation type="unfinished">Email ou pseudo</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="40"/>
+        <source>Empty clopboard after</source>
+        <translation type="unfinished">Vider le presse papier aprés</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="50"/>
+        <source> sec</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="101"/>
+        <source>Passphrase derivation</source>
+        <translation type="unfinished">Dérivation du mot de passe par Argon2</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="107"/>
+        <source>Iterations</source>
+        <translation type="unfinished">Iterations</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="136"/>
+        <source>Memory Limit:</source>
+        <translation type="unfinished">Limite Mémoire :</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="181"/>
+        <source>Encryption Algorithm</source>
+        <translation type="unfinished">Algorithme de chiffrage</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.cpp" line="38"/>
+        <source>Access error for config file %1</source>
+        <translation type="unfinished">Impossible de lire le fichier de configuration %1</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.cpp" line="39"/>
+        <source>Could not load configuration</source>
+        <translation type="unfinished">Impossible de lire la configuration</translation>
+    </message>
+</context>
+<context>
+    <name>DecryptBar</name>
+    <message>
+        <location filename="../decryptbar.cpp" line="18"/>
+        <source>Decrypting...</source>
+        <translation type="unfinished">Déchiffrage...</translation>
+    </message>
+    <message>
+        <location filename="../decryptbar.cpp" line="21"/>
+        <source>Stop execution?</source>
+        <translation type="unfinished">Stopper l&apos;execution ?</translation>
+    </message>
+    <message>
+        <location filename="../decryptbar.cpp" line="22"/>
+        <source>Are you sure you want to stop decrypting?</source>
+        <translation type="unfinished">Etes-vous certain de vouloir stopper le déchiffrage ?</translation>
+    </message>
+    <message>
+        <location filename="../decryptbar.cpp" line="32"/>
+        <source>Decrypting list...</source>
+        <translation type="unfinished">Déchiffrage de la liste ...</translation>
+    </message>
+    <message>
+        <location filename="../decryptbar.cpp" line="56"/>
+        <source>Decryption interrupted!</source>
+        <translation type="unfinished">Déchiffrage interrompu !</translation>
+    </message>
+    <message>
+        <location filename="../decryptbar.cpp" line="59"/>
+        <source>The decryption process was interrupted. Some files or directories might not have been finished. Click below to show details.</source>
+        <translation type="unfinished">Le déchiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
+    </message>
+    <message>
+        <location filename="../decryptbar.cpp" line="68"/>
+        <location filename="../decryptbar.cpp" line="122"/>
+        <source>No existing items were found!</source>
+        <translation type="unfinished">Pas de fichier trouvé !</translation>
+    </message>
+    <message>
+        <location filename="../decryptbar.cpp" line="111"/>
+        <source>Decryption finished!</source>
+        <translation type="unfinished">Déchiffrage fini !</translation>
+    </message>
+    <message>
+        <location filename="../decryptbar.cpp" line="114"/>
+        <source>The decryption process was finished. Click below to show details.</source>
+        <translation type="unfinished">Le déchiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
+    </message>
+</context>
+<context>
+    <name>EncryptBar</name>
+    <message>
+        <location filename="../encryptbar.cpp" line="24"/>
+        <source>Encrypting...</source>
+        <translation type="unfinished">Chiffrage...</translation>
+    </message>
+    <message>
+        <location filename="../encryptbar.cpp" line="27"/>
+        <source>Stop execution?</source>
+        <translation type="unfinished">Stopper l&apos;execution ?</translation>
+    </message>
+    <message>
+        <location filename="../encryptbar.cpp" line="28"/>
+        <source>Are you sure you want to stop encrypting?</source>
+        <translation type="unfinished">Etes-vous certain de vouloir stopper le chiffrage ?</translation>
+    </message>
+    <message>
+        <location filename="../encryptbar.cpp" line="38"/>
+        <source>Encrypting list...</source>
+        <translation type="unfinished">Chiffrage de la liste ...</translation>
+    </message>
+    <message>
+        <location filename="../encryptbar.cpp" line="70"/>
+        <source>Encryption interrupted!</source>
+        <translation type="unfinished">Chiffrage interrompu !</translation>
+    </message>
+    <message>
+        <location filename="../encryptbar.cpp" line="73"/>
+        <source>The encryption process was interrupted. Some files or directories might not have been finished. Click below to show details.</source>
+        <translation type="unfinished">Le chiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
+    </message>
+    <message>
+        <location filename="../encryptbar.cpp" line="82"/>
+        <location filename="../encryptbar.cpp" line="144"/>
+        <source>No existing items were found!</source>
+        <translation type="unfinished">Pas de fichier trouvé !</translation>
+    </message>
+    <message>
+        <location filename="../encryptbar.cpp" line="133"/>
+        <source>Encryption finished!</source>
+        <translation type="unfinished">Chiffrage fini !</translation>
+    </message>
+    <message>
+        <location filename="../encryptbar.cpp" line="136"/>
+        <source>The encryption process was finished. Click below to show details.</source>
+        <translation type="unfinished">Le chiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
     </message>
 </context>
 <context>
@@ -196,468 +361,718 @@
         <translation>Copier</translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="65"/>
+        <location filename="../hashcheckdialog.cpp" line="85"/>
         <source>Load file...</source>
         <translation>Ouvrir fichier...</translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="152"/>
+        <location filename="../hashcheckdialog.cpp" line="179"/>
         <source>error</source>
         <translation>erreur</translation>
     </message>
 </context>
 <context>
-    <name>MyAbstractBar</name>
+    <name>MainWindow</name>
     <message>
-        <location filename="../myabstractbar.ui" line="14"/>
-        <source>Dialog</source>
-        <translation></translation>
+        <location filename="../mainwindow.ui" line="39"/>
+        <source>Add file(s)...</source>
+        <translation type="unfinished">Ajouter fichier...</translation>
     </message>
     <message>
-        <location filename="../myabstractbar.ui" line="47"/>
+        <location filename="../mainwindow.ui" line="50"/>
+        <source>Add directory...</source>
+        <translation type="unfinished">Ajouter dossier...</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="61"/>
+        <location filename="../mainwindow.ui" line="365"/>
+        <source>Remove checked</source>
+        <translation type="unfinished">Enlever selection</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="68"/>
+        <location filename="../mainwindow.ui" line="370"/>
+        <source>Delete checked</source>
+        <translation type="unfinished">Supprimer selection</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="88"/>
+        <location filename="../mainwindow.ui" line="375"/>
+        <source>Check All</source>
+        <translation type="unfinished">Selectionner tout</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="95"/>
+        <source>UnCheck All</source>
+        <translation type="unfinished">Deselctionner tout</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="130"/>
+        <source>Password:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="150"/>
+        <source>Confirm:</source>
+        <translation type="unfinished">Confirmation:</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="157"/>
+        <source>View Pass</source>
+        <translation type="unfinished">Voir/cacher</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="164"/>
+        <source>Generator</source>
+        <translation type="unfinished">Generateur</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="186"/>
+        <source>Incremental Rename encrypted item(s) to:</source>
+        <translation type="unfinished">Renomer les fichiers chiffrés de maniére incrementale:</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="210"/>
+        <source>Delete original item after encryption/decryption</source>
+        <translation type="unfinished">Supprimer les originaux aprés chiffrage ou déchiffrage</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="217"/>
+        <source>Encrypt</source>
+        <translation type="unfinished">Chiffrer</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="228"/>
+        <source>Decrypt</source>
+        <translation type="unfinished">Déchiffrer</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="247"/>
+        <source>File</source>
+        <translation type="unfinished">Fichier</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="259"/>
+        <source>List</source>
+        <translation type="unfinished">Liste</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="268"/>
+        <source>Config</source>
+        <translation type="unfinished">Configuration</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="272"/>
+        <source>Language</source>
+        <translation type="unfinished">Langage</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="281"/>
+        <source>Utils</source>
+        <translation type="unfinished">Outils</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="289"/>
+        <source>Infos</source>
+        <translation type="unfinished">Infos</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="303"/>
+        <source>toolBar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="327"/>
+        <source>Add File(s)</source>
+        <translation type="unfinished">Ajouter fichier(s)</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="336"/>
+        <source>Add Directory</source>
+        <translation type="unfinished">Ajouter dossier</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="341"/>
+        <source>Load item list</source>
+        <translation type="unfinished">Ouvrir liste</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="350"/>
+        <source>Quit</source>
+        <translation type="unfinished">Quitter</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="355"/>
+        <source>Save item list</source>
+        <translation type="unfinished">Sauver liste</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="360"/>
+        <source>Refresh view</source>
+        <translation type="unfinished">Actualiser la vue</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="380"/>
+        <source>Uncheck All</source>
+        <translation type="unfinished">Deselctionner tout</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="388"/>
+        <source>Auto resize columns</source>
+        <translation type="unfinished">Redimensionement auto des colonnes</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="397"/>
+        <source>Configuration</source>
+        <translation type="unfinished">Configuration</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="406"/>
+        <source>Pass Generator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="411"/>
+        <source>Hash Calculator</source>
+        <translation type="unfinished">Calculateur de hash</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="420"/>
+        <source>About</source>
+        <translation type="unfinished">A Propos</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="425"/>
+        <location filename="../mainwindow.cpp" line="179"/>
+        <source>About Qt</source>
+        <translation type="unfinished">A propos de Qt</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="430"/>
+        <source>Argon2 tests</source>
+        <translation type="unfinished">Tests Argon2</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="438"/>
+        <source>Dark Theme</source>
+        <translation type="unfinished">Theme Sombre</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="443"/>
+        <source>English</source>
+        <translation type="unfinished">Anglais</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="448"/>
+        <source>French</source>
+        <translation type="unfinished">Français</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="118"/>
+        <source>Access error for config file %1</source>
+        <translation type="unfinished">Impossible de lire le fichier de configuration %1</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="119"/>
+        <source>Could not load configuration</source>
+        <translation type="unfinished">Impossible de lire la configuration</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="308"/>
+        <source>The password entered was too short. </source>
+        <translation type="unfinished">Le mot de passe est trop court. </translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="318"/>
+        <source>There were no items selected for </source>
+        <translation type="unfinished">Il n&apos;y a rien de selectionné pour </translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="320"/>
+        <source>Nothing selected!</source>
+        <translation type="unfinished">Rien de Selectionné !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="337"/>
+        <source>No user name</source>
+        <translation type="unfinished">Pas de nom d&apos;utilisateur</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="337"/>
+        <source>You must set a user name or e-mail in configuration !</source>
+        <translation type="unfinished">Vous devez entrer un email ou nom d&apos;utilisateur dans le menu de configuration !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="367"/>
+        <source>Passwords do not match!</source>
+        <translation type="unfinished">Les mots de passes ne corespondent pas !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="367"/>
+        <source>The password fields do not match! Please make sure they were entered correctly and try again.</source>
+        <translation type="unfinished">Les mots de passe ne corespondent pas ! Merci de verifier.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="377"/>
+        <source>Open File(s)</source>
+        <translation type="unfinished">Ouvrir Fichier(s)</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="407"/>
+        <source>File(s) already added!</source>
+        <translation type="unfinished">Fichier(s) deja ajouté !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="408"/>
+        <source>The following file(s) were already added. They will not be added again.</source>
+        <translation type="unfinished">Ces fichiers sont déja dans la liste. Ils ne seronts pas ajoutés.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="432"/>
+        <source>Open Directory</source>
+        <translation type="unfinished">Ouvrir Dossier</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="444"/>
+        <source>Can&apos;t add a root directory!</source>
+        <translation type="unfinished">Impossible d&apos;ajouter un dossier systeme !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="445"/>
+        <source>The root directory (</source>
+        <translation type="unfinished">Le dossier root (</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="445"/>
+        <location filename="../mainwindow.cpp" line="456"/>
+        <source>) cannot be added.</source>
+        <translation type="unfinished">) ne peut être ajouté.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="455"/>
+        <source>Can&apos;t add empty directory!</source>
+        <translation type="unfinished">Impossible d&apos;ajouter un dossier vide !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="456"/>
+        <source>The directory (</source>
+        <translation type="unfinished">Le dossier (</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="467"/>
+        <source>Directory already added!</source>
+        <translation type="unfinished">Dossier deja ajouté !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="468"/>
+        <source>The following directory was already added. It will not be added again.</source>
+        <translation type="unfinished">Ce dossier est déja dans la liste. Il ne sera pas ajoutés.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="486"/>
+        <source>Directory makes item(s) redundant!</source>
+        <translation type="unfinished">L&apos;ajout du dossier créer des fichiers redondants !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="487"/>
+        <source>The directory chosen (</source>
+        <translation type="unfinished">Le dossier (</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="487"/>
+        <source>) contains item(s) inside it that were added previously. If you add this new directory, the following redundant items will be removed.</source>
+        <translation type="unfinished">) contient des fichiers qui ont déja étés ajoutés. Si vous l&apos;ajoutez, les fichiers redondants seront retirés de la liste.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="597"/>
+        <source>Delete items?</source>
+        <translation type="unfinished">Supprimer les fichiers ?</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="597"/>
+        <source>Are you sure you wish to permanently delete the selected items?</source>
+        <translation type="unfinished">Etes-vous certain de vouloir supprimer definitivement les fichiers selectionnés ?</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="615"/>
+        <source>Successfully deleted file!</source>
+        <translation type="unfinished">Le fichier a bien été supprimé !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="618"/>
+        <source>Error deleting file!</source>
+        <translation type="unfinished">Erreur de suppression du fichier !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="625"/>
+        <source>Successfully deleted directory!</source>
+        <translation type="unfinished">Le dossier à bien été supprimé !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="628"/>
+        <source>Error deleting directory!</source>
+        <translation type="unfinished">Erreur de suppression du dossier !</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="633"/>
+        <source>Item was not found!</source>
+        <translation type="unfinished">Fichier introuvable !</translation>
+    </message>
+</context>
+<context>
+    <name>MyAbstractBar</name>
+    <message>
         <source>Cancel</source>
-        <translation>Annuler</translation>
+        <translation type="vanished">Annuler</translation>
     </message>
 </context>
 <context>
     <name>MyDecryptBar</name>
     <message>
-        <location filename="../mydecryptbar.cpp" line="22"/>
         <source>Decrypting...</source>
-        <translation>Déchiffrage...</translation>
+        <translation type="vanished">Déchiffrage...</translation>
     </message>
     <message>
-        <location filename="../mydecryptbar.cpp" line="25"/>
         <source>Stop execution?</source>
-        <translation>Stopper l&apos;execution ?</translation>
+        <translation type="vanished">Stopper l&apos;execution ?</translation>
     </message>
     <message>
-        <location filename="../mydecryptbar.cpp" line="26"/>
         <source>Are you sure you want to stop decrypting?</source>
-        <translation>Etes-vous certain de vouloir stopper le déchiffrage ?</translation>
+        <translation type="vanished">Etes-vous certain de vouloir stopper le déchiffrage ?</translation>
     </message>
     <message>
-        <location filename="../mydecryptbar.cpp" line="36"/>
         <source>Decrypting list...</source>
-        <translation>Déchiffrage de la liste ...</translation>
+        <translation type="vanished">Déchiffrage de la liste ...</translation>
     </message>
     <message>
-        <location filename="../mydecryptbar.cpp" line="68"/>
         <source>Decryption interrupted!</source>
-        <translation>Déchiffrage interrompu !</translation>
+        <translation type="vanished">Déchiffrage interrompu !</translation>
     </message>
     <message>
-        <location filename="../mydecryptbar.cpp" line="71"/>
         <source>The decryption process was interrupted. Some files or directories might not have been finished. Click below to show details.</source>
-        <translation>Le déchiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
+        <translation type="vanished">Le déchiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
     </message>
     <message>
-        <location filename="../mydecryptbar.cpp" line="80"/>
-        <location filename="../mydecryptbar.cpp" line="145"/>
         <source>No existing items were found!</source>
-        <translation>Pas de fichier trouvé !</translation>
+        <translation type="vanished">Pas de fichier trouvé !</translation>
     </message>
     <message>
-        <location filename="../mydecryptbar.cpp" line="134"/>
         <source>Decryption finished!</source>
-        <translation>Déchiffrage fini !</translation>
+        <translation type="vanished">Déchiffrage fini !</translation>
     </message>
     <message>
-        <location filename="../mydecryptbar.cpp" line="137"/>
         <source>The decryption process was finished. Click below to show details.</source>
-        <translation>Le déchiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
+        <translation type="vanished">Le déchiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
     </message>
 </context>
 <context>
     <name>MyEncryptBar</name>
     <message>
-        <location filename="../myencryptbar.cpp" line="24"/>
         <source>Encrypting...</source>
-        <translation>Chiffrage...</translation>
+        <translation type="vanished">Chiffrage...</translation>
     </message>
     <message>
-        <location filename="../myencryptbar.cpp" line="27"/>
         <source>Stop execution?</source>
-        <translation>Stopper l&apos;execution ?</translation>
+        <translation type="vanished">Stopper l&apos;execution ?</translation>
     </message>
     <message>
-        <location filename="../myencryptbar.cpp" line="28"/>
         <source>Are you sure you want to stop encrypting?</source>
-        <translation>Etes-vous certain de vouloir stopper le chiffrage ?</translation>
+        <translation type="vanished">Etes-vous certain de vouloir stopper le chiffrage ?</translation>
     </message>
     <message>
-        <location filename="../myencryptbar.cpp" line="38"/>
         <source>Encrypting list...</source>
-        <translation>Chiffrage de la liste ...</translation>
+        <translation type="vanished">Chiffrage de la liste ...</translation>
     </message>
     <message>
-        <location filename="../myencryptbar.cpp" line="70"/>
         <source>Encryption interrupted!</source>
-        <translation>Chiffrage interrompu !</translation>
+        <translation type="vanished">Chiffrage interrompu !</translation>
     </message>
     <message>
-        <location filename="../myencryptbar.cpp" line="73"/>
         <source>The encryption process was interrupted. Some files or directories might not have been finished. Click below to show details.</source>
-        <translation>Le chiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
+        <translation type="vanished">Le chiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
     </message>
     <message>
-        <location filename="../myencryptbar.cpp" line="82"/>
-        <location filename="../myencryptbar.cpp" line="144"/>
         <source>No existing items were found!</source>
-        <translation>Pas de fichier trouvé !</translation>
+        <translation type="vanished">Pas de fichier trouvé !</translation>
     </message>
     <message>
-        <location filename="../myencryptbar.cpp" line="133"/>
         <source>Encryption finished!</source>
-        <translation>Chiffrage fini !</translation>
+        <translation type="vanished">Chiffrage fini !</translation>
     </message>
     <message>
-        <location filename="../myencryptbar.cpp" line="136"/>
         <source>The encryption process was finished. Click below to show details.</source>
-        <translation>Le chiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
+        <translation type="vanished">Le chiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
     </message>
 </context>
 <context>
     <name>MyMainWindow</name>
     <message>
-        <location filename="../mymainwindow.ui" line="39"/>
         <source>Add file(s)...</source>
-        <translation>Ajouter fichier...</translation>
+        <translation type="vanished">Ajouter fichier...</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="46"/>
         <source>Add directory...</source>
-        <translation>Ajouter dossier...</translation>
+        <translation type="vanished">Ajouter dossier...</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="53"/>
-        <location filename="../mymainwindow.ui" line="321"/>
         <source>Remove checked</source>
-        <translation>Enlever selection</translation>
+        <translation type="vanished">Enlever selection</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="60"/>
-        <location filename="../mymainwindow.ui" line="326"/>
         <source>Delete checked</source>
-        <translation>Supprimer selection</translation>
+        <translation type="vanished">Supprimer selection</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="80"/>
-        <location filename="../mymainwindow.ui" line="331"/>
         <source>Check All</source>
-        <translation>Selectionner tout</translation>
+        <translation type="vanished">Selectionner tout</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="87"/>
         <source>UnCheck All</source>
-        <translation>Deselctionner tout</translation>
+        <translation type="vanished">Deselctionner tout</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="122"/>
         <source>Password:</source>
-        <translation>Passphrase:</translation>
+        <translation type="vanished">Passphrase:</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="142"/>
         <source>Confirm:</source>
-        <translation>Confirmation:</translation>
+        <translation type="vanished">Confirmation:</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="149"/>
         <source>View Pass</source>
-        <translation>Voir/cacher</translation>
+        <translation type="vanished">Voir/cacher</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="156"/>
         <source>Generator</source>
-        <translation>Generateur</translation>
+        <translation type="vanished">Generateur</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="174"/>
         <source>Incremental Rename encrypted item(s) to:</source>
-        <translation>Renomer les fichiers chiffrés de maniére incrementale:</translation>
+        <translation type="vanished">Renomer les fichiers chiffrés de maniére incrementale:</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="198"/>
         <source>Delete original item after encryption/decryption</source>
-        <translation>Supprimer les originaux aprés chiffrage ou déchiffrage</translation>
+        <translation type="vanished">Supprimer les originaux aprés chiffrage ou déchiffrage</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="205"/>
         <source>Encrypt</source>
-        <translation>Chiffrer</translation>
+        <translation type="vanished">Chiffrer</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="216"/>
         <source>Decrypt</source>
-        <translation>Déchiffrer</translation>
+        <translation type="vanished">Déchiffrer</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="235"/>
         <source>File</source>
-        <translation>Fichier</translation>
+        <translation type="vanished">Fichier</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="247"/>
         <source>List</source>
-        <translation>Liste</translation>
+        <translation type="vanished">Liste</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="256"/>
         <source>Config</source>
-        <translation>Configuration</translation>
+        <translation type="vanished">Configuration</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="260"/>
         <source>Language</source>
-        <translation>Langage</translation>
+        <translation type="vanished">Langage</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="269"/>
         <source>Utils</source>
-        <translation>Outils</translation>
+        <translation type="vanished">Outils</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="277"/>
         <source>Infos</source>
-        <translation>Infos</translation>
+        <translation type="vanished">Infos</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="291"/>
         <source>Add File(s)</source>
-        <translation>Ajouter fichier(s)</translation>
+        <translation type="vanished">Ajouter fichier(s)</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="296"/>
         <source>Add Directory</source>
-        <translation>Ajouter dossier</translation>
+        <translation type="vanished">Ajouter dossier</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="301"/>
         <source>Load item list</source>
-        <translation>Ouvrir liste</translation>
+        <translation type="vanished">Ouvrir liste</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="306"/>
         <source>Quit</source>
-        <translation>Quitter</translation>
+        <translation type="vanished">Quitter</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="311"/>
         <source>Save item list</source>
-        <translation>Sauver liste</translation>
+        <translation type="vanished">Sauver liste</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="316"/>
         <source>Refresh view</source>
-        <translation>Actualiser la vue</translation>
+        <translation type="vanished">Actualiser la vue</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="336"/>
         <source>Uncheck All</source>
-        <translation>Deselctionner tout</translation>
+        <translation type="vanished">Deselctionner tout</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="344"/>
         <source>Auto resize columns</source>
-        <translation>Redimensionement auto des colonnes</translation>
+        <translation type="vanished">Redimensionement auto des colonnes</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="349"/>
         <source>Configuration</source>
-        <translation>Configuration</translation>
+        <translation type="vanished">Configuration</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="354"/>
         <source>Password Generator</source>
-        <translation>Generateur de mot de passe</translation>
+        <translation type="vanished">Generateur de mot de passe</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="359"/>
         <source>Hash Calculator</source>
-        <translation>Calculateur de hash</translation>
+        <translation type="vanished">Calculateur de hash</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="364"/>
         <source>About Arsenic</source>
-        <translation>A propos d&apos;Arsenic</translation>
+        <translation type="vanished">A propos d&apos;Arsenic</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="369"/>
-        <location filename="../mymainwindow.cpp" line="191"/>
         <source>About Qt</source>
-        <translation>A propos de Qt</translation>
+        <translation type="vanished">A propos de Qt</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="374"/>
         <source>Argon2 tests</source>
-        <translation>Tests Argon2</translation>
+        <translation type="vanished">Tests Argon2</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="382"/>
         <source>Dark Theme</source>
-        <translation>Theme Sombre</translation>
+        <translation type="vanished">Theme Sombre</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="387"/>
         <source>English</source>
-        <translation>Anglais</translation>
+        <translation type="vanished">Anglais</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.ui" line="392"/>
         <source>French</source>
-        <translation>Français</translation>
+        <translation type="vanished">Français</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="130"/>
         <source>Access error for config file %1</source>
-        <translation>Impossible de lire le fichier de configuration %1</translation>
+        <translation type="vanished">Impossible de lire le fichier de configuration %1</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="131"/>
         <source>Could not load configuration</source>
-        <translation>Impossible de lire la configuration</translation>
+        <translation type="vanished">Impossible de lire la configuration</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="320"/>
         <source>The password entered was too short. </source>
-        <translation>Le mot de passe est trop court. </translation>
+        <translation type="vanished">Le mot de passe est trop court. </translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="330"/>
         <source>There were no items selected for </source>
-        <translation>Il n&apos;y a rien de selectionné pour </translation>
+        <translation type="vanished">Il n&apos;y a rien de selectionné pour </translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="332"/>
         <source>Nothing selected!</source>
-        <translation>Rien de Selectionné !</translation>
+        <translation type="vanished">Rien de Selectionné !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="349"/>
         <source>No user name</source>
-        <translation>Pas de nom d&apos;utilisateur</translation>
+        <translation type="vanished">Pas de nom d&apos;utilisateur</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="349"/>
         <source>You must set a user name or e-mail in configuration !</source>
-        <translation>Vous devez entrer un email ou nom d&apos;utilisateur dans le menu de configuration !</translation>
+        <translation type="vanished">Vous devez entrer un email ou nom d&apos;utilisateur dans le menu de configuration !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="379"/>
         <source>Passwords do not match!</source>
-        <translation>Les mots de passes ne corespondent pas !</translation>
+        <translation type="vanished">Les mots de passes ne corespondent pas !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="379"/>
         <source>The password fields do not match! Please make sure they were entered correctly and try again.</source>
-        <translation>Les mots de passe ne corespondent pas ! Merci de verifier.</translation>
+        <translation type="vanished">Les mots de passe ne corespondent pas ! Merci de verifier.</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="389"/>
         <source>Open File(s)</source>
-        <translation>Ouvrir Fichier(s)</translation>
+        <translation type="vanished">Ouvrir Fichier(s)</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="419"/>
         <source>File(s) already added!</source>
-        <translation>Fichier(s) deja ajouté !</translation>
+        <translation type="vanished">Fichier(s) deja ajouté !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="420"/>
         <source>The following file(s) were already added. They will not be added again.</source>
-        <translation>Ces fichiers sont déja dans la liste. Ils ne seronts pas ajoutés.</translation>
+        <translation type="vanished">Ces fichiers sont déja dans la liste. Ils ne seronts pas ajoutés.</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="444"/>
         <source>Open Directory</source>
-        <translation>Ouvrir Dossier</translation>
+        <translation type="vanished">Ouvrir Dossier</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="456"/>
         <source>Can&apos;t add a root directory!</source>
-        <translation>Impossible d&apos;ajouter un dossier systeme !</translation>
+        <translation type="vanished">Impossible d&apos;ajouter un dossier systeme !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="457"/>
         <source>The root directory (</source>
-        <translation>Le dossier root (</translation>
+        <translation type="vanished">Le dossier root (</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="457"/>
-        <location filename="../mymainwindow.cpp" line="468"/>
         <source>) cannot be added.</source>
-        <translation>) ne peut être ajouté.</translation>
+        <translation type="vanished">) ne peut être ajouté.</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="467"/>
         <source>Can&apos;t add empty directory!</source>
-        <translation>Impossible d&apos;ajouter un dossier vide !</translation>
+        <translation type="vanished">Impossible d&apos;ajouter un dossier vide !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="468"/>
         <source>The directory (</source>
-        <translation>Le dossier (</translation>
+        <translation type="vanished">Le dossier (</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="479"/>
         <source>Directory already added!</source>
-        <translation>Dossier deja ajouté !</translation>
+        <translation type="vanished">Dossier deja ajouté !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="480"/>
         <source>The following directory was already added. It will not be added again.</source>
-        <translation>Ce dossier est déja dans la liste. Il ne sera pas ajoutés.</translation>
+        <translation type="vanished">Ce dossier est déja dans la liste. Il ne sera pas ajoutés.</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="498"/>
         <source>Directory makes item(s) redundant!</source>
-        <translation>L&apos;ajout du dossier créer des fichiers redondants !</translation>
+        <translation type="vanished">L&apos;ajout du dossier créer des fichiers redondants !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="499"/>
         <source>The directory chosen (</source>
-        <translation>Le dossier (</translation>
+        <translation type="vanished">Le dossier (</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="499"/>
         <source>) contains item(s) inside it that were added previously. If you add this new directory, the following redundant items will be removed.</source>
-        <translation>) contient des fichiers qui ont déja étés ajoutés. Si vous l&apos;ajoutez, les fichiers redondants seront retirés de la liste.</translation>
+        <translation type="vanished">) contient des fichiers qui ont déja étés ajoutés. Si vous l&apos;ajoutez, les fichiers redondants seront retirés de la liste.</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="610"/>
         <source>Delete items?</source>
-        <translation>Supprimer les fichiers ?</translation>
+        <translation type="vanished">Supprimer les fichiers ?</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="610"/>
         <source>Are you sure you wish to permanently delete the selected items?</source>
-        <translation>Etes-vous certain de vouloir supprimer definitivement les fichiers selectionnés ?</translation>
+        <translation type="vanished">Etes-vous certain de vouloir supprimer definitivement les fichiers selectionnés ?</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="628"/>
         <source>Successfully deleted file!</source>
-        <translation>Le fichier a bien été supprimé !</translation>
+        <translation type="vanished">Le fichier a bien été supprimé !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="631"/>
         <source>Error deleting file!</source>
-        <translation>Erreur de suppression du fichier !</translation>
+        <translation type="vanished">Erreur de suppression du fichier !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="638"/>
         <source>Successfully deleted directory!</source>
-        <translation>Le dossier à bien été supprimé !</translation>
+        <translation type="vanished">Le dossier à bien été supprimé !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="641"/>
         <source>Error deleting directory!</source>
-        <translation>Erreur de suppression du dossier !</translation>
+        <translation type="vanished">Erreur de suppression du dossier !</translation>
     </message>
     <message>
-        <location filename="../mymainwindow.cpp" line="646"/>
         <source>Item was not found!</source>
-        <translation>Fichier introuvable !</translation>
+        <translation type="vanished">Fichier introuvable !</translation>
     </message>
     <message>
         <source>Current Language changed to %1</source>
@@ -692,318 +1107,484 @@
     </message>
 </context>
 <context>
-    <name>PasswordGeneratorWidget</name>
+    <name>PasswordGeneratorDialog</name>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="14"/>
+        <location filename="../passwordGeneratorDialog.ui" line="14"/>
         <source>Dialog</source>
-        <translation>Arsenic Générateur de mot de passe</translation>
+        <translation type="unfinished">Arsenic Générateur de mot de passe</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="74"/>
+        <location filename="../passwordGeneratorDialog.ui" line="74"/>
         <source>%p%</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="81"/>
+        <location filename="../passwordGeneratorDialog.ui" line="81"/>
         <source>Password:</source>
-        <translation>Mot de passe:</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="105"/>
+        <location filename="../passwordGeneratorDialog.ui" line="105"/>
         <source>strength</source>
         <comment>Password strength</comment>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="140"/>
+        <location filename="../passwordGeneratorDialog.ui" line="140"/>
         <source>entropy</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="155"/>
+        <location filename="../passwordGeneratorDialog.ui" line="155"/>
         <source>Generated password</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="165"/>
+        <location filename="../passwordGeneratorDialog.ui" line="168"/>
         <source>Toggle password visibility</source>
-        <translation>Visibilité du mot de passe</translation>
+        <translation type="unfinished">Visibilité du mot de passe</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="191"/>
+        <location filename="../passwordGeneratorDialog.ui" line="194"/>
         <source>&amp;Length:</source>
-        <translation>&amp;Longueur:</translation>
+        <translation type="unfinished">&amp;Longueur:</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="201"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="226"/>
+        <location filename="../passwordGeneratorDialog.ui" line="204"/>
+        <location filename="../passwordGeneratorDialog.ui" line="229"/>
         <source>Password length</source>
-        <translation>Longueur du mot de passe</translation>
+        <translation type="unfinished">Longueur du mot de passe</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="255"/>
+        <location filename="../passwordGeneratorDialog.ui" line="258"/>
         <source>Character Types</source>
-        <translation>Types de caractéres</translation>
+        <translation type="unfinished">Types de caractéres</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="293"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="296"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="511"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="514"/>
+        <location filename="../passwordGeneratorDialog.ui" line="296"/>
+        <location filename="../passwordGeneratorDialog.ui" line="299"/>
+        <location filename="../passwordGeneratorDialog.ui" line="514"/>
+        <location filename="../passwordGeneratorDialog.ui" line="517"/>
         <source>Upper-case letters</source>
-        <translation>Lettres majuscules</translation>
+        <translation type="unfinished">Lettres majuscules</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="324"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="327"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="539"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="542"/>
+        <location filename="../passwordGeneratorDialog.ui" line="327"/>
+        <location filename="../passwordGeneratorDialog.ui" line="330"/>
+        <location filename="../passwordGeneratorDialog.ui" line="542"/>
+        <location filename="../passwordGeneratorDialog.ui" line="545"/>
         <source>Lower-case letters</source>
-        <translation>Lettres minuscules</translation>
+        <translation type="unfinished">Lettres minuscules</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="355"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="358"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="574"/>
+        <location filename="../passwordGeneratorDialog.ui" line="358"/>
+        <location filename="../passwordGeneratorDialog.ui" line="361"/>
+        <location filename="../passwordGeneratorDialog.ui" line="577"/>
         <source>Numbers</source>
-        <translation>Nombres</translation>
+        <translation type="unfinished">Nombres</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="389"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="392"/>
+        <location filename="../passwordGeneratorDialog.ui" line="392"/>
+        <location filename="../passwordGeneratorDialog.ui" line="395"/>
         <source>Special characters</source>
-        <translation>Caractéres spéciaux</translation>
+        <translation type="unfinished">Caractéres spéciaux</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="423"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="426"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="785"/>
+        <location filename="../passwordGeneratorDialog.ui" line="426"/>
+        <location filename="../passwordGeneratorDialog.ui" line="429"/>
+        <location filename="../passwordGeneratorDialog.ui" line="788"/>
         <source>Extended ASCII</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="429"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="788"/>
+        <location filename="../passwordGeneratorDialog.ui" line="432"/>
+        <location filename="../passwordGeneratorDialog.ui" line="791"/>
         <source>ExtendedASCII</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="461"/>
+        <location filename="../passwordGeneratorDialog.ui" line="464"/>
         <source>Switch to advanced mode</source>
-        <translation>Passer au mode avancé</translation>
+        <translation type="unfinished">Passer au mode avancé</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="464"/>
+        <location filename="../passwordGeneratorDialog.ui" line="467"/>
         <source>Advanced</source>
-        <translation>Avancé</translation>
+        <translation type="unfinished">Avancé</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="517"/>
+        <location filename="../passwordGeneratorDialog.ui" line="520"/>
         <source>A-Z</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="545"/>
+        <location filename="../passwordGeneratorDialog.ui" line="548"/>
         <source>a-z</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="577"/>
+        <location filename="../passwordGeneratorDialog.ui" line="580"/>
         <source>0-9</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="599"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="602"/>
+        <location filename="../passwordGeneratorDialog.ui" line="602"/>
+        <location filename="../passwordGeneratorDialog.ui" line="605"/>
         <source>Braces</source>
-        <translation>Parenthéses et crochets</translation>
+        <translation type="unfinished">Parenthéses et crochets</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="605"/>
+        <location filename="../passwordGeneratorDialog.ui" line="608"/>
         <source>{[(</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="634"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="637"/>
+        <location filename="../passwordGeneratorDialog.ui" line="637"/>
+        <location filename="../passwordGeneratorDialog.ui" line="640"/>
         <source>Punctuation</source>
-        <translation>Ponctuation</translation>
+        <translation type="unfinished">Ponctuation</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="640"/>
+        <location filename="../passwordGeneratorDialog.ui" line="643"/>
         <source>.,:;</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="662"/>
+        <location filename="../passwordGeneratorDialog.ui" line="665"/>
         <source>Quotes</source>
-        <translation>Guillemets</translation>
+        <translation type="unfinished">Guillemets</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="665"/>
+        <location filename="../passwordGeneratorDialog.ui" line="668"/>
         <source>&quot; &apos;</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="694"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="697"/>
+        <location filename="../passwordGeneratorDialog.ui" line="697"/>
+        <location filename="../passwordGeneratorDialog.ui" line="700"/>
         <source>Math Symbols</source>
-        <translation>Symboles mathématiques</translation>
+        <translation type="unfinished">Symboles mathématiques</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="700"/>
+        <location filename="../passwordGeneratorDialog.ui" line="703"/>
         <source>&lt;*+!?=</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="722"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="725"/>
+        <location filename="../passwordGeneratorDialog.ui" line="725"/>
+        <location filename="../passwordGeneratorDialog.ui" line="728"/>
         <source>Dashes and Slashes</source>
-        <translation>Tirets et barres</translation>
+        <translation type="unfinished">Tirets et barres</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="728"/>
+        <location filename="../passwordGeneratorDialog.ui" line="731"/>
         <source>\_|-/</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="757"/>
-        <location filename="../PasswordGeneratorWidget.ui" line="760"/>
+        <location filename="../passwordGeneratorDialog.ui" line="760"/>
+        <location filename="../passwordGeneratorDialog.ui" line="763"/>
         <source>Logograms</source>
-        <translation>Logogrammes</translation>
+        <translation type="unfinished">Logogrammes</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="763"/>
+        <location filename="../passwordGeneratorDialog.ui" line="766"/>
         <source>#$%&amp;&amp;@^`~</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="827"/>
+        <location filename="../passwordGeneratorDialog.ui" line="830"/>
         <source>Switch to simple mode</source>
-        <translation>Passer en mode simple</translation>
+        <translation type="unfinished">Passer en mode simple</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="830"/>
+        <location filename="../passwordGeneratorDialog.ui" line="833"/>
         <source>Simple</source>
-        <translation></translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="869"/>
+        <location filename="../passwordGeneratorDialog.ui" line="872"/>
         <source>Character set to exclude from generated password</source>
-        <translation>Caractéres exclus du générateur</translation>
+        <translation type="unfinished">Caractéres exclus du générateur</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="872"/>
+        <location filename="../passwordGeneratorDialog.ui" line="875"/>
         <source>Excluded characters</source>
-        <translation>Caractéres exclus</translation>
+        <translation type="unfinished">Caractéres exclus</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="882"/>
+        <location filename="../passwordGeneratorDialog.ui" line="885"/>
         <source>Do not include:</source>
-        <translation>Ne pas inclure:</translation>
+        <translation type="unfinished">Ne pas inclure:</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="895"/>
+        <location filename="../passwordGeneratorDialog.ui" line="898"/>
         <source>Add non-hex letters to &quot;do not include&quot; list</source>
-        <translation>Ajoutter les caractéres non-hexadécimales à la liste d&apos;exclusion</translation>
+        <translation type="unfinished">Ajoutter les caractéres non-hexadécimales à la liste d&apos;exclusion</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="898"/>
+        <location filename="../passwordGeneratorDialog.ui" line="901"/>
         <source>Hex Passwords</source>
-        <translation>mot de passe Hexadécimal</translation>
+        <translation type="unfinished">mot de passe Hexadécimal</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="901"/>
+        <location filename="../passwordGeneratorDialog.ui" line="904"/>
         <source>Hex</source>
-        <translation>Haxa</translation>
+        <translation type="unfinished">Haxa</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="924"/>
+        <location filename="../passwordGeneratorDialog.ui" line="927"/>
         <source>Excluded characters: &quot;0&quot;, &quot;1&quot;, &quot;l&quot;, &quot;I&quot;, &quot;O&quot;, &quot;|&quot;, &quot;﹒&quot;</source>
-        <translation>Caractéres exclus: &quot;0&quot;, &quot;1&quot;, &quot;l&quot;, &quot;I&quot;, &quot;O&quot;, &quot;|&quot;, &quot;﹒&quot;</translation>
+        <translation type="unfinished">Caractéres exclus: &quot;0&quot;, &quot;1&quot;, &quot;l&quot;, &quot;I&quot;, &quot;O&quot;, &quot;|&quot;, &quot;﹒&quot;</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="927"/>
+        <location filename="../passwordGeneratorDialog.ui" line="930"/>
         <source>Exclude look-alike characters</source>
-        <translation>Exclure les charactéres ressamblants</translation>
+        <translation type="unfinished">Exclure les charactéres ressamblants</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="937"/>
+        <location filename="../passwordGeneratorDialog.ui" line="940"/>
         <source>Pick characters from every group</source>
-        <translation>Prendre des caractéres dans chaques groupes</translation>
+        <translation type="unfinished">Prendre des caractéres dans chaques groupes</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="967"/>
+        <location filename="../passwordGeneratorDialog.ui" line="970"/>
         <source>Copy password</source>
-        <translation>Copier le mot de passe dans le presse papier</translation>
+        <translation type="unfinished">Copier le mot de passe dans le presse papier</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="973"/>
+        <location filename="../passwordGeneratorDialog.ui" line="976"/>
         <source>Copy</source>
-        <translation>Copier</translation>
+        <translation type="unfinished">Copier</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="983"/>
+        <location filename="../passwordGeneratorDialog.ui" line="986"/>
         <source>Accept password</source>
-        <translation>Accepter le mot de passe</translation>
+        <translation type="unfinished">Accepter le mot de passe</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="989"/>
-        <location filename="../PasswordGeneratorWidget.cpp" line="177"/>
+        <location filename="../passwordGeneratorDialog.ui" line="992"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="203"/>
         <source>Accept</source>
-        <translation>Accepter</translation>
+        <translation type="unfinished">Accepter</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="996"/>
+        <location filename="../passwordGeneratorDialog.ui" line="999"/>
         <source>Regenerate password</source>
-        <translation>Régénérer le mot de passe</translation>
+        <translation type="unfinished">Régénérer le mot de passe</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.ui" line="1002"/>
+        <location filename="../passwordGeneratorDialog.ui" line="1005"/>
         <source>Regenerate</source>
-        <translation>Régénérer</translation>
+        <translation type="unfinished">Régénérer</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.cpp" line="174"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="200"/>
         <source>Close</source>
-        <translation>Fermer</translation>
+        <translation type="unfinished">Fermer</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.cpp" line="221"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="267"/>
         <source>Entropy: %1 bit</source>
-        <translation>Entropie: %1 bit</translation>
+        <translation type="unfinished">Entropie: %1 bit</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.cpp" line="337"/>
-        <location filename="../PasswordGeneratorWidget.cpp" line="340"/>
-        <location filename="../PasswordGeneratorWidget.cpp" line="343"/>
-        <location filename="../PasswordGeneratorWidget.cpp" line="346"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="428"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="431"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="434"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="437"/>
         <source>Password Quality: %1</source>
-        <translation>Qualité du password: %1</translation>
+        <translation type="unfinished">Qualité du password: %1</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.cpp" line="337"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="428"/>
         <source>Poor</source>
         <comment>Password quality</comment>
-        <translation>Nul</translation>
+        <translation type="unfinished">Nul</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.cpp" line="340"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="431"/>
         <source>Weak</source>
         <comment>Password quality</comment>
-        <translation>Faible</translation>
+        <translation type="unfinished">Faible</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.cpp" line="343"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="434"/>
         <source>Good</source>
         <comment>Password quality</comment>
-        <translation>Bon</translation>
+        <translation type="unfinished">Bon</translation>
     </message>
     <message>
-        <location filename="../PasswordGeneratorWidget.cpp" line="346"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="437"/>
         <source>Excellent</source>
         <comment>Password quality</comment>
-        <translation></translation>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PasswordGeneratorWidget</name>
+    <message>
+        <source>Dialog</source>
+        <translation type="vanished">Arsenic Générateur de mot de passe</translation>
+    </message>
+    <message>
+        <source>Password:</source>
+        <translation type="vanished">Mot de passe:</translation>
+    </message>
+    <message>
+        <source>Toggle password visibility</source>
+        <translation type="vanished">Visibilité du mot de passe</translation>
+    </message>
+    <message>
+        <source>&amp;Length:</source>
+        <translation type="vanished">&amp;Longueur:</translation>
+    </message>
+    <message>
+        <source>Password length</source>
+        <translation type="vanished">Longueur du mot de passe</translation>
+    </message>
+    <message>
+        <source>Character Types</source>
+        <translation type="vanished">Types de caractéres</translation>
+    </message>
+    <message>
+        <source>Upper-case letters</source>
+        <translation type="vanished">Lettres majuscules</translation>
+    </message>
+    <message>
+        <source>Lower-case letters</source>
+        <translation type="vanished">Lettres minuscules</translation>
+    </message>
+    <message>
+        <source>Numbers</source>
+        <translation type="vanished">Nombres</translation>
+    </message>
+    <message>
+        <source>Special characters</source>
+        <translation type="vanished">Caractéres spéciaux</translation>
+    </message>
+    <message>
+        <source>Switch to advanced mode</source>
+        <translation type="vanished">Passer au mode avancé</translation>
+    </message>
+    <message>
+        <source>Advanced</source>
+        <translation type="vanished">Avancé</translation>
+    </message>
+    <message>
+        <source>Braces</source>
+        <translation type="vanished">Parenthéses et crochets</translation>
+    </message>
+    <message>
+        <source>Punctuation</source>
+        <translation type="vanished">Ponctuation</translation>
+    </message>
+    <message>
+        <source>Quotes</source>
+        <translation type="vanished">Guillemets</translation>
+    </message>
+    <message>
+        <source>Math Symbols</source>
+        <translation type="vanished">Symboles mathématiques</translation>
+    </message>
+    <message>
+        <source>Dashes and Slashes</source>
+        <translation type="vanished">Tirets et barres</translation>
+    </message>
+    <message>
+        <source>Logograms</source>
+        <translation type="vanished">Logogrammes</translation>
+    </message>
+    <message>
+        <source>Switch to simple mode</source>
+        <translation type="vanished">Passer en mode simple</translation>
+    </message>
+    <message>
+        <source>Character set to exclude from generated password</source>
+        <translation type="vanished">Caractéres exclus du générateur</translation>
+    </message>
+    <message>
+        <source>Excluded characters</source>
+        <translation type="vanished">Caractéres exclus</translation>
+    </message>
+    <message>
+        <source>Do not include:</source>
+        <translation type="vanished">Ne pas inclure:</translation>
+    </message>
+    <message>
+        <source>Add non-hex letters to &quot;do not include&quot; list</source>
+        <translation type="vanished">Ajoutter les caractéres non-hexadécimales à la liste d&apos;exclusion</translation>
+    </message>
+    <message>
+        <source>Hex Passwords</source>
+        <translation type="vanished">mot de passe Hexadécimal</translation>
+    </message>
+    <message>
+        <source>Hex</source>
+        <translation type="vanished">Haxa</translation>
+    </message>
+    <message>
+        <source>Excluded characters: &quot;0&quot;, &quot;1&quot;, &quot;l&quot;, &quot;I&quot;, &quot;O&quot;, &quot;|&quot;, &quot;﹒&quot;</source>
+        <translation type="vanished">Caractéres exclus: &quot;0&quot;, &quot;1&quot;, &quot;l&quot;, &quot;I&quot;, &quot;O&quot;, &quot;|&quot;, &quot;﹒&quot;</translation>
+    </message>
+    <message>
+        <source>Exclude look-alike characters</source>
+        <translation type="vanished">Exclure les charactéres ressamblants</translation>
+    </message>
+    <message>
+        <source>Pick characters from every group</source>
+        <translation type="vanished">Prendre des caractéres dans chaques groupes</translation>
+    </message>
+    <message>
+        <source>Copy password</source>
+        <translation type="vanished">Copier le mot de passe dans le presse papier</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation type="vanished">Copier</translation>
+    </message>
+    <message>
+        <source>Accept password</source>
+        <translation type="vanished">Accepter le mot de passe</translation>
+    </message>
+    <message>
+        <source>Accept</source>
+        <translation type="vanished">Accepter</translation>
+    </message>
+    <message>
+        <source>Regenerate password</source>
+        <translation type="vanished">Régénérer le mot de passe</translation>
+    </message>
+    <message>
+        <source>Regenerate</source>
+        <translation type="vanished">Régénérer</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation type="vanished">Fermer</translation>
+    </message>
+    <message>
+        <source>Entropy: %1 bit</source>
+        <translation type="vanished">Entropie: %1 bit</translation>
+    </message>
+    <message>
+        <source>Password Quality: %1</source>
+        <translation type="vanished">Qualité du password: %1</translation>
+    </message>
+    <message>
+        <source>Poor</source>
+        <comment>Password quality</comment>
+        <translation type="vanished">Nul</translation>
+    </message>
+    <message>
+        <source>Weak</source>
+        <comment>Password quality</comment>
+        <translation type="vanished">Faible</translation>
+    </message>
+    <message>
+        <source>Good</source>
+        <comment>Password quality</comment>
+        <translation type="vanished">Bon</translation>
     </message>
 </context>
 <context>

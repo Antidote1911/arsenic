@@ -21,6 +21,7 @@
 
 #include <QScopedPointer>
 #include <QVariant>
+#include <memory>
 
 class QSettings;
 
@@ -55,7 +56,7 @@ private:
 
     static Config* m_instance;
 
-    QScopedPointer<QSettings> m_settings;
+    std::unique_ptr<QSettings> m_settings;
     QHash<QString, QVariant> m_defaults;
 };
 

@@ -39,7 +39,7 @@ protected slots:
     void copyToClipboard();
 
 private:
-    QScopedPointer<Ui::AboutDialog> m_ui;
+    const std::unique_ptr<Ui::AboutDialog> m_ui;
 };
 
 #endif // ABOUTDIALOG_H

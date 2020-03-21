@@ -16,7 +16,7 @@ public:
     ~ArgonTests();
 
 private:
-    const QScopedPointer<Ui::ArgonTests> m_ui;
+    const std::unique_ptr<Ui::ArgonTests> m_ui;
 };
 
 #endif // ARGONTESTS_H

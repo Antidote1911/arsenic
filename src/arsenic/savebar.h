@@ -2,6 +2,7 @@
 #define SAVEBAR_H
 
 #include "abstractbarDialog.h"
+#include <memory>
 
 // forward declarations
 class FileSystemModel;
@@ -42,7 +43,7 @@ protected:
 private:
         SaveBarThreadPublic::SaveThread *worker_thread;
         FileSystemModel *ptr_model;
-	QString list_path;
+        QString list_path;
 };
 
 #endif // SAVEBAR_H

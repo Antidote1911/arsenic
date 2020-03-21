@@ -28,6 +28,7 @@ const int DEFAULT_ARGON_ITR_LIMIT    {0};
 const int DEFAULT_ARGON_MEM_LIMIT    {0};
 const bool DEFAULT_SHOW_PSW          {false};
 const bool DEFAULT_DARK_THEME        {false};
+const bool DEFAULT_SHOW_TOOLBAR      {true};
 const bool DEFAULT_CLEAR_CLIPBOARD   {true};
 const int DEFAULT_CLIPBOARD_TIMEOUT  {10};
 const QString BOTAN_VERSION          {QString::fromStdString(Botan::version_string())};

@@ -42,7 +42,7 @@ namespace DecryptBarThreadPublic
 		void interruptionPoint();
 		void runHelper();
 
-        FileSystemModel *ptr_model;
+        const std::shared_ptr<FileSystemModel> ptr_model;
 		std::vector<int> status_list;
         std::vector<FileInfoPtr> item_list;
         const std::vector<FileInfoPtr> empty_list;

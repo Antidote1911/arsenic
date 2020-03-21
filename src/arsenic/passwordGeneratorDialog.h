@@ -78,8 +78,8 @@ private:
     PasswordGenerator::CharClasses charClasses();
     PasswordGenerator::GeneratorFlags generatorFlags();
 
-    const QScopedPointer<PasswordGenerator> m_passwordGenerator;
-    const QScopedPointer<Ui::PasswordGeneratorDialog> m_ui;
+    const std::unique_ptr<PasswordGenerator> m_passwordGenerator;
+    const std::unique_ptr<Ui::PasswordGeneratorDialog> m_ui;
 
 protected:
     void keyPressEvent(QKeyEvent* e) override;

@@ -6,5 +6,12 @@
         <file>about_files/gpl-3.0.html</file>
         <file>pixmaps/password-show-off.svg</file>
         <file>pixmaps/password-show-on.svg</file>
+        <file>pixmaps/close-outline.svg</file>
+        <file>pixmaps/comment-question-outline.svg</file>
+        <file>pixmaps/file-plus-outline.svg</file>
+        <file>pixmaps/folder-plus-outline.svg</file>
+        <file>pixmaps/settings-outline.svg</file>
+        <file>pixmaps/alpha-g-circle-outline.svg</file>
+        <file>pixmaps/alpha-h-circle-outline.svg</file>
     </qresource>
 </RCC>

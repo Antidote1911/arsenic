@@ -24,6 +24,7 @@
 #include "encryptbar.h"
 #include "decryptbar.h"
 #include "Config.h"
+#include "encrypt.h"
 
 using namespace  ARs;
 
@@ -43,12 +44,17 @@ MainWindow::MainWindow(QWidget *parent) :
 
     setWindowTitle(APP_LONG_NAME);
 
-        setModel(new FileSystemModel(nullptr));
-    connect(m_ui->actionAbout_Qt, &QAction::triggered, this, &MainWindow::aboutQt);
-    connect(m_ui->actionAbout_Arsenic, &QAction::triggered, this, &MainWindow::aboutArsenic);
-    connect(m_ui->actionArgon2_tests, &QAction::triggered, this, &MainWindow::Argon2_tests);
-    connect(m_ui->actionPassword_Generator, &QAction::triggered, this, &MainWindow::on_generator_clicked);
-    connect(m_ui->actionDark_Theme,  &QAction::triggered, this, [=]{ dark_theme(); });
+    setModel(new FileSystemModel(nullptr));
+
+    connect(m_ui->actionArgon2_tests,        &QAction::triggered,          this, [=]{ Argon2_tests(); });
+    connect(m_ui->actionPassword_Generator,  &QAction::triggered,          this, [=]{ on_generator_clicked(); });
+    connect(m_ui->pushOpen,                  &QPushButton::clicked,        this, [=]{ openFile(); });
+    connect(m_ui->pushSave,                  &QPushButton::clicked,        this, [=]{ actionSave_triggered(); });
+    connect(m_ui->actionDark_Theme,          &QAction::triggered,          this, [=]( const bool &checked ) { dark_theme(checked); });
+    connect(m_ui->actionView_Button_Toolbar, &QAction::triggered,          this, [=]( const bool &checked ) { m_ui->toolBar->setVisible(checked); });
+    connect(m_ui->toolBar,                   &QToolBar::visibilityChanged, this, [=]( const bool &checked ) { m_ui->actionView_Button_Toolbar->setChecked(checked); });
+    connect(m_ui->actionAbout_Arsenic,       &QAction::triggered,          this, [=]{ aboutArsenic(); });
+    connect(m_ui->actionAbout_Qt,            &QAction::triggered,          this, [=]{ qApp->aboutQt(); });
 
 	// note that some password information will be discarded if the text characters entered use more
 	// than	1 byte per character in UTF-8
@@ -140,6 +146,17 @@ void MainWindow::loadPreferences()
         skin.setSkin("notheme");
     }
 
+    if (config()->get("GUI/showToolbar").toBool())
+    {
+        m_ui->actionView_Button_Toolbar->setChecked(true);
+        m_ui->toolBar->setVisible(true);
+    }
+    else
+    {
+        m_ui->actionView_Button_Toolbar->setChecked(false);
+        m_ui->toolBar->setVisible(false);
+    }
+
     if (config()->get("GUI/showPassword").toBool())
     {
         m_ui->viewpass->setChecked(true);
@@ -168,16 +185,13 @@ void MainWindow::savePreferences()
     config()->set("GUI/darkTheme",m_ui->actionDark_Theme->isChecked());
     config()->set("GUI/showPassword", m_ui->viewpass->isChecked());
     config()->set("GUI/Language", m_currLang);
+    config()->set("GUI/showToolbar", m_ui->actionView_Button_Toolbar->isChecked());
 }
 
 /*******************************************************************************
 
 *******************************************************************************/
 
-void MainWindow::aboutQt()
-{
-    QMessageBox::aboutQt(this,tr("About Qt"));
-}
 void MainWindow::aboutArsenic()
 {
     auto* aboutDialog = new AboutDialog(this);
@@ -676,7 +690,7 @@ void MainWindow::on_actionAuto_resize_columns_triggered(bool checked)
 void MainWindow::on_actionLoadList_triggered()
 {
     QString list_path = QFileDialog::getOpenFileName(this, "Open List", QDir::currentPath(),
-        "Arsenic list files (*.arslist)", nullptr, QFileDialog::DontResolveSymlinks);
+            "Arsenic list files (*.arslist)", nullptr, QFileDialog::DontResolveSymlinks);
 
     // check if the user actually selected a file
     if(list_path != QString())
@@ -713,14 +727,15 @@ void MainWindow::on_actionQuit_triggered()
 
 void MainWindow::on_actionSave_item_list_triggered()
 {
+    QString filter = "Arsenic list files (*.arslist)";
     QString list_path = QFileDialog::getSaveFileName(this, "Save List", QDir::currentPath(),
-        "Arsenic list files (*.arslist)", nullptr, QFileDialog::DontResolveSymlinks);
+            filter, &filter, QFileDialog::DontResolveSymlinks);
 
     // check if the user actually selected a file
     if(list_path != QString())
     {
         FileSystemModelPtr clone_model = file_model->cloneByValue();
-        MyAbstractBarPtr ptr_mpb(new SaveBar(this, clone_model.get(), list_path));
+        MyAbstractBarPtr ptr_mpb(new SaveBar(this, clone_model.get(), list_path+".arslist"));
 
         if(ptr_mpb != nullptr)
             ptr_mpb->exec();
@@ -874,9 +889,9 @@ void MainWindow::Argon2_tests()
 
 *******************************************************************************/
 
-void MainWindow::dark_theme()
+void MainWindow::dark_theme(bool checked)
 {
-    if (m_ui->actionDark_Theme->isChecked())
+    if (checked)
     {
         skin.setSkin("dark");
     }
@@ -1015,3 +1030,118 @@ void MainWindow::changeEvent(QEvent* event)
 /*******************************************************************************
 
 *******************************************************************************/
+
+void MainWindow::openFile()
+{
+    if (maybeSave()) {
+        QString fileName = QFileDialog::getOpenFileName(this);
+        if (!fileName.isEmpty())
+            loadFile(fileName);
+    }
+}
+
+void MainWindow::loadFile(const QString &fileName)
+//! [42] //! [43]
+{
+    QFile file(fileName);
+    if (!file.open(QFile::ReadOnly | QFile::Text)) {
+        QMessageBox::warning(this, tr("Application"),
+                             tr("Cannot read file %1:\n%2.")
+                             .arg(QDir::toNativeSeparators(fileName), file.errorString()));
+        return;
+    }
+
+    QTextStream in(&file);
+#ifndef QT_NO_CURSOR
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+#endif
+    m_ui->textEdit->setPlainText(in.readAll());
+#ifndef QT_NO_CURSOR
+    QApplication::restoreOverrideCursor();
+#endif
+
+    setCurrentFile(fileName);
+    m_ui->statusBar->showMessage(tr("File loaded"), 2000);
+}
+
+void MainWindow::setCurrentFile(const QString &fileName)
+//! [46] //! [47]
+{
+    curFile = fileName;
+    m_ui->textEdit->document()->setModified(false);
+    setWindowModified(false);
+
+    QString shownName = curFile;
+    if (curFile.isEmpty())
+        shownName = "untitled.txt";
+    setWindowFilePath(shownName);
+}
+
+bool MainWindow::saveFile(const QString &fileName)
+//! [44] //! [45]
+{
+    QFile file(fileName);
+    if (!file.open(QFile::WriteOnly | QFile::Text)) {
+        QMessageBox::warning(this, tr("Application"),
+                             tr("Cannot write file %1:\n%2.")
+                             .arg(QDir::toNativeSeparators(fileName),
+                                  file.errorString()));
+        return false;
+    }
+
+    QTextStream out(&file);
+#ifndef QT_NO_CURSOR
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+#endif    
+    out << m_ui->textEdit->toPlainText();
+#ifndef QT_NO_CURSOR
+    QApplication::restoreOverrideCursor();
+#endif
+
+    setCurrentFile(fileName);
+    m_ui->statusBar->showMessage(tr("File saved"), 2000);
+    out.flush();
+    QString resultat = encrypt(fileName, m_ui->password_0->text(), config()->get("userName").toString());
+    file.remove();
+    return true;
+}
+
+bool MainWindow::maybeSave()
+//! [40] //! [41]
+{
+    if (!m_ui->textEdit->document()->isModified())
+        return true;
+    const QMessageBox::StandardButton ret
+        = QMessageBox::warning(this, tr("Application"),
+                               tr("The document has been modified.\n"
+                                  "Do you want to save your changes?"),
+                               QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+    switch (ret) {
+    case QMessageBox::Save:
+        return actionSave_triggered();
+    case QMessageBox::Cancel:
+        return false;
+    default:
+        break;
+    }
+    return true;
+}
+
+bool MainWindow::actionSave_triggered()
+{
+    if (curFile.isEmpty()) {
+        return actionSave_as_triggered();
+    } else {
+        return saveFile(curFile);
+    }
+}
+
+bool MainWindow::actionSave_as_triggered()
+{
+    QFileDialog dialog(this);
+    dialog.setWindowModality(Qt::WindowModal);
+    dialog.setAcceptMode(QFileDialog::AcceptSave);
+    if (dialog.exec() != QDialog::Accepted)
+        return false;
+    return saveFile(dialog.selectedFiles().first());
+}

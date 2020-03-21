@@ -26,7 +26,7 @@ private slots:
 
 
 private:
-    const QScopedPointer<Ui::ConfigDialog> m_ui;
+    const std::unique_ptr<Ui::ConfigDialog> m_ui;
 
 };
 

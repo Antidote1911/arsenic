@@ -47,7 +47,7 @@ protected:
     virtual void handleError(int error) = 0;
 	virtual void handleRejectYes() = 0;
 
-    const QScopedPointer<Ui::AbstractBarDialog> m_ui;
+    const std::unique_ptr<Ui::AbstractBarDialog> m_ui;
 	QMessageBox *ptr_stop_msg;
 
 public slots:

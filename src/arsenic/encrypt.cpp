@@ -133,7 +133,7 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QStri
 
     // Calculate the encryption key with Argon2
     cout << "Generating key by Argon2. Please be patient..." << endl;
-    master_key = calculateHash(pass_buffer, salt_buffer, MEMLIMIT_SENSITIVE, ITERATION_SENSITIVE);
+    master_key = calculateHash(pass_buffer, salt_buffer, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
     // Split master_key in tree parts.
             const uint8_t* mk = master_key.begin().base();
             const Botan::SymmetricKey cipher_key1(mk, KEYBYTES);
@@ -156,8 +156,8 @@ QString myEncryptFile(QString src_path, QString encrypt_path, QString key, QStri
     // Write a header with a "magic number" , arsenic version, argon2 parameters, crypto algorithm
     des_stream << static_cast<quint32> (ARs::MAGIC_NUMBER);
     des_stream << static_cast<QString> (ARs::APP_VERSION);
-    des_stream << static_cast<qint32>(MEMLIMIT_SENSITIVE);
-    des_stream << static_cast<qint32>(ITERATION_SENSITIVE);
+    des_stream << static_cast<qint32>(MEMLIMIT_INTERACTIVE);
+    des_stream << static_cast<qint32>(ITERATION_INTERACTIVE);
     des_stream << static_cast<QString>(DEFAULT_CRYPTO_ALGO);
     des_stream << static_cast<QString>(userName);
     des_stream.setVersion(QDataStream::Qt_5_0);

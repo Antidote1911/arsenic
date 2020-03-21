@@ -189,6 +189,7 @@ void Config::init(const QString& fileName)
     m_defaults.insert("GUI/showPassword", DEFAULT_SHOW_PSW);
     m_defaults.insert("GUI/darkTheme", DEFAULT_DARK_THEME);
     m_defaults.insert("GUI/Language", DEFAULT_LANGUAGE);
+    m_defaults.insert("GUI/showToolbar", DEFAULT_SHOW_TOOLBAR);
 
     m_defaults.insert("CRYPTO/argonMemory", DEFAULT_ARGON_MEM_LIMIT);
     m_defaults.insert("CRYPTO/argonItr", DEFAULT_ARGON_ITR_LIMIT);
