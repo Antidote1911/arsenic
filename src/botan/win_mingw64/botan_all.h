@@ -37,11 +37,11 @@
 
 /*
 * This file was automatically generated running
-* 'configure.py --cpu=x86_64 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11'
+* 'configure.py --cpu=x86_32 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11'
 *
 * Target
-*  - Compiler: g++ -m64 -pthread -std=c++11 -D_REENTRANT -O3
-*  - Arch: x86_64
+*  - Compiler: g++ -m32 -pthread -std=c++11 -D_REENTRANT -O3
+*  - Arch: x86_32
 *  - OS: mingw
 */
 
@@ -57,14 +57,14 @@
 #define BOTAN_DISTRIBUTION_INFO "unspecified"
 
 /* How many bits per limb in a BigInt */
-#define BOTAN_MP_WORD_BITS 64
+#define BOTAN_MP_WORD_BITS 32
 
 
 #define BOTAN_INSTALL_PREFIX R"(/mingw)"
 #define BOTAN_INSTALL_HEADER_DIR R"(include/botan-2)"
 #define BOTAN_INSTALL_LIB_DIR R"(/mingw\lib)"
 #define BOTAN_LIB_LINK "-lcrypt32 -lws2_32"
-#define BOTAN_LINK_FLAGS "-m64 -pthread"
+#define BOTAN_LINK_FLAGS "-m32 -pthread"
 
 
 #ifndef BOTAN_DLL
@@ -90,10 +90,9 @@
 
 
 
-#define BOTAN_TARGET_ARCH_IS_X86_64
+#define BOTAN_TARGET_ARCH_IS_X86_32
 #define BOTAN_TARGET_CPU_IS_LITTLE_ENDIAN
 #define BOTAN_TARGET_CPU_IS_X86_FAMILY
-#define BOTAN_TARGET_CPU_HAS_NATIVE_64BIT
 
 #define BOTAN_TARGET_SUPPORTS_AESNI
 #define BOTAN_TARGET_SUPPORTS_AVX2
@@ -279,9 +278,7 @@
 #define BOTAN_HAS_SHA2_32 20131128
 #define BOTAN_HAS_SHA2_32_X86_BMI2 20180526
 #define BOTAN_HAS_SHA2_64 20131128
-#define BOTAN_HAS_SHA2_64_BMI2 20190117
 #define BOTAN_HAS_SHA3 20161018
-#define BOTAN_HAS_SHA3_BMI2 20190117
 #define BOTAN_HAS_SHACAL2 20170813
 #define BOTAN_HAS_SHACAL2_AVX2 20180826
 #define BOTAN_HAS_SHACAL2_SIMD 20170813
