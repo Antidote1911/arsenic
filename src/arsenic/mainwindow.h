@@ -59,6 +59,8 @@ private slots:
     void openFile();
     bool actionSave_triggered();
     bool actionSave_as_triggered();
+    void encryptText();
+    void decryptText();
 
 private :
     bool maybeSave();

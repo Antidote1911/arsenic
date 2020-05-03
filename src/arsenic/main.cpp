@@ -6,8 +6,6 @@
 #include <QDebug>
 #include <QCommandLineParser>
 #include <QTranslator>
-#include "encrypt.h"
-#include "decrypt.h"
 
 #include "constants.h"
 
@@ -80,14 +78,14 @@ int main(int argc, char *argv[])
         if (enc && name != "")
         {
 
-            resultat = encrypt(targetFile, passphrase, name);
+            //resultat = encrypt(targetFile, passphrase, name);
             cout << endl << resultat << endl;
             return (0);
         }
 
         if (dec)
         {
-            resultat = decrypt(targetFile, passphrase);
+            //resultat = decrypt(targetFile, passphrase);
             cout << endl << resultat << endl;
             return (0);
         }

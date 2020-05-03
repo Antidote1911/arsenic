@@ -205,6 +205,20 @@
            </spacer>
           </item>
           <item>
+           <widget class="QPushButton" name="pushEncrypt">
+            <property name="text">
+             <string>Encrypt</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pushDecrypt">
+            <property name="text">
+             <string>Decrypt</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="pushOpen">
             <property name="text">
              <string>Open</string>

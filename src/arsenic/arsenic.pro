@@ -46,12 +46,10 @@ HEADERS += \
     clipboard.h \
     configDialog.h \
     constants.h \
-    decrypt.h \
     decryptbar.h \
     decryptthread.h \
     dirthread.h \
     divers.h \
-    encrypt.h \
     encryptbar.h \
     encryptthread.h \
     fileinfo.h \
@@ -76,12 +74,10 @@ SOURCES += \
     argonTests.cpp \
     clipboard.cpp \
     configDialog.cpp \
-    decrypt.cpp \
     decryptbar.cpp \
     decryptthread.cpp \
     dirthread.cpp \
     divers.cpp \
-    encrypt.cpp \
     encryptbar.cpp \
     encryptthread.cpp \
     fileinfo.cpp \

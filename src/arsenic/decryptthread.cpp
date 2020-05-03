@@ -220,11 +220,10 @@ int DecryptThread::myDecryptFile(const QString &des_path, const QString &src_pat
 {
     emit updateGeneralProgress(0);
     Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE+MACBYTES);
-
-    Botan::SecureVector<quint8> master_key(ARs::KEYBYTES*3);
-    Botan::SecureVector<char> pass_buffer(KEYBYTES);
-    Botan::SecureVector<quint8> nonce_buffer(NONCEBYTES);
-    Botan::SecureVector<quint8> salt_buffer(SALTBYTES);
+    Botan::SecureVector<quint8> master_key(CIPHER_KEY_LEN*3);
+    Botan::SecureVector<char> pass_buffer(CIPHER_KEY_LEN);
+    Botan::SecureVector<quint8> nonce_buffer(CIPHER_IV_LEN);
+    Botan::SecureVector<quint8> salt_buffer(ARGON_SALT_LEN);
     Botan::SecureVector<quint8> qint64_buffer(40);
     qint64 len;
 
@@ -279,18 +278,14 @@ int DecryptThread::myDecryptFile(const QString &des_path, const QString &src_pat
     QString cryptoAlgo;
     src_stream >> cryptoAlgo;
 
-    // Read additional data (username)
-    QString userName;
-    src_stream >> userName;
-
     std::unique_ptr<Botan::AEAD_Mode> dec = Botan::AEAD_Mode::create(cryptoAlgo.toStdString(), Botan::DECRYPTION);
-    std::string add_data(userName.toStdString());
+    std::string add_data(APP_URL.toStdString());
     std::vector<uint8_t> add(add_data.data(),add_data.data()+add_data.length());
 
-    if(src_stream.readRawData(reinterpret_cast<char *>(nonce_buffer.data()), NONCEBYTES) < static_cast<int>(NONCEBYTES))
+    if(src_stream.readRawData(reinterpret_cast<char *>(nonce_buffer.data()), CIPHER_IV_LEN) < static_cast<int>(CIPHER_IV_LEN))
         return SRC_HEADER_READ_ERROR;
 
-    if(src_stream.readRawData(reinterpret_cast<char *>(salt_buffer.data()), SALTBYTES) < static_cast<int>(SALTBYTES))
+    if(src_stream.readRawData(reinterpret_cast<char *>(salt_buffer.data()), ARGON_SALT_LEN) < static_cast<int>(ARGON_SALT_LEN))
         return SRC_HEADER_READ_ERROR;
 
     // Convert the QString password to securevector
@@ -300,9 +295,9 @@ int DecryptThread::myDecryptFile(const QString &des_path, const QString &src_pat
     emit updateStatusText("Argon2 passphrase derivation... Please wait.");
     master_key = calculateHash(pass_buffer, salt_buffer, memlimit, iterations);
     const uint8_t* mk = master_key.begin().base();
-    const Botan::SymmetricKey cipher_key1(mk, KEYBYTES);
-    const Botan::SymmetricKey cipher_key2(&mk[KEYBYTES], KEYBYTES);
-    const Botan::SymmetricKey cipher_key3(&mk[KEYBYTES+KEYBYTES], KEYBYTES);
+    const Botan::SymmetricKey cipher_key1(mk, CIPHER_KEY_LEN);
+    const Botan::SymmetricKey cipher_key2(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
+    const Botan::SymmetricKey cipher_key3(&mk[CIPHER_KEY_LEN+CIPHER_KEY_LEN], CIPHER_KEY_LEN);
 
     // next, get the encrypted header size and decrypt it
     qint64 header_size;
@@ -330,7 +325,7 @@ int DecryptThread::myDecryptFile(const QString &des_path, const QString &src_pat
     src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
 
     // get the file size and filename of original item
-    Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
+    Botan::Sodium::sodium_increment(nonce_buffer.data(), CIPHER_IV_LEN);
     dec->set_key(cipher_key2);
     dec->start(nonce_buffer);
 
@@ -373,7 +368,7 @@ int DecryptThread::myDecryptFile(const QString &des_path, const QString &src_pat
     dec->set_key(cipher_key3);
     dec->set_ad(add);
     // increment the nonce, decrypt and write the plaintext block to the destination
-    Botan::Sodium::sodium_increment(nonce_buffer.data(), NONCEBYTES);
+    Botan::Sodium::sodium_increment(nonce_buffer.data(), CIPHER_IV_LEN);
     dec->start(nonce_buffer);
     double processed = 0;
     try

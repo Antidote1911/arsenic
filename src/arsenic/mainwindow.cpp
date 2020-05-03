@@ -24,7 +24,7 @@
 #include "encryptbar.h"
 #include "decryptbar.h"
 #include "Config.h"
-#include "encrypt.h"
+#include "divers.h"
 
 using namespace  ARs;
 
@@ -55,6 +55,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(m_ui->toolBar,                   &QToolBar::visibilityChanged, this, [=]( const bool &checked ) { m_ui->actionView_Button_Toolbar->setChecked(checked); });
     connect(m_ui->actionAbout_Arsenic,       &QAction::triggered,          this, [=]{ aboutArsenic(); });
     connect(m_ui->actionAbout_Qt,            &QAction::triggered,          this, [=]{ qApp->aboutQt(); });
+
+    connect(m_ui->pushEncrypt,               &QPushButton::clicked,        this, [=]{ encryptText(); });
+    connect(m_ui->pushDecrypt,               &QPushButton::clicked,        this, [=]{ decryptText(); });
 
 	// note that some password information will be discarded if the text characters entered use more
 	// than	1 byte per character in UTF-8
@@ -1101,8 +1104,6 @@ bool MainWindow::saveFile(const QString &fileName)
     setCurrentFile(fileName);
     m_ui->statusBar->showMessage(tr("File saved"), 2000);
     out.flush();
-    QString resultat = encrypt(fileName, m_ui->password_0->text(), config()->get("userName").toString());
-    file.remove();
     return true;
 }
 
@@ -1144,4 +1145,26 @@ bool MainWindow::actionSave_as_triggered()
     if (dialog.exec() != QDialog::Accepted)
         return false;
     return saveFile(dialog.selectedFiles().first());
+}
+
+void MainWindow::encryptText()
+{
+    QString plaintext = m_ui->textEdit->toPlainText();
+    QString test = encryptString(plaintext,m_ui->password_0->text(), config()->get("userName").toString());
+    m_ui->textEdit->setPlainText(test);
+}
+
+void MainWindow::decryptText()
+{
+    QString ciphertext = m_ui->textEdit->toPlainText();
+    try {
+    QString test = decryptString(ciphertext,m_ui->password_0->text(), config()->get("userName").toString());
+    m_ui->textEdit->setPlainText(test);
+  }
+        catch (std::exception const& e) {
+              QString error= e.what();
+              QMessageBox::warning(this, tr("Passwords do not match!"), error);
+
+           }
+
 }

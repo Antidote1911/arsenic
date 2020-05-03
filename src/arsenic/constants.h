@@ -46,12 +46,12 @@ const int EMPTY_COLUMN_SPACE         {100};
 const QString DEFAULT_CRYPTO_ALGO    {"ChaCha20Poly1305"};
 const int MACBYTES                   {16};
 const int IN_BUFFER_SIZE             {65536};
-const int KEYBYTES                   {32};
-const int NONCEBYTES                 {24};
-const int SALTBYTES                  {16};
+const size_t CIPHER_KEY_LEN             {32};
+const size_t CIPHER_IV_LEN              {24};
 const int BUFFER_SIZE_WITHOUT_MAC    {(IN_BUFFER_SIZE - MACBYTES)};
 
 // Argon2 constants
+const int ARGON_SALT_LEN             {16};
 const int MEMLIMIT_INTERACTIVE       {65536};  // 64mb
 const int MEMLIMIT_MODERATE          {524288}; // 512mb
 const int MEMLIMIT_SENSITIVE         {976563}; //  1000mb
