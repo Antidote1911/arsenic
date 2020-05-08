@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
     // source is args.at(0), destination is args.at(1)
 
     QString resultat;
+    Crypto_Thread Crypto ;
 
     if (args.size() == 1 && parser.isSet(passphraseOption))
     {
@@ -70,7 +71,7 @@ int main(int argc, char *argv[])
         if (enc)
         {
 
-            Crypto_Thread Crypto ;
+
             //resultat = encrypt(targetFile, passphrase, name);
             QStringList listFiles;
             listFiles.append(targetFile);
@@ -83,13 +84,13 @@ int main(int argc, char *argv[])
                              false);
 
             Crypto.start();
+            Crypto.wait();
             cout << endl << resultat << endl;
             return (0);
         }
 
         if (dec)
         {
-            Crypto_Thread Crypto ;
             QStringList listFiles;
             listFiles.append(targetFile);
             Crypto.setParam(false,
@@ -99,6 +100,8 @@ int main(int argc, char *argv[])
                              config()->get("CRYPTO/argonMemory").toInt(),
                              config()->get("CRYPTO/argonItr").toInt(),
                              false);
+            Crypto.start();
+            Crypto.wait();
             return (0);
         }
         cout << "Invalids or no arguments" << endl;
