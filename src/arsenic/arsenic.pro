@@ -90,7 +90,18 @@ linux {
     }
 }
 
+win32-g++ {
+    LIBS += -L$$OUT_PWD/../zxcvbn/release/ -lzxcvbn
+    INCLUDEPATH += $$PWD/../zxcvbn/
+    DEPENDPATH += $$PWD/../zxcvbn/
 
+    LIBS += -L$$OUT_PWD/../botan/release/ -larsenic_core
+    INCLUDEPATH += $$PWD/../botan/win_mingw64/
+    DEPENDPATH += $$PWD/../botan/win_mingw64/
+
+    LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
+
+}
 
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
 #unix:!macx: LIBS += -L/usr/include -lbotan-2
