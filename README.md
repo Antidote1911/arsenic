@@ -5,7 +5,7 @@
 **A simple tool to encrypt files or folders with strong algorithms.**
 
 
-<img src='screenshots/main.png'/>
+<img src='screenshots/main_dark.png'/>
 
 ## Simple Description: ##
 Arsenic was intended as a lightweight, portable application, that would encode a list of local files and directories using a pass-phrase. The user can select between three strong algorithms:
@@ -95,9 +95,9 @@ A simple tool to encrypt file is not magic. If You use an unsecure system, Arsen
 
 ## More Screenshots: ##
 
-<img src='screenshots/pass_generator.png'/>
+<img src='screenshots/pass_gen.png'/>
 <img src='screenshots/hash.png'/>
-<img src='screenshots/config.png'/>
+<img src='screenshots/cryptopad_light.png'/>
 
 ## License: ##
 This program is free software: you can redistribute it and/or modify
