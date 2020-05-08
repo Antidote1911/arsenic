@@ -26,12 +26,8 @@ CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 #LIBS += -lsodium
 win32:RC_ICONS += pixmaps/icon.ico
 
-DEFINES += QUAZIP_STATIC
-DEFINES += ZLIB_STATIC
-
 FORMS += \
     aboutDialog.ui \
-    abstractbarDialog.ui \
     argonTests.ui \
     configDialog.ui \
     hashcheckdialog.ui \
@@ -40,76 +36,44 @@ FORMS += \
 
 HEADERS += \
     Config.h \
+    Delegate.h \
     aboutDialog.h \
-    abstractbarDialog.h \
     argonTests.h \
     clipboard.h \
     configDialog.h \
     constants.h \
-    decryptbar.h \
-    decryptthread.h \
-    dirthread.h \
+    crypto.h \
     divers.h \
-    encryptbar.h \
-    encryptthread.h \
-    fileinfo.h \
-    filesystemmodel.h \
     hashcheckdialog.h \
-    interrupt.h \
-    loadbar.h \
-    loadthread.h \
     mainwindow.h \
-    messages.h \
     passwordGenerator.h \
     passwordGeneratorDialog.h \
     progressbar.h \
-    savebar.h \
-    savethread.h \
     skin.h
 
 SOURCES += \
     Config.cpp \
+    Delegate.cpp \
     aboutDialog.cpp \
-    abstractbarDialog.cpp \
     argonTests.cpp \
     clipboard.cpp \
     configDialog.cpp \
-    decryptbar.cpp \
-    decryptthread.cpp \
-    dirthread.cpp \
+    crypto.cpp \
     divers.cpp \
-    encryptbar.cpp \
-    encryptthread.cpp \
-    fileinfo.cpp \
-    filesystemmodel.cpp \
     hashcheckdialog.cpp \
-    loadbar.cpp \
-    loadthread.cpp \
     main.cpp \
     mainwindow.cpp \
     passwordGenerator.cpp \
     passwordGeneratorDialog.cpp \
-    progressbar.cpp \
-    savebar.cpp \
-    savethread.cpp \
     skin.cpp
 
 RESOURCES += \
     rsc.qrc
 
 linux {
-    LIBS += -L$$OUT_PWD/../quazip/ -lquazip
-    INCLUDEPATH += $$PWD/../quazip/
-    DEPENDPATH += $$PWD/../quazip/
-
-    LIBS += -L$$OUT_PWD/../zlib/ -lzlib
-    INCLUDEPATH += $$PWD/../zlib/
-    DEPENDPATH += $$PWD/../zlib/
-
     LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
-
 
     equals(QMAKE_CXX, clang++)
     {
@@ -126,26 +90,7 @@ linux {
     }
 }
 
-win32-g++ {
-    LIBS += -L$$OUT_PWD/../quazip/release/ -lquazip
-    INCLUDEPATH += $$PWD/../quazip/
-    DEPENDPATH += $$PWD/../quazip/
 
-    LIBS += -L$$OUT_PWD/../zlib/release/ -lzlib
-    INCLUDEPATH += $$PWD/../zlib/
-    DEPENDPATH += $$PWD/../zlib/
-
-    LIBS += -L$$OUT_PWD/../zxcvbn/release/ -lzxcvbn
-    INCLUDEPATH += $$PWD/../zxcvbn/
-    DEPENDPATH += $$PWD/../zxcvbn/
-
-    LIBS += -L$$OUT_PWD/../botan/release/ -larsenic_core
-    INCLUDEPATH += $$PWD/../botan/win_mingw64/
-    DEPENDPATH += $$PWD/../botan/win_mingw64/
-
-LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
-
-}
 
 #unix:!macx: INCLUDEPATH += /usr/include/botan-2
 #unix:!macx: LIBS += -L/usr/include -lbotan-2

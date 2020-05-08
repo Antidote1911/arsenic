@@ -28,5 +28,5 @@ script:
   - make
   - sudo cp src/botan/libarsenic_core.so.1 /usr/lib/libarsenic_core.so.1
   - sudo cp src/zxcvbn/libzxcvbn.so.1 /usr/lib/libzxcvbn.so.1
-  - src/arsenic/./arsenic -e -p mysuperbadpassphrase -n myemail@cool.com src/arsenic/pixmaps/test.jpg
-  - src/arsenic/./arsenic -d -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg.arsenic
+  - src/arsenic/./arsenic -e -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg
+  - src/arsenic/./arsenic -d -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg.ars

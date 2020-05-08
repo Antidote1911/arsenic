@@ -83,7 +83,6 @@ AboutDialog::AboutDialog(QWidget* parent)
     debugInfo.append("Kernel: "+QSysInfo::kernelType()).append(QSysInfo::kernelVersion()).append("\n");
     debugInfo.append("Hostname: "+QSysInfo::machineHostName()).append("\n");
     debugInfo.append(ARs::BOTAN_VERSION).append("\n");
-    debugInfo.append("Zlib "+ARs::ZLIB_Version).append("\n");
 
     m_ui->iconLabel->setPixmap(qApp->windowIcon().pixmap(48));
 

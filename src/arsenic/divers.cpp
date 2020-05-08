@@ -4,13 +4,42 @@
 #include <QTextStream>
 #include "botan_all.h"
 #include "constants.h"
-#include "messages.h"
+#include <cmath>
 
 using namespace ARs;
-using namespace MessagesPublic;
 using namespace Botan;
 using namespace std;
 
+
+QString getFileSize(qint64 size)
+{
+    static const double KiB = pow(2, 10);
+    static const double MiB = pow(2, 20);
+    static const double GiB = pow(2, 30);
+    static const double TiB = pow(2, 40);
+    static const double PiB = pow(2, 50);
+
+    // convert to appropriate units based on the size of the item
+    if(size >= 0)
+    {
+        static const int precision = 0;
+
+        if(size < KiB)
+            return QString::number(size, 'f', precision) + " B";
+        else if(size < MiB)
+            return QString::number(size / KiB, 'f', precision) + " KiB";
+        else if(size < GiB)
+            return QString::number(size / MiB, 'f', precision) + " MiB";
+        else if(size < TiB)
+            return QString::number(size / GiB, 'f', precision) + " GiB";
+        else if(size < PiB)
+            return QString::number(size / TiB, 'f', precision) + " TiB";
+        else
+            return QString::number(size / PiB, 'f', precision) + " PiB";
+    }
+    else
+        return "";
+}
 
 void clearDir(QString dir_path)
 {
@@ -32,7 +61,7 @@ void clearDir(QString dir_path)
 }
 
 
-    qint64 dirSize(QString dirPath)
+qint64 dirSize(QString dirPath)
     {
     qint64 size = 0;
     QDir dir(dirPath);
@@ -49,16 +78,7 @@ void clearDir(QString dir_path)
     return size;
 }
 
-QString formatSize(qint64 size) {
-    QStringList units = {"Bytes", "KB", "MB", "GB", "TB", "PB"};
-    int i;
-    double outputSize = size;
-    for(i=0; i<units.size()-1; i++) {
-        if(outputSize<1024) break;
-        outputSize= outputSize/1024;
-    }
-    return QString("%0 %1").arg(outputSize, 0, 'f', 2).arg(units[i]);
-}
+
 
 Botan::SecureVector<quint8> calculateHash(Botan::SecureVector<char> pass_buffer,
                                           Botan::SecureVector<quint8> salt_buffer,
@@ -84,82 +104,6 @@ Botan::SecureVector<char> convertStringToSecureVector(QString password)
     memcpy(pass_buffer.data(), password.toUtf8().constData(), std::min(password.toUtf8().size(),
         static_cast<int>(CIPHER_KEY_LEN)));
     return pass_buffer;
-}
-QString errorCodeToString(int error_code)
-{
-    QString ret_string;
-
-    switch(error_code)
-    {
-        case SRC_NOT_FOUND:
-            ret_string += QObject::tr("The encrypted file was not found!");
-            break;
-
-        case SRC_CANNOT_OPEN_READ:
-            ret_string += QObject::tr("The file could not be opened for reading!");
-            break;
-
-        case SRC_HEADER_READ_ERROR:
-            ret_string += QObject::tr("The encrypted file header could not be read!");
-            break;
-
-        case PASS_HASH_FAIL:
-            ret_string += QObject::tr("The password could not be hashed!");
-            break;
-
-        case SRC_HEADER_DECRYPT_ERROR:
-            ret_string += QObject::tr("The encrypted file header could not be decrypted! Password is most likely "
-                "incorrect or the header has been modified.");
-            break;
-
-        case DES_FILE_EXISTS:
-            ret_string += QObject::tr("The decrypted file already exists!");
-            break;
-
-        case DES_CANNOT_OPEN_WRITE:
-            ret_string += QObject::tr("The file could not be opened for writing!");
-            break;
-
-        case SRC_BODY_READ_ERROR:
-            ret_string += QObject::tr("There was an error reading the encrypted file's data!");
-            break;
-
-        case SRC_FILE_CORRUPT:
-            ret_string += QObject::tr("The encrypted file's size is invalid!");
-            break;
-
-        case DATA_DECRYPT_ERROR:
-            ret_string += QObject::tr("The encrypted file's data could not be decrypted! The data has most likely "
-                "been modified.");
-            break;
-
-        case DES_BODY_WRITE_ERROR:
-            ret_string += QObject::tr("The decrypted file could not be written to!");
-            break;
-
-        case CRYPT_SUCCESS:
-            ret_string += QObject::tr("The file or directory was successfully encrypted!");
-            break;
-
-        case DECRYPT_SUCCESS:
-            ret_string += QObject::tr("The file or directory was successfully decrypted!");
-            break;
-
-        case ZIP_ERROR:
-            ret_string += QObject::tr("The intermediate file could not be unzipped!");
-            break;
-
-        case NOT_STARTED:
-            ret_string += QObject::tr("The file or directory was skipped!");
-            break;
-
-        case NOT_ARSENIC_FILE:
-            ret_string += QObject::tr("The item wasn't a Arsenic file!");
-            break;
-
-    }
-
-    return ret_string;
 }
 
 QString encryptString(QString plaintext, QString password, QString userName)

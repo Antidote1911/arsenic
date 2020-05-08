@@ -14,10 +14,6 @@
 #include "botan_all.h"
 #include "divers.h"
 
-#include "messages.h"
-
-using namespace MessagesPublic;
-
 /*******************************************************************************
 
 *******************************************************************************/
@@ -49,36 +45,18 @@ HashCheckDialog::HashCheckDialog(QWidget *parent) :
 
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
 void HashCheckDialog::cancel()
 {
     cancel_calculation = true;
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
-HashCheckDialog::~HashCheckDialog()
-{
-
+HashCheckDialog::~HashCheckDialog(){
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void HashCheckDialog::copyToClipboard()
 {
     QApplication::clipboard()->setText(m_ui->checksumEdit->text());
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void HashCheckDialog::openFile()
 {
@@ -92,10 +70,6 @@ void HashCheckDialog::openFile()
     }
 
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void HashCheckDialog::calculate(const QString &text)
 {
@@ -130,7 +104,6 @@ void HashCheckDialog::calculate(const QString &text)
         isCalculating = true;
         std::unique_ptr<Botan::HashFunction> hash2(Botan::HashFunction::create(text.toStdString()));
 
-
         while( (hash2 && !cancel_calculation && (bytes_read = file.read(reinterpret_cast<char *>(buf.data()), block_size))>0) )
         {
             //hash.addData(buffer, bytes_read);
@@ -152,7 +125,7 @@ void HashCheckDialog::calculate(const QString &text)
 
     } else
         {
-            m_ui->checksumEdit->setText(errorCodeToString(SRC_CANNOT_OPEN_READ));
+            m_ui->checksumEdit->setText("SRC_CANNOT_OPEN_READ");
         }
 
     m_ui->open->setDisabled(false);
@@ -166,10 +139,6 @@ void HashCheckDialog::calculate(const QString &text)
 
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
 void HashCheckDialog::messageBox(QMessageBox::Icon icon, const QString& title, const QString& message)
 {
     QMessageBox* box = new QMessageBox(icon, title, message, QMessageBox::Ok, this);
@@ -179,10 +148,6 @@ void HashCheckDialog::messageBox(QMessageBox::Icon icon, const QString& title, c
         m_ui->checksumEdit->setText(tr("error"));
     }
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void HashCheckDialog::closeEvent(QCloseEvent *event)
 {
@@ -195,19 +160,11 @@ void HashCheckDialog::closeEvent(QCloseEvent *event)
 
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
 void HashCheckDialog::dragEnterEvent(QDragEnterEvent *event)
 {
     if (event->mimeData()->hasFormat("text/uri-list"))
         event->acceptProposedAction();
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void HashCheckDialog::dropEvent(QDropEvent *event)
 {
@@ -220,10 +177,6 @@ void HashCheckDialog::dropEvent(QDropEvent *event)
     m_ui->calculateButton->click();
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
 void HashCheckDialog::textChanged(const QString &text)
 {
     QFileInfo f_info(text);
@@ -231,10 +184,7 @@ void HashCheckDialog::textChanged(const QString &text)
         m_ui->calculateButton->setEnabled(true);
     } else {
         m_ui->calculateButton->setEnabled(false);
-        m_ui->checksumEdit->setText(errorCodeToString(SRC_CANNOT_OPEN_READ));
+        m_ui->checksumEdit->setText("SRC_CANNOT_OPEN_READ");
     }
 }
 
-/*******************************************************************************
-
-*******************************************************************************/

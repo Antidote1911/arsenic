@@ -1,9 +1,6 @@
 ﻿#ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-
-#include "quazip.h"
-#include "zlib.h"
 #include <QtEndian>
 #include <QDebug>
 #include <QTranslator>
@@ -13,7 +10,7 @@ namespace ARs  // for Arsenic Preferences
 {
 
 // Global app infos
-const QString APP_VERSION            {"1.3"};
+const QString APP_VERSION            {"2.0"};
 const QString APP_SHORT_NAME         {"Arsenic"};
 const QString APP_LONG_NAME          {"Arsenic "+APP_VERSION};
 const QString APP_DESCRIPTION        {"Strongs files or directory encryption"};
@@ -24,6 +21,8 @@ const quint32 MAGIC_NUMBER           {0x41525345};
 const QString DEFAULT_EXTENSION      {"arsenic"};
 const QString DEFAULT_USER_NAME      {""};
 const QString DEFAULT_LANGUAGE       {"en"};
+const QString DEFAULT_LASTDIRECTORY  {""};
+const int DEFAULT_INDEX_TAB                {0};
 const int DEFAULT_ARGON_ITR_LIMIT    {0};
 const int DEFAULT_ARGON_MEM_LIMIT    {0};
 const bool DEFAULT_SHOW_PSW          {false};
@@ -32,7 +31,6 @@ const bool DEFAULT_SHOW_TOOLBAR      {true};
 const bool DEFAULT_CLEAR_CLIPBOARD   {true};
 const int DEFAULT_CLIPBOARD_TIMEOUT  {10};
 const QString BOTAN_VERSION          {QString::fromStdString(Botan::version_string())};
-const QString ZLIB_Version           {ZLIB_VERSION};
 
 const QString DEFAULT_LIST_PATH      {"session.qtlist"};
 const int MIN_PASS_LENGTH            {8};
@@ -46,8 +44,8 @@ const int EMPTY_COLUMN_SPACE         {100};
 const QString DEFAULT_CRYPTO_ALGO    {"ChaCha20Poly1305"};
 const int MACBYTES                   {16};
 const int IN_BUFFER_SIZE             {65536};
-const size_t CIPHER_KEY_LEN             {32};
-const size_t CIPHER_IV_LEN              {24};
+const size_t CIPHER_KEY_LEN          {32};
+const size_t CIPHER_IV_LEN           {24};
 const int BUFFER_SIZE_WITHOUT_MAC    {(IN_BUFFER_SIZE - MACBYTES)};
 
 // Argon2 constants

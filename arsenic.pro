@@ -8,9 +8,7 @@ TEMPLATE      = subdirs
 CONFIG += ordered
 QMAKE_CXXFLAGS += -std=c++17
 
-SUBDIRS += src/zlib/zlib.pro \
-           src/quazip/quazip.pro \
-           src/botan/botan.pro \
+SUBDIRS += src/botan/botan.pro \
 	   src/zxcvbn/zxcvbn.pro \
            src/tests/tests.pro \
            src/arsenic
@@ -38,11 +36,7 @@ DISTFILES += \
     README.md \
     README_FR.md \
     botan_license.txt \
-    build_clang.sh \
-    build_gcc.sh \
-    quazip-0.8.1.tar.gz \
-    screenshots/config.png \
+    screenshots/main_dark.png \
     screenshots/hash.png \
-    screenshots/main.png \
-    screenshots/pass_generator.png \
-    zlib-1.2.11.tar.gz
+    screenshots/cryptopad_light.png \
+    screenshots/pass_gen.png

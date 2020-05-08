@@ -2,81 +2,97 @@
 #include "ui_mainwindow.h"
 
 #include <QMessageBox>
+#include <QFileDialog>
 #include <QCloseEvent>
 #include <QAction>
 #include <QCheckBox>
 #include <QDebug>
 #include <QListWidgetItem>
+#include <QDir>
+#include <QDateTime>
+#include <QPlainTextEdit>
 
-#include "quazip.h"
 #include "configDialog.h"
 #include "hashcheckdialog.h"
 #include "aboutDialog.h"
 #include "argonTests.h"
 #include "passwordGeneratorDialog.h"
 #include "constants.h"
-#include "filesystemmodel.h"
-#include "abstractbarDialog.h"
-#include "savebar.h"
-#include "loadbar.h"
-#include "savethread.h"
-#include "loadthread.h"
-#include "encryptbar.h"
-#include "decryptbar.h"
 #include "Config.h"
 #include "divers.h"
+#include "Delegate.h"
+#include "crypto.h"
 
 using namespace  ARs;
-
-typedef std::unique_ptr<AbstractBarDialog> MyAbstractBarPtr;
 
 /*******************************************************************************
 
 *******************************************************************************/
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), m_ui(new Ui::MainWindow), file_model(nullptr)
+    QMainWindow(parent), m_ui(new Ui::MainWindow)
 {
     m_ui->setupUi(this);
+    Crypto = new Crypto_Thread(this);
 
     createLanguageMenu();
     loadPreferences();
 
     setWindowTitle(APP_LONG_NAME);
+    cryptoFileView();
+    delegate();
 
-    setModel(new FileSystemModel(nullptr));
+    // General
+    connect(m_ui->menuAboutArsenic,       &QAction::triggered,          this, [=]{ aboutArsenic(); });
+    connect(m_ui->menuHashCalculator,       &QAction::triggered,          this, [=]{ hashCalculator(); });
+    connect(m_ui->menuAboutQt,            &QAction::triggered,          this, [=]{ qApp->aboutQt(); });
+    connect(m_ui->menuPassGenerator,      &QAction::triggered,          this, [=]{ generator(); });
+    connect(m_ui->pushPassGenerator,      &QPushButton::clicked,        this, [=]{ generator(); });
+    connect(m_ui->menuQuit,               &QAction::triggered,          this, [=]{ quit(); });
+    connect(m_ui->menuQuit2,               &QAction::triggered,         this, [=]{ quit(); });
+    connect(m_ui->menuQuit3,               &QAction::triggered,         this, [=]{ quit(); });
+    connect(m_ui->menuConfiguration,      &QAction::triggered,          this, [=]{ configuration(); });
+    connect(m_ui->menuDarkTheme,          &QAction::triggered,          this, [=]( const bool &checked ) { dark_theme(checked); });
+    connect(m_ui->menuViewButtonToolbar,  &QAction::triggered,          this, [=]( const bool &checked ) { m_ui->toolBar->setVisible(checked); });
+    connect(m_ui->toolBar,                &QToolBar::visibilityChanged, this, [=]( const bool &checked ) { m_ui->menuViewButtonToolbar->setChecked(checked); });
+    connect(m_ui->menuArgon2Tests,        &QAction::triggered,          this, [=]{ Argon2_tests(); });
+    connect(m_ui->tabWidget,              &QTabWidget::currentChanged,  this, [=]( const int &index ){ switchTab(index); });
+    connect(m_ui->comboViewpass,          &QCheckBox::stateChanged,     this, [=]( const int &index ){ viewPassStateChanged(index); });
 
-    connect(m_ui->actionArgon2_tests,        &QAction::triggered,          this, [=]{ Argon2_tests(); });
-    connect(m_ui->actionPassword_Generator,  &QAction::triggered,          this, [=]{ on_generator_clicked(); });
-    connect(m_ui->pushOpen,                  &QPushButton::clicked,        this, [=]{ openFile(); });
-    connect(m_ui->pushSave,                  &QPushButton::clicked,        this, [=]{ actionSave_triggered(); });
-    connect(m_ui->actionDark_Theme,          &QAction::triggered,          this, [=]( const bool &checked ) { dark_theme(checked); });
-    connect(m_ui->actionView_Button_Toolbar, &QAction::triggered,          this, [=]( const bool &checked ) { m_ui->toolBar->setVisible(checked); });
-    connect(m_ui->toolBar,                   &QToolBar::visibilityChanged, this, [=]( const bool &checked ) { m_ui->actionView_Button_Toolbar->setChecked(checked); });
-    connect(m_ui->actionAbout_Arsenic,       &QAction::triggered,          this, [=]{ aboutArsenic(); });
-    connect(m_ui->actionAbout_Qt,            &QAction::triggered,          this, [=]{ qApp->aboutQt(); });
+    // EncryptPad
+    connect(m_ui->menuOpenTxt,            &QAction::triggered,          this, [=]{ openTxtFile(); });
+    connect(m_ui->menuSaveTxt,            &QAction::triggered,          this, [=]{ saveTxtFile(); });
+    connect(m_ui->menuSaveTxtAs,          &QAction::triggered,          this, [=]{ saveTxtFileAs(); });
+    connect(m_ui->menuEncryptTxt,         &QAction::triggered,          this, [=]{ encryptText(); });
+    connect(m_ui->menuDecryptTxt,         &QAction::triggered,          this, [=]{ decryptText(); });
+    connect(m_ui->menuClearEditor,        &QAction::triggered,          this, [=]{ clearEditor(); });
+    connect(m_ui->pushEncryptTxt,        &QPushButton::clicked,          this, [=]{ encryptText(); });
+    connect(m_ui->pushDecryptTxt,        &QPushButton::clicked,          this, [=]{ decryptText(); });
 
-    connect(m_ui->pushEncrypt,               &QPushButton::clicked,        this, [=]{ encryptText(); });
-    connect(m_ui->pushDecrypt,               &QPushButton::clicked,        this, [=]{ decryptText(); });
+    // EncryptFile
+    connect(m_ui->menuAddFiles,           &QAction::triggered,          this, [=]{ addFiles(); });
+    connect(m_ui->menuRemoveAllFiles,           &QAction::triggered,          this, [=]{ clearListFiles(); });
+    connect(m_ui->menuEncryptList,           &QAction::triggered,          this, [=]{ encryptFiles(); });
+    connect(m_ui->menuDecryptList,           &QAction::triggered,          this, [=]{ decryptFiles(); });
+    connect(m_ui->pushEncrypt,        &QPushButton::clicked,          this, [=]{ encryptFiles(); });
+    connect(m_ui->pushDecrypt,        &QPushButton::clicked,          this, [=]{ decryptFiles(); });
+    connect(m_ui->menuAbortJob,           &QAction::triggered,          this, [=]{ abortJob(); });
+    connect(Crypto,SIGNAL(updateProgress(QString, qint64)),this,SLOT(onPercentProgress(QString, qint64)));
+    connect(Crypto,SIGNAL(statusMessage(QString)),this,SLOT(onMessageChanged(QString)));
+    //connect(this,&MainWindow::on_stop,&myjob,&MyJob::obj_slot_stop);
+
 
 	// note that some password information will be discarded if the text characters entered use more
 	// than	1 byte per character in UTF-8
     //ui->password_0->setMaxLength(crypto_secretbox_KEYBYTES);
     //ui->password_1->setMaxLength(crypto_secretbox_KEYBYTES);
 
-	// initialize the zipping text codec, specifically, for use in encryption and decryption
-	QuaZip::setDefaultFileNameCodec("UTF-8");
-
     m_ui->encrypt_filename->setMaxLength(ARs::MAX_ENCRYPT_NAME_LENGTH);
     m_ui->actionAuto_resize_columns->setChecked(true);
 
 	// create the temp directory and session.qtlist if they don't exist already
-	QDir curr_dir = QDir::current();
+
     QFile list_file(ARs::DEFAULT_LIST_PATH);
-
-	if(!curr_dir.exists(QString("temp")))
-		curr_dir.mkdir(QString("temp"));
-
 	if(!list_file.exists())
 	{
 		list_file.open(QIODevice::WriteOnly);
@@ -85,20 +101,345 @@ MainWindow::MainWindow(QWidget *parent) :
 
 }
 
-/*******************************************************************************
+MainWindow::~MainWindow(){
+}
 
-*******************************************************************************/
 
-MainWindow::~MainWindow()
+
+void MainWindow::session()
 {
+    // show the main window and load from the default item list
+
+    show();
+}
+
+
+
+void MainWindow::abortJob()
+{
+    Crypto->aborted=true;
+}
+
+void MainWindow::onMessageChanged(QString message)
+{
+    QTextCursor c =  m_ui->textLogs->textCursor();
+    c.movePosition(QTextCursor::End);
+    m_ui->textLogs->setTextCursor(c);
+    m_ui->textLogs->append(message);
+
+    QFile outfile;
+    outfile.setFileName("arsenic.log.html");
+    outfile.open(QIODevice::ReadWrite| QIODevice::Text);
+    QTextStream out(&outfile);
+    out << m_ui->textLogs->toHtml() << endl;
+    outfile.close();
+}
+
+void MainWindow::encryptFiles()
+{
+
+
+    if (getListFiles().isEmpty())
+    {
+        QMessageBox::warning(this, tr("Oups..."),
+                             tr("Vous devez ajouter un ou plusieurs fichiers pour démarrer le traitemment."));
+        return;
+
+    }
+
+    if (m_ui->password_0->text().isEmpty() && m_ui->password_1->text().isEmpty())
+    {
+        QMessageBox::warning(this, tr("Oups..."),
+                             tr("Vous devez entrer une passphrase et sa confirmation."));
+        return;
+    }
+
+    if (m_ui->password_0->text() != m_ui->password_1->text())
+    {
+        QMessageBox::warning(this, tr("Oups..."),
+                             tr("La Passphrase et sa confirmation ne sont pas identiques."));
+        return;
+    }
+
+    Crypto->setParam(true,
+                     getListFiles(),
+                     m_ui->password_0->text(),
+                     config()->get("CRYPTO/cryptoAlgo").toString(),
+                     config()->get("CRYPTO/argonMemory").toInt(),
+                     config()->get("CRYPTO/argonItr").toInt(),
+                     m_ui->CheckDeleteFiles->isChecked());
+
+    Crypto->start();
 
 }
 
-/*******************************************************************************
+void MainWindow::decryptFiles()
+{
+    if (getListFiles().isEmpty())
+    {
+        QMessageBox::warning(this, tr("Oups..."),
+                             tr("Vous devez ajouter un ou plusieurs fichiers pour démarrer le traitemment."));
+        return;
 
-*******************************************************************************/
+    }
+    if (m_ui->password_0->text().isEmpty() && m_ui->password_1->text().isEmpty())
+    {
+        QMessageBox::warning(this, tr("Oups..."),
+                             tr("Vous devez entrer une passphrase et sa confirmation."));
+        return;
+    }
+    Crypto->setParam(false,
+                     getListFiles(),
+                     m_ui->password_0->text(),
+                     config()->get("CRYPTO/cryptoAlgo").toString(),
+                     config()->get("CRYPTO/argonMemory").toInt(),
+                     config()->get("CRYPTO/argonItr").toInt(),
+                     m_ui->CheckDeleteFiles->isChecked());
 
-void MainWindow::on_generator_clicked()
+    Crypto->start();
+}
+
+QStringList MainWindow::getListFiles()
+{
+    const int rowCountCrypto = fileListModelCrypto->rowCount();
+    QStringList fileList;
+
+        if (0 < rowCountCrypto)
+        {
+            for (int row = 0; row < rowCountCrypto; ++row)
+            {
+                QStandardItem* item = fileListModelCrypto->item(row, 2);
+                fileList.append(item->text());
+            }
+        }
+
+
+    return fileList;
+}
+
+void MainWindow::clearEditor()
+{
+    m_ui->cryptoPadEditor->clear();
+}
+
+void MainWindow::onPercentProgress(const QString& path, qint64 percent)
+{
+    QList<QStandardItem*> items;
+    QStandardItem* item;
+    QStandardItem* progressItem;
+
+    items = fileListModelCrypto->findItems(path,Qt::MatchExactly,2);
+
+    if (0 < items.size())
+    {
+        item = items[0];
+        int index = item->row();
+
+        if (nullptr != item)
+        {
+                progressItem = fileListModelCrypto->item(index, 4);
+
+            if (nullptr != progressItem)
+            {
+                progressItem->setData(percent, Qt::DisplayRole);
+            }
+        }
+    }
+}
+
+void MainWindow::switchTab(int index)
+{
+    if(index==0)
+    {
+        m_ui->menuCryptopad->menuAction()->setVisible(false);
+        m_ui->menuLog->menuAction()->setVisible(false);
+        m_ui->menuFile->menuAction()->setVisible(true);
+        m_ui->password_0->show();
+        m_ui->password_1->show();
+        m_ui->comboViewpass->show();
+        m_ui->password_label->show();
+        m_ui->label->show();
+        m_ui->pushPassGenerator->show();
+    }
+    if(index==1)
+    {
+        m_ui->menuCryptopad->menuAction()->setVisible(true);
+        m_ui->menuLog->menuAction()->setVisible(false);
+        m_ui->menuFile->menuAction()->setVisible(false);
+        m_ui->password_0->show();
+        m_ui->password_1->show();
+        m_ui->comboViewpass->show();
+        m_ui->password_label->show();
+        m_ui->label->show();
+        m_ui->pushPassGenerator->show();
+    }
+    if(index==2)
+    {
+        m_ui->menuLog->menuAction()->setVisible(true);
+        m_ui->menuCryptopad->menuAction()->setVisible(false);
+        m_ui->menuFile->menuAction()->setVisible(false);
+        m_ui->password_0->hide();
+        m_ui->password_1->hide();
+        m_ui->comboViewpass->hide();
+        m_ui->password_label->hide();
+        m_ui->label->hide();
+        m_ui->pushPassGenerator->hide();
+    }
+
+}
+
+void MainWindow::cryptoFileView()
+{
+    fileListModelCrypto = new QStandardItemModel(0,5);
+    fileListModelCrypto->setHeaderData(0, Qt::Horizontal, tr("Remove File"));
+    fileListModelCrypto->setHeaderData(1, Qt::Horizontal, tr("Name"));
+    fileListModelCrypto->setHeaderData(2, Qt::Horizontal, tr("Path"));
+    fileListModelCrypto->setHeaderData(3, Qt::Horizontal, tr("Size"));
+    fileListModelCrypto->setHeaderData(4, Qt::Horizontal, tr("Progress"));
+
+    QHeaderView* headerCrypto = m_ui->fileListViewCrypto->horizontalHeader();
+    headerCrypto->setStretchLastSection(true);
+
+    // hide index numbers
+    m_ui->fileListViewCrypto->verticalHeader()->setVisible(false);
+
+    // Minimize all row height in Tables
+    m_ui->fileListViewCrypto->verticalHeader()->setDefaultSectionSize(m_ui->fileListViewCrypto->verticalHeader()->minimumSectionSize());
+
+}
+
+void MainWindow::delegate()
+{
+
+    // Custom delegate paints progress bar and file close button for each file
+    Delegate* delegate = new Delegate{this};
+
+    m_ui->fileListViewCrypto->setItemDelegate(delegate);
+    m_ui->fileListViewCrypto->setModel(fileListModelCrypto);
+
+    connect(delegate, &Delegate::removeRow, this, &MainWindow::removeFile);
+}
+
+void MainWindow::addFiles()
+{
+    // Open a file dialog to get files
+    const QStringList files = QFileDialog::getOpenFileNames(this,tr("Ouvrir Fichier"), config()->get("GUI/lastDirectory").toByteArray(),
+                              tr("Tous (*.*) ;; "
+                                 "Fichiers Arsenic (*.ars) ;; "
+                                 "Fichiers Textes (*.txt *.doc *.inf *.ini *.rtf *.html .*css) ;; "
+                                 "Images (*.jpg *.jpeg *.bmp *.tif *.svg *.tga *.png *.gif *.psd *.xcf) ;; "
+                                 "Vidéos (*.avi *.mkv *.mpg *.mpeg *.webm *.divx *.mov *.3gp *.rm *.flv *.wmv *.vob *.ts *.ogg *.ogm) ;; "
+                                 "Executables (*.exe *.bat)"));
+
+
+    if (files.isEmpty())               // if no file selected
+        return;
+
+    // Save this directory to return to later
+    const QString fileName = files[0];
+    config()->set("GUI/lastDirectory", fileName.left(fileName.lastIndexOf("/")));
+
+
+    for (const QString& file : files)  // add files to the model
+    {
+        addFilePathToModel(file);
+    }
+
+}
+
+void MainWindow::addFilePathToModel(const QString& filePath)
+{
+    QFileInfo fileInfo{filePath};
+
+    if (fileInfo.exists() && fileInfo.isFile())
+    {   // If the file exists, add it to the model
+        QString fileSize = getFileSize((fileInfo.size()));
+        QString fileName = fileInfo.fileName();
+
+        auto fileItem = new QStandardItem{fileName};
+        fileItem->setDragEnabled(false);
+        fileItem->setDropEnabled(false);
+        fileItem->setEditable(false);
+        fileItem->setSelectable(false);
+        fileItem->setToolTip(fileName);
+        QVariant fileVariant = QVariant::fromValue(fileName);
+        fileItem->setData(fileVariant);
+
+        auto pathItem = new QStandardItem{filePath};
+        pathItem->setDragEnabled(false);
+        pathItem->setDropEnabled(false);
+        pathItem->setEditable(false);
+        pathItem->setSelectable(false);
+        pathItem->setToolTip(filePath);
+        QVariant pathVariant = QVariant::fromValue(filePath);
+        pathItem->setData(pathVariant);
+
+        auto sizeItem = new QStandardItem{fileSize};
+        sizeItem->setDragEnabled(false);
+        sizeItem->setDropEnabled(false);
+        sizeItem->setEditable(false);
+        sizeItem->setSelectable(false);
+        sizeItem->setToolTip(QString::number(fileInfo.size())+" bytes");
+        QVariant sizeVariant = QVariant::fromValue(fileSize);
+        sizeItem->setData(sizeVariant);
+
+        auto progressItem = new QStandardItem{};
+        progressItem->setDragEnabled(false);
+        progressItem->setDropEnabled(false);
+        progressItem->setEditable(false);
+        progressItem->setSelectable(false);
+
+        auto closeFileItem = new QStandardItem{};
+        closeFileItem->setDragEnabled(false);
+        closeFileItem->setDropEnabled(false);
+        closeFileItem->setEditable(false);
+        closeFileItem->setSelectable(false);
+
+        const QList<QStandardItem*> items = {closeFileItem,fileItem, pathItem, sizeItem, progressItem};
+
+        // Search to see if this item is already in the model
+        auto addNewItem = true;
+
+        const auto rowCryptoCount = fileListModelCrypto->rowCount();
+
+            for (auto row = 0; row < rowCryptoCount; ++row)
+            {
+                auto testItem = fileListModelCrypto->item(row, 1);
+
+                if (testItem->data().toString() == pathItem->data().toString())
+                {
+                    addNewItem = false;
+                }
+            }
+
+            if (addNewItem)
+            {   // Add the item to the model if it's new
+                fileListModelCrypto->appendRow(items);
+            }
+        }
+
+    m_ui->fileListViewCrypto->resizeColumnsToContents();
+    m_ui->fileListViewCrypto->setColumnWidth(2, 100); //Limit the "path" to 100 px
+
+        {
+
+    } // End if file exists and is a file
+}
+
+
+void MainWindow::removeFile(const QModelIndex& index)
+{
+    fileListModelCrypto->removeRow(index.row());    
+}
+
+void MainWindow::clearListFiles()
+{
+    if(fileListModelCrypto->hasChildren()) {
+        fileListModelCrypto->removeRows(0, fileListModelCrypto->rowCount());
+    }
+}
+
+void MainWindow::generator()
 {
         auto pwGenerator = new PasswordGeneratorDialog;
         pwGenerator->setStandaloneMode(true);
@@ -107,19 +448,11 @@ void MainWindow::on_generator_clicked()
         pwGenerator->exec();
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
 void MainWindow::setPassword(QString pass)
 {
     m_ui->password_0->setText(pass);
     m_ui->password_1->setText(pass);
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void MainWindow::loadPreferences()
 {
@@ -135,49 +468,48 @@ void MainWindow::loadPreferences()
 
     loadLanguage(config()->get("GUI/Language").toString());
 
+    switchTab(config()->get("GUI/currentIndexTab").toInt());
+    m_ui->tabWidget->setCurrentIndex(config()->get("GUI/currentIndexTab").toInt());
+
     restoreGeometry(config()->get("GUI/MainWindowGeometry").toByteArray());
     restoreState(config()->get("GUI/MainWindowState").toByteArray());
 
     if (config()->get("GUI/darkTheme").toBool())
     {
-        m_ui->actionDark_Theme->setChecked(true);
+        m_ui->menuDarkTheme->setChecked(true);
         skin.setSkin("dark");
     }
     else
     {
-        m_ui->actionDark_Theme->setChecked(false);
+        m_ui->menuDarkTheme->setChecked(false);
         skin.setSkin("notheme");
     }
 
     if (config()->get("GUI/showToolbar").toBool())
     {
-        m_ui->actionView_Button_Toolbar->setChecked(true);
+        m_ui->menuViewButtonToolbar->setChecked(true);
         m_ui->toolBar->setVisible(true);
     }
     else
     {
-        m_ui->actionView_Button_Toolbar->setChecked(false);
+        m_ui->menuViewButtonToolbar->setChecked(false);
         m_ui->toolBar->setVisible(false);
     }
 
     if (config()->get("GUI/showPassword").toBool())
     {
-        m_ui->viewpass->setChecked(true);
+        m_ui->comboViewpass->setChecked(true);
         m_ui->password_0->setEchoMode(QLineEdit::Normal);
         m_ui->password_1->setEchoMode(QLineEdit::Normal);
     }
     else
     {
-        m_ui->viewpass->setChecked(false);
+        m_ui->comboViewpass->setChecked(false);
         m_ui->password_0->setEchoMode(QLineEdit::Password);
         m_ui->password_1->setEchoMode(QLineEdit::Password);
     }
 
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void MainWindow::savePreferences()
 {
@@ -185,15 +517,12 @@ void MainWindow::savePreferences()
         config()->set("GUI/MainWindowGeometry", saveGeometry());
         config()->set("GUI/MainWindowState", saveState());
     }
-    config()->set("GUI/darkTheme",m_ui->actionDark_Theme->isChecked());
-    config()->set("GUI/showPassword", m_ui->viewpass->isChecked());
+    config()->set("GUI/darkTheme",m_ui->menuDarkTheme->isChecked());
+    config()->set("GUI/showPassword", m_ui->comboViewpass->isChecked());
     config()->set("GUI/Language", m_currLang);
-    config()->set("GUI/showToolbar", m_ui->actionView_Button_Toolbar->isChecked());
+    config()->set("GUI/showToolbar", m_ui->menuViewButtonToolbar->isChecked());
+    config()->set("GUI/currentIndexTab", m_ui->tabWidget->currentIndex());
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void MainWindow::aboutArsenic()
 {
@@ -201,660 +530,29 @@ void MainWindow::aboutArsenic()
     aboutDialog->open();
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::session()
-{
-	// show the main window and load from the default item list
-	show();
-
-        FileSystemModelPtr clone_model = file_model->cloneByValue();
-    MyAbstractBarPtr ptr_mpb(new LoadBar(this, clone_model.get(), ARs::DEFAULT_LIST_PATH));
-
-	if(ptr_mpb != nullptr)
-	{
-		int ret_val = ptr_mpb->exec();
-
-		// if the progress bar successfully loaded the file into the clone model
-                if(ret_val == AbstractBarDialogPublic::EXEC_SUCCESS)
-		{
-			// use it to replace the old model
-			setModel(clone_model.release());
-		}
-		else
-			setModel(file_model);
-	}
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::setModel(FileSystemModel *ptr_model)
-{
-	// when ptr_model is different from the current one, have it replace the old model and resize the
-	// columns. otherwise, don't replace but still resize the columns if auto resize was checked
-	if(file_model != ptr_model)
-	{
-                int width_array[FileSystemModelPublic::COLUMN_NUM];
-
-        if(!m_ui->actionAuto_resize_columns->isChecked())
-		{
-			// save the current widths before switching over to the new model, which will reset them
-                        for(int i = 0; i < FileSystemModelPublic::COLUMN_NUM; i++)
-                width_array[i] = m_ui->tree_view->columnWidth(i);
-		}
-
-		// use it to replace the old model
-        m_ui->tree_view->setModel(nullptr);
-		delete file_model;
-		file_model = ptr_model;
-		file_model->setParent(this);
-
-		// setup the view for the new model
-        m_ui->tree_view->setModel(file_model);
-        m_ui->tree_view->hideColumn(FileSystemModelPublic::FULL_PATH_HEADER);
-        m_ui->tree_view->hideColumn(FileSystemModelPublic::TYPE_HEADER);
-
-        if(!m_ui->actionAuto_resize_columns->isChecked())
-		{
-			// restore the previous column settings
-                        for(int i = 0; i < FileSystemModelPublic::COLUMN_NUM; i++)
-                m_ui->tree_view->setColumnWidth(i, width_array[i]);
-		}
-	}
-
-	// configure the new width to the contents
-    if(m_ui->actionAuto_resize_columns->isChecked())
-                for(int i = 0; i < FileSystemModelPublic::COLUMN_NUM; i++)
-		{
-            m_ui->tree_view->resizeColumnToContents(i);
-            m_ui->tree_view->setColumnWidth(i, m_ui->tree_view->columnWidth(i) + ARs::EXTRA_COLUMN_SPACE);
-        }
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_encrypt_clicked()
-{
-    start_crypto(ARs::START_ENCRYPT);
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_decrypt_clicked()
-{
-    start_crypto(ARs::START_DECRYPT);
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::start_crypto(int crypto_type)
-{
-	// check if the password fields match
-    if(m_ui->password_0->text() == m_ui->password_1->text())
-	{
-        QString pass = m_ui->password_0->text();
-		QString encrypt_name;
-
-		bool checked = false;
-
-		// make sure that there is actually something selected in the model for cryptography
-		for(int n = file_model->rowCount(), i = 0; i < n; i++)
-		{
-                        if(file_model->data(file_model->index(i, FileSystemModelPublic::CHECKED_HEADER),
-				Qt::CheckStateRole) == Qt::Checked)
-			{
-				checked = true;
-				break;
-			}
-		}
-
-		// check that the password is long enough
-        if(pass.toUtf8().size() < ARs::MIN_PASS_LENGTH)
-		{
-            QString num_text = QString::number(ARs::MIN_PASS_LENGTH);
-            QString warn_text = QString(tr("The password entered was too short. ")) + "Please enter a longer "
-			"one (at least " + num_text + " ASCII characters/bytes) before continuing.";
-
-			QMessageBox::warning(this, "Password too short!", warn_text);
-		}
-
-		// give the user a warning message if nothing was selected
-		else if(!checked)
-		{
-            QString crypto_text = (crypto_type == ARs::START_ENCRYPT) ? "encryption!" : "decryption!";
-            QString warn_text = QString(tr("There were no items selected for ") + crypto_text);
-
-            QMessageBox::warning(this, tr("Nothing selected!"), warn_text);
-		}
-
-		else
-		{            
-			// start the encryption process
-            bool delete_success = m_ui->delete_success->isChecked();
-
-                        FileSystemModelPtr clone_model(file_model->cloneByValue());
-
-			MyAbstractBarPtr ptr_mpb;
-
-            if(crypto_type == ARs::START_ENCRYPT)
-			{
-                // check if a username is set for additionnal data encryption
-                if(config()->get("userName").toString()=="")
-                {
-                    QMessageBox::warning(this, tr("No user name"), tr("You must set a user name or e-mail in configuration !"));
-                    return;
-                }
-				// check if the user wants to rename the encrypted files to something else
-                if(m_ui->encrypt_rename->isChecked())
-				{
-                    encrypt_name = m_ui->encrypt_filename->text();
-                    ptr_mpb = MyAbstractBarPtr(new EncryptBar(this, clone_model.get(), pass,config()->get("userName").toString(),config()->get("extension").toString(),config()->get("CRYPTO/cryptoAlgo").toString() ,config()->get("CRYPTO/argonMemory").toInt(),config()->get("CRYPTO/argonItr").toInt(),delete_success,
-						&encrypt_name));
-				}
-				else
-				{
-                    ptr_mpb = MyAbstractBarPtr(new EncryptBar(this, clone_model.get(), pass,config()->get("userName").toString(),config()->get("extension").toString(),config()->get("CRYPTO/cryptoAlgo").toString(),config()->get("CRYPTO/argonMemory").toInt(),config()->get("CRYPTO/argonItr").toInt(),delete_success));
-				}
-			}
-			else
-                ptr_mpb = MyAbstractBarPtr(new DecryptBar(this, clone_model.get(), pass,delete_success));
-
-			if(ptr_mpb != nullptr)
-				ptr_mpb->exec();
-
-			// after crypto, replace the old model with the new one
-			setModel(clone_model.release());
-
-            // clear the password fields when done
-            m_ui->password_0->clear();
-            m_ui->password_1->clear();
-		}
-	}
-	else
-        QMessageBox::warning(this, tr("Passwords do not match!"), tr("The password fields do not match! "
-            "Please make sure they were entered correctly and try again."));
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_add_file_clicked()
-{
-    QList<QString> file_list = QFileDialog::getOpenFileNames(this, tr("Open File(s)"), QString(),
-		QString(), nullptr, QFileDialog::DontResolveSymlinks);
-	QList<QString> red_list = QList<QString>();
-
-	bool added = false;
-
-	for(QList<QString>::iterator it = file_list.begin(); it != file_list.end(); ++it)
-	{
-		int row_num = file_model->rowCount();
-
-		// check to see if the file is already in the model
-		if(file_model->isRedundant(*it))
-		{
-			// create a list of all these files that were redundant
-			red_list.append(*it);
-		}
-		else
-		{
-			file_model->insertItem(row_num, *it);
-			added = true;
-		}
-	}
-
-	// resize the columns if a file was added
-	if(added)
-		setModel(file_model);
-
-	if(red_list.size() > 0)
-	{
-		// create message
-        QString warn_title = tr("File(s) already added!");
-        QString warn_text = tr("The following file(s) were already added. They will not be added again.");
-		QString warn_detail;
-
-		for(int i = 0; i < red_list.size(); i++)
-		{
-			warn_detail += red_list[i];
-
-			if(i != red_list.size() - 1)
-				warn_detail += '\n';
-		}
-
-		// display in message box
-		QMessageBox msg_box(QMessageBox::Warning, warn_title, warn_text, QMessageBox::Close, this);
-		msg_box.setDetailedText(warn_detail);
-		msg_box.exec();
-	}
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_add_directory_clicked()
-{
-    QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"), QString(),
-		QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
-
-	if(dir != QString())
-	{
-		QString warn_title;
-		QString warn_text;
-		QString warn_detail;
-
-        // don't let the Windows user add a root directory
-        if( QDir(QDir(dir).absolutePath()).isRoot() )
-        {
-            warn_title = tr("Can't add a root directory!");
-            warn_text = tr("The root directory (") + dir + tr(") cannot be added.");
-
-            QMessageBox msg_box(QMessageBox::Warning, warn_title, warn_text, QMessageBox::Close, this);
-            msg_box.exec();
-            return;
-        }
-
-        // don't let the user add an empty directory
-        if(QDir(dir).entryList(QDir::NoDotAndDotDot|QDir::AllEntries).count() == 0)
-        {
-            warn_title = tr("Can't add empty directory!");
-            warn_text = tr("The directory (") + dir + tr(") cannot be added.");
-
-            QMessageBox msg_box(QMessageBox::Warning, warn_title, warn_text, QMessageBox::Close, this);
-            msg_box.exec();
-            return;
-        }
-
-		// is the directory contained by anything already inside the model or a duplicate?
-        if(file_model->isRedundant(dir))
-		{
-			// create message
-            warn_title = tr("Directory already added!");
-            warn_text = tr("The following directory was already added. It will not be added again.");
-			warn_detail = dir;
-
-			// display in message box
-			QMessageBox msg_box(QMessageBox::Warning, warn_title, warn_text, QMessageBox::Close, this);
-			msg_box.setDetailedText(warn_detail);
-			msg_box.exec();
-		}
-
-        else
-		{
-			std::vector<QString> red_list = file_model->makesRedundant(dir);
-
-			// check if the directory chosen makes something redundant inside the model
-			if(red_list.size() > 0)
-			{
-				// ask if they want to add the directory. if so, the redundant items will be removed
-
-                warn_title = tr("Directory makes item(s) redundant!");
-                warn_text = tr("The directory chosen (") + dir + tr(") contains item(s) inside it that "
-				"were added previously. If you add this new directory, the following redundant items will "
-                "be removed.");
-
-                for(unsigned int i = 0; i < red_list.size(); i++)
-				{
-					warn_detail += red_list[i];
-
-					if(i != red_list.size() - 1)
-						warn_detail += '\n';
-				}
-
-				// display the message with Ok and Cancel buttons
-				QMessageBox msg_box(QMessageBox::Warning, warn_title, warn_text, QMessageBox::Ok |
-					QMessageBox::Cancel, this);
-				msg_box.setDetailedText(warn_detail);
-
-				if(msg_box.exec() == QMessageBox::Ok)
-				{
-					file_model->removeItems(red_list);
-
-					file_model->insertItem(0, dir);
-					file_model->startDirThread(0);
-
-					// resize the columns
-					setModel(file_model);
-				}
-			}
-
-			// the chosen directory doesn't make anything inside the model redundant, simply add it
-			else
-			{
-				file_model->insertItem(0, dir);
-				file_model->startDirThread(0);
-				setModel(file_model);
-			}
-		}
-
-	}	// if(dir != QString())
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_remove_checked_clicked()
-{
-	// go through the entire model and remove any checked items
-	file_model->removeCheckedItems();
-	setModel(file_model);
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-	// save the current list before quitting
-        FileSystemModelPtr clone_model = file_model->cloneByValue();
-    MyAbstractBarPtr ptr_mpb(new SaveBar(this, clone_model.get(), ARs::DEFAULT_LIST_PATH));
-
-    auto ret_val=0;
-
-	if(ptr_mpb != nullptr)
-		ret_val = ptr_mpb->exec();
-
-	// if there was a problem saving the list, ask the user before exiting
-        if(ret_val == AbstractBarDialogPublic::EXEC_FAILURE)
-	{
-        ret_val = QMessageBox::warning(this, "Error saving session!", "Arsenic wasn't able to save "
-			"your current file and directory list. Do you still want to quit?", QMessageBox::Yes |
-			QMessageBox::Cancel, QMessageBox::Cancel);
-
-		if(ret_val == QMessageBox::Yes)
-			event->accept();
-		else
-			event->ignore();
-	}
-
-	// successfully saved the list, quit
-	else
-    event->accept();
+    // save prefs before quitting
     savePreferences();
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_delete_checked_clicked()
-{
-        std::vector<FileInfoPtr> item_list;
-
-	// get a list of all the items checked for deletion
-	for(int n = file_model->rowCount(), i = 0; i < n; i++)
-	{
-                if(file_model->data(file_model->index(i, FileSystemModelPublic::CHECKED_HEADER),
-			Qt::CheckStateRole) == Qt::Checked)
-		{
-			QString full_path = file_model->data(file_model->index(i,
-                                FileSystemModelPublic::FULL_PATH_HEADER)).toString();
-                        item_list.push_back(FileInfoPtr(new FileInfo(nullptr, full_path)));
-		}
-	}
-
-	int total_items = item_list.size();
-
-	if(total_items != 0)
-	{
-        QMessageBox::StandardButton ret_val = QMessageBox::question(this, tr("Delete items?"), tr("Are you "
-            "sure you wish to permanently delete the selected items?"), QMessageBox::Ok |
-			QMessageBox::Cancel, QMessageBox::Cancel);
-
-		if(ret_val == QMessageBox::Ok)
-		{
-			std::vector<QString> result_list;
-
-			for(int i = 0; i < total_items; i++)
-			{
-				QString full_path = item_list[i]->getFullPath();
-				QString item_type = item_list[i]->getType();
-
-                                if(item_type == FileInfo::typeToString(FileInfoPublic::MFIT_FILE))
-				{
-					if(QFile::remove(full_path))
-					{
-						file_model->removeItem(full_path);
-                        result_list.push_back(tr("Successfully deleted file!"));
-					}
-					else
-                        result_list.push_back(tr("Error deleting file!"));
-				}
-                                else if(item_type == FileInfo::typeToString(FileInfoPublic::MFIT_DIR))
-				{
-					if(QDir(full_path).removeRecursively())
-					{
-						file_model->removeItem(full_path);
-                        result_list.push_back(tr("Successfully deleted directory!"));
-					}
-					else
-                        result_list.push_back(tr("Error deleting directory!"));
-				}
-				else
-				{
-					file_model->removeItem(full_path);
-                    result_list.push_back(tr("Item was not found!"));
-				}
-			}
-
-			// items were most likely removed from the model, resize columns
-			setModel(file_model);
-
-			QString det_string;
-
-			// create a string containing the list of items and results
-            for(unsigned int i = 0; i < item_list.size(); i++)
-			{
-				det_string += item_list[i]->getFullPath();
-				det_string += "\n" + result_list[i];
-
-				if(i < item_list.size() - 1)
-					det_string += "\n\n";
-			}
-
-			QMessageBox del_msg(QMessageBox::Information, "Deletion completed!", "The deletion process "
-				"was completed. Click below to show details.", QMessageBox::Close, this);
-
-			del_msg.setDetailedText(det_string);
-			del_msg.exec();
-		}
-
-		// total_items != 0
-	}
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionAuto_resize_columns_triggered(bool checked)
-{
-    on_actionRefresh_view_triggered();
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionLoadList_triggered()
-{
-    QString list_path = QFileDialog::getOpenFileName(this, "Open List", QDir::currentPath(),
-            "Arsenic list files (*.arslist)", nullptr, QFileDialog::DontResolveSymlinks);
-
-    // check if the user actually selected a file
-    if(list_path != QString())
+    if (Crypto->isRunning())
     {
-        FileSystemModelPtr clone_model = file_model->cloneByValue();
-        MyAbstractBarPtr ptr_mpb(new LoadBar(this, clone_model.get(), list_path));
-
-        if(ptr_mpb != nullptr)
-        {
-            int ret_val = ptr_mpb->exec();
-
-            // if the progress bar successfully loaded the file into the clone model
-            if(ret_val == AbstractBarDialogPublic::EXEC_SUCCESS)
-            {
-                // use it to replace the old model
-                setModel(clone_model.release());
-            }
-        }
-    }	// list_path != QString()
+        Crypto->aborted=true;
+        Crypto->wait();
+    }
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionQuit_triggered()
+void MainWindow::quit()
 {
     close();
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionSave_item_list_triggered()
-{
-    QString filter = "Arsenic list files (*.arslist)";
-    QString list_path = QFileDialog::getSaveFileName(this, "Save List", QDir::currentPath(),
-            filter, &filter, QFileDialog::DontResolveSymlinks);
-
-    // check if the user actually selected a file
-    if(list_path != QString())
-    {
-        FileSystemModelPtr clone_model = file_model->cloneByValue();
-        MyAbstractBarPtr ptr_mpb(new SaveBar(this, clone_model.get(), list_path+".arslist"));
-
-        if(ptr_mpb != nullptr)
-            ptr_mpb->exec();
-    }
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionRefresh_view_triggered()
-{
-    // creating a new model will recreate and update all the internal MyFileInfo objects
-    FileSystemModelPtr new_model = file_model->cloneByValue();
-
-    new_model->removeEmpty();
-    new_model->removeRootDir();
-    new_model->removeRedundant();
-    new_model->sorting();
-
-    setModel(new_model.release());
-    file_model->startAllDirThread();
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionCheck_All_triggered()
-{
-    int n = file_model->rowCount();
-
-    for(int i = 0; i < n; i++)
-        file_model->setData(file_model->index(i), Qt::Checked, Qt::CheckStateRole);
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionUncheck_All_triggered()
-{
-    int n = file_model->rowCount();
-    for(int i = 0; i < n; i++)
-        file_model->setData(file_model->index(i), Qt::Unchecked, Qt::CheckStateRole);
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionAdd_File_triggered()
-{
-    on_add_file_clicked();
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionAdd_Directory_triggered()
-{
-    on_add_directory_clicked();
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionRemove_checked_triggered()
-{
-    on_remove_checked_clicked();
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionDelete_checked_triggered()
-{
-    on_delete_checked_clicked();
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionConfiguration_triggered()
+void MainWindow::configuration()
 {
     auto* confDialog = new ConfigDialog(this);
     confDialog->exec();
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_checkAll_clicked()
-{
-    on_actionCheck_All_triggered();
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_uncheckAll_clicked()
-{
-    on_actionUncheck_All_triggered();
-}
-
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_viewpass_stateChanged(int state)
+void MainWindow::viewPassStateChanged(int state)
 {
     if (state == 0)
     {
@@ -868,29 +566,17 @@ void MainWindow::on_viewpass_stateChanged(int state)
     }
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::on_actionHash_Calculator_triggered()
+void MainWindow::hashCalculator()
 {
     auto* hashdlg = new HashCheckDialog(this);
     hashdlg->exec();
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void MainWindow::Argon2_tests()
 {
     auto* Argon2_tests = new ArgonTests(this);
     Argon2_tests->open();
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void MainWindow::dark_theme(bool checked)
 {
@@ -903,10 +589,6 @@ void MainWindow::dark_theme(bool checked)
         skin.setSkin("notheme");
     }
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 // we create the menu entries dynamically, dependent on the existing translations.
 void MainWindow::createLanguageMenu(void)
@@ -951,10 +633,6 @@ void MainWindow::createLanguageMenu(void)
     }
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
 // Called every time, when a menu entry of the language menu is called
 void MainWindow::slotLanguageChanged(QAction* action)
 {
@@ -965,10 +643,6 @@ void MainWindow::slotLanguageChanged(QAction* action)
         //setWindowIcon(action->icon());
     }
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void MainWindow::loadLanguage(const QString& rLanguage)
 {
@@ -984,10 +658,6 @@ void MainWindow::loadLanguage(const QString& rLanguage)
     }
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
 void MainWindow::switchTranslator(QTranslator& translator, const QString& filename)
 {
     // remove the old translator
@@ -999,10 +669,6 @@ void MainWindow::switchTranslator(QTranslator& translator, const QString& filena
     if(translator.load(path + filename)) //Here Path and Filename has to be entered because the system didn't find the QM Files else
     qApp->installTranslator(&translator);
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void MainWindow::changeEvent(QEvent* event)
 {
@@ -1030,11 +696,7 @@ void MainWindow::changeEvent(QEvent* event)
     QMainWindow::changeEvent(event);
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
-void MainWindow::openFile()
+void MainWindow::openTxtFile()
 {
     if (maybeSave()) {
         QString fileName = QFileDialog::getOpenFileName(this);
@@ -1044,7 +706,6 @@ void MainWindow::openFile()
 }
 
 void MainWindow::loadFile(const QString &fileName)
-//! [42] //! [43]
 {
     QFile file(fileName);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
@@ -1058,7 +719,7 @@ void MainWindow::loadFile(const QString &fileName)
 #ifndef QT_NO_CURSOR
     QApplication::setOverrideCursor(Qt::WaitCursor);
 #endif
-    m_ui->textEdit->setPlainText(in.readAll());
+    m_ui->cryptoPadEditor->setPlainText(in.readAll());
 #ifndef QT_NO_CURSOR
     QApplication::restoreOverrideCursor();
 #endif
@@ -1068,10 +729,9 @@ void MainWindow::loadFile(const QString &fileName)
 }
 
 void MainWindow::setCurrentFile(const QString &fileName)
-//! [46] //! [47]
 {
     curFile = fileName;
-    m_ui->textEdit->document()->setModified(false);
+    m_ui->cryptoPadEditor->document()->setModified(false);
     setWindowModified(false);
 
     QString shownName = curFile;
@@ -1081,7 +741,6 @@ void MainWindow::setCurrentFile(const QString &fileName)
 }
 
 bool MainWindow::saveFile(const QString &fileName)
-//! [44] //! [45]
 {
     QFile file(fileName);
     if (!file.open(QFile::WriteOnly | QFile::Text)) {
@@ -1096,7 +755,7 @@ bool MainWindow::saveFile(const QString &fileName)
 #ifndef QT_NO_CURSOR
     QApplication::setOverrideCursor(Qt::WaitCursor);
 #endif    
-    out << m_ui->textEdit->toPlainText();
+    out << m_ui->cryptoPadEditor->toPlainText();
 #ifndef QT_NO_CURSOR
     QApplication::restoreOverrideCursor();
 #endif
@@ -1108,9 +767,8 @@ bool MainWindow::saveFile(const QString &fileName)
 }
 
 bool MainWindow::maybeSave()
-//! [40] //! [41]
 {
-    if (!m_ui->textEdit->document()->isModified())
+    if (!m_ui->cryptoPadEditor->document()->isModified())
         return true;
     const QMessageBox::StandardButton ret
         = QMessageBox::warning(this, tr("Application"),
@@ -1119,7 +777,7 @@ bool MainWindow::maybeSave()
                                QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
     switch (ret) {
     case QMessageBox::Save:
-        return actionSave_triggered();
+        return saveTxtFile();
     case QMessageBox::Cancel:
         return false;
     default:
@@ -1128,16 +786,16 @@ bool MainWindow::maybeSave()
     return true;
 }
 
-bool MainWindow::actionSave_triggered()
+bool MainWindow::saveTxtFile()
 {
     if (curFile.isEmpty()) {
-        return actionSave_as_triggered();
+        return saveTxtFileAs();
     } else {
         return saveFile(curFile);
     }
 }
 
-bool MainWindow::actionSave_as_triggered()
+bool MainWindow::saveTxtFileAs()
 {
     QFileDialog dialog(this);
     dialog.setWindowModality(Qt::WindowModal);
@@ -1149,17 +807,17 @@ bool MainWindow::actionSave_as_triggered()
 
 void MainWindow::encryptText()
 {
-    QString plaintext = m_ui->textEdit->toPlainText();
+    QString plaintext = m_ui->cryptoPadEditor->toPlainText();
     QString test = encryptString(plaintext,m_ui->password_0->text(), config()->get("userName").toString());
-    m_ui->textEdit->setPlainText(test);
+    m_ui->cryptoPadEditor->setPlainText(test);
 }
 
 void MainWindow::decryptText()
 {
-    QString ciphertext = m_ui->textEdit->toPlainText();
+    QString ciphertext = m_ui->cryptoPadEditor->toPlainText();
     try {
     QString test = decryptString(ciphertext,m_ui->password_0->text(), config()->get("userName").toString());
-    m_ui->textEdit->setPlainText(test);
+    m_ui->cryptoPadEditor->setPlainText(test);
   }
         catch (std::exception const& e) {
               QString error= e.what();

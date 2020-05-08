@@ -13,5 +13,6 @@
         <file>pixmaps/settings-outline.svg</file>
         <file>pixmaps/alpha-g-circle-outline.svg</file>
         <file>pixmaps/alpha-h-circle-outline.svg</file>
+        <file>pixmaps/closeFileIcon.svg</file>
     </qresource>
 </RCC>

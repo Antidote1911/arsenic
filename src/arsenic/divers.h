@@ -10,7 +10,7 @@ static QTextStream cin(stdin);
 static QTextStream cout(stdout);
 void clearDir(QString dir_path);
 qint64 dirSize(QString dirPath);
-QString formatSize(qint64 size);
+QString getFileSize(qint64 size);
 
 Botan::SecureVector<quint8> calculateHash(Botan::SecureVector<char> pass_buffer,
                                           Botan::SecureVector<quint8> salt_buffer,

@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -35,82 +35,7 @@
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_5">
            <item>
-            <widget class="QFrame" name="frame_2">
-             <property name="frameShape">
-              <enum>QFrame::StyledPanel</enum>
-             </property>
-             <property name="frameShadow">
-              <enum>QFrame::Raised</enum>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_2">
-              <item>
-               <widget class="QPushButton" name="add_file">
-                <property name="text">
-                 <string>Add file(s)...</string>
-                </property>
-                <property name="icon">
-                 <iconset resource="rsc.qrc">
-                  <normaloff>:/pixmaps/file-plus-outline.svg</normaloff>:/pixmaps/file-plus-outline.svg</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="add_directory">
-                <property name="text">
-                 <string>Add directory...</string>
-                </property>
-                <property name="icon">
-                 <iconset resource="rsc.qrc">
-                  <normaloff>:/pixmaps/folder-plus-outline.svg</normaloff>:/pixmaps/folder-plus-outline.svg</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="remove_checked">
-                <property name="text">
-                 <string>Remove checked</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="delete_checked">
-                <property name="text">
-                 <string>Delete checked</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="verticalSpacer">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QPushButton" name="checkAll">
-                <property name="text">
-                 <string>Check All</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="uncheckAll">
-                <property name="text">
-                 <string>UnCheck All</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QTreeView" name="tree_view">
+            <widget class="QTableView" name="fileListViewCrypto">
              <property name="focusPolicy">
               <enum>Qt::ClickFocus</enum>
              </property>
@@ -153,14 +78,14 @@
            </spacer>
           </item>
           <item>
-           <widget class="QCheckBox" name="delete_success">
+           <widget class="QCheckBox" name="CheckDeleteFiles">
             <property name="text">
              <string>Delete original item after encryption/decryption</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="encrypt">
+           <widget class="QPushButton" name="pushEncrypt">
             <property name="text">
              <string>Encrypt</string>
             </property>
@@ -171,7 +96,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="decrypt">
+           <widget class="QPushButton" name="pushDecrypt">
             <property name="text">
              <string>Decrypt</string>
             </property>
@@ -183,11 +108,11 @@
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
-        <string>Crypto Pad</string>
+        <string>CryptoPad</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
-         <widget class="QPlainTextEdit" name="textEdit"/>
+         <widget class="QPlainTextEdit" name="cryptoPadEditor"/>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -205,34 +130,30 @@
            </spacer>
           </item>
           <item>
-           <widget class="QPushButton" name="pushEncrypt">
+           <widget class="QPushButton" name="pushEncryptTxt">
             <property name="text">
              <string>Encrypt</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="pushDecrypt">
+           <widget class="QPushButton" name="pushDecryptTxt">
             <property name="text">
              <string>Decrypt</string>
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QPushButton" name="pushOpen">
-            <property name="text">
-             <string>Open</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pushSave">
-            <property name="text">
-             <string>Save</string>
-            </property>
-           </widget>
-          </item>
          </layout>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_3">
+       <attribute name="title">
+        <string>Logs</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QTextEdit" name="textLogs"/>
         </item>
        </layout>
       </widget>
@@ -281,7 +202,7 @@
        </widget>
       </item>
       <item row="1" column="2">
-       <widget class="QPushButton" name="generator">
+       <widget class="QPushButton" name="pushPassGenerator">
         <property name="text">
          <string>Generator</string>
         </property>
@@ -292,7 +213,7 @@
        </widget>
       </item>
       <item row="0" column="2">
-       <widget class="QCheckBox" name="viewpass">
+       <widget class="QCheckBox" name="comboViewpass">
         <property name="text">
          <string>View Pass</string>
         </property>
@@ -313,24 +234,23 @@
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>File</string>
+     <string>Files Encryption</string>
     </property>
-    <addaction name="actionAdd_File"/>
-    <addaction name="actionAdd_Directory"/>
-    <addaction name="actionCheck_All"/>
-    <addaction name="actionUncheck_All"/>
-    <addaction name="actionRemove_checked"/>
-    <addaction name="actionDelete_checked"/>
-    <addaction name="actionQuit"/>
+    <addaction name="menuAddFiles"/>
+    <addaction name="menuRemoveAllFiles"/>
+    <addaction name="menuEncryptList"/>
+    <addaction name="menuDecryptList"/>
+    <addaction name="menuAbortJob"/>
+    <addaction name="menuQuit"/>
    </widget>
-   <widget class="QMenu" name="menuList">
+   <widget class="QMenu" name="menuLog">
     <property name="title">
-     <string>List</string>
+     <string>Logs</string>
     </property>
-    <addaction name="actionLoadList"/>
-    <addaction name="actionSave_item_list"/>
-    <addaction name="actionRefresh_view"/>
-    <addaction name="actionAuto_resize_columns"/>
+    <addaction name="menuSaveLogs"/>
+    <addaction name="menuSelectAll"/>
+    <addaction name="menuClearLogView"/>
+    <addaction name="menuQuit3"/>
    </widget>
    <widget class="QMenu" name="menuConfig">
     <property name="title">
@@ -341,28 +261,42 @@
       <string>Language</string>
      </property>
     </widget>
-    <addaction name="actionConfiguration"/>
-    <addaction name="actionView_Button_Toolbar"/>
-    <addaction name="actionDark_Theme"/>
+    <addaction name="menuConfiguration"/>
+    <addaction name="menuViewButtonToolbar"/>
+    <addaction name="menuDarkTheme"/>
     <addaction name="menuLanguage"/>
    </widget>
    <widget class="QMenu" name="menuPassword_Generator">
     <property name="title">
      <string>Utils</string>
     </property>
-    <addaction name="actionPassword_Generator"/>
-    <addaction name="actionHash_Calculator"/>
-    <addaction name="actionArgon2_tests"/>
+    <addaction name="menuPassGenerator"/>
+    <addaction name="menuHashCalculator"/>
+    <addaction name="menuArgon2Tests"/>
    </widget>
    <widget class="QMenu" name="menuInfos">
     <property name="title">
      <string>Infos</string>
     </property>
-    <addaction name="actionAbout_Arsenic"/>
-    <addaction name="actionAbout_Qt"/>
+    <addaction name="menuAboutArsenic"/>
+    <addaction name="menuAboutQt"/>
+   </widget>
+   <widget class="QMenu" name="menuCryptopad">
+    <property name="title">
+     <string>Cryptopad</string>
+    </property>
+    <addaction name="menuOpenTxt"/>
+    <addaction name="menuSaveTxt"/>
+    <addaction name="menuSaveTxtAs"/>
+    <addaction name="menuClearEditor"/>
+    <addaction name="separator"/>
+    <addaction name="menuEncryptTxt"/>
+    <addaction name="menuDecryptTxt"/>
+    <addaction name="menuQuit2"/>
    </widget>
    <addaction name="menuFile"/>
-   <addaction name="menuList"/>
+   <addaction name="menuCryptopad"/>
+   <addaction name="menuLog"/>
    <addaction name="menuConfig"/>
    <addaction name="menuPassword_Generator"/>
    <addaction name="menuInfos"/>
@@ -387,15 +321,14 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionAdd_File"/>
-   <addaction name="actionAdd_Directory"/>
-   <addaction name="actionConfiguration"/>
-   <addaction name="actionPassword_Generator"/>
-   <addaction name="actionHash_Calculator"/>
-   <addaction name="actionAbout_Arsenic"/>
-   <addaction name="actionQuit"/>
+   <addaction name="menuAddFiles"/>
+   <addaction name="menuConfiguration"/>
+   <addaction name="menuPassGenerator"/>
+   <addaction name="menuHashCalculator"/>
+   <addaction name="menuAboutArsenic"/>
+   <addaction name="menuQuit"/>
   </widget>
-  <action name="actionAdd_File">
+  <action name="menuAddFiles">
    <property name="icon">
     <iconset resource="rsc.qrc">
      <normaloff>:/pixmaps/file-plus-outline.svg</normaloff>:/pixmaps/file-plus-outline.svg</iconset>
@@ -404,21 +337,12 @@
     <string>Add File(s)</string>
    </property>
   </action>
-  <action name="actionAdd_Directory">
-   <property name="icon">
-    <iconset resource="rsc.qrc">
-     <normaloff>:/pixmaps/folder-plus-outline.svg</normaloff>:/pixmaps/folder-plus-outline.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Add Directory</string>
-   </property>
-  </action>
   <action name="actionLoadList">
    <property name="text">
     <string>Load item list</string>
    </property>
   </action>
-  <action name="actionQuit">
+  <action name="menuQuit">
    <property name="icon">
     <iconset resource="rsc.qrc">
      <normaloff>:/pixmaps/close-outline.svg</normaloff>:/pixmaps/close-outline.svg</iconset>
@@ -427,14 +351,14 @@
     <string>Quit</string>
    </property>
   </action>
-  <action name="actionSave_item_list">
+  <action name="menuSaveLogs">
    <property name="text">
-    <string>Save item list</string>
+    <string>Save as txt file</string>
    </property>
   </action>
-  <action name="actionRefresh_view">
+  <action name="menuSelectAll">
    <property name="text">
-    <string>Refresh view</string>
+    <string>Select All</string>
    </property>
   </action>
   <action name="actionRemove_checked">
@@ -465,7 +389,7 @@
     <string>Auto resize columns</string>
    </property>
   </action>
-  <action name="actionConfiguration">
+  <action name="menuConfiguration">
    <property name="icon">
     <iconset resource="rsc.qrc">
      <normaloff>:/pixmaps/settings-outline.svg</normaloff>:/pixmaps/settings-outline.svg</iconset>
@@ -474,7 +398,7 @@
     <string>Configuration</string>
    </property>
   </action>
-  <action name="actionPassword_Generator">
+  <action name="menuPassGenerator">
    <property name="icon">
     <iconset resource="rsc.qrc">
      <normaloff>:/pixmaps/alpha-g-circle-outline.svg</normaloff>:/pixmaps/alpha-g-circle-outline.svg</iconset>
@@ -483,7 +407,7 @@
     <string>Pass Generator</string>
    </property>
   </action>
-  <action name="actionHash_Calculator">
+  <action name="menuHashCalculator">
    <property name="icon">
     <iconset resource="rsc.qrc">
      <normaloff>:/pixmaps/alpha-h-circle-outline.svg</normaloff>:/pixmaps/alpha-h-circle-outline.svg</iconset>
@@ -492,7 +416,7 @@
     <string>Hash Calculator</string>
    </property>
   </action>
-  <action name="actionAbout_Arsenic">
+  <action name="menuAboutArsenic">
    <property name="icon">
     <iconset resource="rsc.qrc">
      <normaloff>:/pixmaps/comment-question-outline.svg</normaloff>:/pixmaps/comment-question-outline.svg</iconset>
@@ -501,12 +425,12 @@
     <string>About</string>
    </property>
   </action>
-  <action name="actionAbout_Qt">
+  <action name="menuAboutQt">
    <property name="text">
     <string>About Qt</string>
    </property>
   </action>
-  <action name="actionArgon2_tests">
+  <action name="menuArgon2Tests">
    <property name="text">
     <string>Argon2 tests</string>
    </property>
@@ -521,7 +445,7 @@
     <string>French</string>
    </property>
   </action>
-  <action name="actionDark_Theme">
+  <action name="menuDarkTheme">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -529,7 +453,7 @@
     <string>Dark Theme</string>
    </property>
   </action>
-  <action name="actionView_Button_Toolbar">
+  <action name="menuViewButtonToolbar">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -537,11 +461,76 @@
     <string>View Button Toolbar</string>
    </property>
   </action>
+  <action name="menuOpenTxt">
+   <property name="text">
+    <string>Open Txt File</string>
+   </property>
+  </action>
+  <action name="menuSaveTxt">
+   <property name="text">
+    <string>Save Txt File</string>
+   </property>
+  </action>
+  <action name="menuEncryptTxt">
+   <property name="text">
+    <string>Encrypt Editor</string>
+   </property>
+  </action>
+  <action name="menuDecryptTxt">
+   <property name="text">
+    <string>Decrypt Editor</string>
+   </property>
+  </action>
+  <action name="menuSaveTxtAs">
+   <property name="text">
+    <string>Save as...</string>
+   </property>
+  </action>
+  <action name="menuClearLogView">
+   <property name="text">
+    <string>Clear Log View</string>
+   </property>
+  </action>
+  <action name="menuQuit2">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="menuQuit3">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="menuClearEditor">
+   <property name="text">
+    <string>Clear Editor</string>
+   </property>
+  </action>
+  <action name="menuEncryptList">
+   <property name="text">
+    <string>Encrypt List</string>
+   </property>
+  </action>
+  <action name="menuDecryptList">
+   <property name="text">
+    <string>Decrypt List</string>
+   </property>
+  </action>
+  <action name="menuAbortJob">
+   <property name="text">
+    <string>Abort Job</string>
+   </property>
+  </action>
+  <action name="menuRemoveAllFiles">
+   <property name="text">
+    <string>Remove All Files From List</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <tabstops>
-  <tabstop>encrypt</tabstop>
-  <tabstop>decrypt</tabstop>
+  <tabstop>pushEncrypt</tabstop>
+  <tabstop>pushDecrypt</tabstop>
   <tabstop>password_0</tabstop>
   <tabstop>password_1</tabstop>
  </tabstops>

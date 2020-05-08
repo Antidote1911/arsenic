@@ -6,6 +6,8 @@
 #include <QDebug>
 #include <QCommandLineParser>
 #include <QTranslator>
+#include "crypto.h"
+#include "Config.h"
 
 #include "constants.h"
 
@@ -35,9 +37,6 @@ int main(int argc, char *argv[])
     QCommandLineOption decryptOption("d", QCoreApplication::translate("main", "Decrypt the file"));
     parser.addOption(decryptOption);
 
-    QCommandLineOption NameOption(QStringList() << "n" << "name"<< "name", QCoreApplication::translate("main", "The user name or e-mail."),QCoreApplication::translate("main", "name"));
-    parser.addOption(NameOption);
-
     QCommandLineOption passphraseOption(QStringList() << "p" << "passphrase"<< "pass", QCoreApplication::translate("main", "The passphrase for encrypt or decrypt <source>."),QCoreApplication::translate("main", "passphrase"));
     parser.addOption(passphraseOption);
 
@@ -55,7 +54,6 @@ int main(int argc, char *argv[])
         const auto passphrase = parser.value(passphraseOption);
         const auto enc        = parser.isSet(encryptOption);
         const auto dec        = parser.isSet(decryptOption);
-        const auto name       = parser.value(NameOption);
 
         if (enc && dec)
         {
@@ -69,24 +67,38 @@ int main(int argc, char *argv[])
             return (0);
         }
 
-        if (enc && name == "")
-        {
-            cout << "For encryption you must specify user name with -n option" << endl;
-            return (0);
-        }
-
-        if (enc && name != "")
+        if (enc)
         {
 
+            Crypto_Thread Crypto ;
             //resultat = encrypt(targetFile, passphrase, name);
+            QStringList listFiles;
+            listFiles.append(targetFile);
+            Crypto.setParam(true,
+                             listFiles,
+                             passphrase,
+                             config()->get("CRYPTO/cryptoAlgo").toString(),
+                             config()->get("CRYPTO/argonMemory").toInt(),
+                             config()->get("CRYPTO/argonItr").toInt(),
+                             false);
+
+            Crypto.start();
             cout << endl << resultat << endl;
             return (0);
         }
 
         if (dec)
         {
-            //resultat = decrypt(targetFile, passphrase);
-            cout << endl << resultat << endl;
+            Crypto_Thread Crypto ;
+            QStringList listFiles;
+            listFiles.append(targetFile);
+            Crypto.setParam(false,
+                             listFiles,
+                             passphrase,
+                             config()->get("CRYPTO/cryptoAlgo").toString(),
+                             config()->get("CRYPTO/argonMemory").toInt(),
+                             config()->get("CRYPTO/argonItr").toInt(),
+                             false);
             return (0);
         }
         cout << "Invalids or no arguments" << endl;
@@ -94,14 +106,8 @@ int main(int argc, char *argv[])
     }
     else
     {
-
-
         MainWindow w;
         w.session();
         return app.exec();
     }
-
-
-
-
 }
