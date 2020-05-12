@@ -88,7 +88,6 @@ MainWindow::MainWindow(QWidget *parent) :
     //ui->password_0->setMaxLength(crypto_secretbox_KEYBYTES);
     //ui->password_1->setMaxLength(crypto_secretbox_KEYBYTES);
 
-    m_ui->encrypt_filename->setMaxLength(ARs::MAX_ENCRYPT_NAME_LENGTH);
     m_ui->actionAuto_resize_columns->setChecked(true);
 
 	// create the temp directory and session.qtlist if they don't exist already

@@ -47,14 +47,12 @@
 <context>
     <name>AbstractBarDialog</name>
     <message>
-        <location filename="../abstractbarDialog.ui" line="14"/>
         <source>Dialog</source>
-        <translation type="unfinished">Arsenic Générateur de mot de passe</translation>
+        <translation type="obsolete">Arsenic Générateur de mot de passe</translation>
     </message>
     <message>
-        <location filename="../abstractbarDialog.ui" line="47"/>
         <source>Cancel</source>
-        <translation type="unfinished">Annuler</translation>
+        <translation type="obsolete">Annuler</translation>
     </message>
 </context>
 <context>
@@ -175,44 +173,46 @@
         <translation type="unfinished">Général</translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="26"/>
         <source>Extension for Arsenic files:</source>
-        <translation type="unfinished">Extension pour les fichiers chiffrés :</translation>
+        <translation type="obsolete">Extension pour les fichiers chiffrés :</translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="33"/>
         <source>E-mail or pseudo</source>
-        <translation type="unfinished">Email ou pseudo</translation>
+        <translation type="obsolete">Email ou pseudo</translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="40"/>
+        <location filename="../configDialog.ui" line="42"/>
         <source>Empty clopboard after</source>
         <translation type="unfinished">Vider le presse papier aprés</translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="50"/>
+        <location filename="../configDialog.ui" line="26"/>
         <source> sec</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="101"/>
+        <location filename="../configDialog.ui" line="65"/>
         <source>Passphrase derivation</source>
         <translation type="unfinished">Dérivation du mot de passe par Argon2</translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="107"/>
+        <location filename="../configDialog.ui" line="71"/>
         <source>Iterations</source>
         <translation type="unfinished">Iterations</translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="136"/>
+        <location filename="../configDialog.ui" line="122"/>
         <source>Memory Limit:</source>
         <translation type="unfinished">Limite Mémoire :</translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="181"/>
+        <location filename="../configDialog.ui" line="145"/>
+        <source>Files Encryption Algorithm</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Encryption Algorithm</source>
-        <translation type="unfinished">Algorithme de chiffrage</translation>
+        <translation type="obsolete">Algorithme de chiffrage</translation>
     </message>
     <message>
         <location filename="../configDialog.cpp" line="38"/>
@@ -228,99 +228,79 @@
 <context>
     <name>DecryptBar</name>
     <message>
-        <location filename="../decryptbar.cpp" line="18"/>
         <source>Decrypting...</source>
-        <translation type="unfinished">Déchiffrage...</translation>
+        <translation type="obsolete">Déchiffrage...</translation>
     </message>
     <message>
-        <location filename="../decryptbar.cpp" line="21"/>
         <source>Stop execution?</source>
-        <translation type="unfinished">Stopper l&apos;execution ?</translation>
+        <translation type="obsolete">Stopper l&apos;execution ?</translation>
     </message>
     <message>
-        <location filename="../decryptbar.cpp" line="22"/>
         <source>Are you sure you want to stop decrypting?</source>
-        <translation type="unfinished">Etes-vous certain de vouloir stopper le déchiffrage ?</translation>
+        <translation type="obsolete">Etes-vous certain de vouloir stopper le déchiffrage ?</translation>
     </message>
     <message>
-        <location filename="../decryptbar.cpp" line="32"/>
         <source>Decrypting list...</source>
-        <translation type="unfinished">Déchiffrage de la liste ...</translation>
+        <translation type="obsolete">Déchiffrage de la liste ...</translation>
     </message>
     <message>
-        <location filename="../decryptbar.cpp" line="56"/>
         <source>Decryption interrupted!</source>
-        <translation type="unfinished">Déchiffrage interrompu !</translation>
+        <translation type="obsolete">Déchiffrage interrompu !</translation>
     </message>
     <message>
-        <location filename="../decryptbar.cpp" line="59"/>
         <source>The decryption process was interrupted. Some files or directories might not have been finished. Click below to show details.</source>
-        <translation type="unfinished">Le déchiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
+        <translation type="obsolete">Le déchiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
     </message>
     <message>
-        <location filename="../decryptbar.cpp" line="68"/>
-        <location filename="../decryptbar.cpp" line="122"/>
         <source>No existing items were found!</source>
-        <translation type="unfinished">Pas de fichier trouvé !</translation>
+        <translation type="obsolete">Pas de fichier trouvé !</translation>
     </message>
     <message>
-        <location filename="../decryptbar.cpp" line="111"/>
         <source>Decryption finished!</source>
-        <translation type="unfinished">Déchiffrage fini !</translation>
+        <translation type="obsolete">Déchiffrage fini !</translation>
     </message>
     <message>
-        <location filename="../decryptbar.cpp" line="114"/>
         <source>The decryption process was finished. Click below to show details.</source>
-        <translation type="unfinished">Le déchiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
+        <translation type="obsolete">Le déchiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
     </message>
 </context>
 <context>
     <name>EncryptBar</name>
     <message>
-        <location filename="../encryptbar.cpp" line="24"/>
         <source>Encrypting...</source>
-        <translation type="unfinished">Chiffrage...</translation>
+        <translation type="obsolete">Chiffrage...</translation>
     </message>
     <message>
-        <location filename="../encryptbar.cpp" line="27"/>
         <source>Stop execution?</source>
-        <translation type="unfinished">Stopper l&apos;execution ?</translation>
+        <translation type="obsolete">Stopper l&apos;execution ?</translation>
     </message>
     <message>
-        <location filename="../encryptbar.cpp" line="28"/>
         <source>Are you sure you want to stop encrypting?</source>
-        <translation type="unfinished">Etes-vous certain de vouloir stopper le chiffrage ?</translation>
+        <translation type="obsolete">Etes-vous certain de vouloir stopper le chiffrage ?</translation>
     </message>
     <message>
-        <location filename="../encryptbar.cpp" line="38"/>
         <source>Encrypting list...</source>
-        <translation type="unfinished">Chiffrage de la liste ...</translation>
+        <translation type="obsolete">Chiffrage de la liste ...</translation>
     </message>
     <message>
-        <location filename="../encryptbar.cpp" line="70"/>
         <source>Encryption interrupted!</source>
-        <translation type="unfinished">Chiffrage interrompu !</translation>
+        <translation type="obsolete">Chiffrage interrompu !</translation>
     </message>
     <message>
-        <location filename="../encryptbar.cpp" line="73"/>
         <source>The encryption process was interrupted. Some files or directories might not have been finished. Click below to show details.</source>
-        <translation type="unfinished">Le chiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
+        <translation type="obsolete">Le chiffrage à été interompu. Cliquez plus bas pour plus de détails.</translation>
     </message>
     <message>
-        <location filename="../encryptbar.cpp" line="82"/>
-        <location filename="../encryptbar.cpp" line="144"/>
         <source>No existing items were found!</source>
-        <translation type="unfinished">Pas de fichier trouvé !</translation>
+        <translation type="obsolete">Pas de fichier trouvé !</translation>
     </message>
     <message>
-        <location filename="../encryptbar.cpp" line="133"/>
         <source>Encryption finished!</source>
-        <translation type="unfinished">Chiffrage fini !</translation>
+        <translation type="obsolete">Chiffrage fini !</translation>
     </message>
     <message>
-        <location filename="../encryptbar.cpp" line="136"/>
         <source>The encryption process was finished. Click below to show details.</source>
-        <translation type="unfinished">Le chiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
+        <translation type="obsolete">Le chiffrage est terminé. Cliquez plus bas pour plus de détails.</translation>
     </message>
 </context>
 <context>
@@ -361,12 +341,12 @@
         <translation>Copier</translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="85"/>
+        <location filename="../hashcheckdialog.cpp" line="63"/>
         <source>Load file...</source>
         <translation>Ouvrir fichier...</translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="179"/>
+        <location filename="../hashcheckdialog.cpp" line="148"/>
         <source>error</source>
         <translation>erreur</translation>
     </message>
@@ -374,349 +354,533 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../mainwindow.ui" line="39"/>
         <source>Add file(s)...</source>
-        <translation type="unfinished">Ajouter fichier...</translation>
+        <translation type="obsolete">Ajouter fichier...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="50"/>
         <source>Add directory...</source>
-        <translation type="unfinished">Ajouter dossier...</translation>
+        <translation type="obsolete">Ajouter dossier...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="61"/>
-        <location filename="../mainwindow.ui" line="365"/>
+        <location filename="../mainwindow.ui" line="366"/>
         <source>Remove checked</source>
         <translation type="unfinished">Enlever selection</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="68"/>
-        <location filename="../mainwindow.ui" line="370"/>
+        <location filename="../mainwindow.ui" line="371"/>
         <source>Delete checked</source>
         <translation type="unfinished">Supprimer selection</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="88"/>
-        <location filename="../mainwindow.ui" line="375"/>
+        <location filename="../mainwindow.ui" line="376"/>
         <source>Check All</source>
         <translation type="unfinished">Selectionner tout</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="95"/>
         <source>UnCheck All</source>
-        <translation type="unfinished">Deselctionner tout</translation>
+        <translation type="obsolete">Deselctionner tout</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="130"/>
+        <location filename="../mainwindow.ui" line="167"/>
         <source>Password:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="150"/>
+        <location filename="../mainwindow.ui" line="200"/>
         <source>Confirm:</source>
         <translation type="unfinished">Confirmation:</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="157"/>
+        <location filename="../mainwindow.ui" line="218"/>
         <source>View Pass</source>
         <translation type="unfinished">Voir/cacher</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="164"/>
+        <location filename="../mainwindow.ui" line="207"/>
         <source>Generator</source>
         <translation type="unfinished">Generateur</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="186"/>
+        <location filename="../mainwindow.ui" line="25"/>
+        <location filename="../mainwindow.ui" line="237"/>
+        <source>Files Encryption</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="52"/>
         <source>Incremental Rename encrypted item(s) to:</source>
         <translation type="unfinished">Renomer les fichiers chiffrés de maniére incrementale:</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="210"/>
+        <location filename="../mainwindow.ui" line="83"/>
         <source>Delete original item after encryption/decryption</source>
         <translation type="unfinished">Supprimer les originaux aprés chiffrage ou déchiffrage</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="217"/>
+        <location filename="../mainwindow.ui" line="90"/>
+        <location filename="../mainwindow.ui" line="135"/>
         <source>Encrypt</source>
         <translation type="unfinished">Chiffrer</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="228"/>
+        <location filename="../mainwindow.ui" line="101"/>
+        <location filename="../mainwindow.ui" line="142"/>
         <source>Decrypt</source>
         <translation type="unfinished">Déchiffrer</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="247"/>
         <source>File</source>
-        <translation type="unfinished">Fichier</translation>
+        <translation type="obsolete">Fichier</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="259"/>
         <source>List</source>
-        <translation type="unfinished">Liste</translation>
+        <translation type="obsolete">Liste</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="268"/>
+        <location filename="../mainwindow.ui" line="257"/>
         <source>Config</source>
         <translation type="unfinished">Configuration</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="272"/>
+        <location filename="../mainwindow.ui" line="261"/>
         <source>Language</source>
         <translation type="unfinished">Langage</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="281"/>
+        <location filename="../mainwindow.ui" line="271"/>
         <source>Utils</source>
         <translation type="unfinished">Outils</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="289"/>
+        <location filename="../mainwindow.ui" line="279"/>
         <source>Infos</source>
         <translation type="unfinished">Infos</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="303"/>
+        <location filename="../mainwindow.ui" line="286"/>
+        <source>Cryptopad</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="307"/>
         <source>toolBar</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="327"/>
+        <location filename="../mainwindow.ui" line="337"/>
+        <location filename="../mainwindow.cpp" line="321"/>
         <source>Add File(s)</source>
         <translation type="unfinished">Ajouter fichier(s)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="336"/>
         <source>Add Directory</source>
-        <translation type="unfinished">Ajouter dossier</translation>
+        <translation type="obsolete">Ajouter dossier</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="341"/>
+        <location filename="../mainwindow.ui" line="342"/>
         <source>Load item list</source>
         <translation type="unfinished">Ouvrir liste</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="350"/>
+        <location filename="../mainwindow.ui" line="351"/>
+        <location filename="../mainwindow.ui" line="496"/>
+        <location filename="../mainwindow.ui" line="501"/>
         <source>Quit</source>
         <translation type="unfinished">Quitter</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="355"/>
         <source>Save item list</source>
-        <translation type="unfinished">Sauver liste</translation>
+        <translation type="obsolete">Sauver liste</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="360"/>
         <source>Refresh view</source>
-        <translation type="unfinished">Actualiser la vue</translation>
+        <translation type="obsolete">Actualiser la vue</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="380"/>
+        <location filename="../mainwindow.ui" line="381"/>
         <source>Uncheck All</source>
         <translation type="unfinished">Deselctionner tout</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="388"/>
+        <location filename="../mainwindow.ui" line="389"/>
         <source>Auto resize columns</source>
         <translation type="unfinished">Redimensionement auto des colonnes</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="397"/>
+        <location filename="../mainwindow.ui" line="398"/>
         <source>Configuration</source>
         <translation type="unfinished">Configuration</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="406"/>
+        <location filename="../mainwindow.ui" line="407"/>
         <source>Pass Generator</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="411"/>
+        <location filename="../mainwindow.ui" line="416"/>
         <source>Hash Calculator</source>
         <translation type="unfinished">Calculateur de hash</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="420"/>
+        <location filename="../mainwindow.ui" line="425"/>
         <source>About</source>
         <translation type="unfinished">A Propos</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="425"/>
-        <location filename="../mainwindow.cpp" line="179"/>
+        <location filename="../mainwindow.ui" line="430"/>
         <source>About Qt</source>
         <translation type="unfinished">A propos de Qt</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="430"/>
+        <location filename="../mainwindow.ui" line="435"/>
         <source>Argon2 tests</source>
         <translation type="unfinished">Tests Argon2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="438"/>
+        <location filename="../mainwindow.ui" line="453"/>
         <source>Dark Theme</source>
         <translation type="unfinished">Theme Sombre</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="443"/>
+        <location filename="../mainwindow.ui" line="461"/>
+        <source>View Button Toolbar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="466"/>
+        <source>Open Txt File</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="471"/>
+        <source>Save Txt File</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="476"/>
+        <source>Encrypt Editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="481"/>
+        <source>Decrypt Editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="486"/>
+        <source>Save as...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="491"/>
+        <source>Clear Log View</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="506"/>
+        <source>Clear Editor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="511"/>
+        <source>Encrypt List</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="516"/>
+        <source>Decrypt List</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="521"/>
+        <source>Abort Job</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="526"/>
+        <source>Remove All Files From List</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="440"/>
         <source>English</source>
         <translation type="unfinished">Anglais</translation>
     </message>
     <message>
-        <location filename="../mainwindow.ui" line="448"/>
+        <location filename="../mainwindow.ui" line="111"/>
+        <source>CryptoPad</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="152"/>
+        <location filename="../mainwindow.ui" line="248"/>
+        <source>Logs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="356"/>
+        <source>Save as txt file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="361"/>
+        <source>Select All</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="445"/>
         <source>French</source>
         <translation type="unfinished">Français</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="118"/>
+        <location filename="../mainwindow.cpp" line="289"/>
+        <source>Remove File</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="290"/>
+        <source>Name</source>
+        <translation type="unfinished">Nom</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="291"/>
+        <source>Path</source>
+        <translation type="unfinished">Chemin</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="292"/>
+        <source>Size</source>
+        <translation type="unfinished">Taille</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="293"/>
+        <source>Progress</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="446"/>
         <source>Access error for config file %1</source>
         <translation type="unfinished">Impossible de lire le fichier de configuration %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="119"/>
+        <location filename="../mainwindow.cpp" line="447"/>
         <source>Could not load configuration</source>
         <translation type="unfinished">Impossible de lire la configuration</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="308"/>
+        <location filename="../mainwindow.cpp" line="700"/>
+        <source>Read Error !</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="701"/>
+        <source>Cannot read file %1:
+%2.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="716"/>
+        <source>File loaded</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="735"/>
+        <source>Write Error !</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="736"/>
+        <source>Cannot write file %1:
+%2.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="752"/>
+        <source>File saved</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="762"/>
+        <source>Application</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="763"/>
+        <source>The document has been modified.
+Do you want to save your changes?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="800"/>
+        <location filename="../mainwindow.cpp" line="875"/>
+        <source>Text editor is empty !</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="800"/>
+        <source>You must add text to editor for encrypt it !</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="805"/>
+        <location filename="../mainwindow.cpp" line="865"/>
+        <source>Passphrase field is empty !</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="805"/>
+        <location filename="../mainwindow.cpp" line="865"/>
+        <source>You must enter a passphrase.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="810"/>
+        <location filename="../mainwindow.cpp" line="860"/>
+        <source>Passphrase do not match!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="810"/>
+        <location filename="../mainwindow.cpp" line="860"/>
+        <source>The passphrase fields do not match. Please make sure they were entered correctly and try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="823"/>
+        <source>Encryption Error!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="850"/>
+        <source>Decryption Error!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="870"/>
+        <source>Job list is empty !</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="870"/>
+        <source>You must add file(s) to the job list to start processing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="875"/>
+        <source>You must add text to editor to start processing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>The password entered was too short. </source>
-        <translation type="unfinished">Le mot de passe est trop court. </translation>
+        <translation type="obsolete">Le mot de passe est trop court. </translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="318"/>
         <source>There were no items selected for </source>
-        <translation type="unfinished">Il n&apos;y a rien de selectionné pour </translation>
+        <translation type="obsolete">Il n&apos;y a rien de selectionné pour </translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="320"/>
         <source>Nothing selected!</source>
-        <translation type="unfinished">Rien de Selectionné !</translation>
+        <translation type="obsolete">Rien de Selectionné !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="337"/>
         <source>No user name</source>
-        <translation type="unfinished">Pas de nom d&apos;utilisateur</translation>
+        <translation type="obsolete">Pas de nom d&apos;utilisateur</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="337"/>
         <source>You must set a user name or e-mail in configuration !</source>
-        <translation type="unfinished">Vous devez entrer un email ou nom d&apos;utilisateur dans le menu de configuration !</translation>
+        <translation type="obsolete">Vous devez entrer un email ou nom d&apos;utilisateur dans le menu de configuration !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="367"/>
         <source>Passwords do not match!</source>
-        <translation type="unfinished">Les mots de passes ne corespondent pas !</translation>
+        <translation type="obsolete">Les mots de passes ne corespondent pas !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="367"/>
         <source>The password fields do not match! Please make sure they were entered correctly and try again.</source>
-        <translation type="unfinished">Les mots de passe ne corespondent pas ! Merci de verifier.</translation>
+        <translation type="obsolete">Les mots de passe ne corespondent pas ! Merci de verifier.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="377"/>
         <source>Open File(s)</source>
-        <translation type="unfinished">Ouvrir Fichier(s)</translation>
+        <translation type="obsolete">Ouvrir Fichier(s)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="407"/>
         <source>File(s) already added!</source>
-        <translation type="unfinished">Fichier(s) deja ajouté !</translation>
+        <translation type="obsolete">Fichier(s) deja ajouté !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="408"/>
         <source>The following file(s) were already added. They will not be added again.</source>
-        <translation type="unfinished">Ces fichiers sont déja dans la liste. Ils ne seronts pas ajoutés.</translation>
+        <translation type="obsolete">Ces fichiers sont déja dans la liste. Ils ne seronts pas ajoutés.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="432"/>
         <source>Open Directory</source>
-        <translation type="unfinished">Ouvrir Dossier</translation>
+        <translation type="obsolete">Ouvrir Dossier</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="444"/>
         <source>Can&apos;t add a root directory!</source>
-        <translation type="unfinished">Impossible d&apos;ajouter un dossier systeme !</translation>
+        <translation type="obsolete">Impossible d&apos;ajouter un dossier systeme !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="445"/>
         <source>The root directory (</source>
-        <translation type="unfinished">Le dossier root (</translation>
+        <translation type="obsolete">Le dossier root (</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="445"/>
-        <location filename="../mainwindow.cpp" line="456"/>
         <source>) cannot be added.</source>
-        <translation type="unfinished">) ne peut être ajouté.</translation>
+        <translation type="obsolete">) ne peut être ajouté.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="455"/>
         <source>Can&apos;t add empty directory!</source>
-        <translation type="unfinished">Impossible d&apos;ajouter un dossier vide !</translation>
+        <translation type="obsolete">Impossible d&apos;ajouter un dossier vide !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="456"/>
         <source>The directory (</source>
-        <translation type="unfinished">Le dossier (</translation>
+        <translation type="obsolete">Le dossier (</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="467"/>
         <source>Directory already added!</source>
-        <translation type="unfinished">Dossier deja ajouté !</translation>
+        <translation type="obsolete">Dossier deja ajouté !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="468"/>
         <source>The following directory was already added. It will not be added again.</source>
-        <translation type="unfinished">Ce dossier est déja dans la liste. Il ne sera pas ajoutés.</translation>
+        <translation type="obsolete">Ce dossier est déja dans la liste. Il ne sera pas ajoutés.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="486"/>
         <source>Directory makes item(s) redundant!</source>
-        <translation type="unfinished">L&apos;ajout du dossier créer des fichiers redondants !</translation>
+        <translation type="obsolete">L&apos;ajout du dossier créer des fichiers redondants !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="487"/>
         <source>The directory chosen (</source>
-        <translation type="unfinished">Le dossier (</translation>
+        <translation type="obsolete">Le dossier (</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="487"/>
         <source>) contains item(s) inside it that were added previously. If you add this new directory, the following redundant items will be removed.</source>
-        <translation type="unfinished">) contient des fichiers qui ont déja étés ajoutés. Si vous l&apos;ajoutez, les fichiers redondants seront retirés de la liste.</translation>
+        <translation type="obsolete">) contient des fichiers qui ont déja étés ajoutés. Si vous l&apos;ajoutez, les fichiers redondants seront retirés de la liste.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="597"/>
         <source>Delete items?</source>
-        <translation type="unfinished">Supprimer les fichiers ?</translation>
+        <translation type="obsolete">Supprimer les fichiers ?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="597"/>
         <source>Are you sure you wish to permanently delete the selected items?</source>
-        <translation type="unfinished">Etes-vous certain de vouloir supprimer definitivement les fichiers selectionnés ?</translation>
+        <translation type="obsolete">Etes-vous certain de vouloir supprimer definitivement les fichiers selectionnés ?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="615"/>
         <source>Successfully deleted file!</source>
-        <translation type="unfinished">Le fichier a bien été supprimé !</translation>
+        <translation type="obsolete">Le fichier a bien été supprimé !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="618"/>
         <source>Error deleting file!</source>
-        <translation type="unfinished">Erreur de suppression du fichier !</translation>
+        <translation type="obsolete">Erreur de suppression du fichier !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="625"/>
         <source>Successfully deleted directory!</source>
-        <translation type="unfinished">Le dossier à bien été supprimé !</translation>
+        <translation type="obsolete">Le dossier à bien été supprimé !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="628"/>
         <source>Error deleting directory!</source>
-        <translation type="unfinished">Erreur de suppression du dossier !</translation>
+        <translation type="obsolete">Erreur de suppression du dossier !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="633"/>
         <source>Item was not found!</source>
-        <translation type="unfinished">Fichier introuvable !</translation>
+        <translation type="obsolete">Fichier introuvable !</translation>
     </message>
 </context>
 <context>
@@ -1618,84 +1782,68 @@
         <translation type="vanished">Taille</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="95"/>
         <source>The encrypted file was not found!</source>
-        <translation>Impossible de trouver le fichier chiffré !</translation>
+        <translation type="vanished">Impossible de trouver le fichier chiffré !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="99"/>
         <source>The file could not be opened for reading!</source>
-        <translation>Le fichier ne peu pas être ouvert en lecture !</translation>
+        <translation type="vanished">Le fichier ne peu pas être ouvert en lecture !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="103"/>
         <source>The encrypted file header could not be read!</source>
-        <translation>Impossible de lire l&apos;entête du fichier chiffré !</translation>
+        <translation type="vanished">Impossible de lire l&apos;entête du fichier chiffré !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="107"/>
         <source>The password could not be hashed!</source>
-        <translation>Impossible de hasher le mot de passe !</translation>
+        <translation type="vanished">Impossible de hasher le mot de passe !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="111"/>
         <source>The encrypted file header could not be decrypted! Password is most likely incorrect or the header has been modified.</source>
-        <translation>Impossible de déchifrer l&apos;entête. Le mot de passe est incorect ou l&apos;entête a été altérée.</translation>
+        <translation type="vanished">Impossible de déchifrer l&apos;entête. Le mot de passe est incorect ou l&apos;entête a été altérée.</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="116"/>
         <source>The decrypted file already exists!</source>
-        <translation>Le fichier déchiffré existe déja !</translation>
+        <translation type="vanished">Le fichier déchiffré existe déja !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="120"/>
         <source>The file could not be opened for writing!</source>
-        <translation>Impossible d&apos;ouvrir le fichier en écriture !</translation>
+        <translation type="vanished">Impossible d&apos;ouvrir le fichier en écriture !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="124"/>
         <source>There was an error reading the encrypted file&apos;s data!</source>
-        <translation>Impossible de lire les données !</translation>
+        <translation type="vanished">Impossible de lire les données !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="128"/>
         <source>The encrypted file&apos;s size is invalid!</source>
-        <translation>La taille du fichier chiffré est invalide !</translation>
+        <translation type="vanished">La taille du fichier chiffré est invalide !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="132"/>
         <source>The encrypted file&apos;s data could not be decrypted! The data has most likely been modified.</source>
-        <translation>Impossible de déchifrer le fichier. Le mot de passe est incorect ou les données ont étés altérées.</translation>
+        <translation type="vanished">Impossible de déchifrer le fichier. Le mot de passe est incorect ou les données ont étés altérées.</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="137"/>
         <source>The decrypted file could not be written to!</source>
-        <translation>Impossible d&apos;écrire le fichier déchiffré !</translation>
+        <translation type="vanished">Impossible d&apos;écrire le fichier déchiffré !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="141"/>
         <source>The file or directory was successfully encrypted!</source>
-        <translation>Le fichier a été correctemment chiffré !</translation>
+        <translation type="vanished">Le fichier a été correctemment chiffré !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="145"/>
         <source>The file or directory was successfully decrypted!</source>
-        <translation>Le fichier a été correctemment déchiffré !</translation>
+        <translation type="vanished">Le fichier a été correctemment déchiffré !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="149"/>
         <source>The intermediate file could not be unzipped!</source>
-        <translation>Le fichier intremediaire ne peu être dézipé !</translation>
+        <translation type="vanished">Le fichier intremediaire ne peu être dézipé !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="153"/>
         <source>The file or directory was skipped!</source>
-        <translation>Le fichier ou dossier a été sauté !</translation>
+        <translation type="vanished">Le fichier ou dossier a été sauté !</translation>
     </message>
     <message>
-        <location filename="../divers.cpp" line="157"/>
         <source>The item wasn&apos;t a Arsenic file!</source>
-        <translation>Le fichier n&apos;est pas un fichier Arsenic !</translation>
+        <translation type="vanished">Le fichier n&apos;est pas un fichier Arsenic !</translation>
     </message>
 </context>
 <context>
@@ -1716,22 +1864,20 @@
         <translation>Déchiffre le fichier</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="40"/>
         <source>The user name or e-mail.</source>
-        <translation>Nom d&apos;utilisateur, pseudo ou e-mail.</translation>
+        <translation type="vanished">Nom d&apos;utilisateur, pseudo ou e-mail.</translation>
+    </message>
+    <message>
+        <source>name</source>
+        <translation type="vanished">nom</translation>
     </message>
     <message>
         <location filename="../main.cpp" line="40"/>
-        <source>name</source>
-        <translation>nom</translation>
-    </message>
-    <message>
-        <location filename="../main.cpp" line="43"/>
         <source>The passphrase for encrypt or decrypt &lt;source&gt;.</source>
         <translation>Le mot de passe pour chiffrer ou dechiffrer &lt;source&gt;.</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="43"/>
+        <location filename="../main.cpp" line="40"/>
         <source>passphrase</source>
         <translation>Mot de passe</translation>
     </message>
