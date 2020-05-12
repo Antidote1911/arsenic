@@ -70,9 +70,6 @@ int main(int argc, char *argv[])
 
         if (enc)
         {
-
-
-            //resultat = encrypt(targetFile, passphrase, name);
             QStringList listFiles;
             listFiles.append(targetFile);
             Crypto.setParam(true,
