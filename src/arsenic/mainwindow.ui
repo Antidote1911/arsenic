@@ -319,11 +319,6 @@
     <string>Add File(s)</string>
    </property>
   </action>
-  <action name="actionLoadList">
-   <property name="text">
-    <string>Load item list</string>
-   </property>
-  </action>
   <action name="menuQuit">
    <property name="icon">
     <iconset resource="rsc.qrc">
@@ -341,34 +336,6 @@
   <action name="menuSelectAll">
    <property name="text">
     <string>Select All</string>
-   </property>
-  </action>
-  <action name="actionRemove_checked">
-   <property name="text">
-    <string>Remove checked</string>
-   </property>
-  </action>
-  <action name="actionDelete_checked">
-   <property name="text">
-    <string>Delete checked</string>
-   </property>
-  </action>
-  <action name="actionCheck_All">
-   <property name="text">
-    <string>Check All</string>
-   </property>
-  </action>
-  <action name="actionUncheck_All">
-   <property name="text">
-    <string>Uncheck All</string>
-   </property>
-  </action>
-  <action name="actionAuto_resize_columns">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Auto resize columns</string>
    </property>
   </action>
   <action name="menuConfiguration">
@@ -415,16 +382,6 @@
   <action name="menuArgon2Tests">
    <property name="text">
     <string>Argon2 tests</string>
-   </property>
-  </action>
-  <action name="actionEnglish">
-   <property name="text">
-    <string>English</string>
-   </property>
-  </action>
-  <action name="actionFrench">
-   <property name="text">
-    <string>French</string>
    </property>
   </action>
   <action name="menuDarkTheme">

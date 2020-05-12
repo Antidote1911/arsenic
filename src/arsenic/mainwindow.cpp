@@ -88,7 +88,6 @@ MainWindow::MainWindow(QWidget *parent) :
     //ui->password_0->setMaxLength(crypto_secretbox_KEYBYTES);
     //ui->password_1->setMaxLength(crypto_secretbox_KEYBYTES);
 
-    m_ui->actionAuto_resize_columns->setChecked(true);
 
 	// create the temp directory and session.qtlist if they don't exist already
 
@@ -796,17 +795,17 @@ void MainWindow::encryptText()
 {
     if (m_ui->cryptoPadEditor->toPlainText()=="")
     {
-        displayMessageBox(tr("Text editor is empty !"),tr("You must add text to editor for encrypt it !"));
+        displayEmptyEditor();
         return;
     }
     if (m_ui->password_0->text()=="")
     {
-        displayMessageBox(tr("Passphrase field is empty !"),tr("You must enter a passphrase."));
+        displayEmptyPassword();
         return;
     }
     if (m_ui->password_0->text() != m_ui->password_1->text())
     {
-        displayMessageBox(tr("Passphrase do not match!"),tr("The passphrase fields do not match. Please make sure they were entered correctly and try again."));
+        displayPasswordNotMatch();
         return;
     }
 

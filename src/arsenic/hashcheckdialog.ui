@@ -31,6 +31,9 @@
        <property name="acceptDrops">
         <bool>false</bool>
        </property>
+       <property name="placeholderText">
+        <string notr="true"/>
+       </property>
       </widget>
      </item>
      <item>
@@ -224,12 +227,21 @@
        <property name="value">
         <number>0</number>
        </property>
+       <property name="textVisible">
+        <bool>true</bool>
+       </property>
+       <property name="format">
+        <string notr="true">%p%</string>
+       </property>
       </widget>
      </item>
      <item>
       <widget class="QLineEdit" name="checksumEdit">
        <property name="acceptDrops">
         <bool>false</bool>
+       </property>
+       <property name="placeholderText">
+        <string notr="true"/>
        </property>
       </widget>
      </item>
