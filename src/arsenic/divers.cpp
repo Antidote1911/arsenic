@@ -106,7 +106,7 @@ Botan::SecureVector<char> convertStringToSecureVector(QString password)
     return pass_buffer;
 }
 
-QString encryptString(QString plaintext, QString password, QString userName)
+QString encryptString(QString plaintext, QString password)
 {
        /*
         Output format is:
@@ -196,7 +196,7 @@ QString encryptString(QString plaintext, QString password, QString userName)
     return QString::fromStdString(PEM_Code::encode(out_buf, "ARSENIC CRYPTOBOX MESSAGE"));
 }
 
-QString decryptString(QString cipher, QString password, QString userName)
+QString decryptString(QString cipher, QString password)
 {
     const string cipherStr=cipher.toStdString();
     const string pass=password.toStdString();

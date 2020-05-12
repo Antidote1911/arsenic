@@ -20,7 +20,7 @@ Botan::SecureVector<quint8> calculateHash(Botan::SecureVector<char> pass_buffer,
 Botan::SecureVector<char> convertStringToSecureVector(QString password);
 QString errorCodeToString(int error_code);
 
-QString encryptString(QString plaintext,QString password, QString userName);
-QString decryptString(QString ciphertext,QString password, QString userName);
+QString encryptString(QString plaintext,QString password);
+QString decryptString(QString ciphertext,QString password);
 
 #endif // DIVERS_H

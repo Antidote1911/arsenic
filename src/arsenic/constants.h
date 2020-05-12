@@ -13,19 +13,19 @@ namespace ARs  // for Arsenic Preferences
 const QString APP_VERSION            {"2.0"};
 const QString APP_SHORT_NAME         {"Arsenic"};
 const QString APP_LONG_NAME          {"Arsenic "+APP_VERSION};
-const QString APP_DESCRIPTION        {"Strongs files or directory encryption"};
+const QString APP_DESCRIPTION        {"Strongs files encryption"};
 const QString APP_URL                {"https://github.com/Antidote1911"};
 const quint32 MAGIC_NUMBER           {0x41525345};
 
 // Default constants for Arsenic preferences
-const QString DEFAULT_EXTENSION      {"arsenic"};
-const QString DEFAULT_USER_NAME      {""};
+const QString DEFAULT_EXTENSION      {".arsenic"};
 const QString DEFAULT_LANGUAGE       {"en"};
 const QString DEFAULT_LASTDIRECTORY  {""};
-const int DEFAULT_INDEX_TAB                {0};
+const int DEFAULT_INDEX_TAB          {0};
 const int DEFAULT_ARGON_ITR_LIMIT    {0};
 const int DEFAULT_ARGON_MEM_LIMIT    {0};
 const bool DEFAULT_SHOW_PSW          {false};
+const bool DEFAULT_DELETE_FINSHED    {false};
 const bool DEFAULT_DARK_THEME        {false};
 const bool DEFAULT_SHOW_TOOLBAR      {true};
 const bool DEFAULT_CLEAR_CLIPBOARD   {true};

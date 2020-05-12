@@ -183,10 +183,8 @@ void Config::init(const QString& fileName)
     upgrade();
     connect(qApp, &QCoreApplication::aboutToQuit, this, &Config::sync);
 
-    m_defaults.insert("userName", DEFAULT_USER_NAME);
-    m_defaults.insert("extension", DEFAULT_EXTENSION);
-
     m_defaults.insert("GUI/showPassword", DEFAULT_SHOW_PSW);
+    m_defaults.insert("GUI/deleteFinished", DEFAULT_DELETE_FINSHED);
     m_defaults.insert("GUI/darkTheme", DEFAULT_DARK_THEME);
     m_defaults.insert("GUI/Language", DEFAULT_LANGUAGE);
     m_defaults.insert("GUI/showToolbar", DEFAULT_SHOW_TOOLBAR);

@@ -220,7 +220,7 @@ void Crypto_Thread::encrypt(const QString src_path)
 
         // create the new file, the path should normally be to the same directory as the source
 
-        QFile des_file(QDir::cleanPath(src_path)+".enc");
+        QFile des_file(QDir::cleanPath(src_path)+DEFAULT_EXTENSION);
 
         if(des_file.exists())
         {
@@ -293,37 +293,42 @@ void Crypto_Thread::encrypt(const QString src_path)
         ///////////////////////
         emit statusMessage("Encryption... Please wait...");
         //std::unique_ptr<Botan::AEAD_Mode> enc2 = Botan::AEAD_Mode::create("ChaCha20Poly1305", Botan::ENCRYPTION);
+
+        int bytes_read;
+        Botan::SecureVector<uint8_t> buf(10*1024);
+        const int block_size = 10*1024;
+
+        Botan::Sodium::sodium_increment(nonce_buffer.data(), CIPHER_IV_LEN);
         enc->set_key(cipher_key3);
         enc->set_ad(add);
-        Botan::Sodium::sodium_increment(nonce_buffer.data(), CIPHER_IV_LEN);
         enc->start(nonce_buffer);
+
         double processed = 0;
-        while(!src_stream.atEnd() && !aborted)
-        {
-
-                len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), IN_BUFFER_SIZE);
-
-                // increment the nonce, encrypt and write the cipertext to the destination file
-
-                Botan::secure_vector<uint8_t> buf3(main_buffer.begin(), main_buffer.end());
-                if (!src_stream.atEnd())
+        while( !aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char *>(buf.data()), block_size))>0)
                 {
-                    enc->update(buf3);  //65536
-                    des_stream.writeRawData(reinterpret_cast<char *>(buf3.data()), buf3.size());
-                }
 
-                if (src_stream.atEnd())
-                {
-                    enc->finish(buf3);  //65536+16
-                    des_stream.writeRawData(reinterpret_cast<char *>(buf3.data()), buf3.size());
-                }
-
-                // Calculate and display progress in percent
-                processed += len;
-                double p = (processed / filesize) * 100; // calculate percentage proccessed
-                emit updateProgress(src_path,p); // show updated progress
-
+            if (bytes_read<block_size)
+            {
+                buf.resize(bytes_read);
+                enc->finish(buf);
+                des_stream.writeRawData(reinterpret_cast<char *>(buf.data()), buf.size());
             }
+            else
+            {
+                enc->update(buf);  //65536
+                des_stream.writeRawData(reinterpret_cast<char *>(buf.data()), bytes_read);
+
+                // calculate percentage proccessed
+                processed += bytes_read;
+                double p = (processed / filesize) * 100; // calculate percentage proccessed
+                emit updateProgress(src_path,p);
+            }
+
+}
+
+
+
+
         if (aborted)
         {
             emit statusMessage("Encryption aborted by user. The incomplete encrypted file was deleted.");
@@ -495,54 +500,47 @@ void Crypto_Thread::decrypt(QString src_path)
         // start decrypting the actual data
         emit statusMessage("Decryption... Please wait.");
 
+
+        // increment the nonce, decrypt and write the plaintext block to the destination
+
+        double processed = 0;
+
+        int bytes_read;
+
+        Botan::SecureVector<uint8_t> buf(10*1024);
+        const int block_size = 10*1024;
+
+        Botan::Sodium::sodium_increment(nonce_buffer.data(), CIPHER_IV_LEN);
         dec->set_key(cipher_key3);
         dec->set_ad(add);
-        // increment the nonce, decrypt and write the plaintext block to the destination
-        Botan::Sodium::sodium_increment(nonce_buffer.data(), CIPHER_IV_LEN);
         dec->start(nonce_buffer);
-        double processed = 0;
-        try
-                    {
-        while(!src_stream.atEnd())
+
+    while(!aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char *>(buf.data()), block_size))>0)
         {
-            len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), IN_BUFFER_SIZE);
 
-            if (!src_stream.atEnd())
-            {
-                dec->update(main_buffer);
-                des_stream.writeRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
-            }
+        if (bytes_read<block_size)
+        {
+            buf.resize(bytes_read);
+            dec->finish(buf);
+            des_stream.writeRawData(reinterpret_cast<char *>(buf.data()), buf.size());
+        }
+        else
+        {
+            dec->update(buf);  //65536
+            des_stream.writeRawData(reinterpret_cast<char *>(buf.data()), bytes_read);
 
-            if (src_stream.atEnd())
-            {
-                main_buffer.resize(MACBYTES);
-                len = src_stream.readRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
-                try
-                {
-                dec->finish(main_buffer);
-                }
-                catch(Botan::Exception& e)
-                {
-                    QString error =e.what();
-                    emit statusMessage("Error: "+error);
-                    return;
-                }
-            }
+            // calculate percentage proccessed
+            processed += bytes_read;
+            double p = (processed / filesize) * 100;
+            emit updateProgress(src_path,p);
+        }
 
-            // Calculate and display progress in percent
-            processed += len;
-            double p = (processed / filesize) * 100; // calculate percentage proccessed
-            emit updateProgress(src_path,p); // show updated progress
 
-            }
-    }
-        catch(Botan::Exception& e)
-                    {
 
-                        QString error =e.what();
-                        emit statusMessage("Error: "+error);
-                        return;
-                    }
+
+
+        }
+
         emit updateProgress(src_path,100);
         emit statusMessage("Decryption finished.");
         return;

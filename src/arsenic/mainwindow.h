@@ -88,6 +88,15 @@ private:
     void addFilePathToModel(const QString& filePath);
     Crypto_Thread *Crypto;
     QStringList getListFiles();
+    void loadLogFile();
+
+    // simples messages box display
+    void displayMessageBox(QString title, QString text);
+    void displayPasswordNotMatch();
+    void displayEmptyPassword();
+    void displayEmptyJob();
+    void displayEmptyEditor();
+
 };
 
 #endif // MAINWINDOW_H

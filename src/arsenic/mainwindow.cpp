@@ -37,6 +37,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     createLanguageMenu();
     loadPreferences();
+    loadLogFile();
 
     setWindowTitle(APP_LONG_NAME);
     cryptoFileView();
@@ -44,13 +45,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // General
     connect(m_ui->menuAboutArsenic,       &QAction::triggered,          this, [=]{ aboutArsenic(); });
-    connect(m_ui->menuHashCalculator,       &QAction::triggered,          this, [=]{ hashCalculator(); });
+    connect(m_ui->menuHashCalculator,     &QAction::triggered,          this, [=]{ hashCalculator(); });
     connect(m_ui->menuAboutQt,            &QAction::triggered,          this, [=]{ qApp->aboutQt(); });
     connect(m_ui->menuPassGenerator,      &QAction::triggered,          this, [=]{ generator(); });
     connect(m_ui->pushPassGenerator,      &QPushButton::clicked,        this, [=]{ generator(); });
     connect(m_ui->menuQuit,               &QAction::triggered,          this, [=]{ quit(); });
-    connect(m_ui->menuQuit2,               &QAction::triggered,         this, [=]{ quit(); });
-    connect(m_ui->menuQuit3,               &QAction::triggered,         this, [=]{ quit(); });
+    connect(m_ui->menuQuit2,              &QAction::triggered,          this, [=]{ quit(); });
+    connect(m_ui->menuQuit3,              &QAction::triggered,          this, [=]{ quit(); });
     connect(m_ui->menuConfiguration,      &QAction::triggered,          this, [=]{ configuration(); });
     connect(m_ui->menuDarkTheme,          &QAction::triggered,          this, [=]( const bool &checked ) { dark_theme(checked); });
     connect(m_ui->menuViewButtonToolbar,  &QAction::triggered,          this, [=]( const bool &checked ) { m_ui->toolBar->setVisible(checked); });
@@ -66,16 +67,16 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(m_ui->menuEncryptTxt,         &QAction::triggered,          this, [=]{ encryptText(); });
     connect(m_ui->menuDecryptTxt,         &QAction::triggered,          this, [=]{ decryptText(); });
     connect(m_ui->menuClearEditor,        &QAction::triggered,          this, [=]{ clearEditor(); });
-    connect(m_ui->pushEncryptTxt,        &QPushButton::clicked,          this, [=]{ encryptText(); });
-    connect(m_ui->pushDecryptTxt,        &QPushButton::clicked,          this, [=]{ decryptText(); });
+    connect(m_ui->pushEncryptTxt,         &QPushButton::clicked,        this, [=]{ encryptText(); });
+    connect(m_ui->pushDecryptTxt,         &QPushButton::clicked,        this, [=]{ decryptText(); });
 
     // EncryptFile
     connect(m_ui->menuAddFiles,           &QAction::triggered,          this, [=]{ addFiles(); });
-    connect(m_ui->menuRemoveAllFiles,           &QAction::triggered,          this, [=]{ clearListFiles(); });
-    connect(m_ui->menuEncryptList,           &QAction::triggered,          this, [=]{ encryptFiles(); });
-    connect(m_ui->menuDecryptList,           &QAction::triggered,          this, [=]{ decryptFiles(); });
-    connect(m_ui->pushEncrypt,        &QPushButton::clicked,          this, [=]{ encryptFiles(); });
-    connect(m_ui->pushDecrypt,        &QPushButton::clicked,          this, [=]{ decryptFiles(); });
+    connect(m_ui->menuRemoveAllFiles,     &QAction::triggered,          this, [=]{ clearListFiles(); });
+    connect(m_ui->menuEncryptList,        &QAction::triggered,          this, [=]{ encryptFiles(); });
+    connect(m_ui->menuDecryptList,        &QAction::triggered,          this, [=]{ decryptFiles(); });
+    connect(m_ui->pushEncrypt,            &QPushButton::clicked,        this, [=]{ encryptFiles(); });
+    connect(m_ui->pushDecrypt,            &QPushButton::clicked,        this, [=]{ decryptFiles(); });
     connect(m_ui->menuAbortJob,           &QAction::triggered,          this, [=]{ abortJob(); });
     connect(Crypto,SIGNAL(updateProgress(QString, qint64)),this,SLOT(onPercentProgress(QString, qint64)));
     connect(Crypto,SIGNAL(statusMessage(QString)),this,SLOT(onMessageChanged(QString)));
@@ -109,11 +110,15 @@ MainWindow::~MainWindow(){
 void MainWindow::session()
 {
     // show the main window and load from the default item list
-
     show();
 }
 
-
+void MainWindow::loadLogFile()
+{
+    QFile logfile("arsenic.log.html");
+    logfile.open(QIODevice::ReadOnly| QIODevice::Text);
+    m_ui->textLogs->setText(logfile.readAll());
+}
 
 void MainWindow::abortJob()
 {
@@ -127,37 +132,30 @@ void MainWindow::onMessageChanged(QString message)
     m_ui->textLogs->setTextCursor(c);
     m_ui->textLogs->append(message);
 
-    QFile outfile;
-    outfile.setFileName("arsenic.log.html");
-    outfile.open(QIODevice::ReadWrite| QIODevice::Text);
-    QTextStream out(&outfile);
+    QFile logfile("arsenic.log.html");
+    logfile.open(QIODevice::ReadWrite| QIODevice::Text);
+    QTextStream out(&logfile);
     out << m_ui->textLogs->toHtml() << endl;
-    outfile.close();
+    logfile.close();
 }
 
 void MainWindow::encryptFiles()
 {
-
-
     if (getListFiles().isEmpty())
     {
-        QMessageBox::warning(this, tr("Oups..."),
-                             tr("Vous devez ajouter un ou plusieurs fichiers pour démarrer le traitemment."));
+        displayEmptyJob();
         return;
-
     }
 
-    if (m_ui->password_0->text().isEmpty() && m_ui->password_1->text().isEmpty())
+    if (m_ui->password_0->text().isEmpty())
     {
-        QMessageBox::warning(this, tr("Oups..."),
-                             tr("Vous devez entrer une passphrase et sa confirmation."));
+        displayEmptyPassword();
         return;
     }
 
     if (m_ui->password_0->text() != m_ui->password_1->text())
     {
-        QMessageBox::warning(this, tr("Oups..."),
-                             tr("La Passphrase et sa confirmation ne sont pas identiques."));
+        displayPasswordNotMatch();
         return;
     }
 
@@ -170,24 +168,22 @@ void MainWindow::encryptFiles()
                      m_ui->CheckDeleteFiles->isChecked());
 
     Crypto->start();
-
 }
 
 void MainWindow::decryptFiles()
 {
     if (getListFiles().isEmpty())
     {
-        QMessageBox::warning(this, tr("Oups..."),
-                             tr("Vous devez ajouter un ou plusieurs fichiers pour démarrer le traitemment."));
+        displayEmptyJob();
         return;
+    }
 
-    }
-    if (m_ui->password_0->text().isEmpty() && m_ui->password_1->text().isEmpty())
+    if (m_ui->password_0->text().isEmpty())
     {
-        QMessageBox::warning(this, tr("Oups..."),
-                             tr("Vous devez entrer une passphrase et sa confirmation."));
+        displayEmptyPassword();
         return;
     }
+
     Crypto->setParam(false,
                      getListFiles(),
                      m_ui->password_0->text(),
@@ -212,7 +208,6 @@ QStringList MainWindow::getListFiles()
                 fileList.append(item->text());
             }
         }
-
 
     return fileList;
 }
@@ -323,14 +318,7 @@ void MainWindow::delegate()
 void MainWindow::addFiles()
 {
     // Open a file dialog to get files
-    const QStringList files = QFileDialog::getOpenFileNames(this,tr("Ouvrir Fichier"), config()->get("GUI/lastDirectory").toByteArray(),
-                              tr("Tous (*.*) ;; "
-                                 "Fichiers Arsenic (*.ars) ;; "
-                                 "Fichiers Textes (*.txt *.doc *.inf *.ini *.rtf *.html .*css) ;; "
-                                 "Images (*.jpg *.jpeg *.bmp *.tif *.svg *.tga *.png *.gif *.psd *.xcf) ;; "
-                                 "Vidéos (*.avi *.mkv *.mpg *.mpeg *.webm *.divx *.mov *.3gp *.rm *.flv *.wmv *.vob *.ts *.ogg *.ogm) ;; "
-                                 "Executables (*.exe *.bat)"));
-
+    const QStringList files = QFileDialog::getOpenFileNames(this,tr("Add File(s)"), config()->get("GUI/lastDirectory").toByteArray());
 
     if (files.isEmpty())               // if no file selected
         return;
@@ -339,12 +327,10 @@ void MainWindow::addFiles()
     const QString fileName = files[0];
     config()->set("GUI/lastDirectory", fileName.left(fileName.lastIndexOf("/")));
 
-
     for (const QString& file : files)  // add files to the model
     {
         addFilePathToModel(file);
     }
-
 }
 
 void MainWindow::addFilePathToModel(const QString& filePath)
@@ -467,6 +453,7 @@ void MainWindow::loadPreferences()
     }
 
     loadLanguage(config()->get("GUI/Language").toString());
+    m_ui->CheckDeleteFiles->setChecked(config()->get("GUI/deleteFinished").toBool());
 
     switchTab(config()->get("GUI/currentIndexTab").toInt());
     m_ui->tabWidget->setCurrentIndex(config()->get("GUI/currentIndexTab").toInt());
@@ -522,6 +509,7 @@ void MainWindow::savePreferences()
     config()->set("GUI/Language", m_currLang);
     config()->set("GUI/showToolbar", m_ui->menuViewButtonToolbar->isChecked());
     config()->set("GUI/currentIndexTab", m_ui->tabWidget->currentIndex());
+    config()->set("GUI/deleteFinished", m_ui->CheckDeleteFiles->isChecked());
 }
 
 void MainWindow::aboutArsenic()
@@ -709,7 +697,7 @@ void MainWindow::loadFile(const QString &fileName)
 {
     QFile file(fileName);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        QMessageBox::warning(this, tr("Application"),
+        QMessageBox::warning(this, tr("Read Error !"),
                              tr("Cannot read file %1:\n%2.")
                              .arg(QDir::toNativeSeparators(fileName), file.errorString()));
         return;
@@ -744,7 +732,7 @@ bool MainWindow::saveFile(const QString &fileName)
 {
     QFile file(fileName);
     if (!file.open(QFile::WriteOnly | QFile::Text)) {
-        QMessageBox::warning(this, tr("Application"),
+        QMessageBox::warning(this, tr("Write Error !"),
                              tr("Cannot write file %1:\n%2.")
                              .arg(QDir::toNativeSeparators(fileName),
                                   file.errorString()));
@@ -807,22 +795,82 @@ bool MainWindow::saveTxtFileAs()
 
 void MainWindow::encryptText()
 {
-    QString plaintext = m_ui->cryptoPadEditor->toPlainText();
-    QString test = encryptString(plaintext,m_ui->password_0->text(), config()->get("userName").toString());
-    m_ui->cryptoPadEditor->setPlainText(test);
+    if (m_ui->cryptoPadEditor->toPlainText()=="")
+    {
+        displayMessageBox(tr("Text editor is empty !"),tr("You must add text to editor for encrypt it !"));
+        return;
+    }
+    if (m_ui->password_0->text()=="")
+    {
+        displayMessageBox(tr("Passphrase field is empty !"),tr("You must enter a passphrase."));
+        return;
+    }
+    if (m_ui->password_0->text() != m_ui->password_1->text())
+    {
+        displayMessageBox(tr("Passphrase do not match!"),tr("The passphrase fields do not match. Please make sure they were entered correctly and try again."));
+        return;
+    }
+
+    try
+    {
+        QString plaintext = m_ui->cryptoPadEditor->toPlainText();
+        QString test = encryptString(plaintext,m_ui->password_0->text());
+        m_ui->cryptoPadEditor->setPlainText(test);
+    }
+    catch (std::exception const& e)
+        {
+              QString error= e.what();
+              displayMessageBox(tr("Encryption Error!"),error);
+        }
+
 }
 
 void MainWindow::decryptText()
 {
-    QString ciphertext = m_ui->cryptoPadEditor->toPlainText();
-    try {
-    QString test = decryptString(ciphertext,m_ui->password_0->text(), config()->get("userName").toString());
-    m_ui->cryptoPadEditor->setPlainText(test);
-  }
-        catch (std::exception const& e) {
-              QString error= e.what();
-              QMessageBox::warning(this, tr("Passwords do not match!"), error);
+    if (m_ui->cryptoPadEditor->toPlainText()=="")
+    {
+        displayEmptyEditor();
+        return;
+    }
+    if (m_ui->password_0->text()=="")
+    {
+        displayEmptyPassword();
+        return;
+    }
 
-           }
+    try
+    {
+        QString ciphertext = m_ui->cryptoPadEditor->toPlainText();
+        QString test = decryptString(ciphertext,m_ui->password_0->text());
+        m_ui->cryptoPadEditor->setPlainText(test);
+    }
+    catch (std::exception const& e)
+        {
+            QString error= e.what();
+            displayMessageBox(tr("Decryption Error!"),error);
+        }
+}
+void MainWindow::displayMessageBox(QString title, QString text)
+{
+    QMessageBox::warning(this, (title),(text));
+}
 
+void MainWindow::displayPasswordNotMatch()
+{
+    QMessageBox::warning(this, tr("Passphrase do not match!"),tr("The passphrase fields do not match. Please make sure they were entered correctly and try again."));
+}
+
+void MainWindow::displayEmptyPassword()
+{
+    QMessageBox::warning(this, tr("Passphrase field is empty !"),tr("You must enter a passphrase."));
+}
+
+void MainWindow::displayEmptyJob()
+{
+    QMessageBox::warning(this, tr("Job list is empty !"),tr("You must add file(s) to the job list to start processing."));
+}
+
+void MainWindow::displayEmptyEditor()
+{
+    QMessageBox::warning(this, tr("Text editor is empty !"),tr("You must add text to editor to start processing."));
 }
