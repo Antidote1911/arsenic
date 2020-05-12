@@ -43,12 +43,12 @@ It is released under the permissive Simplified [BSD license](https://botan.rando
 
 ## Command line mode: ##
 **The command line interface doesn't support space in the arguments.**
-Encrypt a file named "test.mkv" with the secret passphrase "mysuperbadpassphrase". Encryption produce the encrypted file "test.mkv.ars" but it can be renamed because the original file name is encrypted in the file.
+Encrypt a file named "test.mkv" with the secret passphrase "mysuperbadpassphrase". Encryption produce the encrypted file "test.mkv.arsenic" but it can be renamed because the original file name is encrypted in the file.
 
 ```bash
     ./arsenic -e -p mysuperbadpassphrase -n test.mkv
     # For decrypt this file :
-    ./arsenic -d -p mysuperbadpassphrase test.mkv.ars
+    ./arsenic -d -p mysuperbadpassphrase test.mkv.arsenic
     # View help :
     ./arsenic -h
     # View Arsenic version :
@@ -72,7 +72,7 @@ Encrypt a file named "test.mkv" with the secret passphrase "mysuperbadpassphrase
 - Write the 16 bytes authentication tag.
 
 Notes:
-The initial nonce is incremented before all encryption operations to ensure it is never reused with the same key.<br>
+The initial nonce is incremented before the encryption operations to ensure it is never reused with the same key.<br>
 The encryption is optimized for big files. Arsenic read and encrypt chunk by chunk.
 
 ## Developers: ##
