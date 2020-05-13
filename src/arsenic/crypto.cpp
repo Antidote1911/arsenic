@@ -179,7 +179,6 @@ void Crypto_Thread::encrypt(const QString src_path)
         std::string add_data(APP_URL.toStdString());
         std::vector<uint8_t> add(add_data.data(),add_data.data()+add_data.length());
 
-        qDebug() << qint64_buffer.size();
         int len;
 
         QFile src_file(QDir::cleanPath(src_path));
@@ -212,11 +211,6 @@ void Crypto_Thread::encrypt(const QString src_path)
                 const Botan::SymmetricKey cipher_key1(mk, CIPHER_KEY_LEN);
                 const Botan::SymmetricKey cipher_key2(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
                 const Botan::SymmetricKey cipher_key3(&mk[CIPHER_KEY_LEN+CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-
-                qDebug() << "master key : "+ QString::fromStdString(Botan::hex_encode(master_key));
-                qDebug() << "cipher_key1 : "+ QString::fromStdString(Botan::hex_encode(cipher_key1.bits_of()));
-                qDebug() << "cipher_key2 : "+ QString::fromStdString(Botan::hex_encode(cipher_key2.bits_of()));
-                qDebug() << "cipher_key3 : "+ QString::fromStdString(Botan::hex_encode(cipher_key3.bits_of()));
 
         // create the new file, the path should normally be to the same directory as the source
 
@@ -325,9 +319,6 @@ void Crypto_Thread::encrypt(const QString src_path)
             }
 
 }
-
-
-
 
         if (aborted)
         {

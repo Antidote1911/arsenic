@@ -16,11 +16,40 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    ../arsenic/crypto.cpp \
     main.cpp
         main.cpp
 
 
 
-HEADERS += catch.hpp
+HEADERS += catch.hpp \
+    ../arsenic/constants.h \
+    ../arsenic/crypto.h
 
 
+linux {
+
+    equals(QMAKE_CXX, clang++)
+    {
+        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
+        INCLUDEPATH += $$PWD/../botan/linux_clang64/
+        DEPENDPATH += $$PWD/../botan/linux_clang64/
+        }
+
+    equals(QMAKE_CXX, g++)
+    {
+        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
+        INCLUDEPATH += $$PWD/../botan/linux_gcc64/
+        DEPENDPATH += $$PWD/../botan/linux_gcc64/
+    }
+}
+
+win32-g++ {
+
+    LIBS += -L$$OUT_PWD/../botan/release/ -larsenic_core
+    INCLUDEPATH += $$PWD/../botan/win_mingw64/
+    DEPENDPATH += $$PWD/../botan/win_mingw64/
+
+    LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
+
+}
