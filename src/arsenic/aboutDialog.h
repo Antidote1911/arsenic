@@ -22,24 +22,22 @@
 #include <QDialog>
 #include <memory>
 
-namespace Ui
-{
-    class AboutDialog;
+namespace Ui {
+class AboutDialog;
 }
 
-class AboutDialog : public QDialog
-{
-    Q_OBJECT
+class AboutDialog : public QDialog {
+  Q_OBJECT
 
 public:
-    explicit AboutDialog(QWidget* parent = nullptr);
-    ~AboutDialog();
+  explicit AboutDialog(QWidget *parent = nullptr);
+  ~AboutDialog();
 
 protected slots:
-    void copyToClipboard();
+  void copyToClipboard();
 
 private:
-    const std::unique_ptr<Ui::AboutDialog> m_ui;
+  const std::unique_ptr<Ui::AboutDialog> m_ui;
 };
 
 #endif // ABOUTDIALOG_H

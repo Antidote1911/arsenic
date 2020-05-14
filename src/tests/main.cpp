@@ -1,6 +1,6 @@
 #define CATCH_CONFIG_RUNNER
 #include <QCoreApplication>
-#include <QDebug>
+//#include <QDebug>
 #include <QFile>
 #include <QDir>
 #include <QDataStream>

@@ -25,44 +25,40 @@
 
 class QSettings;
 
-class Config : public QObject
-{
-    Q_OBJECT
+class Config : public QObject {
+  Q_OBJECT
 
 public:
-    Q_DISABLE_COPY(Config)
+  Q_DISABLE_COPY(Config)
 
-    ~Config() override;
-    QVariant get(const QString& key);
-    QVariant get(const QString& key, const QVariant& defaultValue);
-    QString getFileName();
-    void set(const QString& key, const QVariant& value);
-    bool hasAccessError();
-    void sync();
-    void resetToDefaults();
+  ~Config() override;
+  QVariant get(const QString &key);
+  QVariant get(const QString &key, const QVariant &defaultValue);
+  QString getFileName();
+  void set(const QString &key, const QVariant &value);
+  bool hasAccessError();
+  void sync();
+  void resetToDefaults();
 
-    static Config* instance();
-    static void createConfigFromFile(const QString& file);
-    static void createTempFileInstance();
+  static Config *instance();
+  static void createConfigFromFile(const QString &file);
+  static void createTempFileInstance();
 
 signals:
-    void changed(const QString& key);
+  void changed(const QString &key);
 
 private:
-    Config(const QString& fileName, QObject* parent);
-    explicit Config(QObject* parent);
-    void init(const QString& fileName);
-    void upgrade();
+  Config(const QString &fileName, QObject *parent);
+  explicit Config(QObject *parent);
+  void init(const QString &fileName);
+  void upgrade();
 
-    static Config* m_instance;
+  static Config *m_instance;
 
-    std::unique_ptr<QSettings> m_settings;
-    QHash<QString, QVariant> m_defaults;
+  std::unique_ptr<QSettings> m_settings;
+  QHash<QString, QVariant> m_defaults;
 };
 
-inline Config* config()
-{
-    return Config::instance();
-}
+inline Config *config() { return Config::instance(); }
 
 #endif // KEEPASSX_CONFIG_H

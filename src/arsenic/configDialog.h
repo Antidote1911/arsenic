@@ -9,24 +9,20 @@ namespace Ui {
 class ConfigDialog;
 }
 
-class ConfigDialog : public QDialog
-{
-    Q_OBJECT
+class ConfigDialog : public QDialog {
+  Q_OBJECT
 
 public:
-    explicit ConfigDialog(QWidget *parent = nullptr);
-    ~ConfigDialog();
-    void loadSettings();
+  explicit ConfigDialog(QWidget *parent = nullptr);
+  ~ConfigDialog();
+  void loadSettings();
 
 private slots:
-    void saveSettings();
-    //void reject();
-
-
+  void saveSettings();
+  // void reject();
 
 private:
-    const std::unique_ptr<Ui::ConfigDialog> m_ui;
-
+  const std::unique_ptr<Ui::ConfigDialog> m_ui;
 };
 
 #endif // CONFIGDIALOG_H

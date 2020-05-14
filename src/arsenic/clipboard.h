@@ -27,38 +27,35 @@
 
 class QTimer;
 
-class Clipboard : public QObject
-{
-    Q_OBJECT
+class Clipboard : public QObject {
+  Q_OBJECT
 
 public:
-    void setText(const QString& text);
+  void setText(const QString &text);
 
-    static Clipboard* instance();
+  static Clipboard *instance();
 
 public slots:
-    void clearCopiedText();
+  void clearCopiedText();
 
 private slots:
-    void clearClipboard();
+  void clearClipboard();
 
 private:
-    explicit Clipboard(QObject* parent = nullptr);
+  explicit Clipboard(QObject *parent = nullptr);
 
-    static Clipboard* m_instance;
+  static Clipboard *m_instance;
 
-    QTimer* m_timer;
+  QTimer *m_timer;
 #ifdef Q_OS_MACOS
-    // This object lives for the whole program lifetime and we cannot delete it on exit,
-    // so ignore leak warnings. See https://bugreports.qt.io/browse/QTBUG-54832
-    static QPointer<MacPasteboard> m_pasteboard;
+  // This object lives for the whole program lifetime and we cannot delete it on
+  // exit, so ignore leak warnings. See
+  // https://bugreports.qt.io/browse/QTBUG-54832
+  static QPointer<MacPasteboard> m_pasteboard;
 #endif
-    QString m_lastCopied;
+  QString m_lastCopied;
 };
 
-inline Clipboard* clipboard()
-{
-    return Clipboard::instance();
-}
+inline Clipboard *clipboard() { return Clipboard::instance(); }
 
 #endif // CLIPBOARD_H

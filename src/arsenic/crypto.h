@@ -30,6 +30,8 @@ public:
 signals:
     void updateProgress(const QString& path, qint64 percent);
     void statusMessage(QString message);
+    void sucessMessage(QString inputFileName);
+    void sourceDeletedAfterSuccess(QString inputFileName);
 
 private:
     bool mstop;
