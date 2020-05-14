@@ -61,4 +61,4 @@ private:
 
 inline Config *config() { return Config::instance(); }
 
-#endif // KEEPASSX_CONFIG_H
+#endif // CONFIG_H

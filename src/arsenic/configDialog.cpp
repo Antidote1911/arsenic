@@ -19,18 +19,10 @@ ConfigDialog::ConfigDialog(QWidget *parent) :
     loadSettings();
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
 ConfigDialog::~ConfigDialog()
 {
 
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void ConfigDialog::loadSettings()
 {
@@ -46,10 +38,6 @@ void ConfigDialog::loadSettings()
     m_ui->checkBox_empty->setChecked(config()->get("SECURITY/clearclipboard").toBool());
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
-
 void ConfigDialog::saveSettings()
 {
     config()->set("CRYPTO/argonMemory",                m_ui->comboMemory->currentIndex());
@@ -58,8 +46,3 @@ void ConfigDialog::saveSettings()
     config()->set("SECURITY/clearclipboardtimeout",    m_ui->spinBox_clip->value());
     config()->set("SECURITY/clearclipboard",           m_ui->checkBox_empty->isChecked());
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
-

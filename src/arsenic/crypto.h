@@ -9,6 +9,7 @@
 class Crypto_Thread : public QThread
 {
     Q_OBJECT
+
 public:
     explicit Crypto_Thread(QObject *parent = 0);
     void run();
@@ -56,4 +57,4 @@ private:
 
 };
 
-#endif // CRYPTO_THREAD_H
+#endif // CRYPTO_H
