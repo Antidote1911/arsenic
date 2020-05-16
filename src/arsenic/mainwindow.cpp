@@ -81,7 +81,8 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_ui->menuAbortJob, &QAction::triggered, this, [=] { abortJob(); });
     connect(Crypto, SIGNAL(updateProgress(QString, qint64)), this, SLOT(onPercentProgress(QString, qint64)));
     connect(Crypto, SIGNAL(statusMessage(QString)), this, SLOT(onMessageChanged(QString)));
-    connect(Crypto, SIGNAL(sucessMessage(QString)), this, SLOT(addFinishedFile(QString)));
+    connect(Crypto, SIGNAL(addEncrypted(QString)), this, SLOT(AddEncryptedFile(QString)));
+    connect(Crypto, SIGNAL(addDecrypted(QString)), this, SLOT(AddDecryptedFile(QString)));
     connect(Crypto, SIGNAL(sourceDeletedAfterSuccess(QString)), this, SLOT(removeDeletedFile(QString)));
     // connect(this,&MainWindow::on_stop,&myjob,&MyJob::obj_slot_stop);
 
@@ -121,9 +122,18 @@ void MainWindow::removeDeletedFile(QString filepath)
     }
 }
 
-void MainWindow::addFinishedFile(QString filepath)
+void MainWindow::AddEncryptedFile(QString filepath)
 {
-    addFilePathToModel(filepath);
+    if (config()->get("GUI/AddEncrypted").toBool()) {
+        addFilePathToModel(filepath);
+    }
+}
+
+void MainWindow::AddDecryptedFile(QString filepath)
+{
+    if (config()->get("GUI/AddDecrypted").toBool()) {
+        addFilePathToModel(filepath);
+    }
 }
 
 void MainWindow::loadLogFile()

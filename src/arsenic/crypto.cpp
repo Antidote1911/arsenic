@@ -287,7 +287,7 @@ void Crypto_Thread::encrypt(const QString src_path)
         emit sourceDeletedAfterSuccess(src_path);
     }
 
-    emit sucessMessage(fileInfo.filePath());
+    emit addEncrypted(fileInfo.filePath());
 }
 
 void Crypto_Thread::decrypt(QString src_path)
@@ -485,7 +485,7 @@ void Crypto_Thread::decrypt(QString src_path)
     }
 
     QFileInfo des_info(des_file);
-    emit sucessMessage(des_info.filePath());
+    emit addDecrypted(des_info.filePath());
     emit statusMessage("Decryption finished.");
 }
 

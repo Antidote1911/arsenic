@@ -24,7 +24,8 @@ public:
 public slots:
     void onPercentProgress(const QString& path, qint64 percent);
     void onMessageChanged(QString message);
-    void addFinishedFile(QString filepath);
+    void AddEncryptedFile(QString filepath);
+    void AddDecryptedFile(QString filepath);
     void removeDeletedFile(QString filepath);
 
 private slots:

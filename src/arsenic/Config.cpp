@@ -190,6 +190,8 @@ void Config::init(const QString& fileName)
     m_defaults.insert("GUI/showToolbar", DEFAULT_SHOW_TOOLBAR);
     m_defaults.insert("GUI/lastDirectory", DEFAULT_LASTDIRECTORY);
     m_defaults.insert("GUI/currentIndexTab", DEFAULT_INDEX_TAB);
+    m_defaults.insert("GUI/AddEncrypted", DEFAULT_ADD_ENCRYPTED);
+    m_defaults.insert("GUI/AddDecrypted", DEFAULT_ADD_DECRYPTED);
 
     m_defaults.insert("CRYPTO/argonMemory", DEFAULT_ARGON_MEM_LIMIT);
     m_defaults.insert("CRYPTO/argonItr", DEFAULT_ARGON_ITR_LIMIT);

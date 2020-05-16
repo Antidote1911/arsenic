@@ -29,7 +29,8 @@ public:
 signals:
     void updateProgress(const QString& path, qint64 percent);
     void statusMessage(QString message);
-    void sucessMessage(QString inputFileName);
+    void addEncrypted(QString inputFileName);
+    void addDecrypted(QString inputFileName);
     void sourceDeletedAfterSuccess(QString inputFileName);
 
 private:
