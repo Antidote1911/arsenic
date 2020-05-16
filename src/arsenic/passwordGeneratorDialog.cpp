@@ -23,9 +23,9 @@
 #include <QKeyEvent>
 #include <QLineEdit>
 
-#include "passwordGenerator.h"
 #include "Config.h"
 #include "clipboard.h"
+#include "passwordGenerator.h"
 
 /*******************************************************************************
 
@@ -56,7 +56,6 @@ PasswordGeneratorDialog::PasswordGeneratorDialog(QDialog* parent)
     connect(m_ui->spinBoxLength, SIGNAL(valueChanged(int)), SLOT(passwordSpinBoxChanged()));
 
     connect(m_ui->optionButtons, SIGNAL(buttonClicked(int)), SLOT(updateGenerator()));
-
 
     // set font size of password quality and entropy labels dynamically to 80% of
     // the default font size, but make it no smaller than 8pt
@@ -121,7 +120,6 @@ void PasswordGeneratorDialog::loadSettings()
     m_ui->checkBoxExcludeAlike->setChecked(config()->get("generator/ExcludeAlike", PasswordGenerator::DefaultLookAlike).toBool());
     m_ui->checkBoxEnsureEvery->setChecked(config()->get("generator/EnsureEvery", PasswordGenerator::DefaultFromEveryGroup).toBool());
     m_ui->spinBoxLength->setValue(config()->get("generator/Length", PasswordGenerator::DefaultLength).toInt());
-
 }
 
 /*******************************************************************************
@@ -154,7 +152,6 @@ void PasswordGeneratorDialog::saveSettings()
     config()->set("generator/ExcludeAlike", m_ui->checkBoxExcludeAlike->isChecked());
     config()->set("generator/EnsureEvery", m_ui->checkBoxEnsureEvery->isChecked());
     config()->set("generator/Length", m_ui->spinBoxLength->value());
-
 }
 
 /*******************************************************************************
@@ -224,7 +221,6 @@ void PasswordGeneratorDialog::regeneratePassword()
         m_ui->editNewPassword->setText(password);
         updatePasswordStrength(password);
     }
-
 }
 
 /*******************************************************************************
@@ -248,7 +244,6 @@ void PasswordGeneratorDialog::updatePasswordStrength(const QString& password)
     double entropy = 0.0;
 
     entropy = m_passwordGenerator->estimateEntropy(password);
-
 
     m_ui->entropyLabel->setText(tr("Entropy: %1 bit").arg(QString::number(entropy, 'f', 2)));
 
@@ -321,13 +316,10 @@ void PasswordGeneratorDialog::passwordSpinBoxChanged()
 
 void PasswordGeneratorDialog::setPasswordVisible(bool visible)
 {
-    if (visible)
-    {
+    if (visible) {
         m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-off.svg"));
         m_ui->editNewPassword->setEchoMode(QLineEdit::Normal);
-    }
-    else
-    {
+    } else {
         m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-on.svg"));
         m_ui->editNewPassword->setEchoMode(QLineEdit::Password);
     }
@@ -356,8 +348,8 @@ void PasswordGeneratorDialog::selectSimpleMode()
     m_ui->checkBoxLower->setChecked(m_ui->checkBoxLowerAdv->isChecked());
     m_ui->checkBoxNumbers->setChecked(m_ui->checkBoxNumbersAdv->isChecked());
     m_ui->checkBoxSpecialChars->setChecked(m_ui->checkBoxBraces->isChecked() | m_ui->checkBoxPunctuation->isChecked()
-                                           | m_ui->checkBoxQuotes->isChecked() | m_ui->checkBoxMath->isChecked()
-                                           | m_ui->checkBoxDashes->isChecked() | m_ui->checkBoxLogograms->isChecked());
+        | m_ui->checkBoxQuotes->isChecked() | m_ui->checkBoxMath->isChecked()
+        | m_ui->checkBoxDashes->isChecked() | m_ui->checkBoxLogograms->isChecked());
     m_ui->checkBoxExtASCII->setChecked(m_ui->checkBoxExtASCIIAdv->isChecked());
     m_ui->simpleBar->show();
 }
@@ -403,7 +395,7 @@ void PasswordGeneratorDialog::colorStrengthIndicator(double entropy)
     // Take the existing stylesheet and convert the text and background color to arguments
     QString style = m_ui->entropyProgressBar->styleSheet();
     QRegularExpression re("(QProgressBar::chunk\\s*\\{.*?background-color:)[^;]+;",
-                          QRegularExpression::CaseInsensitiveOption | QRegularExpression::DotMatchesEverythingOption);
+        QRegularExpression::CaseInsensitiveOption | QRegularExpression::DotMatchesEverythingOption);
     style.replace(re, "\\1 %1;");
 
     // Set the color and background based on entropy
@@ -585,7 +577,6 @@ void PasswordGeneratorDialog::updateGenerator()
     } else {
         m_ui->buttonGenerate->setEnabled(false);
     }
-
 
     regeneratePassword();
 }

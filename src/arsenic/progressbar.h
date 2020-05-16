@@ -12,10 +12,9 @@
     Copyright (c) 2019 Leon Latsch
 */
 
+#include <chrono>
 #include <cstdio>
 #include <thread>
-#include <chrono>
-
 
 /**
  * Print the percentage if a progress bar

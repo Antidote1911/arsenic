@@ -25,11 +25,9 @@
 
 typedef QVector<QChar> PasswordGroup;
 
-class PasswordGenerator
-{
+class PasswordGenerator {
 public:
-    enum CharClass
-    {
+    enum CharClass {
         LowerLetters = (1 << 0),
         UpperLetters = (1 << 1),
         Numbers = (1 << 2),
@@ -45,8 +43,7 @@ public:
     };
     Q_DECLARE_FLAGS(CharClasses, CharClass)
 
-    enum GeneratorFlag
-    {
+    enum GeneratorFlag {
         ExcludeLookAlike = (1 << 0),
         CharFromEveryGroup = (1 << 1),
         AdvancedMode = (1 << 2),

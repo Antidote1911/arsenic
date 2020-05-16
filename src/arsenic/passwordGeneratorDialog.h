@@ -20,20 +20,17 @@
 #define KEEPASSX_PASSWORDGENERATORDIALOG_H
 
 #include <QComboBox>
-#include <QLabel>
 #include <QDialog>
+#include <QLabel>
 #include <memory>
 
 #include "passwordGenerator.h"
 
-namespace Ui
-{
-    class PasswordGeneratorDialog;
+namespace Ui {
+class PasswordGeneratorDialog;
 }
 
-
-class PasswordGeneratorDialog : public QDialog
-{
+class PasswordGeneratorDialog : public QDialog {
     Q_OBJECT
 
 public:

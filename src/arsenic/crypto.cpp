@@ -22,12 +22,12 @@ Crypto_Thread::Crypto_Thread(QObject* parent)
 }
 
 void Crypto_Thread::setParam(bool direction,
-                             QStringList filenames,
-                             const QString password,
-                             const QString algo,
-                             int argonmem,
-                             int argoniter,
-                             bool deletefile)
+    QStringList filenames,
+    const QString password,
+    const QString algo,
+    int argonmem,
+    int argoniter,
+    bool deletefile)
 {
     m_filenames = filenames;
     m_password = password;
@@ -52,8 +52,8 @@ void Crypto_Thread::run()
                 emit updateProgress(inputFileName, 0);
                 emit statusMessage("");
                 emit statusMessage(QDateTime::currentDateTime().toString(
-                               "dddd dd MMMM yyyy (hh:mm:ss)")
-                                   + " encryption of " + inputFileName);
+                                       "dddd dd MMMM yyyy (hh:mm:ss)")
+                    + " encryption of " + inputFileName);
 
                 encrypt(inputFileName);
                 if (aborted) // Reset abort flag
@@ -72,8 +72,8 @@ void Crypto_Thread::run()
                 emit updateProgress(inputFileName, 0);
                 emit statusMessage("");
                 emit statusMessage(QDateTime::currentDateTime().toString(
-                               "dddd dd MMMM yyyy (hh:mm:ss)")
-                                   + " decryption of " + inputFileName);
+                                       "dddd dd MMMM yyyy (hh:mm:ss)")
+                    + " decryption of " + inputFileName);
                 decrypt(inputFileName);
                 if (aborted) // Reset abort flag
 
@@ -163,7 +163,7 @@ void Crypto_Thread::encrypt(const QString src_path)
     const SymmetricKey cipher_key1(mk, CIPHER_KEY_LEN);
     const SymmetricKey cipher_key2(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
     const SymmetricKey cipher_key3(&mk[CIPHER_KEY_LEN + CIPHER_KEY_LEN],
-                                   CIPHER_KEY_LEN);
+        CIPHER_KEY_LEN);
 
     // create the new file, the path should normally be to the same directory as
     // the source
@@ -195,13 +195,13 @@ void Crypto_Thread::encrypt(const QString src_path)
 
     // Write the initial nonce in file
     if (des_stream.writeRawData(reinterpret_cast<char*>(nonce_buffer.data()),
-                                CIPHER_IV_LEN)
+            CIPHER_IV_LEN)
         < static_cast<int>(CIPHER_IV_LEN))
         return;
 
     // Write the salt in file
     if (des_stream.writeRawData(reinterpret_cast<char*>(salt_buffer.data()),
-                                ARGON_SALT_LEN)
+            ARGON_SALT_LEN)
         < static_cast<int>(ARGON_SALT_LEN))
         return;
 
@@ -212,7 +212,7 @@ void Crypto_Thread::encrypt(const QString src_path)
     qToLittleEndian<qint64>(filesize, main_buffer.data() + MACBYTES);
 
     len = min<int>(static_cast<long unsigned int>(src_name.size()),
-                   BUFFER_SIZE_WITHOUT_MAC - sizeof(qint64));
+        BUFFER_SIZE_WITHOUT_MAC - sizeof(qint64));
     memcpy(
         main_buffer.data() + MACBYTES + sizeof(quint64), src_name.constData(), len);
 
@@ -226,7 +226,7 @@ void Crypto_Thread::encrypt(const QString src_path)
     secure_vector<uint8_t> out_buf1(qint64_buffer.begin(), qint64_buffer.end());
     enc->finish(out_buf1); // 40
     des_stream.writeRawData(reinterpret_cast<char*>(out_buf1.data()),
-                            out_buf1.size());
+        out_buf1.size());
 
     // finally, encrypt and write in the file size and filename
     Sodium::sodium_increment(nonce_buffer.data(), CIPHER_IV_LEN);
@@ -236,7 +236,7 @@ void Crypto_Thread::encrypt(const QString src_path)
     enc->finish(out_buf2); // 65552
 
     des_stream.writeRawData(reinterpret_cast<char*>(out_buf2.data()),
-                            out_buf2.size());
+        out_buf2.size());
 
     // now, move on to the actual data
     QDataStream src_stream(&src_file);
@@ -359,15 +359,15 @@ void Crypto_Thread::decrypt(QString src_path)
     std::unique_ptr<Botan::AEAD_Mode> dec = Botan::AEAD_Mode::create(cryptoAlgo.toStdString(), Botan::DECRYPTION);
     std::string add_data(APP_URL.toStdString());
     std::vector<uint8_t> add(add_data.data(),
-                             add_data.data() + add_data.length());
+        add_data.data() + add_data.length());
 
     if (src_stream.readRawData(reinterpret_cast<char*>(nonce_buffer.data()),
-                               CIPHER_IV_LEN)
+            CIPHER_IV_LEN)
         < static_cast<int>(CIPHER_IV_LEN))
         return;
 
     if (src_stream.readRawData(reinterpret_cast<char*>(salt_buffer.data()),
-                               ARGON_SALT_LEN)
+            ARGON_SALT_LEN)
         < static_cast<int>(ARGON_SALT_LEN))
         return;
 
@@ -381,13 +381,13 @@ void Crypto_Thread::decrypt(QString src_path)
     const Botan::SymmetricKey cipher_key1(mk, CIPHER_KEY_LEN);
     const Botan::SymmetricKey cipher_key2(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
     const Botan::SymmetricKey cipher_key3(&mk[CIPHER_KEY_LEN + CIPHER_KEY_LEN],
-                                          CIPHER_KEY_LEN);
+        CIPHER_KEY_LEN);
 
     // next, get the encrypted header size and decrypt it
     qint64 header_size;
 
     if (src_stream.readRawData(reinterpret_cast<char*>(qint64_buffer.data()),
-                               40)
+            40)
         < 40)
         return;
 
@@ -406,7 +406,7 @@ void Crypto_Thread::decrypt(QString src_path)
     header_size = qFromLittleEndian<qint64>(qint64_buffer.data() + MACBYTES);
 
     src_stream.readRawData(reinterpret_cast<char*>(main_buffer.data()),
-                           main_buffer.size());
+        main_buffer.size());
 
     // get the file size and filename of original item
     Botan::Sodium::sodium_increment(nonce_buffer.data(), CIPHER_IV_LEN);
@@ -496,16 +496,16 @@ Crypto_Thread::convertStringToSecureVector(QString password)
 
     memset(pass_buffer.data(), 0, CIPHER_KEY_LEN);
     memcpy(pass_buffer.data(),
-           password.toUtf8().constData(),
-           std::min(password.toUtf8().size(), static_cast<int>(CIPHER_KEY_LEN)));
+        password.toUtf8().constData(),
+        std::min(password.toUtf8().size(), static_cast<int>(CIPHER_KEY_LEN)));
     return pass_buffer;
 }
 
 Botan::SecureVector<quint8>
 Crypto_Thread::calculateHash(Botan::SecureVector<char> pass_buffer,
-                             Botan::SecureVector<quint8> salt_buffer,
-                             size_t memlimit,
-                             size_t iterations)
+    Botan::SecureVector<quint8> salt_buffer,
+    size_t memlimit,
+    size_t iterations)
 {
     auto pwdhash_fam = Botan::PasswordHashFamily::create("Argon2id");
     Botan::SecureVector<quint8> key_buffer(CIPHER_KEY_LEN * 3);
@@ -514,17 +514,17 @@ Crypto_Thread::calculateHash(Botan::SecureVector<char> pass_buffer,
     auto default_pwhash = pwdhash_fam->from_params(memlimit, iterations, PARALLELISM_INTERACTIVE);
 
     default_pwhash->derive_key(key_buffer.data(),
-                               key_buffer.size(),
-                               pass_buffer.data(),
-                               pass_buffer.size(),
-                               salt_buffer.data(),
-                               salt_buffer.size());
+        key_buffer.size(),
+        pass_buffer.data(),
+        pass_buffer.size(),
+        salt_buffer.data(),
+        salt_buffer.size());
     return key_buffer;
 }
 
 QString
 Crypto_Thread::removeExtension(const QString& fileName,
-                               const QString& extension)
+    const QString& extension)
 {
     QFileInfo file { fileName };
     QString newFileName = fileName;
@@ -552,7 +552,7 @@ Crypto_Thread::uniqueFileName(const QString& fileName)
             uniqueFileName = originalFile.absolutePath() % QDir::separator() % originalFile.baseName() % QString { " (%1)" }.arg(i + 2);
 
             if (!originalFile.completeSuffix()
-                .isEmpty()) // Add the file extension if there is one
+                     .isEmpty()) // Add the file extension if there is one
 
                 uniqueFileName += QStringLiteral(".") % originalFile.completeSuffix();
 

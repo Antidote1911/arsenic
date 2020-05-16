@@ -45,41 +45,41 @@ MainWindow::MainWindow(QWidget* parent)
     delegate();
 
     // General
-    connect(m_ui->menuAboutArsenic, &QAction::triggered, this, [=]{ aboutArsenic(); });
-    connect(m_ui->menuHashCalculator, &QAction::triggered, this, [=]{ hashCalculator(); });
-    connect(m_ui->menuAboutQt, &QAction::triggered, this, [=]{ qApp->aboutQt(); });
-    connect(m_ui->menuPassGenerator, &QAction::triggered, this, [=]{ generator(); });
-    connect(m_ui->pushPassGenerator, &QPushButton::clicked, this, [=]{ generator(); });
-    connect(m_ui->menuQuit, &QAction::triggered, this, [=]{ quit(); });
-    connect(m_ui->menuQuit2, &QAction::triggered, this, [=]{ quit(); });
-    connect(m_ui->menuQuit3, &QAction::triggered, this, [=]{ quit(); });
-    connect(m_ui->menuConfiguration, &QAction::triggered, this, [=]{ configuration(); });
-    connect(m_ui->menuDarkTheme, &QAction::triggered, this, [=](const bool& checked){ dark_theme(checked); });
-    connect(m_ui->menuViewToolbar, &QAction::triggered, this, [=](const bool& checked){ m_ui->toolBar->setVisible(checked); });
-    connect(m_ui->toolBar, &QToolBar::visibilityChanged, this, [=](const bool& checked){ m_ui->menuViewToolbar->setChecked(checked); });
-    connect(m_ui->menuArgon2Tests, &QAction::triggered, this, [=]{ Argon2_tests(); });
-    connect(m_ui->tabWidget, &QTabWidget::currentChanged, this, [=](const int& index){ switchTab(index); });
-    connect(m_ui->comboViewpass, &QCheckBox::stateChanged, this, [=](const int& index){ viewPassStateChanged(index); });
+    connect(m_ui->menuAboutArsenic, &QAction::triggered, this, [=] { aboutArsenic(); });
+    connect(m_ui->menuHashCalculator, &QAction::triggered, this, [=] { hashCalculator(); });
+    connect(m_ui->menuAboutQt, &QAction::triggered, this, [=] { qApp->aboutQt(); });
+    connect(m_ui->menuPassGenerator, &QAction::triggered, this, [=] { generator(); });
+    connect(m_ui->pushPassGenerator, &QPushButton::clicked, this, [=] { generator(); });
+    connect(m_ui->menuQuit, &QAction::triggered, this, [=] { quit(); });
+    connect(m_ui->menuQuit2, &QAction::triggered, this, [=] { quit(); });
+    connect(m_ui->menuQuit3, &QAction::triggered, this, [=] { quit(); });
+    connect(m_ui->menuConfiguration, &QAction::triggered, this, [=] { configuration(); });
+    connect(m_ui->menuDarkTheme, &QAction::triggered, this, [=](const bool& checked) { dark_theme(checked); });
+    connect(m_ui->menuViewToolbar, &QAction::triggered, this, [=](const bool& checked) { m_ui->toolBar->setVisible(checked); });
+    connect(m_ui->toolBar, &QToolBar::visibilityChanged, this, [=](const bool& checked) { m_ui->menuViewToolbar->setChecked(checked); });
+    connect(m_ui->menuArgon2Tests, &QAction::triggered, this, [=] { Argon2_tests(); });
+    connect(m_ui->tabWidget, &QTabWidget::currentChanged, this, [=](const int& index) { switchTab(index); });
+    connect(m_ui->comboViewpass, &QCheckBox::stateChanged, this, [=](const int& index) { viewPassStateChanged(index); });
 
     // EncryptPad
-    connect(m_ui->menuOpenTxt, &QAction::triggered, this, [=]{ openTxtFile(); });
-    connect(m_ui->menuSaveTxt, &QAction::triggered, this, [=]{ saveTxtFile(); });
-    connect(m_ui->menuSaveTxtAs, &QAction::triggered, this, [=]{ saveTxtFileAs(); });
-    connect(m_ui->menuEncryptTxt, &QAction::triggered, this, [=]{ encryptText(); });
-    connect(m_ui->menuDecryptTxt, &QAction::triggered, this, [=]{ decryptText(); });
-    connect(m_ui->menuClearEditor, &QAction::triggered, this, [=]{ clearEditor(); });
-    connect(m_ui->pushEncryptTxt, &QPushButton::clicked, this, [=]{ encryptText(); });
-    connect(m_ui->pushDecryptTxt, &QPushButton::clicked, this, [=]{ decryptText(); });
+    connect(m_ui->menuOpenTxt, &QAction::triggered, this, [=] { openTxtFile(); });
+    connect(m_ui->menuSaveTxt, &QAction::triggered, this, [=] { saveTxtFile(); });
+    connect(m_ui->menuSaveTxtAs, &QAction::triggered, this, [=] { saveTxtFileAs(); });
+    connect(m_ui->menuEncryptTxt, &QAction::triggered, this, [=] { encryptText(); });
+    connect(m_ui->menuDecryptTxt, &QAction::triggered, this, [=] { decryptText(); });
+    connect(m_ui->menuClearEditor, &QAction::triggered, this, [=] { clearEditor(); });
+    connect(m_ui->pushEncryptTxt, &QPushButton::clicked, this, [=] { encryptText(); });
+    connect(m_ui->pushDecryptTxt, &QPushButton::clicked, this, [=] { decryptText(); });
 
     // EncryptFile
-    connect(m_ui->menuAddFiles, &QAction::triggered, this, [=]{ addFiles(); });
-    connect(m_ui->menuRemoveAllFiles, &QAction::triggered, this, [=]{ clearListFiles(); });
-    connect(m_ui->menuEncryptList, &QAction::triggered, this, [=]{ encryptFiles(); });
-    connect(m_ui->menuDecryptList, &QAction::triggered, this, [=]{ decryptFiles(); });
-    connect(m_ui->pushEncrypt, &QPushButton::clicked, this, [=]{ encryptFiles(); });
-    connect(m_ui->pushDecrypt, &QPushButton::clicked, this, [=]{ decryptFiles(); });
-    connect(m_ui->menuAbortJob, &QAction::triggered, this, [=]{ abortJob(); });
-    connect(Crypto, SIGNAL(updateProgress(QString,qint64)), this, SLOT(onPercentProgress(QString,qint64)));
+    connect(m_ui->menuAddFiles, &QAction::triggered, this, [=] { addFiles(); });
+    connect(m_ui->menuRemoveAllFiles, &QAction::triggered, this, [=] { clearListFiles(); });
+    connect(m_ui->menuEncryptList, &QAction::triggered, this, [=] { encryptFiles(); });
+    connect(m_ui->menuDecryptList, &QAction::triggered, this, [=] { decryptFiles(); });
+    connect(m_ui->pushEncrypt, &QPushButton::clicked, this, [=] { encryptFiles(); });
+    connect(m_ui->pushDecrypt, &QPushButton::clicked, this, [=] { decryptFiles(); });
+    connect(m_ui->menuAbortJob, &QAction::triggered, this, [=] { abortJob(); });
+    connect(Crypto, SIGNAL(updateProgress(QString, qint64)), this, SLOT(onPercentProgress(QString, qint64)));
     connect(Crypto, SIGNAL(statusMessage(QString)), this, SLOT(onMessageChanged(QString)));
     connect(Crypto, SIGNAL(sucessMessage(QString)), this, SLOT(addFinishedFile(QString)));
     connect(Crypto, SIGNAL(sourceDeletedAfterSuccess(QString)), this, SLOT(removeDeletedFile(QString)));
@@ -167,10 +167,10 @@ void MainWindow::encryptFiles()
     }
 
     Crypto->setParam(true, getListFiles(), m_ui->password_0->text(),
-                     config()->get("CRYPTO/cryptoAlgo").toString(),
-                     config()->get("CRYPTO/argonMemory").toInt(),
-                     config()->get("CRYPTO/argonItr").toInt(),
-                     m_ui->CheckDeleteFiles->isChecked());
+        config()->get("CRYPTO/cryptoAlgo").toString(),
+        config()->get("CRYPTO/argonMemory").toInt(),
+        config()->get("CRYPTO/argonItr").toInt(),
+        m_ui->CheckDeleteFiles->isChecked());
 
     Crypto->start();
 }
@@ -188,10 +188,10 @@ void MainWindow::decryptFiles()
     }
 
     Crypto->setParam(false, getListFiles(), m_ui->password_0->text(),
-                     config()->get("CRYPTO/cryptoAlgo").toString(),
-                     config()->get("CRYPTO/argonMemory").toInt(),
-                     config()->get("CRYPTO/argonItr").toInt(),
-                     m_ui->CheckDeleteFiles->isChecked());
+        config()->get("CRYPTO/cryptoAlgo").toString(),
+        config()->get("CRYPTO/argonMemory").toInt(),
+        config()->get("CRYPTO/argonItr").toInt(),
+        m_ui->CheckDeleteFiles->isChecked());
 
     Crypto->start();
 }
@@ -372,7 +372,7 @@ void MainWindow::addFilePathToModel(const QString& filePath)
         closeFileItem->setSelectable(false);
 
         const QList<QStandardItem*> items = { closeFileItem, fileItem, pathItem,
-                                          sizeItem, progressItem };
+            sizeItem, progressItem };
 
         // Search to see if this item is already in the model
         auto addNewItem = true;
@@ -550,7 +550,7 @@ void MainWindow::createLanguageMenu(void)
     langGroup->setExclusive(true);
 
     connect(langGroup, SIGNAL(triggered(QAction*)), this,
-            SLOT(slotLanguageChanged(QAction*)));
+        SLOT(slotLanguageChanged(QAction*)));
 
     // format systems language
     QString defaultLocale = QLocale::system().name(); // e.g. "de_DE"
@@ -610,7 +610,7 @@ void MainWindow::loadLanguage(const QString& rLanguage)
 }
 
 void MainWindow::switchTranslator(QTranslator& translator,
-                                  const QString& filename)
+    const QString& filename)
 {
     // remove the old translator
     qApp->removeTranslator(&translator);
@@ -660,7 +660,7 @@ void MainWindow::loadFile(const QString& fileName)
         QMessageBox::warning(
             this, tr("Read Error !"),
             tr("Cannot read file %1:\n%2.")
-            .arg(QDir::toNativeSeparators(fileName), file.errorString()));
+                .arg(QDir::toNativeSeparators(fileName), file.errorString()));
         return;
     }
 
@@ -805,14 +805,14 @@ void MainWindow::displayMessageBox(QString title, QString text)
 void MainWindow::displayPasswordNotMatch()
 {
     QMessageBox::warning(this, tr("Passphrase do not match!"),
-                         tr("The passphrase fields do not match. Please make "
-                            "sure they were entered correctly and try again."));
+        tr("The passphrase fields do not match. Please make "
+           "sure they were entered correctly and try again."));
 }
 
 void MainWindow::displayEmptyPassword()
 {
     QMessageBox::warning(this, tr("Passphrase field is empty !"),
-                         tr("You must enter a passphrase."));
+        tr("You must enter a passphrase."));
 }
 
 void MainWindow::displayEmptyJob()
@@ -825,5 +825,5 @@ void MainWindow::displayEmptyJob()
 void MainWindow::displayEmptyEditor()
 {
     QMessageBox::warning(this, tr("Text editor is empty !"),
-                         tr("You must add text to editor to start processing."));
+        tr("You must add text to editor to start processing."));
 }
