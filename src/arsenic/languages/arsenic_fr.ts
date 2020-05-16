@@ -83,13 +83,46 @@
     </message>
     <message>
         <location filename="../configDialog.ui" line="42"/>
-        <source>Empty clopboard after</source>
-        <translation>Vider le presse papier aprés</translation>
+        <source>Empty clopboard after :</source>
+        <translation>Vider le presse papier aprés :</translation>
     </message>
     <message>
         <location filename="../configDialog.ui" line="65"/>
+        <source>Password derivation</source>
+        <translation>Dérivation du mot de passe</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="122"/>
+        <source>Memory Limit :</source>
+        <translation>Limite mémoire :</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="145"/>
+        <source>Files Encryption</source>
+        <translation>Chiffrage des Fichiers</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="151"/>
+        <source>Algorithm :</source>
+        <translation>Algorithme :</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="158"/>
+        <source>Add finished encrypted files to list</source>
+        <translation>Ajouter les fichiers chiffrés à la liste</translation>
+    </message>
+    <message>
+        <location filename="../configDialog.ui" line="187"/>
+        <source>Add finished decrypted files to list</source>
+        <translation>Ajouter les fichiers déchiffrés à la liste</translation>
+    </message>
+    <message>
+        <source>Empty clopboard after</source>
+        <translation type="vanished">Vider le presse papier aprés</translation>
+    </message>
+    <message>
         <source>Passphrase derivation</source>
-        <translation>Dérivation de la passphrase</translation>
+        <translation type="vanished">Dérivation de la passphrase</translation>
     </message>
     <message>
         <location filename="../configDialog.ui" line="71"/>
@@ -97,22 +130,20 @@
         <translation></translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="122"/>
         <source>Memory Limit:</source>
-        <translation>Limite Mémoire:</translation>
+        <translation type="vanished">Limite Mémoire:</translation>
     </message>
     <message>
-        <location filename="../configDialog.ui" line="145"/>
         <source>Files Encryption Algorithm</source>
-        <translation>Algorithme de chiffrage pour les fichiers</translation>
+        <translation type="vanished">Algorithme de chiffrage pour les fichiers</translation>
     </message>
     <message>
-        <location filename="../configDialog.cpp" line="38"/>
+        <location filename="../configDialog.cpp" line="28"/>
         <source>Access error for config file %1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../configDialog.cpp" line="39"/>
+        <location filename="../configDialog.cpp" line="29"/>
         <source>Could not load configuration</source>
         <translation></translation>
     </message>
@@ -155,12 +186,12 @@
         <translation>Copier</translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="63"/>
+        <location filename="../hashcheckdialog.cpp" line="61"/>
         <source>Load file...</source>
         <translation>Ouvrir Fichier...</translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="148"/>
+        <location filename="../hashcheckdialog.cpp" line="138"/>
         <source>error</source>
         <translation>erreur</translation>
     </message>
@@ -302,7 +333,7 @@
     <message>
         <location filename="../mainwindow.ui" line="384"/>
         <source>Argon2 tests</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../mainwindow.ui" line="392"/>
@@ -395,60 +426,60 @@
         <translation>Progression</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="445"/>
+        <location filename="../mainwindow.cpp" line="441"/>
         <source>Access error for config file %1</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="446"/>
+        <location filename="../mainwindow.cpp" line="442"/>
         <source>Could not load configuration</source>
         <translation>Impossible de charger la configuration</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="699"/>
+        <location filename="../mainwindow.cpp" line="671"/>
         <source>Read Error !</source>
         <translation>Erreur de lecture !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="700"/>
+        <location filename="../mainwindow.cpp" line="672"/>
         <source>Cannot read file %1:
 %2.</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="715"/>
+        <location filename="../mainwindow.cpp" line="687"/>
         <source>File loaded</source>
         <translation>Fichier chargé</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="734"/>
+        <location filename="../mainwindow.cpp" line="706"/>
         <source>Write Error !</source>
         <translation>Erreur d&apos;écriture !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="735"/>
+        <location filename="../mainwindow.cpp" line="706"/>
         <source>Cannot write file %1:
 %2.</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="751"/>
+        <location filename="../mainwindow.cpp" line="720"/>
         <source>File saved</source>
         <translation>Fichier enregistré</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="761"/>
+        <location filename="../mainwindow.cpp" line="730"/>
         <source>Application</source>
         <translation>Arsenic</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="762"/>
+        <location filename="../mainwindow.cpp" line="731"/>
         <source>The document has been modified.
 Do you want to save your changes?</source>
         <translation>Le document à été modifié. Voulez-vous enregistrer les changemments ?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="874"/>
+        <location filename="../mainwindow.cpp" line="837"/>
         <source>Text editor is empty !</source>
         <translation>L&apos;editeur de texte est vide !</translation>
     </message>
@@ -457,47 +488,47 @@ Do you want to save your changes?</source>
         <translation type="vanished">Vous devez ajouter du texte !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="864"/>
+        <location filename="../mainwindow.cpp" line="824"/>
         <source>Passphrase field is empty !</source>
         <translation>Pas de passphrase !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="864"/>
+        <location filename="../mainwindow.cpp" line="825"/>
         <source>You must enter a passphrase.</source>
         <translation>Vous devez entrer une passphrase.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="859"/>
+        <location filename="../mainwindow.cpp" line="817"/>
         <source>Passphrase do not match!</source>
         <translation>La passphrases et sa confirmation ne correspondent pas !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="859"/>
+        <location filename="../mainwindow.cpp" line="818"/>
         <source>The passphrase fields do not match. Please make sure they were entered correctly and try again.</source>
         <translation>Le mot de passe et sa confirmation ne correspondent pas. Merci de vérifier qu&apos;ils ont étés entrés correctement.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="822"/>
+        <location filename="../mainwindow.cpp" line="785"/>
         <source>Encryption Error!</source>
         <translation>Erreur Inrerne de chiffrage !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="849"/>
+        <location filename="../mainwindow.cpp" line="806"/>
         <source>Decryption Error!</source>
         <translation>Erreur Inrerne de déchiffrage !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="869"/>
+        <location filename="../mainwindow.cpp" line="831"/>
         <source>Job list is empty !</source>
         <translation>La liste de fichiers est vide !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="869"/>
+        <location filename="../mainwindow.cpp" line="832"/>
         <source>You must add file(s) to the job list to start processing.</source>
         <translation>Vous devez ajouter de(s) fichier(s) pour faire cela.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="874"/>
+        <location filename="../mainwindow.cpp" line="838"/>
         <source>You must add text to editor to start processing.</source>
         <translation>Vous devez ajouter du texte pour faire cela.</translation>
     </message>
@@ -512,7 +543,7 @@ Do you want to save your changes?</source>
     <message>
         <location filename="../passwordGeneratorDialog.ui" line="81"/>
         <source>Password:</source>
-        <translation>Passphrase:</translation>
+        <translation>Mot de passe:</translation>
     </message>
     <message>
         <location filename="../passwordGeneratorDialog.ui" line="105"/>
@@ -538,7 +569,7 @@ Do you want to save your changes?</source>
     <message>
         <location filename="../passwordGeneratorDialog.ui" line="197"/>
         <source>&amp;Length:</source>
-        <translation>Longueur:</translation>
+        <translation>Longueur :</translation>
     </message>
     <message>
         <location filename="../passwordGeneratorDialog.ui" line="261"/>
@@ -749,7 +780,7 @@ Do you want to save your changes?</source>
     </message>
     <message>
         <location filename="../passwordGeneratorDialog.ui" line="998"/>
-        <location filename="../passwordGeneratorDialog.cpp" line="203"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="186"/>
         <source>Accept</source>
         <translation>Acceprer</translation>
     </message>
@@ -764,43 +795,43 @@ Do you want to save your changes?</source>
         <translation>Régénérer</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="200"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="183"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="267"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="248"/>
         <source>Entropy: %1 bit</source>
         <translation>Entropie: %1 bit</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="428"/>
-        <location filename="../passwordGeneratorDialog.cpp" line="431"/>
-        <location filename="../passwordGeneratorDialog.cpp" line="434"/>
-        <location filename="../passwordGeneratorDialog.cpp" line="437"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="406"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="409"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="412"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="415"/>
         <source>Password Quality: %1</source>
         <translation>Qualité: %1</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="428"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="406"/>
         <source>Poor</source>
         <comment>Password quality</comment>
         <translation>Trés faible</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="431"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="409"/>
         <source>Weak</source>
         <comment>Password quality</comment>
         <translation>faible</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="434"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="412"/>
         <source>Good</source>
         <comment>Password quality</comment>
         <translation>bon</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="437"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="415"/>
         <source>Excellent</source>
         <comment>Password quality</comment>
         <translation>exellent</translation>
@@ -809,27 +840,27 @@ Do you want to save your changes?</source>
 <context>
     <name>main</name>
     <message>
-        <location filename="../main.cpp" line="32"/>
+        <location filename="../main.cpp" line="31"/>
         <source>Source file to encrypt or decrypt.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="34"/>
+        <location filename="../main.cpp" line="33"/>
         <source>Encrypt the file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="37"/>
+        <location filename="../main.cpp" line="36"/>
         <source>Decrypt the file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="40"/>
+        <location filename="../main.cpp" line="42"/>
         <source>The passphrase for encrypt or decrypt &lt;source&gt;.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="40"/>
+        <location filename="../main.cpp" line="42"/>
         <source>passphrase</source>
         <translation type="unfinished"></translation>
     </message>
