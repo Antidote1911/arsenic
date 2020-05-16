@@ -17,8 +17,8 @@
  */
 
 #include "aboutDialog.h"
-#include "ui_aboutDialog.h"
 #include "constants.h"
+#include "ui_aboutDialog.h"
 
 #include <QClipboard>
 
@@ -33,7 +33,6 @@ static const QString aboutMaintainers = R"(
     <li>Sony Legrand (English traduction)</li>
 </ul></p>
 )";
-
 
 static const QString aboutContributors = R"(
 <h3>VIP Patreon Supporters:</h3>
@@ -51,7 +50,6 @@ static const QString aboutContributors = R"(
     <li><strong>Français</strong>: Liloutronic</li>
 </ul>
 )";
-
 
 AboutDialog::AboutDialog(QWidget* parent)
     : QDialog(parent)
@@ -72,10 +70,10 @@ AboutDialog::AboutDialog(QWidget* parent)
     QString debugInfo;
     debugInfo.append(ARs::APP_LONG_NAME).append("\n");
     debugInfo.append("Qt ").append(QString::fromLocal8Bit(qVersion())).append("\n");
-    debugInfo.append("Operating system: "+QSysInfo::prettyProductName()).append("\n");
-    debugInfo.append("CPU architecture: "+QSysInfo::currentCpuArchitecture()).append("\n");
-    debugInfo.append("Kernel: "+QSysInfo::kernelType()).append(QSysInfo::kernelVersion()).append("\n");
-    debugInfo.append("Hostname: "+QSysInfo::machineHostName()).append("\n");
+    debugInfo.append("Operating system: " + QSysInfo::prettyProductName()).append("\n");
+    debugInfo.append("CPU architecture: " + QSysInfo::currentCpuArchitecture()).append("\n");
+    debugInfo.append("Kernel: " + QSysInfo::kernelType()).append(QSysInfo::kernelVersion()).append("\n");
+    debugInfo.append("Hostname: " + QSysInfo::machineHostName()).append("\n");
     debugInfo.append(ARs::BOTAN_VERSION).append("\n");
 
     m_ui->iconLabel->setPixmap(qApp->windowIcon().pixmap(48));

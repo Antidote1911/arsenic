@@ -19,13 +19,15 @@
  */
 
 #include "Delegate.h"
-#include <QtWidgets/QApplication>
 #include <QtCore/QEvent>
 #include <QtGui/QMouseEvent>
+#include <QtWidgets/QApplication>
 
-Delegate::Delegate(QObject* parent) :
-    QStyledItemDelegate{parent}, focusBorderEnabled{false}
-{}
+Delegate::Delegate(QObject* parent)
+    : QStyledItemDelegate { parent }
+    , focusBorderEnabled { false }
+{
+}
 
 void Delegate::setFocusBorderEnabled(bool enabled)
 {
@@ -33,75 +35,66 @@ void Delegate::setFocusBorderEnabled(bool enabled)
 }
 
 void Delegate::initStyleOption(QStyleOptionViewItem* option,
-                               const QModelIndex &index) const
+    const QModelIndex& index) const
 {
     QStyledItemDelegate::initStyleOption(option, index);
-    if (!focusBorderEnabled && option->state & QStyle::State_HasFocus)
-    {
+    if (!focusBorderEnabled && option->state & QStyle::State_HasFocus) {
         option->state = option->state & ~QStyle::State_HasFocus;
     }
 }
 
 void Delegate::paint(QPainter* painter,
-                     const QStyleOptionViewItem& option,
-                     const QModelIndex& index) const
+    const QStyleOptionViewItem& option,
+    const QModelIndex& index) const
 {
     const int column = index.column();
 
-    switch (column)
-    {
-    case 0:
-    {
+    switch (column) {
+    case 0: {
         QStyleOptionButton buttonOption;
         buttonOption.state = QStyle::State_Enabled;
         buttonOption.direction = QApplication::layoutDirection();
         buttonOption.rect = QRect(option.rect.x(),
-                                  option.rect.y(),
-                                  option.rect.width(),
-                                  option.rect.height());
+            option.rect.y(),
+            option.rect.width(),
+            option.rect.height());
         buttonOption.fontMetrics = QApplication::fontMetrics();
         buttonOption.features = QStyleOptionButton::Flat;
         const QIcon closeIcon("://pixmaps/closeFileIcon.svg");
         buttonOption.icon = closeIcon;
         buttonOption.iconSize = QSize((int)option.rect.width() * 0.4,
-                                      (int)option.rect.height() * 0.4);
+            (int)option.rect.height() * 0.4);
 
         QApplication::style()->drawControl(QStyle::CE_PushButton,
-                                           &buttonOption,
-                                           painter);
+            &buttonOption,
+            painter);
         break;
-
     }
-    case 1:
-    {
+    case 1: {
         QStyledItemDelegate::paint(painter, option, index);
         break;
     }
 
-    case 2:
-    {
+    case 2: {
         QStyledItemDelegate::paint(painter, option, index);
         break;
     }
 
-
-    case 3:
-    {
+    case 3: {
         QStyledItemDelegate::paint(painter, option, index);
         break;
     }
 
-    case 4:
-    {
+    case 4: {
         // Set up a QStyleOptionProgressBar to mimic the environment of a progress
         // bar.
         QStyleOptionProgressBar progressBarOption;
         progressBarOption.state = QStyle::State_Enabled;
         progressBarOption.direction = QApplication::layoutDirection();
         progressBarOption.rect = QRect(option.rect.x(),
-                                       option.rect.y() + 1,
-                                       option.rect.width(),
-                                       option.rect.height() - 1);
+            option.rect.y() + 1,
+            option.rect.width(),
+            option.rect.height() - 1);
         progressBarOption.fontMetrics = QApplication::fontMetrics();
         progressBarOption.minimum = 0;
         progressBarOption.maximum = 100;
@@ -112,13 +105,12 @@ void Delegate::paint(QPainter* painter,
         const int progress = index.model()->data(index, Qt::DisplayRole).toInt();
         progressBarOption.progress = progress < 0 ? 0 : progress;
         progressBarOption.text = QString().sprintf("%d%%",
-                                 progressBarOption.progress);
+            progressBarOption.progress);
 
         // Draw the progress bar onto the view.
         QApplication::style()->drawControl(QStyle::CE_ProgressBar,
-                                           &progressBarOption,
-                                           painter);
-
+            &progressBarOption,
+            painter);
 
         break;
     }
@@ -126,20 +118,15 @@ void Delegate::paint(QPainter* painter,
 }
 
 bool Delegate::editorEvent(QEvent* event,
-                           QAbstractItemModel* model,
-                           const QStyleOptionViewItem& option,
-                           const QModelIndex& index)
+    QAbstractItemModel* model,
+    const QStyleOptionViewItem& option,
+    const QModelIndex& index)
 {
-    if (index.column() == 0)
-    {
-        if ((event->type() == QEvent::MouseButtonRelease) ||
-                (event->type() == QEvent::MouseButtonDblClick))
-        {
+    if (index.column() == 0) {
+        if ((event->type() == QEvent::MouseButtonRelease) || (event->type() == QEvent::MouseButtonDblClick)) {
             QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
 
-            if ((mouseEvent->button() == Qt::LeftButton) &&
-                    option.rect.contains(mouseEvent->pos()))
-            {
+            if ((mouseEvent->button() == Qt::LeftButton) && option.rect.contains(mouseEvent->pos())) {
                 emit removeRow(index);
             }
         }
@@ -149,7 +136,7 @@ bool Delegate::editorEvent(QEvent* event,
 }
 
 QSize Delegate::sizeHint(const QStyleOptionViewItem& option,
-                         const QModelIndex& index) const
+    const QModelIndex& index) const
 {
     QSize s = QStyledItemDelegate::sizeHint(option, index);
     s.setHeight(0);

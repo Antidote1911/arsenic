@@ -1,18 +1,17 @@
+#include "Config.h"
+#include "crypto.h"
 #include "mainwindow.h"
 #include <QApplication>
-#include <QtGlobal>
-#include <QUnhandledException>
-#include <QStyleFactory>
-#include <QDebug>
 #include <QCommandLineParser>
+#include <QDebug>
+#include <QStyleFactory>
 #include <QTranslator>
-#include "crypto.h"
-#include "Config.h"
+#include <QUnhandledException>
+#include <QtGlobal>
 
 #include "constants.h"
 
-
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     QTextStream cin(stdin);
     QTextStream cout(stdout);
@@ -37,7 +36,10 @@ int main(int argc, char *argv[])
     QCommandLineOption decryptOption("d", QCoreApplication::translate("main", "Decrypt the file"));
     parser.addOption(decryptOption);
 
-    QCommandLineOption passphraseOption(QStringList() << "p" << "passphrase"<< "pass", QCoreApplication::translate("main", "The passphrase for encrypt or decrypt <source>."),QCoreApplication::translate("main", "passphrase"));
+    QCommandLineOption passphraseOption(QStringList() << "p"
+                                                      << "passphrase"
+                                                      << "pass",
+        QCoreApplication::translate("main", "The passphrase for encrypt or decrypt <source>."), QCoreApplication::translate("main", "passphrase"));
     parser.addOption(passphraseOption);
 
     // Process the actual command line arguments given by the user
@@ -47,65 +49,59 @@ int main(int argc, char *argv[])
     // source is args.at(0), destination is args.at(1)
 
     QString resultat;
-    Crypto_Thread Crypto ;
+    Crypto_Thread Crypto;
 
-    if (args.size() == 1 && parser.isSet(passphraseOption))
-    {
+    if (args.size() == 1 && parser.isSet(passphraseOption)) {
         const auto targetFile = args.at(0);
         const auto passphrase = parser.value(passphraseOption);
-        const auto enc        = parser.isSet(encryptOption);
-        const auto dec        = parser.isSet(decryptOption);
+        const auto enc = parser.isSet(encryptOption);
+        const auto dec = parser.isSet(decryptOption);
 
-        if (enc && dec)
-        {
+        if (enc && dec) {
             cout << "ERROR: You must choose encryption OR decryption." << endl;
             return (0);
         }
 
-        if (passphrase.size() < ARs::MIN_PASS_LENGTH)
-        {
+        if (passphrase.size() < ARs::MIN_PASS_LENGTH) {
             cout << "Passphrase must be minimum " + QString::number(ARs::MIN_PASS_LENGTH) + "characters" << endl;
             return (0);
         }
 
-        if (enc)
-        {
+        if (enc) {
             QStringList listFiles;
             listFiles.append(targetFile);
             Crypto.setParam(true,
-                             listFiles,
-                             passphrase,
-                             config()->get("CRYPTO/cryptoAlgo").toString(),
-                             config()->get("CRYPTO/argonMemory").toInt(),
-                             config()->get("CRYPTO/argonItr").toInt(),
-                             false);
+                listFiles,
+                passphrase,
+                config()->get("CRYPTO/cryptoAlgo").toString(),
+                config()->get("CRYPTO/argonMemory").toInt(),
+                config()->get("CRYPTO/argonItr").toInt(),
+                false);
 
             Crypto.start();
             Crypto.wait();
-            cout << endl << resultat << endl;
+            cout << endl
+                 << resultat << endl;
             return (0);
         }
 
-        if (dec)
-        {
+        if (dec) {
             QStringList listFiles;
             listFiles.append(targetFile);
             Crypto.setParam(false,
-                             listFiles,
-                             passphrase,
-                             config()->get("CRYPTO/cryptoAlgo").toString(),
-                             config()->get("CRYPTO/argonMemory").toInt(),
-                             config()->get("CRYPTO/argonItr").toInt(),
-                             false);
+                listFiles,
+                passphrase,
+                config()->get("CRYPTO/cryptoAlgo").toString(),
+                config()->get("CRYPTO/argonMemory").toInt(),
+                config()->get("CRYPTO/argonItr").toInt(),
+                false);
             Crypto.start();
             Crypto.wait();
             return (0);
         }
         cout << "Invalids or no arguments" << endl;
         return (0);
-    }
-    else
-    {
+    } else {
         MainWindow w;
         w.session();
         return app.exec();

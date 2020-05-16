@@ -35,13 +35,13 @@ using namespace ARs;
  */
 static const QMap<QString, QString> deprecationMap = {
     // >2.3.4
-    {QStringLiteral("security/hidepassworddetails"), QStringLiteral("security/HidePasswordPreviewPanel")},
+    { QStringLiteral("security/hidepassworddetails"), QStringLiteral("security/HidePasswordPreviewPanel") },
     // >2.3.4
-    {QStringLiteral("GUI/HideDetailsView"), QStringLiteral("GUI/HidePreviewPanel")},
+    { QStringLiteral("GUI/HideDetailsView"), QStringLiteral("GUI/HidePreviewPanel") },
     // >2.3.4
-    {QStringLiteral("GUI/DetailSplitterState"), QStringLiteral("GUI/PreviewSplitterState")},
+    { QStringLiteral("GUI/DetailSplitterState"), QStringLiteral("GUI/PreviewSplitterState") },
     // >2.3.4
-    {QStringLiteral("security/IconDownloadFallbackToGoogle"), QStringLiteral("security/IconDownloadFallback")},
+    { QStringLiteral("security/IconDownloadFallbackToGoogle"), QStringLiteral("security/IconDownloadFallback") },
 };
 
 Config* Config::m_instance(nullptr);
@@ -112,17 +112,17 @@ void Config::upgrade()
         }
     }
     /*
-    // > 2.3.4
-    if (m_settings->value("AutoSaveAfterEveryChange").toBool()) {
+       // > 2.3.4
+       if (m_settings->value("AutoSaveAfterEveryChange").toBool()) {
         m_settings->setValue("AutoSaveOnExit", true);
-    }
+       }
 
-    // Setting defaults for 'hide window on copy' behavior, keeping the user's original setting
-    if (m_settings->value("HideWindowOnCopy").isNull()) {
+       // Setting defaults for 'hide window on copy' behavior, keeping the user's original setting
+       if (m_settings->value("HideWindowOnCopy").isNull()) {
         m_settings->setValue("HideWindowOnCopy", m_settings->value("MinimizeOnCopy").toBool());
         m_settings->setValue("MinimizeOnCopy", true);
-    }
-    */
+       }
+     */
 }
 
 Config::Config(const QString& fileName, QObject* parent)

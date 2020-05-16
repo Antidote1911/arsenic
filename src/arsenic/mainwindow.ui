@@ -244,7 +244,7 @@
      </property>
     </widget>
     <addaction name="menuConfiguration"/>
-    <addaction name="menuViewButtonToolbar"/>
+    <addaction name="menuViewToolbar"/>
     <addaction name="menuDarkTheme"/>
     <addaction name="menuLanguage"/>
    </widget>
@@ -392,7 +392,7 @@
     <string>Dark Theme</string>
    </property>
   </action>
-  <action name="menuViewButtonToolbar">
+  <action name="menuViewToolbar">
    <property name="checkable">
     <bool>true</bool>
    </property>

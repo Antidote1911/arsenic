@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>374</width>
-    <height>308</height>
+    <width>458</width>
+    <height>368</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -39,7 +39,7 @@
       <item row="0" column="0">
        <widget class="QCheckBox" name="checkBox_empty">
         <property name="text">
-         <string>Empty clopboard after</string>
+         <string>Empty clopboard after :</string>
         </property>
        </widget>
       </item>
@@ -62,7 +62,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
-      <string>Passphrase derivation</string>
+      <string>Password derivation</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
       <item row="1" column="0">
@@ -119,7 +119,7 @@
       <item row="0" column="0">
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Memory Limit:</string>
+         <string>Memory Limit :</string>
         </property>
        </widget>
       </item>
@@ -142,10 +142,24 @@
    <item>
     <widget class="QGroupBox" name="groupBox_3">
      <property name="title">
-      <string>Files Encryption Algorithm</string>
+      <string>Files Encryption</string>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Algorithm :</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QCheckBox" name="checkAddEncrypted">
+        <property name="text">
+         <string>Add finished encrypted files to list</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
        <widget class="QComboBox" name="comboAlgo">
         <property name="currentText">
          <string notr="true">ChaCha20Poly1305</string>
@@ -167,7 +181,14 @@
         </item>
        </widget>
       </item>
-      <item>
+      <item row="2" column="0">
+       <widget class="QCheckBox" name="checkAddDecrypted">
+        <property name="text">
+         <string>Add finished decrypted files to list</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
        <spacer name="horizontalSpacer_3">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
