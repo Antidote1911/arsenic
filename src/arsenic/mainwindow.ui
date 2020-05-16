@@ -116,6 +116,10 @@
             <property name="text">
              <string>Encrypt</string>
             </property>
+            <property name="icon">
+             <iconset resource="rsc.qrc">
+              <normaloff>:/pixmaps/icon.png</normaloff>:/pixmaps/icon.png</iconset>
+            </property>
            </widget>
           </item>
           <item>
