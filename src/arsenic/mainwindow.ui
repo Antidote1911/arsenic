@@ -73,7 +73,7 @@
             </property>
             <property name="icon">
              <iconset resource="rsc.qrc">
-              <normaloff>:/pixmaps/icon.png</normaloff>:/pixmaps/icon.png</iconset>
+              <normaloff>:/pixmaps/encrypt.png</normaloff>:/pixmaps/encrypt.png</iconset>
             </property>
            </widget>
           </item>
@@ -81,6 +81,10 @@
            <widget class="QPushButton" name="pushDecrypt">
             <property name="text">
              <string>Decrypt</string>
+            </property>
+            <property name="icon">
+             <iconset resource="rsc.qrc">
+              <normaloff>:/pixmaps/decrypt.png</normaloff>:/pixmaps/decrypt.png</iconset>
             </property>
            </widget>
           </item>
@@ -118,7 +122,7 @@
             </property>
             <property name="icon">
              <iconset resource="rsc.qrc">
-              <normaloff>:/pixmaps/icon.png</normaloff>:/pixmaps/icon.png</iconset>
+              <normaloff>:/pixmaps/encrypt.png</normaloff>:/pixmaps/encrypt.png</iconset>
             </property>
            </widget>
           </item>
@@ -126,6 +130,10 @@
            <widget class="QPushButton" name="pushDecryptTxt">
             <property name="text">
              <string>Decrypt</string>
+            </property>
+            <property name="icon">
+             <iconset resource="rsc.qrc">
+              <normaloff>:/pixmaps/decrypt.png</normaloff>:/pixmaps/decrypt.png</iconset>
             </property>
            </widget>
           </item>
@@ -312,7 +320,6 @@
    <addaction name="separator"/>
    <addaction name="menuOpenTxt"/>
    <addaction name="menuSaveTxt"/>
-   <addaction name="menuSaveTxtAs"/>
    <addaction name="menuClearEditor"/>
    <addaction name="separator"/>
    <addaction name="menuPassGenerator"/>
@@ -324,7 +331,7 @@
   <action name="menuAddFiles">
    <property name="icon">
     <iconset resource="rsc.qrc">
-     <normaloff>:/pixmaps/file-plus-outline.svg</normaloff>:/pixmaps/file-plus-outline.svg</iconset>
+     <normaloff>:/pixmaps/add_file.png</normaloff>:/pixmaps/add_file.png</iconset>
    </property>
    <property name="text">
     <string>Add File(s)</string>
@@ -414,13 +421,17 @@
   <action name="menuOpenTxt">
    <property name="icon">
     <iconset resource="rsc.qrc">
-     <normaloff>:/pixmaps/folder-plus-outline.svg</normaloff>:/pixmaps/folder-plus-outline.svg</iconset>
+     <normaloff>:/pixmaps/open_txt.png</normaloff>:/pixmaps/open_txt.png</iconset>
    </property>
    <property name="text">
     <string>Open Txt File</string>
    </property>
   </action>
   <action name="menuSaveTxt">
+   <property name="icon">
+    <iconset resource="rsc.qrc">
+     <normaloff>:/pixmaps/save_txt.png</normaloff>:/pixmaps/save_txt.png</iconset>
+   </property>
    <property name="text">
     <string>Save Txt File</string>
    </property>
@@ -456,6 +467,10 @@
    </property>
   </action>
   <action name="menuClearEditor">
+   <property name="icon">
+    <iconset resource="rsc.qrc">
+     <normaloff>:/pixmaps/clear_txt.png</normaloff>:/pixmaps/clear_txt.png</iconset>
+   </property>
    <property name="text">
     <string>Clear Editor</string>
    </property>
@@ -476,6 +491,10 @@
    </property>
   </action>
   <action name="menuRemoveAllFiles">
+   <property name="icon">
+    <iconset resource="rsc.qrc">
+     <normaloff>:/pixmaps/remove_file.png</normaloff>:/pixmaps/remove_file.png</iconset>
+   </property>
    <property name="text">
     <string>Remove All Files From List</string>
    </property>
