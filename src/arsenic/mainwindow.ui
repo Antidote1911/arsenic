@@ -308,9 +308,16 @@
     <bool>false</bool>
    </attribute>
    <addaction name="menuAddFiles"/>
-   <addaction name="menuConfiguration"/>
+   <addaction name="menuRemoveAllFiles"/>
+   <addaction name="separator"/>
+   <addaction name="menuOpenTxt"/>
+   <addaction name="menuSaveTxt"/>
+   <addaction name="menuSaveTxtAs"/>
+   <addaction name="menuClearEditor"/>
+   <addaction name="separator"/>
    <addaction name="menuPassGenerator"/>
    <addaction name="menuHashCalculator"/>
+   <addaction name="menuConfiguration"/>
    <addaction name="menuAboutArsenic"/>
    <addaction name="menuQuit"/>
   </widget>
@@ -405,6 +412,10 @@
    </property>
   </action>
   <action name="menuOpenTxt">
+   <property name="icon">
+    <iconset resource="rsc.qrc">
+     <normaloff>:/pixmaps/folder-plus-outline.svg</normaloff>:/pixmaps/folder-plus-outline.svg</iconset>
+   </property>
    <property name="text">
     <string>Open Txt File</string>
    </property>

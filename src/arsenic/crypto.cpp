@@ -283,6 +283,7 @@ void Crypto_Thread::encrypt(const QString src_path)
     QFileInfo fileInfo(des_file.fileName());
 
     if (m_deletefile == true) {
+        src_file.close();
         QFile::remove(src_path);
         emit sourceDeletedAfterSuccess(src_path);
     }
@@ -480,6 +481,7 @@ void Crypto_Thread::decrypt(QString src_path)
     emit updateProgress(src_path, 100);
 
     if (m_deletefile == true) {
+        src_file.close();
         QFile::remove(src_path);
         emit sourceDeletedAfterSuccess(src_path);
     }
