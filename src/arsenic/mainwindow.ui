@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -98,7 +98,14 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
-         <widget class="QPlainTextEdit" name="cryptoPadEditor"/>
+         <widget class="QPlainTextEdit" name="cryptoPadEditor">
+          <property name="font">
+           <font>
+            <family>Monospace</family>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
+         </widget>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
