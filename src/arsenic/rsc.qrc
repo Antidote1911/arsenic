@@ -20,5 +20,6 @@
         <file>pixmaps/remove_file.png</file>
         <file>pixmaps/save_txt.png</file>
         <file>pixmaps/vierge.png</file>
+        <file>pixmaps/app.ico</file>
     </qresource>
 </RCC>
