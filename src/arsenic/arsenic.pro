@@ -24,7 +24,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 #LIBS += -lsodium
-win32:RC_ICONS += pixmaps/icon.ico
+win32:RC_ICONS += /pixmaps/app.png
 
 FORMS += \
     aboutDialog.ui \
