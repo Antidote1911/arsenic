@@ -113,6 +113,3 @@ DISTFILES += \
     languages/fr.svg \
     languages/arsenic_en.qm \
     languages/arsenic_fr.qm \
-    pixmaps/icon.png \
-    pixmaps/icon.ico \
-    pixmaps/test.jpg
