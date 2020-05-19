@@ -11,10 +11,10 @@ namespace ARs // for Arsenic Preferences
 {
 
 // Global app infos
-const QString APP_VERSION           { "2.1" };
+const QString APP_VERSION           { "2.5" };
 const QString APP_SHORT_NAME        { "Arsenic" };
 const QString APP_LONG_NAME         { "Arsenic " + APP_VERSION };
-const QString APP_DESCRIPTION       { "Strongs files encryption" };
+const QString APP_DESCRIPTION       { "Strong encryption" };
 const QString APP_URL               { "https://github.com/Antidote1911" };
 const quint32 MAGIC_NUMBER          { 0x41525345 };
 
@@ -23,13 +23,13 @@ const QString DEFAULT_EXTENSION     { ".arsenic" };
 const QString DEFAULT_LANGUAGE      { "en" };
 const QString DEFAULT_LASTDIRECTORY { "" };
 const int DEFAULT_INDEX_TAB         { 0 };
-const int DEFAULT_ARGON_ITR_LIMIT   { 0 };
-const int DEFAULT_ARGON_MEM_LIMIT   { 0 };
 const bool DEFAULT_SHOW_PSW         { false };
 const bool DEFAULT_DELETE_FINSHED   { false };
 
 const bool DEFAULT_ADD_ENCRYPTED    { true };
 const bool DEFAULT_ADD_DECRYPTED    { true };
+const int DEFAULT_ARGON_ITR_LIMIT   { 0 };
+const int DEFAULT_ARGON_MEM_LIMIT   { 0 };
 
 const bool DEFAULT_DARK_THEME       { false };
 const bool DEFAULT_SHOW_TOOLBAR     { true };
@@ -39,19 +39,12 @@ const QString BOTAN_VERSION         { QString::fromStdString(Botan::version_stri
 
 const QString DEFAULT_LIST_PATH     { "session.qtlist" };
 const int MIN_PASS_LENGTH           { 8 };
-const int START_ENCRYPT             { 0 };
-const int START_DECRYPT             { 1 };
-const int MAX_ENCRYPT_NAME_LENGTH   { 256 };
-const int EXTRA_COLUMN_SPACE        { 5 };
-const int EMPTY_COLUMN_SPACE        { 100 };
 
 // Default constants for Crypto engine
-const QString DEFAULT_CRYPTO_ALGO   { "ChaCha20Poly1305" };
 const int MACBYTES                  { 16 };
 const int IN_BUFFER_SIZE            { 65536 };
 const size_t CIPHER_KEY_LEN         { 32 };
 const size_t CIPHER_IV_LEN          { 24 };
-const int BUFFER_SIZE_WITHOUT_MAC   { (IN_BUFFER_SIZE - MACBYTES) };
 
 // Argon2 constants
 const int ARGON_SALT_LEN            { 16 };

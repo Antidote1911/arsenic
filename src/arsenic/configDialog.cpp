@@ -31,7 +31,6 @@ void ConfigDialog::loadSettings()
 
     m_ui->comboMemory->setCurrentIndex(config()->get("CRYPTO/argonMemory").toInt());
     m_ui->comboOps->setCurrentIndex(config()->get("CRYPTO/argonItr").toInt());
-    m_ui->comboAlgo->setCurrentText(config()->get("CRYPTO/cryptoAlgo").toString());
     m_ui->spinBox_clip->setValue(config()->get("SECURITY/clearclipboardtimeout").toInt());
     m_ui->checkBox_empty->setChecked(config()->get("SECURITY/clearclipboard").toBool());
     m_ui->checkAddEncrypted->setChecked(config()->get("GUI/AddEncrypted").toBool());
@@ -42,7 +41,6 @@ void ConfigDialog::saveSettings()
 {
     config()->set("CRYPTO/argonMemory", m_ui->comboMemory->currentIndex());
     config()->set("CRYPTO/argonItr", m_ui->comboOps->currentIndex());
-    config()->set("CRYPTO/cryptoAlgo", m_ui->comboAlgo->currentText());
     config()->set("SECURITY/clearclipboardtimeout", m_ui->spinBox_clip->value());
     config()->set("SECURITY/clearclipboard", m_ui->checkBox_empty->isChecked());
     config()->set("GUI/AddEncrypted", m_ui->checkAddEncrypted->isChecked());

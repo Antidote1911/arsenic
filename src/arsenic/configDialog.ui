@@ -75,21 +75,21 @@
       <item row="0" column="2">
        <widget class="QComboBox" name="comboMemory">
         <property name="currentText">
-         <string notr="true">Interactive</string>
+         <string notr="true">Interactive (64 mb)</string>
         </property>
         <item>
          <property name="text">
-          <string notr="true">Interactive</string>
+          <string notr="true">Interactive (64 mb)</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Moderate</string>
+          <string notr="true">Moderate (512 mb)</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Sensitive</string>
+          <string notr="true">Sensitive (1000 mb)</string>
          </property>
         </item>
        </widget>
@@ -97,21 +97,21 @@
       <item row="1" column="2">
        <widget class="QComboBox" name="comboOps">
         <property name="currentText">
-         <string notr="true">Interactive</string>
+         <string notr="true">Interactive (1)</string>
         </property>
         <item>
          <property name="text">
-          <string notr="true">Interactive</string>
+          <string notr="true">Interactive (1)</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Moderate</string>
+          <string notr="true">Moderate (2)</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Sensitive</string>
+          <string notr="true">Sensitive (3)</string>
          </property>
         </item>
        </widget>
@@ -145,61 +145,19 @@
       <string>Files Encryption</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Algorithm :</string>
-        </property>
-       </widget>
-      </item>
       <item row="1" column="0">
-       <widget class="QCheckBox" name="checkAddEncrypted">
-        <property name="text">
-         <string>Add finished encrypted files to list</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="2">
-       <widget class="QComboBox" name="comboAlgo">
-        <property name="currentText">
-         <string notr="true">ChaCha20Poly1305</string>
-        </property>
-        <item>
-         <property name="text">
-          <string notr="true">ChaCha20Poly1305</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string notr="true">AES-256/GCM</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string notr="true">Serpent/GCM</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item row="2" column="0">
        <widget class="QCheckBox" name="checkAddDecrypted">
         <property name="text">
          <string>Add finished decrypted files to list</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
-       <spacer name="horizontalSpacer_3">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+      <item row="0" column="0">
+       <widget class="QCheckBox" name="checkAddEncrypted">
+        <property name="text">
+         <string>Add finished encrypted files to list</string>
         </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
+       </widget>
       </item>
      </layout>
     </widget>

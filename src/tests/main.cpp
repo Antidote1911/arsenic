@@ -31,6 +31,8 @@ bool encrypt()
     Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE);
     Botan::AutoSeeded_RNG rng;
     main_buffer = rng.random_vec(IN_BUFFER_SIZE);
+    QFile::remove(QDir::cleanPath("cleartxt.txt")); //clear previous file
+    QFile::remove(QDir::cleanPath("cleartxt.txt.arsenic"));
 
     QFile src_file(QDir::cleanPath("cleartxt.txt"));
     src_file.open(QIODevice::WriteOnly);
@@ -54,9 +56,8 @@ bool encrypt()
     Crypto.setParam(true,
         list,
         "mypassword",
-        "ChaCha20Poly1305",
-        DEFAULT_ARGON_MEM_LIMIT,
-        DEFAULT_ARGON_ITR_LIMIT,
+        MEMLIMIT_MODERATE,
+        ITERATION_MODERATE,
         true);
 
     Crypto.start();
@@ -71,9 +72,8 @@ bool encrypt()
     Crypto.setParam(false,
         list2,
         "mypassword",
-        "ChaCha20Poly1305",
-        DEFAULT_ARGON_MEM_LIMIT,
-        DEFAULT_ARGON_ITR_LIMIT,
+        MEMLIMIT_MODERATE,
+        ITERATION_MODERATE,
         true);
 
     Crypto.start();

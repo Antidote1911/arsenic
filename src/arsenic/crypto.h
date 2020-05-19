@@ -16,7 +16,6 @@ public:
     void setParam(bool direction,
         QStringList filenames,
         const QString password,
-        const QString algo,
         int argonmem,
         int argoniter,
         bool deletefile);
@@ -47,7 +46,6 @@ private:
 
     QStringList m_filenames;
     QString m_password;
-    QString m_algo;
     QString m_encoding;
     int m_argonmem;
     int m_argoniter;

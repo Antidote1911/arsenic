@@ -90,9 +90,9 @@ Botan::SecureVector<quint8> calculateHash(Botan::SecureVector<char> pass_buffer,
 
 Botan::SecureVector<char> convertStringToSecureVector(QString password)
 {
-    Botan::SecureVector<char> pass_buffer(CIPHER_KEY_LEN);
-    memset(pass_buffer.data(), 0, CIPHER_KEY_LEN);
-    memcpy(pass_buffer.data(), password.toUtf8().constData(), std::min(password.toUtf8().size(), static_cast<int>(CIPHER_KEY_LEN)));
+    Botan::SecureVector<char> pass_buffer(password.size());
+    memset(pass_buffer.data(), 0, password.size());
+    memcpy(pass_buffer.data(), password.toUtf8().constData(), password.toUtf8().size());
     return pass_buffer;
 }
 

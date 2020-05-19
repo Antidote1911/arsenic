@@ -195,7 +195,6 @@ void Config::init(const QString& fileName)
 
     m_defaults.insert("CRYPTO/argonMemory", DEFAULT_ARGON_MEM_LIMIT);
     m_defaults.insert("CRYPTO/argonItr", DEFAULT_ARGON_ITR_LIMIT);
-    m_defaults.insert("CRYPTO/cryptoAlgo", DEFAULT_CRYPTO_ALGO);
 
     m_defaults.insert("SECURITY/clearclipboard", DEFAULT_CLEAR_CLIPBOARD);
     m_defaults.insert("SECURITY/clearclipboardtimeout", DEFAULT_CLIPBOARD_TIMEOUT);

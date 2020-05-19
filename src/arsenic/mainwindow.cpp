@@ -177,7 +177,6 @@ void MainWindow::encryptFiles()
     }
 
     Crypto->setParam(true, getListFiles(), m_ui->password_0->text(),
-        config()->get("CRYPTO/cryptoAlgo").toString(),
         config()->get("CRYPTO/argonMemory").toInt(),
         config()->get("CRYPTO/argonItr").toInt(),
         m_ui->CheckDeleteFiles->isChecked());
@@ -198,7 +197,6 @@ void MainWindow::decryptFiles()
     }
 
     Crypto->setParam(false, getListFiles(), m_ui->password_0->text(),
-        config()->get("CRYPTO/cryptoAlgo").toString(),
         config()->get("CRYPTO/argonMemory").toInt(),
         config()->get("CRYPTO/argonItr").toInt(),
         m_ui->CheckDeleteFiles->isChecked());

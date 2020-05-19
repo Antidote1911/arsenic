@@ -73,7 +73,6 @@ int main(int argc, char* argv[])
             Crypto.setParam(true,
                 listFiles,
                 passphrase,
-                config()->get("CRYPTO/cryptoAlgo").toString(),
                 config()->get("CRYPTO/argonMemory").toInt(),
                 config()->get("CRYPTO/argonItr").toInt(),
                 false);
@@ -91,7 +90,6 @@ int main(int argc, char* argv[])
             Crypto.setParam(false,
                 listFiles,
                 passphrase,
-                config()->get("CRYPTO/cryptoAlgo").toString(),
                 config()->get("CRYPTO/argonMemory").toInt(),
                 config()->get("CRYPTO/argonItr").toInt(),
                 false);

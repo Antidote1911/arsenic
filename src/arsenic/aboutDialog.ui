@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>611</width>
-    <height>603</height>
+    <height>507</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -211,28 +211,6 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="label_7">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string notr="true">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Arsenic is originaly forked from &lt;a href=&quot;https://github.com/trashctor/QtCrypt&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;QtCrypt&lt;/span&gt;&lt;/a&gt;. Special thanks to &lt;a href=&quot;https://github.com/trashctor&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;ftrashctor&lt;/span&gt;&lt;/a&gt; for creating &lt;a href=&quot;https://github.com/trashctor/QtCrypt&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;QtCrypt&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-         <property name="openExternalLinks">
-          <bool>true</bool>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByKeyboard|Qt::LinksAccessibleByMouse</set>
-         </property>
-        </widget>
-       </item>
-       <item>
         <spacer name="verticalSpacer">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -266,7 +244,7 @@
             <x>0</x>
             <y>0</y>
             <width>569</width>
-            <height>364</height>
+            <height>268</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">
