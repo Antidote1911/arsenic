@@ -71,23 +71,6 @@ qint64 dirSize(QString dirPath)
     return size;
 }
 
-Botan::SecureVector<quint8> calculateHash(Botan::SecureVector<char> pass_buffer,
-    Botan::SecureVector<quint8> salt_buffer,
-    size_t memlimit,
-    size_t iterations)
-{
-    auto pwdhash_fam = Botan::PasswordHashFamily::create("Argon2id");
-    Botan::SecureVector<quint8> key_buffer(CIPHER_KEY_LEN * 3);
-
-    // mem,ops,threads
-    auto default_pwhash = pwdhash_fam->from_params(memlimit, iterations, PARALLELISM_INTERACTIVE);
-
-    default_pwhash->derive_key(key_buffer.data(), key_buffer.size(),
-        pass_buffer.data(), pass_buffer.size(),
-        salt_buffer.data(), salt_buffer.size());
-    return key_buffer;
-}
-
 Botan::SecureVector<char> convertStringToSecureVector(QString password)
 {
     Botan::SecureVector<char> pass_buffer(password.size());

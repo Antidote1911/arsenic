@@ -12,11 +12,6 @@ void clearDir(QString dir_path);
 qint64 dirSize(QString dirPath);
 QString getFileSize(qint64 size);
 
-Botan::SecureVector<quint8> calculateHash(Botan::SecureVector<char> pass_buffer,
-    Botan::SecureVector<quint8> salt_buffer,
-    size_t memlimit,
-    size_t iterations);
-
 Botan::SecureVector<char> convertStringToSecureVector(QString password);
 QString errorCodeToString(int error_code);
 

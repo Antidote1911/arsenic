@@ -58,8 +58,8 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_ui->menuViewToolbar, &QAction::triggered, this, [=](const bool& checked) { m_ui->toolBar->setVisible(checked); });
     connect(m_ui->toolBar, &QToolBar::visibilityChanged, this, [=](const bool& checked) { m_ui->menuViewToolbar->setChecked(checked); });
     connect(m_ui->menuArgon2Tests, &QAction::triggered, this, [=] { Argon2_tests(); });
-    connect(m_ui->tabWidget, &QTabWidget::currentChanged, this, [=](const int& index) { switchTab(index); });
-    connect(m_ui->comboViewpass, &QCheckBox::stateChanged, this, [=](const int& index) { viewPassStateChanged(index); });
+    connect(m_ui->tabWidget, &QTabWidget::currentChanged, this, [=](const quint32& index) { switchTab(index); });
+    connect(m_ui->comboViewpass, &QCheckBox::stateChanged, this, [=](const quint32& index) { viewPassStateChanged(index); });
 
     // EncryptPad
     connect(m_ui->menuOpenTxt, &QAction::triggered, this, [=] { openTxtFile(); });
@@ -79,7 +79,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_ui->pushEncrypt, &QPushButton::clicked, this, [=] { encryptFiles(); });
     connect(m_ui->pushDecrypt, &QPushButton::clicked, this, [=] { decryptFiles(); });
     connect(m_ui->menuAbortJob, &QAction::triggered, this, [=] { abortJob(); });
-    connect(Crypto, SIGNAL(updateProgress(QString, qint64)), this, SLOT(onPercentProgress(QString, qint64)));
+    connect(Crypto, SIGNAL(updateProgress(QString, quint32)), this, SLOT(onPercentProgress(QString, quint32)));
     connect(Crypto, SIGNAL(statusMessage(QString)), this, SLOT(onMessageChanged(QString)));
     connect(Crypto, SIGNAL(addEncrypted(QString)), this, SLOT(AddEncryptedFile(QString)));
     connect(Crypto, SIGNAL(addDecrypted(QString)), this, SLOT(AddDecryptedFile(QString)));
@@ -93,7 +93,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     // create the temp directory and session.qtlist if they don't exist already
 
-    QFile list_file(ARs::DEFAULT_LIST_PATH);
+    QFile list_file(DEFAULT_LIST_PATH);
     if (!list_file.exists()) {
         list_file.open(QIODevice::WriteOnly);
         list_file.close();
@@ -115,7 +115,7 @@ void MainWindow::removeDeletedFile(QString filepath)
     items = fileListModelCrypto->findItems(filepath, Qt::MatchExactly, 2);
 
     item = items[0];
-    int index = item->row();
+    auto index = item->row();
 
     if (fileListModelCrypto->hasChildren()) {
         fileListModelCrypto->removeRow(index);
@@ -206,11 +206,11 @@ void MainWindow::decryptFiles()
 
 QStringList MainWindow::getListFiles()
 {
-    const int rowCountCrypto = fileListModelCrypto->rowCount();
+    const auto rowCountCrypto = fileListModelCrypto->rowCount();
     QStringList fileList;
 
     if (0 < rowCountCrypto) {
-        for (int row = 0; row < rowCountCrypto; ++row) {
+        for (auto row = 0; row < rowCountCrypto; ++row) {
             QStandardItem* item = fileListModelCrypto->item(row, 2);
             fileList.append(item->text());
         }
@@ -221,7 +221,7 @@ QStringList MainWindow::getListFiles()
 
 void MainWindow::clearEditor() { m_ui->cryptoPadEditor->clear(); }
 
-void MainWindow::onPercentProgress(const QString& path, qint64 percent)
+void MainWindow::onPercentProgress(const QString& path, quint32 percent)
 {
     QList<QStandardItem*> items;
     QStandardItem* item;
@@ -231,7 +231,7 @@ void MainWindow::onPercentProgress(const QString& path, qint64 percent)
 
     if (0 < items.size()) {
         item = items[0];
-        int index = item->row();
+        auto index = item->row();
 
         if (nullptr != item) {
             progressItem = fileListModelCrypto->item(index, 4);
@@ -243,7 +243,7 @@ void MainWindow::onPercentProgress(const QString& path, qint64 percent)
     }
 }
 
-void MainWindow::switchTab(int index)
+void MainWindow::switchTab(quint32 index)
 {
     if (index == 0) {
         m_ui->menuCryptopad->menuAction()->setVisible(false);
@@ -314,7 +314,7 @@ void MainWindow::delegate()
 void MainWindow::addFiles()
 {
     // Open a file dialog to get files
-    const QStringList files = QFileDialog::getOpenFileNames(
+    const auto files = QFileDialog::getOpenFileNames(
         this, tr("Add File(s)"),
         config()->get("GUI/lastDirectory").toByteArray());
 
@@ -322,7 +322,7 @@ void MainWindow::addFiles()
         return;
 
     // Save this directory to return to later
-    const QString fileName = files[0];
+    const auto fileName { files[0] };
     config()->set("GUI/lastDirectory", fileName.left(fileName.lastIndexOf("/")));
 
     for (const QString& file : files) // add files to the model
@@ -337,43 +337,43 @@ void MainWindow::addFilePathToModel(const QString& filePath)
 
     if (fileInfo.exists() && fileInfo.isFile()) // If the file exists, add it to the model
     {
-        QString fileSize = getFileSize((fileInfo.size()));
-        QString fileName = fileInfo.fileName();
+        const auto fileSize { getFileSize((fileInfo.size())) };
+        const auto fileName { fileInfo.fileName() };
 
-        auto fileItem = new QStandardItem { fileName };
+        const auto fileItem { new QStandardItem { fileName } };
         fileItem->setDragEnabled(false);
         fileItem->setDropEnabled(false);
         fileItem->setEditable(false);
         fileItem->setSelectable(false);
         fileItem->setToolTip(fileName);
-        QVariant fileVariant = QVariant::fromValue(fileName);
+        const auto fileVariant { QVariant::fromValue(fileName) };
         fileItem->setData(fileVariant);
 
-        auto pathItem = new QStandardItem { filePath };
+        const auto pathItem { new QStandardItem { filePath } };
         pathItem->setDragEnabled(false);
         pathItem->setDropEnabled(false);
         pathItem->setEditable(false);
         pathItem->setSelectable(false);
         pathItem->setToolTip(filePath);
-        QVariant pathVariant = QVariant::fromValue(filePath);
+        const auto pathVariant { QVariant::fromValue(filePath) };
         pathItem->setData(pathVariant);
 
-        auto sizeItem = new QStandardItem { fileSize };
+        const auto sizeItem { new QStandardItem { fileSize } };
         sizeItem->setDragEnabled(false);
         sizeItem->setDropEnabled(false);
         sizeItem->setEditable(false);
         sizeItem->setSelectable(false);
         sizeItem->setToolTip(QString::number(fileInfo.size()) + " bytes");
-        QVariant sizeVariant = QVariant::fromValue(fileSize);
+        const auto sizeVariant { QVariant::fromValue(fileSize) };
         sizeItem->setData(sizeVariant);
 
-        auto progressItem = new QStandardItem {};
+        const auto progressItem { new QStandardItem {} };
         progressItem->setDragEnabled(false);
         progressItem->setDropEnabled(false);
         progressItem->setEditable(false);
         progressItem->setSelectable(false);
 
-        auto closeFileItem = new QStandardItem {};
+        const auto closeFileItem { new QStandardItem {} };
         closeFileItem->setDragEnabled(false);
         closeFileItem->setDropEnabled(false);
         closeFileItem->setEditable(false);
@@ -420,7 +420,7 @@ void MainWindow::clearListFiles()
 
 void MainWindow::generator()
 {
-    auto pwGenerator = new PasswordGeneratorDialog;
+    auto pwGenerator { new PasswordGeneratorDialog };
     pwGenerator->setStandaloneMode(true);
     connect(pwGenerator, SIGNAL(appliedPassword(QString)), SLOT(setPassword(QString)));
     connect(pwGenerator, SIGNAL(dialogTerminated()), pwGenerator, SLOT(close()));
@@ -436,7 +436,7 @@ void MainWindow::setPassword(QString pass)
 void MainWindow::loadPreferences()
 {
     if (config()->hasAccessError()) {
-        QString warn_text = QString(tr("Access error for config file %1").arg(config()->getFileName()));
+        auto warn_text = QString(tr("Access error for config file %1").arg(config()->getFileName()));
         QMessageBox::warning(this, tr("Could not load configuration"), warn_text);
     }
 
@@ -496,7 +496,7 @@ void MainWindow::savePreferences()
 
 void MainWindow::aboutArsenic()
 {
-    auto* aboutDialog = new AboutDialog(this);
+    auto* aboutDialog { new AboutDialog(this) };
     aboutDialog->open();
 }
 
@@ -518,7 +518,7 @@ void MainWindow::configuration()
     confDialog->exec();
 }
 
-void MainWindow::viewPassStateChanged(int state)
+void MainWindow::viewPassStateChanged(quint32 state)
 {
     if (state == 0) {
         m_ui->password_0->setEchoMode(QLineEdit::Password);
@@ -561,7 +561,7 @@ void MainWindow::createLanguageMenu(void)
         SLOT(slotLanguageChanged(QAction*)));
 
     // format systems language
-    QString defaultLocale = QLocale::system().name(); // e.g. "de_DE"
+    auto defaultLocale { QLocale::system().name() }; // e.g. "de_DE"
     defaultLocale.truncate(defaultLocale.lastIndexOf('_')); // e.g. "de"
 
     m_langPath = QApplication::applicationDirPath();
@@ -607,9 +607,9 @@ void MainWindow::loadLanguage(const QString& rLanguage)
 {
     if (m_currLang != rLanguage) {
         m_currLang = rLanguage;
-        QLocale locale = QLocale(m_currLang);
+        auto locale { QLocale(m_currLang) };
         QLocale::setDefault(locale);
-        QString languageName = QLocale::languageToString(locale.language());
+        auto languageName = QLocale::languageToString(locale.language());
         switchTranslator(m_translator, QString("arsenic_%1.qm").arg(rLanguage));
         switchTranslator(m_translatorQt, QString("qt_%1.qm").arg(rLanguage));
         // ui->statusBar->showMessage(tr("Current Language changed to
@@ -624,7 +624,7 @@ void MainWindow::switchTranslator(QTranslator& translator,
     qApp->removeTranslator(&translator);
 
     // load the new translator
-    QString path = QApplication::applicationDirPath();
+    auto path { QApplication::applicationDirPath() };
     path.append("/languages/");
     if (translator.load(path + filename)) // Here Path and Filename has to be entered because
         qApp->installTranslator(&translator); // the system didn't find the QM Files else
@@ -643,7 +643,7 @@ void MainWindow::changeEvent(QEvent* event)
 
         // this event is send, if the system, language changes
         case QEvent::LocaleChange: {
-            QString locale = QLocale::system().name();
+            auto locale { QLocale::system().name() };
             locale.truncate(locale.lastIndexOf('_'));
             loadLanguage(locale);
         } break;
@@ -655,7 +655,7 @@ void MainWindow::changeEvent(QEvent* event)
 void MainWindow::openTxtFile()
 {
     if (maybeSave()) {
-        QString fileName = QFileDialog::getOpenFileName(this);
+        auto fileName { QFileDialog::getOpenFileName(this) };
         if (!fileName.isEmpty())
             loadFile(fileName);
     }
@@ -761,11 +761,11 @@ bool MainWindow::saveTxtFileAs()
 
 void MainWindow::encryptText()
 {
-    if (m_ui->cryptoPadEditor->toPlainText() == "") {
+    if (m_ui->cryptoPadEditor->toPlainText().isEmpty()) {
         displayEmptyEditor();
         return;
     }
-    if (m_ui->password_0->text() == "") {
+    if (m_ui->password_0->text().isEmpty()) {
         displayEmptyPassword();
         return;
     }
@@ -775,32 +775,32 @@ void MainWindow::encryptText()
     }
 
     try {
-        QString plaintext = m_ui->cryptoPadEditor->toPlainText();
-        QString test = encryptString(plaintext, m_ui->password_0->text());
-        m_ui->cryptoPadEditor->setPlainText(test);
+        auto plaintext { m_ui->cryptoPadEditor->toPlainText() };
+        auto out { encryptString(plaintext, m_ui->password_0->text()) };
+        m_ui->cryptoPadEditor->setPlainText(out);
     } catch (std::exception const& e) {
-        QString error = e.what();
+        auto error = e.what();
         displayMessageBox(tr("Encryption Error!"), error);
     }
 }
 
 void MainWindow::decryptText()
 {
-    if (m_ui->cryptoPadEditor->toPlainText() == "") {
+    if (m_ui->cryptoPadEditor->toPlainText().isEmpty()) {
         displayEmptyEditor();
         return;
     }
-    if (m_ui->password_0->text() == "") {
+    if (m_ui->password_0->text().isEmpty()) {
         displayEmptyPassword();
         return;
     }
 
     try {
-        QString ciphertext = m_ui->cryptoPadEditor->toPlainText();
-        QString test = decryptString(ciphertext, m_ui->password_0->text());
-        m_ui->cryptoPadEditor->setPlainText(test);
+        auto ciphertext { m_ui->cryptoPadEditor->toPlainText() };
+        auto out { decryptString(ciphertext, m_ui->password_0->text()) };
+        m_ui->cryptoPadEditor->setPlainText(out);
     } catch (std::exception const& e) {
-        QString error = e.what();
+        auto error = e.what();
         displayMessageBox(tr("Decryption Error!"), error);
     }
 }

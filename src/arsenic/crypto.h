@@ -16,8 +16,8 @@ public:
     void setParam(bool direction,
         QStringList filenames,
         const QString password,
-        int argonmem,
-        int argoniter,
+        quint32 argonmem,
+        quint32 argoniter,
         bool deletefile);
 
     void encrypt(const QString filename);
@@ -26,7 +26,7 @@ public:
     bool m_deletefile;
 
 signals:
-    void updateProgress(const QString& path, qint64 percent);
+    void updateProgress(const QString& path, quint32 percent);
     void statusMessage(QString message);
     void addEncrypted(QString inputFileName);
     void addDecrypted(QString inputFileName);
@@ -37,8 +37,8 @@ private:
     Botan::SecureVector<char> convertStringToSecureVector(QString password);
     Botan::SecureVector<quint8> calculateHash(Botan::SecureVector<char> pass_buffer,
         Botan::SecureVector<quint8> salt_buffer,
-        size_t memlimit,
-        size_t iterations);
+        quint32 memlimit,
+        quint32 iterations);
 
     QString removeExtension(const QString& fileName, const QString& extension);
 
@@ -47,8 +47,8 @@ private:
     QStringList m_filenames;
     QString m_password;
     QString m_encoding;
-    int m_argonmem;
-    int m_argoniter;
+    quint32 m_argonmem;
+    quint32 m_argoniter;
     bool m_direction;
 };
 

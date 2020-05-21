@@ -22,7 +22,7 @@ public:
     void session();
 
 public slots:
-    void onPercentProgress(const QString& path, qint64 percent);
+    void onPercentProgress(const QString& path, quint32 percent);
     void onMessageChanged(QString message);
     void AddEncryptedFile(QString filepath);
     void AddDecryptedFile(QString filepath);
@@ -31,7 +31,7 @@ public slots:
 private slots:
     void quit();
     void configuration();
-    void viewPassStateChanged(int index);
+    void viewPassStateChanged(quint32 index);
     void generator();
     void hashCalculator();
     void aboutArsenic();
@@ -43,7 +43,7 @@ private slots:
     void encryptText();
     void decryptText();
     void addFiles();
-    void switchTab(int index);
+    void switchTab(quint32 index);
     void clearEditor();
     void encryptFiles();
     void decryptFiles();
