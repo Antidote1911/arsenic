@@ -66,8 +66,8 @@ bool encryptFile()
     Crypto.setParam(true,
                     list,
                     "mypassword",
-                    MEMLIMIT_MODERATE,
-                    ITERATION_MODERATE,
+                    DEFAULT_ARGON_MEM_LIMIT,
+                    DEFAULT_ARGON_ITR_LIMIT,
                     true);
 
     Crypto.start();
@@ -82,8 +82,8 @@ bool encryptFile()
     Crypto.setParam(false,
                     list2,
                     "mypassword",
-                    MEMLIMIT_MODERATE,
-                    ITERATION_MODERATE,
+                    DEFAULT_ARGON_MEM_LIMIT,
+                    DEFAULT_ARGON_ITR_LIMIT,
                     true);
 
     Crypto.start();
