@@ -9,9 +9,8 @@
 
 namespace ARs // for Arsenic Preferences
 {
-
 // Global app infos
-const QString APP_VERSION           { "2.5" };
+const QString APP_VERSION           { "2.6" };
 const QString APP_SHORT_NAME        { "Arsenic" };
 const QString APP_LONG_NAME         { "Arsenic " + APP_VERSION };
 const QString APP_DESCRIPTION       { "Strong encryption" };
@@ -57,7 +56,6 @@ const quint32 ITERATION_MODERATE        { 2 };
 const quint32 ITERATION_SENSITIVE       { 3 };
 
 const quint32 PARALLELISM_INTERACTIVE   { 1 }; // For now, Argon2 in Botan don't use Parallelism > 1
-
 } // namespace ARs
 
 #endif // CONSTANTS_H
