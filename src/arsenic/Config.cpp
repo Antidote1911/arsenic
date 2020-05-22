@@ -44,41 +44,44 @@ static const QMap<QString, QString> deprecationMap = {
     { QStringLiteral("security/IconDownloadFallbackToGoogle"), QStringLiteral("security/IconDownloadFallback") },
 };
 
-Config* Config::m_instance(nullptr);
+Config *Config::m_instance(nullptr);
 
 QVariant Config::get(const QString& key)
 {
-    return m_settings->value(key, m_defaults.value(key));
+    return(m_settings->value(key, m_defaults.value(key)));
 }
+
 
 QVariant Config::get(const QString& key, const QVariant& defaultValue)
 {
-    return m_settings->value(key, defaultValue);
+    return(m_settings->value(key, defaultValue));
 }
+
 
 bool Config::hasAccessError()
 {
-    return m_settings->status() & QSettings::AccessError;
+    return(m_settings->status() & QSettings::AccessError);
 }
+
 
 QString Config::getFileName()
 {
-    return m_settings->fileName();
+    return(m_settings->fileName());
 }
+
 
 void Config::set(const QString& key, const QVariant& value)
 {
-    if (m_settings->contains(key) && m_settings->value(key) == value) {
+    if (m_settings->contains(key) && (m_settings->value(key) == value))
         return;
-    }
-    const bool surpressSignal = !m_settings->contains(key) && m_defaults.value(key) == value;
 
+    const bool surpressSignal = !m_settings->contains(key) && m_defaults.value(key) == value;
     m_settings->setValue(key, value);
 
-    if (!surpressSignal) {
+    if (!surpressSignal)
         emit changed(key);
-    }
 }
+
 
 /**
  * Sync configuration with persistent storage.
@@ -92,65 +95,77 @@ void Config::sync()
     m_settings->sync();
 }
 
+
 void Config::resetToDefaults()
 {
-    for (const auto& setting : m_defaults.keys()) {
+    for (const auto& setting : m_defaults.keys())
+    {
         m_settings->setValue(setting, m_defaults.value(setting));
     }
 }
 
+
 void Config::upgrade()
 {
     const auto keys = deprecationMap.keys();
-    for (const auto& setting : keys) {
+    for (const auto& setting : keys)
+    {
         if (m_settings->contains(setting)) {
-            if (!deprecationMap.value(setting).isEmpty()) {
+            if (!deprecationMap.value(setting).isEmpty())
                 // Add entry with new name and old entry's value
                 m_settings->setValue(deprecationMap.value(setting), m_settings->value(setting));
-            }
+
             m_settings->remove(setting);
         }
     }
-    /*
-       // > 2.3.4
-       if (m_settings->value("AutoSaveAfterEveryChange").toBool()) {
-        m_settings->setValue("AutoSaveOnExit", true);
-       }
 
-       // Setting defaults for 'hide window on copy' behavior, keeping the user's original setting
-       if (m_settings->value("HideWindowOnCopy").isNull()) {
-        m_settings->setValue("HideWindowOnCopy", m_settings->value("MinimizeOnCopy").toBool());
-        m_settings->setValue("MinimizeOnCopy", true);
-       }
+    /*
+     * // > 2.3.4
+     * if (m_settings->value("AutoSaveAfterEveryChange").toBool()) {
+     *  m_settings->setValue("AutoSaveOnExit", true);
+     * }
+     *
+     * // Setting defaults for 'hide window on copy' behavior, keeping the user's original setting
+     * if (m_settings->value("HideWindowOnCopy").isNull()) {
+     *  m_settings->setValue("HideWindowOnCopy", m_settings->value("MinimizeOnCopy").toBool());
+     *  m_settings->setValue("MinimizeOnCopy", true);
+     * }
      */
 }
 
-Config::Config(const QString& fileName, QObject* parent)
+
+Config::Config(const QString& fileName, QObject *parent)
     : QObject(parent)
 {
     init(fileName);
 }
 
-Config::Config(QObject* parent)
+
+Config::Config(QObject *parent)
     : QObject(parent)
 {
     // Check if portable config is present. If not, find it in user's directory
     QString portablePath = QCoreApplication::applicationDirPath() + "/arsenic.ini";
+
     if (QFile::exists(portablePath)) {
         init(portablePath);
-    } else {
+    }
+    else{
         QString userPath;
         QString homePath = QDir::homePath();
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
         // we can't use QStandardPaths on X11 as it uses XDG_DATA_HOME instead of XDG_CONFIG_HOME
         QByteArray env = qgetenv("XDG_CONFIG_HOME");
+
         if (env.isEmpty()) {
             userPath = homePath;
             userPath += "/.config";
-        } else if (env[0] == '/') {
+        }
+        else if (env[0] == '/') {
             userPath = QFile::decodeName(env);
-        } else {
+        }
+        else{
             userPath = homePath;
             userPath += '/';
             userPath += QFile::decodeName(env);
@@ -173,9 +188,11 @@ Config::Config(QObject* parent)
     }
 }
 
+
 Config::~Config()
 {
 }
+
 
 void Config::init(const QString& fileName)
 {
@@ -200,14 +217,15 @@ void Config::init(const QString& fileName)
     m_defaults.insert("SECURITY/clearclipboardtimeout", DEFAULT_CLIPBOARD_TIMEOUT);
 }
 
-Config* Config::instance()
-{
-    if (!m_instance) {
-        m_instance = new Config(qApp);
-    }
 
-    return m_instance;
+Config *Config::instance()
+{
+    if (!m_instance)
+        m_instance = new Config(qApp);
+
+    return(m_instance);
 }
+
 
 void Config::createConfigFromFile(const QString& file)
 {
@@ -215,10 +233,11 @@ void Config::createConfigFromFile(const QString& file)
     m_instance = new Config(file, qApp);
 }
 
+
 void Config::createTempFileInstance()
 {
     Q_ASSERT(!m_instance);
-    auto* tmpFile = new QTemporaryFile();
+    auto *tmpFile = new QTemporaryFile();
     bool openResult = tmpFile->open();
     Q_ASSERT(openResult);
     Q_UNUSED(openResult);

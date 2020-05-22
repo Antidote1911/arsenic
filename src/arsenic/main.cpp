@@ -11,7 +11,7 @@
 
 #include "constants.h"
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     QTextStream cin(stdin);
     QTextStream cout(stdout);
@@ -36,9 +36,9 @@ int main(int argc, char* argv[])
     QCommandLineOption decryptOption("d", QCoreApplication::translate("main", "Decrypt the file"));
     parser.addOption(decryptOption);
 
-    QCommandLineOption passphraseOption(QStringList() << "p"
-                                                      << "passphrase"
-                                                      << "pass",
+    QCommandLineOption passphraseOption(QStringList()	<< "p"
+                                << "passphrase"
+                                << "pass",
         QCoreApplication::translate("main", "The passphrase for encrypt or decrypt <source>."), QCoreApplication::translate("main", "passphrase"));
     parser.addOption(passphraseOption);
 
@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
     QString resultat;
     Crypto_Thread Crypto;
 
-    if (args.size() == 1 && parser.isSet(passphraseOption)) {
+    if ((args.size() == 1) && parser.isSet(passphraseOption)) {
         const auto targetFile = args.at(0);
         const auto passphrase = parser.value(passphraseOption);
         const auto enc = parser.isSet(encryptOption);
@@ -79,8 +79,8 @@ int main(int argc, char* argv[])
 
             Crypto.start();
             Crypto.wait();
-            cout << endl
-                 << resultat << endl;
+            cout	<< endl
+                << resultat << endl;
             return (0);
         }
 
@@ -102,6 +102,6 @@ int main(int argc, char* argv[])
     } else {
         MainWindow w;
         w.session();
-        return app.exec();
+        return (app.exec());
     }
 }

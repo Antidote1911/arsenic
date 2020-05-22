@@ -59,6 +59,9 @@ private:
     QHash<QString, QVariant> m_defaults;
 };
 
-inline Config* config() { return Config::instance(); }
+inline Config* config()
+{
+    return Config::instance();
+}
 
 #endif // CONFIG_H

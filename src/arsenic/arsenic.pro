@@ -46,6 +46,7 @@ HEADERS += \
     divers.h \
     hashcheckdialog.h \
     mainwindow.h \
+    messages.h \
     passwordGenerator.h \
     passwordGeneratorDialog.h \
     progressbar.h \

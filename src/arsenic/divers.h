@@ -12,7 +12,7 @@ void clearDir(QString dir_path);
 qint64 dirSize(QString dirPath);
 QString getFileSize(qint64 size);
 
-Botan::SecureVector<char> convertStringToSecureVector(QString password);
+Botan::SecureVector<char> convertStringToSecureVector(QString qstring);
 QString errorCodeToString(int error_code);
 
 QString encryptString(QString plaintext, QString password);

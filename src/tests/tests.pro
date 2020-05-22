@@ -17,6 +17,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     ../arsenic/crypto.cpp \
+    ../arsenic/divers.cpp \
     main.cpp
         main.cpp
 
@@ -24,7 +25,8 @@ SOURCES += \
 
 HEADERS += catch.hpp \
     ../arsenic/constants.h \
-    ../arsenic/crypto.h
+    ../arsenic/crypto.h \
+    ../arsenic/divers.h
 
 
 linux {

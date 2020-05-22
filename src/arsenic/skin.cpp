@@ -2,30 +2,21 @@
 #include <QApplication>
 #include <QStyle>
 
-/*******************************************************************************
 
-*******************************************************************************/
 
-Skin::Skin(QObject* parent)
+Skin::Skin(QObject *parent)
     : QObject(parent)
 {
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
 
 QString Skin::getSkin(const QString& key)
 {
 }
 
-/*******************************************************************************
-
-*******************************************************************************/
 
 void Skin::setSkin(const QString& key)
 {
-
     if (key == "dark") {
         // modify palette to dark
         QPalette darkPalette;
@@ -51,12 +42,8 @@ void Skin::setSkin(const QString& key)
         darkPalette.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(127, 127, 127));
 
         qApp->setPalette(darkPalette);
-
-    } else {
+    }
+    else {
         qApp->setPalette(qApp->style()->standardPalette());
     }
 }
-
-/*******************************************************************************
-
-*******************************************************************************/

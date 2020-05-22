@@ -3,6 +3,7 @@
 //#include <QDebug>
 #include "../arsenic/constants.h"
 #include "../arsenic/crypto.h"
+#include "../arsenic/divers.h"
 #include "botan_all.h"
 #include "catch.hpp"
 #include <QDataStream>
@@ -17,19 +18,28 @@ int main(int argc, char* argv[])
 
     int result = Catch::Session().run(argc, argv);
 
-    return (result < 0xff ? result : 0xff);
+    return(result < 0xff ? result : 0xff);
 }
 
 int Factorial(int number)
 {
-    return number <= 1 ? number : Factorial(number - 1) * number; // fail
+    return(number <= 1 ? number : Factorial(number - 1) * number); // fail
 }
 
-bool encrypt()
+bool encryptString()
+{
+    QString plaintext = "my super secret message";
+    QString encrypted = encryptString(plaintext, "mypassword");
+    QString decrypted = decryptString(encrypted, "mypassword");
+    return(plaintext == decrypted);
+}
+
+bool encryptFile()
 {
     // We generate a ramdom file
     Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE);
     Botan::AutoSeeded_RNG rng;
+
     main_buffer = rng.random_vec(IN_BUFFER_SIZE);
     QFile::remove(QDir::cleanPath("cleartxt.txt")); //clear previous file
     QFile::remove(QDir::cleanPath("cleartxt.txt.arsenic"));
@@ -37,7 +47,7 @@ bool encrypt()
     QFile src_file(QDir::cleanPath("cleartxt.txt"));
     src_file.open(QIODevice::WriteOnly);
     QDataStream des_stream(&src_file);
-    des_stream.writeRawData(reinterpret_cast<char*>(main_buffer.data()), IN_BUFFER_SIZE);
+    des_stream.writeRawData(reinterpret_cast<char*>(main_buffer.data()), main_buffer.size());
     src_file.close();
 
     // Calculate the SHA-256 of the generated file for future comparison
@@ -46,7 +56,7 @@ bool encrypt()
     Botan::SecureVector<uint8_t> buf(IN_BUFFER_SIZE);
     src_file.read(reinterpret_cast<char*>(buf.data()), buf.size());
     hash1->update(buf.data(), buf.size());
-    QString result1 = QString::fromStdString(Botan::hex_encode(hash1->final()));
+    QString result1 = QString::fromStdString(Botan::hex_encode(hash1->final ()));
 
     // Now, try to encrypt it. The original is deleted, and the output is cleartxt.txt.arsenic
     QStringList list;
@@ -54,11 +64,11 @@ bool encrypt()
 
     Crypto_Thread Crypto;
     Crypto.setParam(true,
-        list,
-        "mypassword",
-        MEMLIMIT_MODERATE,
-        ITERATION_MODERATE,
-        true);
+                    list,
+                    "mypassword",
+                    MEMLIMIT_MODERATE,
+                    ITERATION_MODERATE,
+                    true);
 
     Crypto.start();
     Crypto.wait();
@@ -70,11 +80,11 @@ bool encrypt()
     list2.append("cleartxt.txt.arsenic");
 
     Crypto.setParam(false,
-        list2,
-        "mypassword",
-        MEMLIMIT_MODERATE,
-        ITERATION_MODERATE,
-        true);
+                    list2,
+                    "mypassword",
+                    MEMLIMIT_MODERATE,
+                    ITERATION_MODERATE,
+                    true);
 
     Crypto.start();
     Crypto.wait();
@@ -86,14 +96,14 @@ bool encrypt()
     Botan::SecureVector<uint8_t> buf2(IN_BUFFER_SIZE);
     src_file2.read(reinterpret_cast<char*>(buf2.data()), buf2.size());
     hash2->update(buf2.data(), buf2.size());
-    QString result2 = QString::fromStdString(Botan::hex_encode(hash2->final()));
+    QString result2 = QString::fromStdString(Botan::hex_encode(hash2->final ()));
 
-    return result1 == result2;
+    return(result1 == result2);
 }
 
 QString upper(QString str)
 {
-    return str.toUpper();
+    return(str.toUpper());
 }
 
 TEST_CASE("Factorials of 1 and higher are computed (pass)", "[single-file]")
@@ -111,5 +121,9 @@ TEST_CASE("Upper", "[single-file]")
 
 TEST_CASE("File Encryption/decryption", "[single-file]")
 {
-    REQUIRE(encrypt() == true);
+    REQUIRE(encryptFile() == true);
+}
+TEST_CASE("String Encryption/decryption", "[single-file]")
+{
+    REQUIRE(encryptString() == true);
 }

@@ -7,7 +7,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 
-ConfigDialog::ConfigDialog(QWidget* parent)
+ConfigDialog::ConfigDialog(QWidget *parent)
     : QDialog(parent)
     , m_ui(new Ui::ConfigDialog)
 {
@@ -18,9 +18,11 @@ ConfigDialog::ConfigDialog(QWidget* parent)
     loadSettings();
 }
 
+
 ConfigDialog::~ConfigDialog()
 {
 }
+
 
 void ConfigDialog::loadSettings()
 {
@@ -36,6 +38,7 @@ void ConfigDialog::loadSettings()
     m_ui->checkAddEncrypted->setChecked(config()->get("GUI/AddEncrypted").toBool());
     m_ui->checkAddDecrypted->setChecked(config()->get("GUI/AddDecrypted").toBool());
 }
+
 
 void ConfigDialog::saveSettings()
 {

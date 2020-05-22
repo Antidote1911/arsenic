@@ -23,7 +23,7 @@
 #include <QClipboard>
 
 /*******************************************************************************
-
+*
 *******************************************************************************/
 
 static const QString aboutMaintainers = R"(
@@ -51,7 +51,7 @@ static const QString aboutContributors = R"(
 </ul>
 )";
 
-AboutDialog::AboutDialog(QWidget* parent)
+AboutDialog::AboutDialog(QWidget *parent)
     : QDialog(parent)
     , m_ui(new Ui::AboutDialog())
 {
@@ -101,12 +101,14 @@ AboutDialog::AboutDialog(QWidget* parent)
     connect(m_ui->copyToClipboard, SIGNAL(clicked()), SLOT(copyToClipboard()));
 }
 
+
 AboutDialog::~AboutDialog()
 {
 }
 
+
 void AboutDialog::copyToClipboard()
 {
-    QClipboard* clipboard = QApplication::clipboard();
+    QClipboard *clipboard = QApplication::clipboard();
     clipboard->setText(m_ui->debugInfo->toPlainText());
 }
