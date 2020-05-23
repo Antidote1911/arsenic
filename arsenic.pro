@@ -32,6 +32,7 @@ CONFIG(debug, debug|release) {
 DISTFILES += \
     .appveyor.yml \
     .travis.yml \
+    autogen.sh \
     LICENSE \
     README.md \
     README_FR.md \
