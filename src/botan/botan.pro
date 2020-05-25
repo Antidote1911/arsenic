@@ -34,4 +34,6 @@ win32-g++ {
 
 }
 
-
+#INSTALL Linux
+    target.path = /usr/lib/
+    INSTALLS += target

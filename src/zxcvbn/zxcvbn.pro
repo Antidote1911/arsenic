@@ -11,3 +11,7 @@ HEADERS += \
 
 SOURCES += \
     zxcvbn.c
+
+#INSTALL Linux
+    target.path = /usr/lib/
+    INSTALLS += target

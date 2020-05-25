@@ -114,3 +114,8 @@ DISTFILES += \
     languages/fr.svg \
     languages/arsenic_en.qm \
     languages/arsenic_fr.qm \
+
+
+    #INSTALL Linux
+    target.path = /usr/bin/
+    INSTALLS += target
