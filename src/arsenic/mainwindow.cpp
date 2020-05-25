@@ -641,8 +641,13 @@ void MainWindow::createLanguageMenu(void)
 
     defaultLocale.truncate(defaultLocale.lastIndexOf('_')); // e.g. "de"
 
+    #ifdef Q_OS_WIN
     m_langPath = QApplication::applicationDirPath();
     m_langPath.append("/languages");
+    #endif
+    #ifdef Q_OS_UNIX
+    m_langPath = "/usr/share/arsenic/languages/";
+    #endif
     QDir dir(m_langPath);
     QStringList fileNames = dir.entryList(QStringList("arsenic_*.qm"));
 
@@ -703,11 +708,15 @@ void MainWindow::switchTranslator(QTranslator& translator,
 {
     // remove the old translator
     qApp->removeTranslator(&translator);
-
+#ifdef Q_OS_WIN
     // load the new translator
     auto path { QApplication::applicationDirPath() };
 
     path.append("/languages/");
+    #endif
+#ifdef Q_OS_UNIX
+    auto path = "/usr/share/arsenic/languages/";
+#endif
 
     if (translator.load(path + filename)) {     // Here Path and Filename has to be entered because
         qApp->installTranslator(&translator);   // the system didn't find the QM Files else

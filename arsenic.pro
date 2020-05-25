@@ -35,6 +35,7 @@ DISTFILES += \
     LICENSE \
     README.md \
     README_FR.md \
+    PKGBUILD \
     botan_license.txt \
     screenshots/main_dark.png \
     screenshots/hash.png \
