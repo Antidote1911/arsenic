@@ -117,14 +117,22 @@ DISTFILES += \
 
 
 #INSTALL Linux
+    target.path = /usr/bin/
+    INSTALLS += target
+
+
+#INSTALL Linux desktop launcher
+    launcher.files = desktop/arsenic.desktop
+    launcher.path = /usr/share/applications/
+    INSTALLS += launcher
+    icon.files = pixmaps/app.png
+    icon.path = /usr/share/arsenic/
+    INSTALLS += icon
+
+#INSTALL Linux translations
     i18n.files = $$replace(TRANSLATIONS, .ts, .qm)
     i18n.path = /usr/share/arsenic/languages/
     INSTALLS += i18n
-
     flags.files = languages/*.svg
     flags.path = /usr/share/arsenic/languages/
     INSTALLS += flags
-
-    #INSTALL Linux
-    target.path = /usr/bin/
-    INSTALLS += target

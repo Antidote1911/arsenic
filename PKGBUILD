@@ -9,7 +9,7 @@ url="https://github.com/Antidote1911/${pkgname}"
 license=('GPL')
 depends=('qt5-base')
 source=("${pkgname}-v${pkgver}.tar.gz::https://github.com/Antidote1911/${pkgname}/archive/v${pkgver}/${pkgname}-v${pkgver}.tar.gz")
-sha256sums=('0D444DCF6B6242A5A1CDB5097B70CD426E032F7E5F6199CD75C6E7F93072154B')
+sha256sums=('E7C0105CF68EC20B0AE86473558EE8EEC45FF2DAB6C03603BDA5428EB72E889B')
 
 build() {
     cd "${srcdir}/${pkgname}-${pkgver}"
