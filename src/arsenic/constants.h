@@ -10,7 +10,7 @@
 namespace ARs // for Arsenic Preferences
 {
 // Global app infos
-const QString APP_VERSION           { "2.7" };
+const QString APP_VERSION           { "2.8" };
 const QString APP_SHORT_NAME        { "Arsenic" };
 const QString APP_LONG_NAME         { "Arsenic " + APP_VERSION };
 const QString APP_DESCRIPTION       { "Strong encryption" };
