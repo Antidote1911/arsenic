@@ -37,7 +37,7 @@ const quint32 DEFAULT_CLIPBOARD_TIMEOUT { 10 };
 const QString BOTAN_VERSION             { QString::fromStdString(Botan::version_string()) };
 
 const QString DEFAULT_LIST_PATH         { "session.qtlist" };
-const qint32 MIN_PASS_LENGTH           { 8 };
+const qint32 MIN_PASS_LENGTH            { 8 };
 
 // Default constants for Crypto engine
 const quint32 MACBYTES                  { 16 };
@@ -47,7 +47,7 @@ const quint32 CIPHER_IV_LEN             { 24 };
 
 // Argon2 constants
 const quint32 ARGON_SALT_LEN            { 16 };
-const quint32 MEMLIMIT_INTERACTIVE      { 65536 }; // 64mb
+const quint32 MEMLIMIT_INTERACTIVE      { 65536 };  // 64mb
 const quint32 MEMLIMIT_MODERATE         { 524288 }; // 512mb
 const quint32 MEMLIMIT_SENSITIVE        { 976563 }; //  1000mb
 

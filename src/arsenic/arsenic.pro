@@ -45,6 +45,7 @@ HEADERS += \
     crypto.h \
     divers.h \
     hashcheckdialog.h \
+    loghtml.h \
     mainwindow.h \
     messages.h \
     passwordGenerator.h \
@@ -62,6 +63,7 @@ SOURCES += \
     crypto.cpp \
     divers.cpp \
     hashcheckdialog.cpp \
+    loghtml.cpp \
     main.cpp \
     mainwindow.cpp \
     passwordGenerator.cpp \
@@ -115,11 +117,9 @@ DISTFILES += \
     languages/arsenic_en.qm \
     languages/arsenic_fr.qm \
 
-
 #INSTALL Linux
     target.path = /usr/bin/
     INSTALLS += target
-
 
 #INSTALL Linux desktop launcher
     launcher.files = desktop/arsenic.desktop

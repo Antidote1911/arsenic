@@ -83,8 +83,16 @@ To update Botan, you must regenerate the amalgamation build from source:
     python configure.py --cpu=x86_32 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11
 ```
 
-To build the program from source, the appropriate Qt version should be installed and configured for the target platform, including any tools such as Qt Creator.<br>
+To build the program from source, the appropriate Qt version should be installed and configured.<br>
+For Archlinux Arsenic is in AUR.
+On other linux distributions you can run this command in the extracted source archive:
+```bash
+  qmake
+  make
+  sudo make install
+```
 Arsenic work well but it need some code simplifications, code comments, orthographic corrections ,etc.<br> Any suggestions or help are welcome.
+
 
 Thanks to :
 - [Jack Lloyd from randombit.net](https://botan.randombit.net) for the powerful Botan C++ cryptographic library. You can find the Github [here](https://github.com/randombit/botan).<br>

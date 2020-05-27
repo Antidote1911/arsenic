@@ -18,11 +18,10 @@ using namespace Botan;
 using namespace std;
 using namespace MyCryptMessagesPublic;
 
-Crypto_Thread::Crypto_Thread(QObject *parent)
+Crypto_Thread::Crypto_Thread(QObject* parent)
     : QThread(parent)
 {
 }
-
 
 void Crypto_Thread::setParam(bool direction,
                              QStringList filenames,
@@ -62,7 +61,6 @@ void Crypto_Thread::setParam(bool direction,
     }
 }
 
-
 void Crypto_Thread::run()
 {
     for (auto& inputFileName : m_filenames)
@@ -82,7 +80,7 @@ void Crypto_Thread::run()
             qint32 result = encrypt(inputFileName);
             emit statusMessage(errorCodeToString(result));
 
-            if (aborted) {                     // Reset abort flag
+            if (aborted) { // Reset abort flag
                 aborted = false;
                 return;
             }
@@ -95,13 +93,12 @@ void Crypto_Thread::run()
             int result = decrypt(inputFileName);
             emit statusMessage(errorCodeToString(result));
 
-            if (aborted) {                   // Reset abort flag
+            if (aborted) { // Reset abort flag
                 aborted = false;
             }
         }
     }
 }
-
 
 qint32 Crypto_Thread::encrypt(const QString src_path)
 {
@@ -155,7 +152,7 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
 
     rng.randomize(master_buffer.data() + fileN.size() + sizeof(qint64), CIPHER_KEY_LEN * 3);
 
-    const auto *mk { master_buffer.begin().base() };
+    const auto* mk { master_buffer.begin().base() };
     const OctetString name(mk, fileNameSize);
     const OctetString originalSize(&mk[fileNameSize], sizeof(qint64));
     const SymmetricKey cipherkey1(&mk[fileNameSize + sizeof(qint64)], CIPHER_KEY_LEN);
@@ -165,7 +162,7 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     // chained triple encryption of the internal_master_key with the random 3 master_key
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
     const auto master_key { calculateHash(password, argonSalt, m_argonmem, m_argoniter) };
-    const auto *mk2 { master_key.begin().base() };
+    const auto* mk2 { master_key.begin().base() };
     const SymmetricKey ChaCha20_key(mk2, CIPHER_KEY_LEN);
     const SymmetricKey AES_key(&mk2[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
     const SymmetricKey Serpent_key(&mk2[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
@@ -219,11 +216,11 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     des_stream << static_cast<quint32>(fileNameSize);
 
     // Write the salt, the 3 nonces and the encrypted header in the file
-    des_stream.writeRawData(reinterpret_cast<char *>(argonSalt.data()), ARGON_SALT_LEN);
-    des_stream.writeRawData(reinterpret_cast<char *>(ivChaCha20.data()), CIPHER_IV_LEN);
-    des_stream.writeRawData(reinterpret_cast<char *>(ivAES.data()), CIPHER_IV_LEN);
-    des_stream.writeRawData(reinterpret_cast<char *>(ivSerpent.data()), CIPHER_IV_LEN);
-    des_stream.writeRawData(reinterpret_cast<char *>(master_buffer.data()), master_buffer.size());
+    des_stream.writeRawData(reinterpret_cast<char*>(argonSalt.data()), ARGON_SALT_LEN);
+    des_stream.writeRawData(reinterpret_cast<char*>(ivChaCha20.data()), CIPHER_IV_LEN);
+    des_stream.writeRawData(reinterpret_cast<char*>(ivAES.data()), CIPHER_IV_LEN);
+    des_stream.writeRawData(reinterpret_cast<char*>(ivSerpent.data()), CIPHER_IV_LEN);
+    des_stream.writeRawData(reinterpret_cast<char*>(master_buffer.data()), master_buffer.size());
 
     // now, move on to the actual data
     QDataStream src_stream(&src_file);
@@ -252,7 +249,7 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     quint32 bytes_read;
     SecureVector<quint8> buf(IN_BUFFER_SIZE);
 
-    while (!aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char *>(buf.data()), IN_BUFFER_SIZE)) > 0)
+    while (!aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(buf.data()), IN_BUFFER_SIZE)) > 0)
     {
         // calculate percentage proccessed
         processed += bytes_read;
@@ -263,13 +260,13 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
             enc1->finish(buf);
             enc2->finish(buf);
             enc3->finish(buf);
-            des_stream.writeRawData(reinterpret_cast<char *>(buf.data()), buf.size());
+            des_stream.writeRawData(reinterpret_cast<char*>(buf.data()), buf.size());
         }
         else {
             enc1->update(buf);
             enc2->update(buf);
             enc3->update(buf);
-            des_stream.writeRawData(reinterpret_cast<char *>(buf.data()), bytes_read);
+            des_stream.writeRawData(reinterpret_cast<char*>(buf.data()), bytes_read);
         }
     }
 
@@ -280,18 +277,15 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
         return(ABORTED_BY_USER);
     }
 
-    QFileInfo fileInfo(des_file.fileName());
-
     if (m_deletefile) {
         src_file.close();
         QFile::remove(src_path);
         emit sourceDeletedAfterSuccess(src_path);
     }
 
-    emit addEncrypted(fileInfo.filePath());
+    emit addEncrypted(des_file.fileName());
     return(CRYPT_SUCCESS);
 }
-
 
 qint32 Crypto_Thread::decrypt(QString src_path)
 {
@@ -364,17 +358,17 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     SecureVector<quint8> master_buffer(fileNameSize + sizeof(qint64) + CIPHER_KEY_LEN * 3 + MACBYTES * 3);
 
     // Read the salt, the three nonces and the header
-    src_stream.readRawData(reinterpret_cast<char *>(salt_buffer.data()), ARGON_SALT_LEN);
-    src_stream.readRawData(reinterpret_cast<char *>(ivChaCha20.data()), CIPHER_IV_LEN);
-    src_stream.readRawData(reinterpret_cast<char *>(ivAES.data()), CIPHER_IV_LEN);
-    src_stream.readRawData(reinterpret_cast<char *>(ivSerpent.data()), CIPHER_IV_LEN);
-    src_stream.readRawData(reinterpret_cast<char *>(master_buffer.data()), master_buffer.size());
+    src_stream.readRawData(reinterpret_cast<char*>(salt_buffer.data()), ARGON_SALT_LEN);
+    src_stream.readRawData(reinterpret_cast<char*>(ivChaCha20.data()), CIPHER_IV_LEN);
+    src_stream.readRawData(reinterpret_cast<char*>(ivAES.data()), CIPHER_IV_LEN);
+    src_stream.readRawData(reinterpret_cast<char*>(ivSerpent.data()), CIPHER_IV_LEN);
+    src_stream.readRawData(reinterpret_cast<char*>(master_buffer.data()), master_buffer.size());
 
     // calculate the internal key with Argon2 and split them in three
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
     const auto master_key { calculateHash(password, salt_buffer, memlimit, iterations) };
 
-    const auto *mk { master_key.begin().base() };
+    const auto* mk { master_key.begin().base() };
     const SymmetricKey ChaCha20_key(mk, CIPHER_KEY_LEN);
     const SymmetricKey AES_key(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
     const SymmetricKey Serpent_key(&mk[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
@@ -398,17 +392,15 @@ qint32 Crypto_Thread::decrypt(QString src_path)
         master3->set_ad(add);
         master3->start(ivChaCha20);
         master3->finish(master_buffer);
-    }
-    catch (const Botan::Invalid_Authentication_Tag&) {
+    } catch (const Botan::Invalid_Authentication_Tag&) {
         QFile::remove(outfileresult);
         return(SRC_HEADER_INVALID_TAG);
-    }
-    catch (const Botan::Integrity_Failure&) {
+    } catch (const Botan::Integrity_Failure&) {
         QFile::remove(outfileresult);
         return(SRC_HEADER_INTEGRITY_FAILURE);
     }
     // get from the decrypted header the three internal keys and the original filename
-    const auto *mk2 { master_buffer.begin().base() };
+    const auto* mk2 { master_buffer.begin().base() };
     const OctetString name(mk2, fileNameSize);
     const OctetString originalSize(&mk2[fileNameSize], sizeof(qint64));
     const SymmetricKey cipherkey1(&mk2[fileNameSize + sizeof(qint64)], CIPHER_KEY_LEN);
@@ -452,8 +444,7 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     decChaCha->set_ad(add);
     decChaCha->start(ivChaCha20);
 
-
-//The percentage is calculated by dividing the progress (value() - minimum()) divided by maximum() - minimum().
+    //The percentage is calculated by dividing the progress (value() - minimum()) divided by maximum() - minimum().
     auto processed { 0. };
     quint32 bytes_read;
     SecureVector<quint8> buf(IN_BUFFER_SIZE);
@@ -461,7 +452,7 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     const string size { (originalSize.begin()), originalSize.end() };
     auto originalFileSize = std::stoi(size);
 
-    while (!aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char *>(buf.data()), IN_BUFFER_SIZE)) > 0)
+    while (!aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(buf.data()), IN_BUFFER_SIZE)) > 0)
     {
         // calculate percentage proccessed
         processed += bytes_read - MACBYTES * 3;
@@ -473,13 +464,11 @@ qint32 Crypto_Thread::decrypt(QString src_path)
                 decSerpent->finish(buf);
                 decAES->finish(buf);
                 decChaCha->finish(buf);
-                des_stream.writeRawData(reinterpret_cast<char *>(buf.data()), buf.size());
-            }
-            catch (const Botan::Invalid_Authentication_Tag&) {
+                des_stream.writeRawData(reinterpret_cast<char*>(buf.data()), buf.size());
+            } catch (const Botan::Invalid_Authentication_Tag&) {
                 QFile::remove(outfileresult);
                 return(INVALID_TAG);
-            }
-            catch (const Botan::Integrity_Failure&) {
+            } catch (const Botan::Integrity_Failure&) {
                 QFile::remove(outfileresult);
                 return(INTEGRITY_FAILURE);
             }
@@ -489,7 +478,7 @@ qint32 Crypto_Thread::decrypt(QString src_path)
             decSerpent->update(buf);
             decAES->update(buf);
             decChaCha->update(buf);
-            des_stream.writeRawData(reinterpret_cast<char *>(buf.data()), bytes_read);
+            des_stream.writeRawData(reinterpret_cast<char*>(buf.data()), bytes_read);
         }
     }
 
@@ -504,40 +493,38 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     return(DECRYPT_SUCCESS);
 }
 
-
 SecureVector<char> Crypto_Thread::convertStringToVectorChar(QString qstring)
 {
     const auto pass { qstring.toStdString() };
-    SecureVector<char>passv(pass.begin(), pass.end());
+    SecureVector<char> passv(pass.begin(), pass.end());
     return(passv);
 }
 
 SecureVector<char> Crypto_Thread::convertStringToVectorChar(string string)
 {
-    SecureVector<char>passv(string.begin(), string.end());
+    SecureVector<char> passv(string.begin(), string.end());
     return(passv);
 }
 
 SecureVector<quint8> Crypto_Thread::convertStringToVectorquint8(QString qstring)
 {
     const auto pass { qstring.toStdString() };
-    SecureVector<quint8>passv(pass.begin(), pass.end());
+    SecureVector<quint8> passv(pass.begin(), pass.end());
     return(passv);
 }
 
 SecureVector<quint8> Crypto_Thread::convertStringToVectorquint8(string string)
 {
-    SecureVector<quint8>passv(string.begin(), string.end());
+    SecureVector<quint8> passv(string.begin(), string.end());
     return(passv);
 }
 
 SecureVector<quint8> Crypto_Thread::convertIntToVectorquint8(qint64 num)
 {
     auto s = std::to_string(num);
-    SecureVector<quint8>v(s.begin(), s.end());
+    SecureVector<quint8> v(s.begin(), s.end());
     return(v);
 }
-
 
 SecureVector<quint8> Crypto_Thread::calculateHash(SecureVector<char> pass_buffer,
                                                   Botan::SecureVector<quint8> salt_buffer,
@@ -559,7 +546,6 @@ SecureVector<quint8> Crypto_Thread::calculateHash(SecureVector<char> pass_buffer
     return(key_buffer);
 }
 
-
 QString Crypto_Thread::removeExtension(const QString& fileName,
                                        const QString& extension)
 {
@@ -573,7 +559,6 @@ QString Crypto_Thread::removeExtension(const QString& fileName,
     return(newFileName);
 }
 
-
 QString Crypto_Thread::uniqueFileName(const QString& fileName)
 {
     QFileInfo originalFile { fileName };
@@ -586,10 +571,10 @@ QString Crypto_Thread::uniqueFileName(const QString& fileName)
     {
         QFileInfo uniqueFile { uniqueFileName };
 
-        if (uniqueFile.exists() && uniqueFile.isFile()) {         // Write number of copies before file extension
+        if (uniqueFile.exists() && uniqueFile.isFile()) { // Write number of copies before file extension
             uniqueFileName = originalFile.absolutePath() % QDir::separator() % originalFile.baseName() % QString { " (%1)" }.arg(i + 2);
 
-            if (!originalFile.completeSuffix().isEmpty()) {           // Add the file extension if there is one
+            if (!originalFile.completeSuffix().isEmpty()) { // Add the file extension if there is one
                 uniqueFileName += QStringLiteral(".") % originalFile.completeSuffix();
             }
 
@@ -662,7 +647,6 @@ QString Crypto_Thread::errorCodeToString(int error_code)
     case SRC_HEADER_INTEGRITY_FAILURE:
         ret_string += tr("Header Integrity Failure. Incorrect password or corrupted file !");
         break;
-
 
     case INVALID_TAG:
         ret_string += tr("Invalid Authentication Tag. The file is corrupted !");

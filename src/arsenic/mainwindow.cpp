@@ -22,6 +22,7 @@
 #include "divers.h"
 #include "hashcheckdialog.h"
 #include "passwordGeneratorDialog.h"
+#include "loghtml.h"
 
 using namespace ARs;
 
@@ -94,12 +95,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     // create the temp directory and session.qtlist if they don't exist already
 
-    QFile list_file(DEFAULT_LIST_PATH);
-
-    if (!list_file.exists()) {
-        list_file.open(QIODevice::WriteOnly);
-        list_file.close();
-    }
+    /* QFile list_file(DEFAULT_LIST_PATH);
+     *
+     * if (!list_file.exists()) {
+     *  list_file.open(QIODevice::WriteOnly);
+     *  list_file.close();
+     * }
+     */
 }
 
 
@@ -149,9 +151,8 @@ void MainWindow::AddDecryptedFile(QString filepath)
 
 void MainWindow::loadLogFile()
 {
-    QFile logfile("arsenic.log.html");
-    logfile.open(QIODevice::ReadOnly | QIODevice::Text);
-    m_ui->textLogs->setText(logfile.readAll());
+    logHtml log;
+    m_ui->textLogs->setText(log.load());
 }
 
 
@@ -169,18 +170,15 @@ void MainWindow::onMessageChanged(QString message)
     m_ui->textLogs->setTextCursor(c);
     m_ui->textLogs->append(message);
 
-    QFile logfile("arsenic.log.html");
-    logfile.open(QIODevice::ReadWrite | QIODevice::Text);
-    QTextStream out(&logfile);
-    out << m_ui->textLogs->toHtml() << endl;
-    logfile.close();
+    logHtml log;
+    log.append(m_ui->textLogs->toHtml());
 }
 
 void MainWindow::clearLog()
 {
     m_ui->textLogs->clear();
-    QFile logfile("arsenic.log.html");
-    logfile.remove();
+    logHtml log;
+    log.clear();
 }
 
 
@@ -554,7 +552,6 @@ void MainWindow::savePreferences()
 void MainWindow::aboutArsenic()
 {
     auto *aboutDialog { new AboutDialog(this) };
-
     aboutDialog->open();
 }
 
@@ -580,7 +577,6 @@ void MainWindow::quit()
 void MainWindow::configuration()
 {
     auto *confDialog = new ConfigDialog(this);
-
     confDialog->exec();
 }
 
@@ -601,7 +597,6 @@ void MainWindow::viewPassStateChanged(quint32 state)
 void MainWindow::hashCalculator()
 {
     auto *hashdlg = new HashCheckDialog(this);
-
     hashdlg->exec();
 }
 
@@ -609,7 +604,6 @@ void MainWindow::hashCalculator()
 void MainWindow::Argon2_tests()
 {
     auto *Argon2_tests = new ArgonTests(this);
-
     Argon2_tests->open();
 }
 
@@ -630,11 +624,9 @@ void MainWindow::dark_theme(bool checked)
 void MainWindow::createLanguageMenu(void)
 {
     QActionGroup *langGroup = new QActionGroup(m_ui->menuLanguage);
-
     langGroup->setExclusive(true);
 
-    connect(langGroup, SIGNAL(triggered(QAction*)), this,
-            SLOT(slotLanguageChanged(QAction*)));
+    connect(langGroup, SIGNAL(triggered(QAction*)), this, SLOT(slotLanguageChanged(QAction*)));
 
     // format systems language
     auto defaultLocale { QLocale::system().name() };        // e.g. "de_DE"
@@ -711,7 +703,6 @@ void MainWindow::switchTranslator(QTranslator& translator,
 #ifdef Q_OS_WIN
     // load the new translator
     auto path { QApplication::applicationDirPath() };
-
     path.append("/languages/");
     #endif
 #ifdef Q_OS_UNIX
@@ -874,7 +865,6 @@ bool MainWindow::saveTxtFile()
 bool MainWindow::saveTxtFileAs()
 {
     QFileDialog dialog(this);
-
     dialog.setWindowModality(Qt::WindowModal);
     dialog.setAcceptMode(QFileDialog::AcceptSave);
 
