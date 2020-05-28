@@ -33,8 +33,12 @@ linux {
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
 
-    INCLUDEPATH += /usr/include/botan-2/
-    LIBS += -lbotan-2
+LIBS += -L$$PWD/../../../../../../usr/lib/ -lbotan-2
+
+INCLUDEPATH += $$PWD/../../../../../../usr/include/botan-2
+DEPENDPATH += $$PWD/../../../../../../usr/include/botan-2
+
+
 
 }
 
