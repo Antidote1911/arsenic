@@ -14,13 +14,13 @@
 
 #include <QtGlobal>
 #if defined(Q_OS_UNIX)
-    #include <botan-2/botan/argon2.h>
     #include <botan-2/botan/aead.h>
     #include <botan-2/botan/pem.h>
     #include <botan-2/botan/loadstor.h>
     #include <botan-2/botan/sodium.h>
     #include <botan-2/botan/auto_rng.h>
     #include <botan-2/botan/rng.h>
+    #include <botan-2/botan/pwdhash.h>
 #endif
 
 #if defined(Q_OS_WIN)
