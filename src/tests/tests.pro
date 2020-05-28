@@ -51,3 +51,5 @@ win32-g++ {
     LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 
 }
+QMAKE_CXXFLAGS += -fstack-protector
+QMAKE_LFLAGS += -fstack-protector
