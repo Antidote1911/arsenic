@@ -3,7 +3,7 @@ compiler:
   - clang
   - gcc
 
-dist: bionic
+dist: groovy
 
 services:
   - xvfb
