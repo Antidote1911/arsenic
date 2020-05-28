@@ -23,6 +23,7 @@ before_script:
       - export DISPLAY=:99.0
 
 script:
+  - dir /usr/include/botan-2/botan/
   - if [ "${CC}" == "clang" ]; then export CC="clang" ; export CXX="clang++" ; echo "Rexported clang" ; fi
   - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
   - qmake -qt=qt5 arsenic.pro -spec linux-$CC
