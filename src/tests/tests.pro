@@ -52,3 +52,5 @@ win32-g++ {
 }
 QMAKE_CXXFLAGS += -fstack-protector
 QMAKE_LFLAGS += -fstack-protector
+
+CONFIG += depend_includepath
