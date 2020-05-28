@@ -11,7 +11,7 @@
 
 #include <QtGlobal>
 #if defined(Q_OS_UNIX)
-    #include <botan/hex.h>
+    #include <botan-2/botan/hex.h>
 #endif
 
 #if defined(Q_OS_WIN)
