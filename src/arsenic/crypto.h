@@ -3,7 +3,7 @@
 
 #include <QtGlobal>
 #if defined(Q_OS_UNIX)
-    #include "/usr/include/botan-2/botan/argon2.h"
+    #include "botan-2/botan/argon2.h"
     #include "botan-2/botan/aead.h"
     #include "botan-2/botan/pem.h"
     #include "botan-2/botan/loadstor.h"
