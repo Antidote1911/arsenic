@@ -15,11 +15,12 @@
 
 #include <QtGlobal>
 #if defined(Q_OS_UNIX)
-#include <botan-2/botan/hex.h>
+    #include <botan/hex.h>
+    #include <botan/hash.h>
 #endif
 
 #if defined(Q_OS_WIN)
-#include "botan_all.h"
+    #include "botan_all.h"
 #endif
 
 
