@@ -3,7 +3,7 @@ compiler:
   - clang
   - gcc
 
-dist: bionic
+dist: groovy
 
 services:
   - xvfb
@@ -15,6 +15,7 @@ before_install:
 
 install:
   # Qt5
+  - sudo apt-get install botan
   - sudo apt-get install -qq libqt5webkit5-dev qtdeclarative5-dev
   - export QMAKE=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
 
@@ -26,7 +27,6 @@ script:
   - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
   - qmake -qt=qt5 arsenic.pro -spec linux-$CC
   - make
-  - sudo cp src/botan/libarsenic_core.so.1 /usr/lib/libarsenic_core.so.1
   - sudo cp src/zxcvbn/libzxcvbn.so.1 /usr/lib/libzxcvbn.so.1
   - src/arsenic/./arsenic -e -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg
   - src/arsenic/./arsenic -d -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg.arsenic

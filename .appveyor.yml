@@ -36,7 +36,7 @@ after_build:
     - mkdir arsenic_win_x64
     - cd arsenic_win_x64
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
-    - xcopy %APPVEYOR_BUILD_FOLDER%\src\botan\release\arsenic_core.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+    - xcopy %APPVEYOR_BUILD_FOLDER%\src\botan\release\botan.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\zxcvbn\release\zxcvbn.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
     - windeployqt arsenic.exe

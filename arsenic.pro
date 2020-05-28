@@ -8,10 +8,14 @@ TEMPLATE      = subdirs
 CONFIG += ordered
 QMAKE_CXXFLAGS += -std=c++17
 
+win32-g++ {
 SUBDIRS += src/botan/botan.pro \
-	   src/zxcvbn/zxcvbn.pro \
+}
+
+SUBDIRS += src/zxcvbn/zxcvbn.pro \
            src/tests/tests.pro \
            src/arsenic
+
 
 
 linux-g++ {

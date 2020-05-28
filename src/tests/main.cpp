@@ -4,11 +4,22 @@
 #include "../arsenic/constants.h"
 #include "../arsenic/crypto.h"
 #include "../arsenic/divers.h"
-#include "botan_all.h"
 #include "catch.hpp"
 #include <QDataStream>
 #include <QDir>
 #include <QFile>
+
+#include <QtGlobal>
+#if defined(Q_OS_UNIX)
+#include "botan-2/botan/argon2.h"
+#include "botan-2/botan/aead.h"
+#include "botan-2/botan/pem.h"
+#include <botan-2/botan/loadstor.h>
+#include <botan-2/botan/hex.h>
+#endif
+#if defined(Q_OS_WIN)
+#include "botan_all.h"
+#endif
 
 using namespace ARs;
 

@@ -19,7 +19,6 @@ SOURCES += \
     ../arsenic/crypto.cpp \
     ../arsenic/divers.cpp \
     main.cpp
-        main.cpp
 
 
 
@@ -30,25 +29,18 @@ HEADERS += catch.hpp \
 
 
 linux {
+    LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
+    INCLUDEPATH += $$PWD/../zxcvbn/
+    DEPENDPATH += $$PWD/../zxcvbn/
 
-    equals(QMAKE_CXX, clang++)
-    {
-        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
-        INCLUDEPATH += $$PWD/../botan/linux_clang64/
-        DEPENDPATH += $$PWD/../botan/linux_clang64/
-        }
+    INCLUDEPATH += /usr/include/botan-2
+    LIBS += -L/usr/include -lbotan-2
 
-    equals(QMAKE_CXX, g++)
-    {
-        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
-        INCLUDEPATH += $$PWD/../botan/linux_gcc64/
-        DEPENDPATH += $$PWD/../botan/linux_gcc64/
-    }
 }
 
 win32-g++ {
 
-    LIBS += -L$$OUT_PWD/../botan/release/ -larsenic_core
+    LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
 

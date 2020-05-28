@@ -17,9 +17,16 @@
  */
 
 #include "passwordGenerator.h"
-
-#include "botan_all.h"
 #include "zxcvbn.h"
+
+#include <QtGlobal>
+#if defined(Q_OS_UNIX)
+#include <botan-2/botan/sodium.h>
+#endif
+
+#if defined(Q_OS_WIN)
+#include "botan_all.h"
+#endif
 
 
 const char *PasswordGenerator::DefaultExcludedChars = "";
@@ -35,7 +42,7 @@ PasswordGenerator::PasswordGenerator()
 
 double PasswordGenerator::estimateEntropy(const QString& password)
 {
-    return (ZxcvbnMatch(password.toLatin1(), nullptr, nullptr));
+    return(ZxcvbnMatch(password.toLatin1(), nullptr, nullptr));
 }
 
 
@@ -45,6 +52,7 @@ void PasswordGenerator::setLength(int length)
         m_length = DefaultLength;
         return;
     }
+
     m_length = length;
 }
 
@@ -55,6 +63,7 @@ void PasswordGenerator::setCharClasses(const CharClasses& classes)
         m_classes = DefaultCharset;
         return;
     }
+
     m_classes = classes;
 }
 
@@ -112,31 +121,36 @@ QString PasswordGenerator::generatePassword() const
             password[i] = password[j];
             password[j] = tmp;
         }
-    } else
+    }
+    else {
         for (int i = 0; i < m_length; i++)
         {
             int pos = Botan::Sodium::randombytes_uniform(static_cast<quint32>(passwordChars.size()));
 
             password.append(passwordChars[pos]);
         }
+    }
 
-    return (password);
+    return(password);
 }
 
 
 bool PasswordGenerator::isValid() const
 {
-    if (m_classes == 0)
-        return (false);
-    else if (m_length == 0)
-        return (false);
+    if (m_classes == 0) {
+        return(false);
+    }
+    else if (m_length == 0) {
+        return(false);
+    }
 
 
-    if ((m_flags & CharFromEveryGroup) && (m_length < numCharClasses()))
-        return (false);
+    if ((m_flags & CharFromEveryGroup) && (m_length < numCharClasses())) {
+        return(false);
+    }
 
 
-    return (!passwordGroups().isEmpty());
+    return(!passwordGroups().isEmpty());
 }
 
 
@@ -149,40 +163,46 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 
         for (int i = 97; i <= (97 + 25); i++)
         {
-            if ((m_flags & ExcludeLookAlike) && (i == 108)) // "l"
+            if ((m_flags & ExcludeLookAlike) && (i == 108)) { // "l"
                 continue;
+            }
 
             group.append(i);
         }
 
         passwordGroups.append(group);
     }
+
     if (m_classes & UpperLetters) {
         PasswordGroup group;
 
         for (int i = 65; i <= (65 + 25); i++)
         {
-            if ((m_flags & ExcludeLookAlike) && ((i == 73) || (i == 79))) // "I" and "O"
+            if ((m_flags & ExcludeLookAlike) && ((i == 73) || (i == 79))) { // "I" and "O"
                 continue;
+            }
 
             group.append(i);
         }
 
         passwordGroups.append(group);
     }
+
     if (m_classes & Numbers) {
         PasswordGroup group;
 
         for (int i = 48; i < (48 + 10); i++)
         {
-            if ((m_flags & ExcludeLookAlike) && ((i == 48) || (i == 49))) // "0" and "1"
+            if ((m_flags & ExcludeLookAlike) && ((i == 48) || (i == 49))) { // "0" and "1"
                 continue;
+            }
 
             group.append(i);
         }
 
         passwordGroups.append(group);
     }
+
     if (m_classes & Braces) {
         PasswordGroup group;
 
@@ -196,6 +216,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 
         passwordGroups.append(group);
     }
+
     if (m_classes & Punctuation) {
         PasswordGroup group;
 
@@ -207,6 +228,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 
         passwordGroups.append(group);
     }
+
     if (m_classes & Quotes) {
         PasswordGroup group;
 
@@ -216,6 +238,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 
         passwordGroups.append(group);
     }
+
     if (m_classes & Dashes) {
         PasswordGroup group;
 
@@ -224,12 +247,14 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         group.append(47);
         group.append(92);
         group.append(95);
+
         if (!(m_flags & ExcludeLookAlike)) {
             group.append(124); // "|"
         }
 
         passwordGroups.append(group);
     }
+
     if (m_classes & Math) {
         PasswordGroup group;
 
@@ -244,6 +269,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 
         passwordGroups.append(group);
     }
+
     if (m_classes & Logograms) {
         PasswordGroup group;
 
@@ -260,6 +286,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 
         passwordGroups.append(group);
     }
+
     if (m_classes & EASCII) {
         PasswordGroup group;
 
@@ -272,8 +299,10 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         // U+00AD is soft hyphen (format character)
         for (int i = 174; i <= 255; i++)
         {
-            if ((m_flags & ExcludeLookAlike) && (i == 249)) // "﹒"
+            if ((m_flags & ExcludeLookAlike) && (i == 249)) { // "﹒"
                 continue;
+            }
+
             group.append(i);
         }
 
@@ -296,14 +325,17 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
                 j = group.indexOf(ch);
             }
         }
+
         if (!group.isEmpty()) {
             passwordGroups.replace(i, group);
             ++i;
-        } else
+        }
+        else {
             passwordGroups.remove(i);
+        }
     }
 
-    return (passwordGroups);
+    return(passwordGroups);
 }
 
 
@@ -311,26 +343,45 @@ int PasswordGenerator::numCharClasses() const
 {
     int numClasses = 0;
 
-    if (m_classes & LowerLetters)
+    if (m_classes & LowerLetters) {
         numClasses++;
-    if (m_classes & UpperLetters)
-        numClasses++;
-    if (m_classes & Numbers)
-        numClasses++;
-    if (m_classes & Braces)
-        numClasses++;
-    if (m_classes & Punctuation)
-        numClasses++;
-    if (m_classes & Quotes)
-        numClasses++;
-    if (m_classes & Dashes)
-        numClasses++;
-    if (m_classes & Math)
-        numClasses++;
-    if (m_classes & Logograms)
-        numClasses++;
-    if (m_classes & EASCII)
-        numClasses++;
+    }
 
-    return (numClasses);
+    if (m_classes & UpperLetters) {
+        numClasses++;
+    }
+
+    if (m_classes & Numbers) {
+        numClasses++;
+    }
+
+    if (m_classes & Braces) {
+        numClasses++;
+    }
+
+    if (m_classes & Punctuation) {
+        numClasses++;
+    }
+
+    if (m_classes & Quotes) {
+        numClasses++;
+    }
+
+    if (m_classes & Dashes) {
+        numClasses++;
+    }
+
+    if (m_classes & Math) {
+        numClasses++;
+    }
+
+    if (m_classes & Logograms) {
+        numClasses++;
+    }
+
+    if (m_classes & EASCII) {
+        numClasses++;
+    }
+
+    return(numClasses);
 }

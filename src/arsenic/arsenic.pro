@@ -78,19 +78,9 @@ linux {
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
 
-    equals(QMAKE_CXX, clang++)
-    {
-        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
-        INCLUDEPATH += $$PWD/../botan/linux_clang64/
-        DEPENDPATH += $$PWD/../botan/linux_clang64/
-        }
+    INCLUDEPATH += /usr/include/botan-2
+    LIBS += -L/usr/include -lbotan-2
 
-    equals(QMAKE_CXX, g++)
-    {
-        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
-        INCLUDEPATH += $$PWD/../botan/linux_gcc64/
-        DEPENDPATH += $$PWD/../botan/linux_gcc64/
-    }
 }
 
 win32-g++ {
@@ -98,16 +88,13 @@ win32-g++ {
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
 
-    LIBS += -L$$OUT_PWD/../botan/release/ -larsenic_core
+    LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
 
     LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 
 }
-
-#unix:!macx: INCLUDEPATH += /usr/include/botan-2
-#unix:!macx: LIBS += -L/usr/include -lbotan-2
 
 TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_en.ts
 

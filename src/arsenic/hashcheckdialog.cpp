@@ -11,12 +11,18 @@
 #include <QMessageBox>
 #include <QMimeData>
 
-#include "botan_all.h"
 #include "divers.h"
 
-/*******************************************************************************
-*
-*******************************************************************************/
+#include <QtGlobal>
+#if defined(Q_OS_UNIX)
+#include <botan-2/botan/hex.h>
+#endif
+
+#if defined(Q_OS_WIN)
+#include "botan_all.h"
+#endif
+
+
 
 HashCheckDialog::HashCheckDialog(QWidget *parent)
     : QDialog(parent)
@@ -63,11 +69,16 @@ void HashCheckDialog::copyToClipboard()
 void HashCheckDialog::openFile()
 {
     QString filename = QFileDialog::getOpenFileName(this, tr("Load file..."));
-    if (!filename.isEmpty())
+
+    if (!filename.isEmpty()) {
         m_ui->fileEdit->setText(filename);
+    }
+
     QFileInfo f_info(filename);
-    if (f_info.isFile())
+
+    if (f_info.isFile()) {
         m_ui->calculateButton->click();
+    }
 }
 
 
@@ -82,6 +93,7 @@ void HashCheckDialog::calculate(const QString& text)
 
     QFile file(m_ui->fileEdit->text());
     QFileInfo f_info(m_ui->fileEdit->text());
+
     if (f_info.isFile()) {
         file.open(QIODevice::ReadOnly);
 
@@ -115,10 +127,14 @@ void HashCheckDialog::calculate(const QString& text)
             QString result = QString::fromStdString(Botan::hex_encode(hash2->final ()));
             m_ui->checksumEdit->setText(result);
         }
-        if (!hash2)
+
+        if (!hash2) {
             m_ui->checksumEdit->setText("Invalid algo");
-    } else
+        }
+    }
+    else {
         m_ui->checksumEdit->setText("SRC_CANNOT_OPEN_READ");
+    }
 
     m_ui->open->setDisabled(false);
     m_ui->progressBar->hide();
@@ -135,32 +151,39 @@ void HashCheckDialog::messageBox(QMessageBox::Icon icon, const QString& title, c
 {
     QMessageBox *box = new QMessageBox(icon, title, message, QMessageBox::Ok, this);
     box->show();
-    if (icon == QMessageBox::Critical)
+
+    if (icon == QMessageBox::Critical) {
         m_ui->checksumEdit->setText(tr("error"));
+    }
 }
 
 
 void HashCheckDialog::closeEvent(QCloseEvent *event)
 {
-    if (isCalculating)
+    if (isCalculating) {
         event->ignore();
-    else
+    }
+    else {
         event->accept();
+    }
 }
 
 
 void HashCheckDialog::dragEnterEvent(QDragEnterEvent *event)
 {
-    if (event->mimeData()->hasFormat("text/uri-list"))
+    if (event->mimeData()->hasFormat("text/uri-list")) {
         event->acceptProposedAction();
+    }
 }
 
 
 void HashCheckDialog::dropEvent(QDropEvent *event)
 {
     QList<QUrl> urls = event->mimeData()->urls();
-    if (urls.isEmpty())
+
+    if (urls.isEmpty()) {
         return;
+    }
 
     QString fileName = urls.first().toLocalFile();
     m_ui->fileEdit->setText(fileName);
@@ -171,8 +194,10 @@ void HashCheckDialog::dropEvent(QDropEvent *event)
 void HashCheckDialog::textChanged(const QString& text)
 {
     QFileInfo f_info(text);
-    if (f_info.isFile())
+
+    if (f_info.isFile()) {
         m_ui->calculateButton->setEnabled(true);
+    }
     else {
         m_ui->calculateButton->setEnabled(false);
         m_ui->checksumEdit->setText("SRC_CANNOT_OPEN_READ");

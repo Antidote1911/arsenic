@@ -4,7 +4,14 @@
 #include <QString>
 #include <QTextStream>
 
+#include <QtGlobal>
+#if defined(Q_OS_UNIX)
+#include "botan-2/botan/botan.h"
+#endif
+
+#if defined(Q_OS_WIN)
 #include "botan_all.h"
+#endif
 
 static QTextStream cin(stdin);
 static QTextStream cout(stdout);

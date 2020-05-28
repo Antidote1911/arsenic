@@ -1,10 +1,21 @@
 #include "divers.h"
-#include "botan_all.h"
 #include "constants.h"
 #include <QDir>
 #include <QString>
 #include <QTextStream>
 #include <cmath>
+
+#include <QtGlobal>
+#if defined(Q_OS_UNIX)
+#include "botan-2/botan/argon2.h"
+#include "botan-2/botan/aead.h"
+#include "botan-2/botan/pem.h"
+#include <botan-2/botan/loadstor.h>
+#endif
+
+#if defined(Q_OS_WIN)
+#include "botan_all.h"
+#endif
 
 using namespace ARs;
 using namespace Botan;
