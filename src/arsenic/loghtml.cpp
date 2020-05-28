@@ -2,6 +2,7 @@
 #include <QFile>
 #include <QIODevice>
 #include <QTextStream>
+#include <QStandardPaths>
 
 #include "loghtml.h"
 
