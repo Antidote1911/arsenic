@@ -25,7 +25,7 @@ before_script:
 script:
   - if [ "${CC}" == "clang" ]; then export CC="clang" ; export CXX="clang++" ; echo "Rexported clang" ; fi
   - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
-  - qmake -qt=qt5 arsenic.pro -lbotan-2 -spec linux-$CC
+  - qmake -qt=qt5 arsenic.pro -spec linux-$CC
   - make
   - sudo cp src/zxcvbn/libzxcvbn.so.1 /usr/lib/libzxcvbn.so.1
   - src/arsenic/./arsenic -e -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg
