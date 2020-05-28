@@ -19,6 +19,8 @@
     #include <botan/pem.h>
     #include <botan/loadstor.h>
     #include <botan/sodium.h>
+    #include <botan-2/botan/auto_rng.h>
+#include <botan-2/botan/rng.h>
 #endif
 
 #if defined(Q_OS_WIN)

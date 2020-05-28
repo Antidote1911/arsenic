@@ -78,8 +78,8 @@ linux {
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
 
-    INCLUDEPATH += /usr/include/botan-2/
-    LIBS += -lbotan-2
+INCLUDEPATH += /usr/include/botan-2
+LIBS += /usr/lib/libbotan-2.so
 
 
 
