@@ -12,10 +12,10 @@ before_install:
   # C++14
   - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq
+  - sudo apt-get install libbotan-2-dev
 
 install:
   # Qt5
-  - sudo apt-get install libbotan-2-dev
   - sudo apt-get install -qq libqt5webkit5-dev qtdeclarative5-dev
   - export QMAKE=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
 
