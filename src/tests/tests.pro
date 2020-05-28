@@ -34,9 +34,8 @@ linux {
     DEPENDPATH += $$PWD/../zxcvbn/
 
 
-INCLUDEPATH += /usr/include/botan-2/
-DEPENDPATH += /usr/include/botan-2/
-LIBS += -L/usr/lib -lbotan-2
+INCLUDEPATH += /usr/include/botan-2
+LIBS += -lbotan-2
 
 
 
