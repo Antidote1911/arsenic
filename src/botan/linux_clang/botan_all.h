@@ -37,7 +37,7 @@
 
 /*
 * This file was automatically generated running
-* 'configure.py --cc=clang --amalgamation --disable-shared --disable-modules=pkcs11'
+* 'configure.py --cc=clang --amalgamation --disable-modules=pkcs11'
 *
 * Target
 *  - Compiler: clang++ -fstack-protector -m64 -pthread -std=c++11 -D_REENTRANT -O3
@@ -69,7 +69,7 @@
 #define BOTAN_SYSTEM_CERT_BUNDLE "/etc/ssl/certs/ca-certificates.crt"
 
 #ifndef BOTAN_DLL
-  #define BOTAN_DLL 
+  #define BOTAN_DLL __attribute__((visibility("default")))
 #endif
 
 /* Target identification and feature test macros */
