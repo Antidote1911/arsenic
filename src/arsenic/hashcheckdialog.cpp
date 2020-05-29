@@ -15,8 +15,7 @@
 
 #include <QtGlobal>
 #if defined(Q_OS_UNIX)
-    #include <botan-2/botan/hex.h>
-    #include <botan-2/botan/hash.h>
+    #include "botan_all.h"
 #endif
 
 #if defined(Q_OS_WIN)

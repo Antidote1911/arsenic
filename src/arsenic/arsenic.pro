@@ -76,19 +76,29 @@ SOURCES += \
 RESOURCES += \
     rsc.qrc
 
-linux {
+unix
+{
     LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
 
-INCLUDEPATH += /usr/include/botan-2
-LIBS += -lbotan-2
+    equals(QMAKE_CXX, clang++)
+    {
+        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
+        INCLUDEPATH += $$PWD/../botan/linux_clang/
+        DEPENDPATH += $$PWD/../botan/linux_clang/
+    }
 
-
-
+    equals(QMAKE_CXX, g++)
+    {
+        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
+        INCLUDEPATH += $$PWD/../botan/linux_gcc/
+        DEPENDPATH += $$PWD/../botan/linux_gcc/
+    }
 }
 
-win32-g++ {
+win32-g++
+{
     LIBS += -L$$OUT_PWD/../zxcvbn/release/ -lzxcvbn
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
@@ -98,7 +108,6 @@ win32-g++ {
     DEPENDPATH += $$PWD/../botan/win_mingw64/
 
     LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
-
 }
 
 TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_en.ts

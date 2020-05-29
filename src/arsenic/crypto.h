@@ -3,11 +3,7 @@
 
 #include <QtGlobal>
 #if defined(Q_OS_UNIX)
-
-    #include "botan-2/botan/aead.h"
-    #include "botan-2/botan/pem.h"
-    #include "botan-2/botan/loadstor.h"
-    #include "botan-2/botan/sodium.h"
+    #include "botan_all.h"
 #endif
 
 #if defined(Q_OS_WIN)

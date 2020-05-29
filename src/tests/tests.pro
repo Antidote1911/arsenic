@@ -28,29 +28,33 @@ HEADERS += catch.hpp \
     ../arsenic/divers.h
 
 
-linux {
+unix
+{
     LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
 
+    equals(QMAKE_CXX, clang++)
+    {
+        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
+        INCLUDEPATH += $$PWD/../botan/linux_clang/
+        DEPENDPATH += $$PWD/../botan/linux_clang/
+    }
 
-INCLUDEPATH += /usr/include/botan-2/
-LIBS += -lbotan-2
-
-
-
+    equals(QMAKE_CXX, g++)
+    {
+        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
+        INCLUDEPATH += $$PWD/../botan/linux_gcc/
+        DEPENDPATH += $$PWD/../botan/linux_gcc/
+    }
 }
 
-win32-g++ {
-
-    LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
+win32-g++
+{
+    LIBS += -L$$OUT_PWD/../botan/release/ -larsenic_core
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
-
     LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
-
 }
-QMAKE_CXXFLAGS += -fstack-protector
-QMAKE_LFLAGS += -fstack-protector
 
-CONFIG += depend_includepath
+
