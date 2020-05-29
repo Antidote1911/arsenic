@@ -1,9 +1,10 @@
 QT       -= core gui
 
-TARGET = arsenic_core
+TARGET = botan
 TEMPLATE = lib
 
 CONFIG += c++14 warn_off
+CONFIG += object_parallel_to_source
 
 linux {
     CONFIG += static              # for static botan rather than the default dynamic

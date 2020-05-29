@@ -76,21 +76,21 @@ SOURCES += \
 RESOURCES += \
     rsc.qrc
 
-unix {
+linux {
     LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
 
     equals(QMAKE_CXX, clang++)
     {
-        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
+        LIBS += -L$$OUT_PWD/../botan/ -lbotan
         INCLUDEPATH += $$PWD/../botan/linux_clang/
         DEPENDPATH += $$PWD/../botan/linux_clang/
     }
 
     equals(QMAKE_CXX, g++)
     {
-        LIBS += -L$$OUT_PWD/../botan/ -larsenic_core
+        LIBS += -L$$OUT_PWD/../botan/ -lbotan
         INCLUDEPATH += $$PWD/../botan/linux_gcc/
         DEPENDPATH += $$PWD/../botan/linux_gcc/
     }
