@@ -5,7 +5,7 @@ TEMPLATE = lib
 
 CONFIG += c++14 warn_off
 
-unix
+linux
 {
     CONFIG += static              # for static botan rather than the default dynamic
     equals(QMAKE_CXX, clang++)
