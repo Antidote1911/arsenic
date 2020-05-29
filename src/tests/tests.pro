@@ -28,8 +28,7 @@ HEADERS += catch.hpp \
     ../arsenic/divers.h
 
 
-unix
-{
+unix {
     LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
@@ -49,8 +48,7 @@ unix
     }
 }
 
-win32-g++
-{
+win32-g++ {
     LIBS += -L$$OUT_PWD/../botan/release/ -larsenic_core
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/

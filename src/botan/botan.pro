@@ -5,8 +5,7 @@ TEMPLATE = lib
 
 CONFIG += c++14 warn_off
 
-linux
-{
+linux {
     CONFIG += static              # for static botan rather than the default dynamic
     equals(QMAKE_CXX, clang++)
     {
@@ -22,8 +21,7 @@ linux
 
 }
 
-win32-g++
-{
+win32-g++ {
     QMAKE_CXXFLAGS += -Wa,-mbig-obj
     SOURCES += win_mingw64/botan_all.cpp
     HEADERS += win_mingw64/botan_all.h

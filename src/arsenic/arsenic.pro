@@ -76,8 +76,7 @@ SOURCES += \
 RESOURCES += \
     rsc.qrc
 
-unix
-{
+unix {
     LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
@@ -97,8 +96,7 @@ unix
     }
 }
 
-win32-g++
-{
+win32-g++ {
     LIBS += -L$$OUT_PWD/../zxcvbn/release/ -lzxcvbn
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
