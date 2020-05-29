@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     app.setOrganizationName(ARs::APP_LONG_NAME);
     app.setOrganizationDomain(ARs::APP_URL);
     app.setApplicationName(ARs::APP_SHORT_NAME);
-    app.setApplicationVersion(ARs::APP_VERSION);
+    app.setApplicationVersion(ARs::APP_VERSION.toString());
     app.setWindowIcon(QIcon(":/pixmaps/app.png"));
     app.setStyle("Fusion");
 

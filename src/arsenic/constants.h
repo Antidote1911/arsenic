@@ -15,13 +15,14 @@
 #include <QDebug>
 #include <QTranslator>
 #include <QtEndian>
+#include <QVersionNumber>
 
 namespace ARs // for Arsenic Preferences
 {
 // Global app infos
-const QString APP_VERSION           { "2.8" };
+const QVersionNumber APP_VERSION    { 2, 8, 0 };
 const QString APP_SHORT_NAME        { "Arsenic" };
-const QString APP_LONG_NAME         { "Arsenic " + APP_VERSION };
+const QString APP_LONG_NAME         { "Arsenic " + APP_VERSION.toString() };
 const QString APP_DESCRIPTION       { "Strong encryption" };
 const QString APP_URL               { "https://github.com/Antidote1911" };
 const quint32 MAGIC_NUMBER          { 0x41525345 };

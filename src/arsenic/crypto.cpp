@@ -218,7 +218,7 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
 
     // Write a "magic number" , arsenic version, argon2 parameters, etc...
     des_stream << static_cast<quint32>(MAGIC_NUMBER);
-    des_stream << static_cast<QString>(APP_VERSION);
+    des_stream << static_cast<QVersionNumber>(APP_VERSION);
     des_stream << static_cast<quint32>(m_argonmem);
     des_stream << static_cast<quint32>(m_argoniter);
     des_stream << static_cast<quint32>(fileNameSize);
@@ -332,21 +332,21 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     }
 
     // Read and check the version
-    QString version;
+    QVersionNumber version;
     src_stream >> version;
-    emit statusMessage("this file is encrypted with Arsenic version :" + version);
+    emit statusMessage("this file is encrypted with Arsenic version :" + version.toString());
 
     if (version < APP_VERSION) {
         emit statusMessage("Warning: this is file is encrypted by an old Arsenic Version...");
-        emit statusMessage("Warning: version of encrypted file: " + version);
-        emit statusMessage("Warning: version of your Arsenic: " + APP_VERSION);
+        emit statusMessage("Warning: version of encrypted file: " + version.toString());
+        emit statusMessage("Warning: version of your Arsenic: " + APP_VERSION.toString());
     }
 
     if (version > APP_VERSION) {
         emit statusMessage("Warning: this file is encrypted with a more recent "
                            "version of Arsenic...");
-        emit statusMessage("Warning: version of encrypted file: " + version);
-        emit statusMessage("Warning: version of your Arsenic: " + APP_VERSION);
+        emit statusMessage("Warning: version of encrypted file: " + version.toString());
+        emit statusMessage("Warning: version of your Arsenic: " + APP_VERSION.toString());
     }
 
     // Read Argon2 parameters
