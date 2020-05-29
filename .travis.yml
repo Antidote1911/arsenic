@@ -12,7 +12,7 @@ before_install:
   # C++14
   - sudo apt-get update -qq
   - wget https://launchpad.net/ubuntu/+archive/primary/+files/botan_2.14.0+dfsg-2_amd64.deb
-  - sudo dpkg -i botan_2.14.0+dfsg-2_amd64
+  - sudo dpkg -i botan_2.14.0+dfsg-2_amd64.deb
 
 
 install:
