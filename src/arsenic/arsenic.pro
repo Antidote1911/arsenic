@@ -6,16 +6,12 @@
 
 QT       += core gui
 CONFIG += c++17
-
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+TEMPLATE = app
 
 CONFIG(release, debug|release): TARGET = arsenic
 CONFIG(debug, debug | release): TARGET = arsenicD
 
-TEMPLATE = app
-
-VER_MAJ = 2
-VER_MIN = 8
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked as deprecated (the exact warnings
