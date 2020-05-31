@@ -42,6 +42,7 @@ HEADERS += \
     configDialog.h \
     constants.h \
     crypto.h \
+    Derivation.h \
     divers.h \
     hashcheckdialog.h \
     loghtml.h \
@@ -60,6 +61,7 @@ SOURCES += \
     clipboard.cpp \
     configDialog.cpp \
     crypto.cpp \
+    Derivation.cpp \
     divers.cpp \
     hashcheckdialog.cpp \
     loghtml.cpp \

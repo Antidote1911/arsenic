@@ -4,6 +4,7 @@
 #include <QString>
 #include <QTextStream>
 #include <cmath>
+#include "Derivation.h"
 
 #include <QtGlobal>
 #if defined(Q_OS_UNIX)
@@ -117,8 +118,6 @@ QString encryptString(QString plaintext, QString password)
      * ciphertext
      */
 
-    string pass = password.toStdString();
-
     // Copy input data to a buffer
     string clear = plaintext.toStdString();
     SecureVector<uint8_t> pt(clear.data(), clear.data() + clear.length());
@@ -130,7 +129,6 @@ QString encryptString(QString plaintext, QString password)
     const uint32_t CRYPTOBOX_VERSION_CODE = 0x2EC4993A;
     const size_t VERSION_CODE_LEN = 4;
 
-    const size_t ARGON_OUTPUT_LEN = CIPHER_KEY_LEN * 3;
     const size_t CRYPTOBOX_HEADER_LEN = VERSION_CODE_LEN + ARGON_SALT_LEN + CIPHER_IV_LEN * 3;
 
     string add_data = APP_URL.toStdString();
@@ -146,6 +144,8 @@ QString encryptString(QString plaintext, QString password)
 
     rng->randomize(&out_buf[VERSION_CODE_LEN], ARGON_SALT_LEN);
 
+    const Botan::OctetString argon_salt(&out_buf[VERSION_CODE_LEN], ARGON_SALT_LEN);
+
     // Generate 3*24 bytes random nonce and copy result in out_buf
     SecureVector<uint8_t> master_iv_buffer(rng->random_vec(CIPHER_IV_LEN * 3));
     copy_mem(&out_buf[VERSION_CODE_LEN + ARGON_SALT_LEN], master_iv_buffer.data(), master_iv_buffer.size());
@@ -155,24 +155,10 @@ QString encryptString(QString plaintext, QString password)
     }
 
     // Generate the 3*32 bytes master key by Argon2
-    auto pwdhash_fam = PasswordHashFamily::create("Argon2id");
-    SecureVector<uint8_t> master_key_buffer(ARGON_OUTPUT_LEN);
-
-    auto default_pwhash = pwdhash_fam->from_params(MEMLIMIT_INTERACTIVE,
-                                                   ITERATION_INTERACTIVE,
-                                                   PARALLELISM_INTERACTIVE); // mem,ops,threads
-
-    default_pwhash->derive_key(master_key_buffer.data(),
-                               master_key_buffer.size(),
-                               pass.data(), pass.size(),
-                               &out_buf[VERSION_CODE_LEN],
-                               ARGON_SALT_LEN);
-
-    // Split master_key in tree parts.
-    const uint8_t *mk = master_key_buffer.begin().base();
-    const SymmetricKey cipher_key_1(mk, CIPHER_KEY_LEN);
-    const SymmetricKey cipher_key_2(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-    const SymmetricKey cipher_key_3(&mk[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
+    Derivation deriv;
+    deriv.setPassword(password);
+    deriv.setSalt(argon_salt.bits_of());
+    deriv.setArgonParam(MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
 
     // Split master_iv in tree parts.
     const uint8_t *iv = master_iv_buffer.begin().base();
@@ -182,19 +168,19 @@ QString encryptString(QString plaintext, QString password)
 
     // Now we can do the triple encryption
     std::unique_ptr<AEAD_Mode> enc = AEAD_Mode::create("ChaCha20Poly1305", ENCRYPTION);
-    enc->set_key(cipher_key_1);
+    enc->set_key(deriv.getkey1());
     enc->set_ad(add);
     enc->start(iv_1.bits_of());
     enc->finish(out_buf, CRYPTOBOX_HEADER_LEN);
 
     std::unique_ptr<AEAD_Mode> enc2 = AEAD_Mode::create("AES-256/EAX", ENCRYPTION);
-    enc2->set_key(cipher_key_2);
+    enc2->set_key(deriv.getkey2());
     enc2->set_ad(add);
     enc2->start(iv_2.bits_of());
     enc2->finish(out_buf, CRYPTOBOX_HEADER_LEN);
 
     std::unique_ptr<AEAD_Mode> enc3 = AEAD_Mode::create("Serpent/GCM", ENCRYPTION);
-    enc3->set_key(cipher_key_3);
+    enc3->set_key(deriv.getkey3());
     enc3->set_ad(add);
     enc3->start(iv_3.bits_of());
     enc3->finish(out_buf, CRYPTOBOX_HEADER_LEN);
@@ -206,7 +192,6 @@ QString encryptString(QString plaintext, QString password)
 QString decryptString(QString cipher, QString password)
 {
     const string cipherStr = cipher.toStdString();
-    const string pass = password.toStdString();
 
     string add_data = APP_URL.toStdString();
     SecureVector<uint8_t> add(add_data.data(), add_data.data() + add_data.length());
@@ -214,7 +199,6 @@ QString decryptString(QString cipher, QString password)
     const uint32_t CRYPTOBOX_VERSION_CODE = 0x2EC4993A;
     const size_t VERSION_CODE_LEN = 4;
 
-    const size_t ARGON_OUTPUT_LEN = CIPHER_KEY_LEN * 3;
     const size_t CRYPTOBOX_HEADER_LEN = VERSION_CODE_LEN + ARGON_SALT_LEN + CIPHER_IV_LEN * 3;
 
     DataSource_Memory input_src(cipherStr);
@@ -231,46 +215,35 @@ QString decryptString(QString cipher, QString password)
         }
     }
 
-    const uint8_t *argon_salt = &ciphertext[VERSION_CODE_LEN];
+    //const uint8_t *argon_salt = &ciphertext[VERSION_CODE_LEN];
+    const OctetString argon_salt(&ciphertext[VERSION_CODE_LEN], ARGON_SALT_LEN);
     const uint8_t *iv = &ciphertext[VERSION_CODE_LEN + ARGON_SALT_LEN];
 
     // mem,ops,threads
-    auto pwdhash_fam = PasswordHashFamily::create("Argon2id");
-    SecureVector<uint8_t> key_buffer(ARGON_OUTPUT_LEN);
-    auto default_pwhash = pwdhash_fam->from_params(MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE, PARALLELISM_INTERACTIVE);
-
-    default_pwhash->derive_key(key_buffer.data(),
-                               key_buffer.size(),
-                               pass.data(),
-                               pass.size(),
-                               argon_salt,
-                               ARGON_SALT_LEN);
-
-    // Split master_key in tree parts.
-    const uint8_t *mk = key_buffer.begin().base();
-    const Botan::SymmetricKey cipher_key_1(mk, CIPHER_KEY_LEN);
-    const Botan::SymmetricKey cipher_key_2(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-    const Botan::SymmetricKey cipher_key_3(&mk[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
+    Derivation deriv;
+    deriv.setPassword(password);
+    deriv.setSalt(argon_salt.bits_of());
+    deriv.setArgonParam(MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
 
     // Split iv_buffer in tree parts.
-    const Botan::InitializationVector iv_1(iv, CIPHER_IV_LEN);
-    const Botan::InitializationVector iv_2(&iv[CIPHER_IV_LEN], CIPHER_IV_LEN);
-    const Botan::InitializationVector iv_3(&iv[CIPHER_IV_LEN + CIPHER_IV_LEN], CIPHER_IV_LEN);
+    const InitializationVector iv_1(iv, CIPHER_IV_LEN);
+    const InitializationVector iv_2(&iv[CIPHER_IV_LEN], CIPHER_IV_LEN);
+    const InitializationVector iv_3(&iv[CIPHER_IV_LEN + CIPHER_IV_LEN], CIPHER_IV_LEN);
 
-    std::unique_ptr<Botan::AEAD_Mode> dec = Botan::AEAD_Mode::create("Serpent/GCM", Botan::DECRYPTION);
-    dec->set_key(cipher_key_3);
+    std::unique_ptr<AEAD_Mode> dec = AEAD_Mode::create("Serpent/GCM", DECRYPTION);
+    dec->set_key(deriv.getkey3());
     dec->set_ad(add);
     dec->start(iv_3.bits_of());
     dec->finish(ciphertext, CRYPTOBOX_HEADER_LEN);
 
-    std::unique_ptr<Botan::AEAD_Mode> dec2 = Botan::AEAD_Mode::create("AES-256/EAX", Botan::DECRYPTION);
-    dec2->set_key(cipher_key_2);
+    std::unique_ptr<AEAD_Mode> dec2 = AEAD_Mode::create("AES-256/EAX", DECRYPTION);
+    dec2->set_key(deriv.getkey2());
     dec2->set_ad(add);
     dec2->start(iv_2.bits_of());
     dec2->finish(ciphertext, CRYPTOBOX_HEADER_LEN);
 
     std::unique_ptr<Botan::AEAD_Mode> dec3 = Botan::AEAD_Mode::create("ChaCha20Poly1305", Botan::DECRYPTION);
-    dec3->set_key(cipher_key_1);
+    dec3->set_key(deriv.getkey1());
     dec3->set_ad(add);
     dec3->start(iv_1.bits_of());
     dec3->finish(ciphertext, CRYPTOBOX_HEADER_LEN);

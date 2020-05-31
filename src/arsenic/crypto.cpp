@@ -11,15 +11,8 @@
 
 #include "constants.h"
 #include "messages.h"
-
-#include <QtGlobal>
-#if defined(Q_OS_UNIX)
-    #include "botan_all.h"
-#endif
-
-#if defined(Q_OS_WIN)
-    #include "botan_all.h"
-#endif
+#include "Derivation.h"
+#include "botan_all.h"
 
 using namespace ARs;
 using namespace Botan;
@@ -140,9 +133,6 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     auto fileN { convertStringToVectorquint8(fileName) };
     auto fileS { convertIntToVectorquint8(filesize) };
 
-    // Convert the QString password to securevector
-    const auto password { convertStringToVectorChar(m_password) };
-
     // Convert the QString additionnal data to quint8 vector
     const auto add { convertStringToVectorquint8(APP_URL) };
 
@@ -169,27 +159,27 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
 
     // chained triple encryption of the internal_master_key with the random 3 master_key
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
-    const auto master_key { calculateHash(password, argonSalt, m_argonmem, m_argoniter) };
-    const auto* mk2 { master_key.begin().base() };
-    const SymmetricKey ChaCha20_key(mk2, CIPHER_KEY_LEN);
-    const SymmetricKey AES_key(&mk2[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-    const SymmetricKey Serpent_key(&mk2[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
+
+    Derivation deriv;
+    deriv.setPassword(m_password);
+    deriv.setSalt(argonSalt);
+    deriv.setArgonParam(m_argonmem, m_argoniter);
 
     const auto master1 = AEAD_Mode::create("ChaCha20Poly1305", ENCRYPTION);
     const auto master2 = AEAD_Mode::create("AES-256/EAX", ENCRYPTION);
     const auto master3 = AEAD_Mode::create("Serpent/GCM", ENCRYPTION);
 
-    master1->set_key(ChaCha20_key);
+    master1->set_key(deriv.getkey1());
     master1->set_ad(add);
     master1->start(ivChaCha20);
     master1->finish(master_buffer);
 
-    master2->set_key(AES_key);
+    master2->set_key(deriv.getkey2());
     master2->set_ad(add);
     master2->start(ivAES);
     master2->finish(master_buffer);
 
-    master3->set_key(Serpent_key);
+    master3->set_key(deriv.getkey3());
     master3->set_ad(add);
     master3->start(ivSerpent);
     master3->finish(master_buffer);
@@ -299,9 +289,6 @@ qint32 Crypto_Thread::decrypt(QString src_path)
 {
     emit updateProgress(src_path, 0);
 
-    // Convert the QString password to char vector
-    const auto password { convertStringToVectorChar(m_password) };
-
     // Convert the QString additionnal data to quint8 vector
     const auto add { convertStringToVectorquint8(APP_URL) };
 
@@ -374,29 +361,27 @@ qint32 Crypto_Thread::decrypt(QString src_path)
 
     // calculate the internal key with Argon2 and split them in three
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
-    const auto master_key { calculateHash(password, salt_buffer, memlimit, iterations) };
-
-    const auto* mk { master_key.begin().base() };
-    const SymmetricKey ChaCha20_key(mk, CIPHER_KEY_LEN);
-    const SymmetricKey AES_key(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-    const SymmetricKey Serpent_key(&mk[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
+    Derivation deriv;
+    deriv.setPassword(m_password);
+    deriv.setSalt(salt_buffer);
+    deriv.setArgonParam(m_argonmem, m_argoniter);
 
     // decrypt header
     const auto master1 { AEAD_Mode::create("Serpent/GCM", DECRYPTION) };
     const auto master2 { AEAD_Mode::create("AES-256/EAX", DECRYPTION) };
     const auto master3 { AEAD_Mode::create("ChaCha20Poly1305", DECRYPTION) };
     try {
-        master1->set_key(Serpent_key);
+        master1->set_key(deriv.getkey3());
         master1->set_ad(add);
         master1->start(ivSerpent);
         master1->finish(master_buffer);
 
-        master2->set_key(AES_key);
+        master2->set_key(deriv.getkey2());
         master2->set_ad(add);
         master2->start(ivAES);
         master2->finish(master_buffer);
 
-        master3->set_key(ChaCha20_key);
+        master3->set_key(deriv.getkey1());
         master3->set_ad(add);
         master3->start(ivChaCha20);
         master3->finish(master_buffer);

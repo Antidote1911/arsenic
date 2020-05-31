@@ -107,8 +107,8 @@ void Delegate::paint(QPainter *painter,
         progressBarOption.textVisible = true;
 
         // Set the progress and text values of the style option.
-        const int progress = index.model()->data(index, Qt::DisplayRole).toInt();
-        progressBarOption.progress = progress < 0 ? 0 : progress;
+        int value = index.model()->data(index).toInt();
+        progressBarOption.progress = value;
         progressBarOption.text = tr("%1%").arg(progressBarOption.progress);
 
         // Draw the progress bar onto the view.

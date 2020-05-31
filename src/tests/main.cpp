@@ -8,15 +8,8 @@
 #include <QDataStream>
 #include <QDir>
 #include <QFile>
+#include "botan_all.h"
 
-#include <QtGlobal>
-#if defined(Q_OS_UNIX)
-    #include "botan_all.h"
-#endif
-
-#if defined(Q_OS_WIN)
-    #include "botan_all.h"
-#endif
 
 using namespace ARs;
 
@@ -114,7 +107,7 @@ QString upper(QString str)
     return(str.toUpper());
 }
 
-TEST_CASE("Factorials of 1 and higher are computed (pass)", "[single-file]")
+TEST_CASE("Factorials of 1 and higher are computed(pass) ", "[single - file] ")
 {
     REQUIRE(Factorial(1) == 1);
     REQUIRE(Factorial(2) == 2);
@@ -122,16 +115,16 @@ TEST_CASE("Factorials of 1 and higher are computed (pass)", "[single-file]")
     REQUIRE(Factorial(10) == 3628800);
 }
 
-TEST_CASE("Upper", "[single-file]")
+TEST_CASE("Upper ", "[single - file] ")
 {
     REQUIRE(upper("test") == "TEST");
 }
 
-TEST_CASE("File Encryption/decryption", "[single-file]")
+TEST_CASE("File Encryption / decryption ", "[single - file] ")
 {
     REQUIRE(encryptFile() == true);
 }
-TEST_CASE("String Encryption/decryption", "[single-file]")
+TEST_CASE("String Encryption / decryption ", "[single - file] ")
 {
     REQUIRE(encryptString() == true);
 }

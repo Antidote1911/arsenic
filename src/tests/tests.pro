@@ -17,14 +17,14 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     ../arsenic/crypto.cpp \
+    ../arsenic/Derivation.cpp \
     ../arsenic/divers.cpp \
     main.cpp
-
-
 
 HEADERS += catch.hpp \
     ../arsenic/constants.h \
     ../arsenic/crypto.h \
+    ../arsenic/Derivation.h \
     ../arsenic/divers.h
 
 

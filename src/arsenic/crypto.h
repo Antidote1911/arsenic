@@ -1,17 +1,11 @@
 #ifndef CRYPTO_H
 #define CRYPTO_H
 
-#include <QtGlobal>
-#if defined(Q_OS_UNIX)
-    #include "botan_all.h"
-#endif
 
-#if defined(Q_OS_WIN)
-    #include "botan_all.h"
-#endif
-
+#include "botan_all.h"
 #include <QObject>
 #include <QThread>
+
 
 class Crypto_Thread : public QThread {
     Q_OBJECT
