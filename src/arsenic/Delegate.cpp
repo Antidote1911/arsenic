@@ -109,8 +109,7 @@ void Delegate::paint(QPainter *painter,
         // Set the progress and text values of the style option.
         const int progress = index.model()->data(index, Qt::DisplayRole).toInt();
         progressBarOption.progress = progress < 0 ? 0 : progress;
-        // result == "pi = 3.14"
-        progressBarOption.text = QString().arg("%d%%", progressBarOption.progress);
+        progressBarOption.text = tr("%1%").arg(progressBarOption.progress);
 
         // Draw the progress bar onto the view.
         QApplication::style()->drawControl(QStyle::CE_ProgressBar,
