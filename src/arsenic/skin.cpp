@@ -10,11 +10,6 @@ Skin::Skin(QObject *parent)
 }
 
 
-QString Skin::getSkin(const QString& key)
-{
-}
-
-
 void Skin::setSkin(const QString& key)
 {
     if (key == "dark") {

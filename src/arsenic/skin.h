@@ -4,13 +4,12 @@
 #include <QObject>
 
 class Skin : public QObject {
-   Q_OBJECT
+    Q_OBJECT
 
 public:
-   Skin(QObject *parent = 0);
+    Skin(QObject *parent = 0);
 
-   QString getSkin(const QString& key);
-   void setSkin(const QString& key);
+    void setSkin(const QString& key);
 
 private:
 };
