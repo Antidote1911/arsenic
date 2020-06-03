@@ -11,6 +11,7 @@
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <cmath>
 
 #include "Config.h"
 #include "Delegate.h"
@@ -18,11 +19,12 @@
 #include "argonTests.h"
 #include "configDialog.h"
 #include "constants.h"
-#include "crypto.h"
-#include "divers.h"
+#include "fileCrypto.h"
+#include "textcrypto.h"
 #include "hashcheckdialog.h"
 #include "passwordGeneratorDialog.h"
 #include "loghtml.h"
+#include "messages.h"
 
 using namespace ARs;
 
@@ -895,8 +897,9 @@ void MainWindow::encryptText()
 
     try {
         auto plaintext { m_ui->cryptoPadEditor->toPlainText() };
-        auto out { encryptString(plaintext, m_ui->password_0->text()) };
-        m_ui->cryptoPadEditor->setPlainText(out);
+        textCrypto encrypt;
+        encrypt.encryptString(plaintext, m_ui->password_0->text());
+        m_ui->cryptoPadEditor->setPlainText(encrypt.getResult());
     }
     catch (std::exception const& e) {
         auto error = e.what();
@@ -917,14 +920,16 @@ void MainWindow::decryptText()
         return;
     }
 
-    try {
-        auto ciphertext { m_ui->cryptoPadEditor->toPlainText() };
-        auto out { decryptString(ciphertext, m_ui->password_0->text()) };
-        m_ui->cryptoPadEditor->setPlainText(out);
+
+    auto ciphertext { m_ui->cryptoPadEditor->toPlainText() };
+    textCrypto decrypt;
+    int result = decrypt.decryptString(ciphertext, m_ui->password_0->text());
+
+    if (result == 1) {
+        m_ui->cryptoPadEditor->setPlainText(decrypt.getResult());
     }
-    catch (std::exception const& e) {
-        auto error = e.what();
-        displayMessageBox(tr("Decryption Error!"), error);
+    else {
+        displayMessageBox(tr("Decryption Error!"), errorCodeToString(result));
     }
 }
 
@@ -962,4 +967,40 @@ void MainWindow::displayEmptyEditor()
 {
     QMessageBox::warning(this, tr("Text editor is empty !"),
                          tr("You must add text to editor to start processing."));
+}
+
+QString MainWindow::getFileSize(qint64 size)
+{
+    static const double KiB = pow(2, 10);
+    static const double MiB = pow(2, 20);
+    static const double GiB = pow(2, 30);
+    static const double TiB = pow(2, 40);
+    static const double PiB = pow(2, 50);
+
+    // convert to appropriate units based on the size of the item
+    if (size >= 0) {
+        static const int precision = 0;
+
+        if (size < KiB) {
+            return(QString::number(size, 'f', precision) + " B");
+        }
+        else if (size < MiB) {
+            return(QString::number(size / KiB, 'f', precision) + " KiB");
+        }
+        else if (size < GiB) {
+            return(QString::number(size / MiB, 'f', precision) + " MiB");
+        }
+        else if (size < TiB) {
+            return(QString::number(size / GiB, 'f', precision) + " GiB");
+        }
+        else if (size < PiB) {
+            return(QString::number(size / TiB, 'f', precision) + " TiB");
+        }
+        else {
+            return(QString::number(size / PiB, 'f', precision) + " PiB");
+        }
+    }
+    else {
+        return("");
+    }
 }

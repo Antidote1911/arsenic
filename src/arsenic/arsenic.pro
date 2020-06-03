@@ -41,9 +41,7 @@ HEADERS += \
     clipboard.h \
     configDialog.h \
     constants.h \
-    crypto.h \
-    Derivation.h \
-    divers.h \
+    fileCrypto.h \
     hashcheckdialog.h \
     loghtml.h \
     mainwindow.h \
@@ -51,7 +49,9 @@ HEADERS += \
     passwordGenerator.h \
     passwordGeneratorDialog.h \
     progressbar.h \
-    skin.h
+    skin.h \
+    textcrypto.h \
+    tripleencryption.h
 
 SOURCES += \
     Config.cpp \
@@ -60,16 +60,17 @@ SOURCES += \
     argonTests.cpp \
     clipboard.cpp \
     configDialog.cpp \
-    crypto.cpp \
-    Derivation.cpp \
-    divers.cpp \
+    fileCrypto.cpp \
     hashcheckdialog.cpp \
     loghtml.cpp \
     main.cpp \
     mainwindow.cpp \
+    messages.cpp \
     passwordGenerator.cpp \
     passwordGeneratorDialog.cpp \
-    skin.cpp
+    skin.cpp \
+    textcrypto.cpp \
+    tripleencryption.cpp
 
 RESOURCES += \
     rsc.qrc

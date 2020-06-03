@@ -16,16 +16,18 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    ../arsenic/crypto.cpp \
-    ../arsenic/Derivation.cpp \
-    ../arsenic/divers.cpp \
+    ../arsenic/fileCrypto.cpp \
+    ../arsenic/tripleencryption.cpp \
+    ../arsenic/messages.cpp \
+    ../arsenic/textcrypto.cpp \
     main.cpp
 
 HEADERS += catch.hpp \
     ../arsenic/constants.h \
-    ../arsenic/crypto.h \
-    ../arsenic/Derivation.h \
-    ../arsenic/divers.h
+    ../arsenic/fileCrypto.h \
+    ../arsenic/tripleencryption.h \
+    ../arsenic/messages.h \
+    ../arsenic/textcrypto.h
 
 
 linux {

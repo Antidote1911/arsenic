@@ -1,5 +1,5 @@
 #include "Config.h"
-#include "crypto.h"
+#include "fileCrypto.h"
 #include "mainwindow.h"
 #include <QApplication>
 #include <QCommandLineParser>

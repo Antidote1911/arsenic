@@ -1,4 +1,4 @@
-#include "crypto.h"
+#include "fileCrypto.h"
 
 #include <QDataStream>
 #include <QDateTime>
@@ -11,13 +11,12 @@
 
 #include "constants.h"
 #include "messages.h"
-#include "Derivation.h"
 #include "botan_all.h"
+#include "tripleencryption.h"
 
 using namespace ARs;
 using namespace Botan;
 using namespace std;
-using namespace MyCryptMessagesPublic;
 
 Crypto_Thread::Crypto_Thread(QObject* parent)
     : QThread(parent)
@@ -133,56 +132,32 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     auto fileN { convertStringToVectorquint8(fileName) };
     auto fileS { convertIntToVectorquint8(filesize) };
 
-    // Convert the QString additionnal data to quint8 vector
-    const auto add { convertStringToVectorquint8(APP_URL) };
-
-    // Randomize the 16 bytes salt and the three 24 bytes nonces
-    AutoSeeded_RNG rng;
-    auto argonSalt { rng.random_vec(ARGON_SALT_LEN) };
-    auto ivChaCha20 { rng.random_vec(CIPHER_IV_LEN) };
-    auto ivAES { rng.random_vec(CIPHER_IV_LEN) };
-    auto ivSerpent { rng.random_vec(CIPHER_IV_LEN) };
-
     // Append the file name to the buffer and the 3 Random key, and split them in 3 for file encryption
-    SecureVector<quint8> master_buffer(CIPHER_KEY_LEN * 3 + fileN.size() + sizeof(qint64));
+    AutoSeeded_RNG rng;
+    auto masterKey { rng.random_vec(CIPHER_KEY_LEN * 3) };
+    auto internalTripleNonce { rng.random_vec(CIPHER_IV_LEN * 3) };
+
+    SecureVector<quint8> master_buffer(CIPHER_KEY_LEN * 3 + fileN.size() + sizeof(qint64) + CIPHER_IV_LEN * 3);
     memcpy(master_buffer.data(), fileN.data(), fileN.size());
     memcpy(master_buffer.data() + fileN.size(), fileS.data(), sizeof(qint64));
-
-    rng.randomize(master_buffer.data() + fileN.size() + sizeof(qint64), CIPHER_KEY_LEN * 3);
+    memcpy(master_buffer.data() + fileN.size() + sizeof(qint64), masterKey.data(), masterKey.size());
+    memcpy(master_buffer.data() + fileN.size() + sizeof(qint64) + masterKey.size(), internalTripleNonce.data(), internalTripleNonce.size());
 
     const auto* mk { master_buffer.begin().base() };
     const OctetString name(mk, fileNameSize);
     const OctetString originalSize(&mk[fileNameSize], sizeof(qint64));
-    const SymmetricKey cipherkey1(&mk[fileNameSize + sizeof(qint64)], CIPHER_KEY_LEN);
-    const SymmetricKey cipherkey2(&mk[fileNameSize + sizeof(qint64) + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-    const SymmetricKey cipherkey3(&mk[fileNameSize + sizeof(qint64) + CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
 
     // chained triple encryption of the internal_master_key with the random 3 master_key
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
 
-    Derivation deriv;
-    deriv.setPassword(m_password);
-    deriv.setSalt(argonSalt);
-    deriv.setArgonParam(m_argonmem, m_argoniter);
+    // Randomize the 16 bytes salt and the three 24 bytes nonces
 
-    const auto master1 = AEAD_Mode::create("ChaCha20Poly1305", ENCRYPTION);
-    const auto master2 = AEAD_Mode::create("AES-256/EAX", ENCRYPTION);
-    const auto master3 = AEAD_Mode::create("Serpent/GCM", ENCRYPTION);
-
-    master1->set_key(deriv.getkey1());
-    master1->set_ad(add);
-    master1->start(ivChaCha20);
-    master1->finish(master_buffer);
-
-    master2->set_key(deriv.getkey2());
-    master2->set_ad(add);
-    master2->start(ivAES);
-    master2->finish(master_buffer);
-
-    master3->set_key(deriv.getkey3());
-    master3->set_ad(add);
-    master3->start(ivSerpent);
-    master3->finish(master_buffer);
+    TripleEncryption encrypt(0);
+    encrypt.generateSalt();
+    encrypt.derivePassword(m_password, m_argonmem, m_argoniter);
+    encrypt.setAdd(APP_URL);
+    encrypt.generateTripleNonce();
+    SecureVector<quint8> outbuffer = encrypt.finish(master_buffer);
 
     if (!src_file.exists() || !src_info.isFile()) {
         return(SRC_CANNOT_OPEN_READ);
@@ -214,34 +189,20 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     des_stream << static_cast<quint32>(fileNameSize);
 
     // Write the salt, the 3 nonces and the encrypted header in the file
-    des_stream.writeRawData(reinterpret_cast<char*>(argonSalt.data()), ARGON_SALT_LEN);
-    des_stream.writeRawData(reinterpret_cast<char*>(ivChaCha20.data()), CIPHER_IV_LEN);
-    des_stream.writeRawData(reinterpret_cast<char*>(ivAES.data()), CIPHER_IV_LEN);
-    des_stream.writeRawData(reinterpret_cast<char*>(ivSerpent.data()), CIPHER_IV_LEN);
-    des_stream.writeRawData(reinterpret_cast<char*>(master_buffer.data()), master_buffer.size());
+    des_stream.writeRawData(reinterpret_cast<char*>(encrypt.getSalt().bits_of().data()), ARGON_SALT_LEN);
+    des_stream.writeRawData(reinterpret_cast<char*>(encrypt.getTripleNonce().bits_of().data()), CIPHER_IV_LEN * 3);
+    des_stream.writeRawData(reinterpret_cast<char*>(outbuffer.data()), outbuffer.size());
 
     // now, move on to the actual data
     QDataStream src_stream(&src_file);
     emit statusMessage("Encryption... Please wait...");
 
-    const auto enc1 { AEAD_Mode::create("ChaCha20Poly1305", ENCRYPTION) };
-    const auto enc2 { AEAD_Mode::create("AES-256/EAX", ENCRYPTION) };
-    const auto enc3 { AEAD_Mode::create("Serpent/GCM", ENCRYPTION) };
+    TripleEncryption encrypt2(0);
+    encrypt2.setTripleKey(masterKey);
+    encrypt2.setAdd(APP_URL);
 
-    Sodium::sodium_increment(ivChaCha20.data(), CIPHER_IV_LEN);
-    enc1->set_key(cipherkey1);
-    enc1->set_ad(add);
-    enc1->start(ivChaCha20);
-
-    Sodium::sodium_increment(ivAES.data(), CIPHER_IV_LEN);
-    enc2->set_key(cipherkey2);
-    enc2->set_ad(add);
-    enc2->start(ivAES);
-
-    Sodium::sodium_increment(ivSerpent.data(), CIPHER_IV_LEN);
-    enc3->set_key(cipherkey3);
-    enc3->set_ad(add);
-    enc3->start(ivSerpent);
+    encrypt2.setTripleNonce(internalTripleNonce);
+    SecureVector<quint8> encryptedBloc;
 
     auto processed { 0. };
     quint32 bytes_read;
@@ -253,19 +214,8 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
         processed += bytes_read;
         emit updateProgress(src_path, (processed / filesize) * 100);
 
-        if (bytes_read < IN_BUFFER_SIZE) {
-            buf.resize(bytes_read);
-            enc1->finish(buf);
-            enc2->finish(buf);
-            enc3->finish(buf);
-            des_stream.writeRawData(reinterpret_cast<char*>(buf.data()), buf.size());
-        }
-        else {
-            enc1->update(buf);
-            enc2->update(buf);
-            enc3->update(buf);
-            des_stream.writeRawData(reinterpret_cast<char*>(buf.data()), bytes_read);
-        }
+        encryptedBloc = encrypt2.finish(buf);
+        des_stream.writeRawData(reinterpret_cast<char*>(encryptedBloc.data()), encryptedBloc.size());
     }
 
     if (aborted) {
@@ -347,58 +297,40 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     src_stream >> fileNameSize;
 
     SecureVector<quint8> salt_buffer(ARGON_SALT_LEN);
-    SecureVector<quint8> ivChaCha20(CIPHER_IV_LEN);
-    SecureVector<quint8> ivAES(CIPHER_IV_LEN);
-    SecureVector<quint8> ivSerpent(CIPHER_IV_LEN);
-    SecureVector<quint8> master_buffer(fileNameSize + sizeof(qint64) + CIPHER_KEY_LEN * 3 + MACBYTES * 3);
+    SecureVector<quint8> tripleNonce(CIPHER_IV_LEN * 3);
+    SecureVector<quint8> master_buffer(fileNameSize + sizeof(qint64) + CIPHER_KEY_LEN * 3 + CIPHER_IV_LEN * 3 + MACBYTES * 3);
 
     // Read the salt, the three nonces and the header
     src_stream.readRawData(reinterpret_cast<char*>(salt_buffer.data()), ARGON_SALT_LEN);
-    src_stream.readRawData(reinterpret_cast<char*>(ivChaCha20.data()), CIPHER_IV_LEN);
-    src_stream.readRawData(reinterpret_cast<char*>(ivAES.data()), CIPHER_IV_LEN);
-    src_stream.readRawData(reinterpret_cast<char*>(ivSerpent.data()), CIPHER_IV_LEN);
+    src_stream.readRawData(reinterpret_cast<char*>(tripleNonce.data()), CIPHER_IV_LEN * 3);
     src_stream.readRawData(reinterpret_cast<char*>(master_buffer.data()), master_buffer.size());
 
     // calculate the internal key with Argon2 and split them in three
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
-    Derivation deriv;
-    deriv.setPassword(m_password);
-    deriv.setSalt(salt_buffer);
-    deriv.setArgonParam(m_argonmem, m_argoniter);
 
     // decrypt header
-    const auto master1 { AEAD_Mode::create("Serpent/GCM", DECRYPTION) };
-    const auto master2 { AEAD_Mode::create("AES-256/EAX", DECRYPTION) };
-    const auto master3 { AEAD_Mode::create("ChaCha20Poly1305", DECRYPTION) };
+    TripleEncryption decrypt(1);
+    decrypt.setSalt(salt_buffer);
+    decrypt.derivePassword(m_password, m_argonmem, m_argoniter);
+    decrypt.setAdd(APP_URL);
+    decrypt.setTripleNonce(tripleNonce);
+    SecureVector<quint8> outbuffer;
     try {
-        master1->set_key(deriv.getkey3());
-        master1->set_ad(add);
-        master1->start(ivSerpent);
-        master1->finish(master_buffer);
-
-        master2->set_key(deriv.getkey2());
-        master2->set_ad(add);
-        master2->start(ivAES);
-        master2->finish(master_buffer);
-
-        master3->set_key(deriv.getkey1());
-        master3->set_ad(add);
-        master3->start(ivChaCha20);
-        master3->finish(master_buffer);
+        outbuffer = decrypt.finish(master_buffer);
     } catch (const Botan::Invalid_Authentication_Tag&) {
-        QFile::remove(outfileresult);
-        return(SRC_HEADER_INVALID_TAG);
+        return(INVALID_TAG);
     } catch (const Botan::Integrity_Failure&) {
-        QFile::remove(outfileresult);
-        return(SRC_HEADER_INTEGRITY_FAILURE);
+        return(INTEGRITY_FAILURE);
+    }catch (const Botan::Decoding_Error&) {
+        return(INTEGRITY_FAILURE);
     }
+
     // get from the decrypted header the three internal keys and the original filename
-    const auto* mk2 { master_buffer.begin().base() };
+    const auto* mk2 { outbuffer.begin().base() };
     const OctetString name(mk2, fileNameSize);
     const OctetString originalSize(&mk2[fileNameSize], sizeof(qint64));
-    const SymmetricKey cipherkey1(&mk2[fileNameSize + sizeof(qint64)], CIPHER_KEY_LEN);
-    const SymmetricKey cipherkey2(&mk2[fileNameSize + sizeof(qint64) + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-    const SymmetricKey cipherkey3(&mk2[fileNameSize + sizeof(qint64) + CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
+    const SymmetricKey cipherkey(&mk2[fileNameSize + sizeof(qint64)], CIPHER_KEY_LEN * 3);
+    const InitializationVector internalTripleNonce(&mk2[fileNameSize + sizeof(qint64) + CIPHER_KEY_LEN * 3], CIPHER_IV_LEN * 3);
 
     // create the decrypted file
     const string tmp { (name.begin()), name.end() };
@@ -418,61 +350,40 @@ qint32 Crypto_Thread::decrypt(QString src_path)
 
     emit statusMessage("Decryption... Please wait.");
 
-    const auto decSerpent { AEAD_Mode::create("Serpent/GCM", DECRYPTION) };
-    const auto decAES { AEAD_Mode::create("AES-256/EAX", DECRYPTION) };
-    const auto decChaCha { AEAD_Mode::create("ChaCha20Poly1305", DECRYPTION) };
-
-    Sodium::sodium_increment(ivSerpent.data(), CIPHER_IV_LEN);
-    decSerpent->set_key(cipherkey3);
-    decSerpent->set_ad(add);
-    decSerpent->start(ivSerpent);
-
-    Sodium::sodium_increment(ivAES.data(), CIPHER_IV_LEN);
-    decAES->set_key(cipherkey2);
-    decAES->set_ad(add);
-    decAES->start(ivAES);
-
-    Sodium::sodium_increment(ivChaCha20.data(), CIPHER_IV_LEN);
-    decChaCha->set_key(cipherkey1);
-    decChaCha->set_ad(add);
-    decChaCha->start(ivChaCha20);
+    TripleEncryption decrypt2(1);
+    decrypt2.setTripleKey(cipherkey);
+    decrypt2.setAdd(APP_URL);
+    decrypt2.setTripleNonce(internalTripleNonce);
+    SecureVector<quint8> decryptedBloc;
 
     //The percentage is calculated by dividing the progress (value() - minimum()) divided by maximum() - minimum().
     auto processed { 0. };
     quint32 bytes_read;
-    SecureVector<quint8> buf(IN_BUFFER_SIZE);
+    SecureVector<quint8> buf(IN_BUFFER_SIZE + MACBYTES * 3);
 
     const string size { (originalSize.begin()), originalSize.end() };
     auto originalFileSize = std::stoi(size);
 
-    while (!aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(buf.data()), IN_BUFFER_SIZE)) > 0)
+    while (!aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(buf.data()), IN_BUFFER_SIZE + MACBYTES * 3)) > 0)
     {
         // calculate percentage proccessed
         processed += bytes_read - MACBYTES * 3;
         emit updateProgress(src_path, (processed / originalFileSize) * 100);
 
-        if (bytes_read < IN_BUFFER_SIZE) {
-            buf.resize(bytes_read);
-            try {
-                decSerpent->finish(buf);
-                decAES->finish(buf);
-                decChaCha->finish(buf);
-                des_stream.writeRawData(reinterpret_cast<char*>(buf.data()), buf.size());
-            } catch (const Botan::Invalid_Authentication_Tag&) {
-                QFile::remove(outfileresult);
-                return(INVALID_TAG);
-            } catch (const Botan::Integrity_Failure&) {
-                QFile::remove(outfileresult);
-                return(INTEGRITY_FAILURE);
-            }
-            emit updateProgress(src_path, 100);
+        try {
+            decryptedBloc = decrypt2.finish(buf);
+            des_stream.writeRawData(reinterpret_cast<char*>(decryptedBloc.data()), decryptedBloc.size());
+        } catch (const Botan::Invalid_Authentication_Tag&) {
+            QFile::remove(outfileresult);
+            return(INVALID_TAG);
+        } catch (const Botan::Integrity_Failure&) {
+            QFile::remove(outfileresult);
+            return(INTEGRITY_FAILURE);
+        }catch (const Botan::Decoding_Error&)
+        {
+            return(INTEGRITY_FAILURE);
         }
-        else {
-            decSerpent->update(buf);
-            decAES->update(buf);
-            decChaCha->update(buf);
-            des_stream.writeRawData(reinterpret_cast<char*>(buf.data()), bytes_read);
-        }
+        emit updateProgress(src_path, 100);
     }
 
     if (m_deletefile) {
@@ -578,89 +489,4 @@ QString Crypto_Thread::uniqueFileName(const QString& fileName)
         }
     }
     return(uniqueFileName);
-}
-QString Crypto_Thread::errorCodeToString(int error_code)
-{
-    QString ret_string;
-
-    switch (error_code)
-    {
-    case NOT_AN_ARSENIC_FILE:
-        ret_string += tr("This file is not an Arsenic File !");
-        break;
-
-    case SRC_NOT_FOUND:
-        ret_string += tr("The file was not found !");
-        break;
-
-    case SRC_CANNOT_OPEN_READ:
-        ret_string += tr("The file could not be opened for reading !");
-        break;
-
-    case PASS_HASH_FAIL:
-        ret_string += tr("The password could not be hashed !");
-        break;
-
-    case DES_HEADER_ENCRYPT_ERROR:
-        ret_string += tr("The intermediate file header could not be encrypted !");
-        break;
-
-    case DES_FILE_EXISTS:
-        ret_string += tr("The encrypted file already exists !");
-        break;
-
-    case DES_CANNOT_OPEN_WRITE:
-        ret_string += tr("The encrypted file could not be opened for writin !");
-        break;
-
-    case DES_HEADER_WRITE_ERROR:
-        ret_string += tr("The encrypted file could not be written to !");
-        break;
-
-    case SRC_BODY_READ_ERROR:
-        ret_string += tr("The file could not be read !");
-        break;
-
-    case DATA_ENCRYPT_ERROR:
-        ret_string += tr("The file's data could not be encrypted !");
-        break;
-
-    case DES_BODY_WRITE_ERROR:
-        ret_string += tr("The encrypted file could not be written to !");
-        break;
-
-    case SRC_HEADER_READ_ERROR:
-        ret_string += tr("Can't read the header !");
-        break;
-
-    case SRC_HEADER_INVALID_TAG:
-        ret_string += tr("Invalid Authentication Tag. could not decrypt the header. Incorrect password or corrupted file !");
-        break;
-
-    case SRC_HEADER_INTEGRITY_FAILURE:
-        ret_string += tr("Header Integrity Failure. Incorrect password or corrupted file !");
-        break;
-
-    case INVALID_TAG:
-        ret_string += tr("Invalid Authentication Tag. The file is corrupted !");
-        break;
-
-    case INTEGRITY_FAILURE:
-        ret_string += tr("File Integrity Failure. The file is corrupted !");
-        break;
-
-    case ABORTED_BY_USER:
-        ret_string += tr("Aborted by user ! Intermediate file is deleted !");
-        break;
-
-    case CRYPT_SUCCESS:
-        ret_string += tr("The file was successfully encrypted !");
-        break;
-
-    case DECRYPT_SUCCESS:
-        ret_string += tr("The file was successfully decrypted !");
-        break;
-    }
-
-    return(ret_string);
 }

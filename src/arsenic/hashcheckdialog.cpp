@@ -11,7 +11,7 @@
 #include <QMessageBox>
 #include <QMimeData>
 
-#include "divers.h"
+#include "stringCrypto.h"
 
 #include <QtGlobal>
 #if defined(Q_OS_UNIX)

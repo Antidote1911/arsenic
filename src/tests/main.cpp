@@ -2,8 +2,8 @@
 #include <QCoreApplication>
 //#include <QDebug>
 #include "../arsenic/constants.h"
-#include "../arsenic/crypto.h"
-#include "../arsenic/divers.h"
+#include "../arsenic/fileCrypto.h"
+#include "../arsenic/textcrypto.h"
 #include "catch.hpp"
 #include <QDataStream>
 #include <QDir>
@@ -29,19 +29,27 @@ int Factorial(int number)
 
 bool encryptString()
 {
+    textCrypto encrypt;
+
     QString plaintext = "my super secret message";
-    QString encrypted = encryptString(plaintext, "mypassword");
-    QString decrypted = decryptString(encrypted, "mypassword");
+    QString password = "mypassword";
+
+    encrypt.encryptString(plaintext, password);
+    QString encrypted = encrypt.getResult();
+
+    textCrypto decrypt;
+    decrypt.decryptString(encrypted, password);
+    QString decrypted = decrypt.getResult();
     return(plaintext == decrypted);
 }
 
 bool encryptFile()
 {
     // We generate a ramdom file
-    Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE);
+    Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE * 50);
     Botan::AutoSeeded_RNG rng;
 
-    main_buffer = rng.random_vec(IN_BUFFER_SIZE);
+    main_buffer = rng.random_vec(IN_BUFFER_SIZE * 50);
     QFile::remove(QDir::cleanPath("cleartxt.txt")); //clear previous file
     QFile::remove(QDir::cleanPath("cleartxt.txt.arsenic"));
 
@@ -54,9 +62,13 @@ bool encryptFile()
     // Calculate the SHA-256 of the generated file for future comparison
     std::unique_ptr<Botan::HashFunction> hash1(Botan::HashFunction::create("SHA-256"));
     src_file.open(QIODevice::ReadOnly);
+    QDataStream stream(&src_file);
     Botan::SecureVector<uint8_t> buf(IN_BUFFER_SIZE);
-    src_file.read(reinterpret_cast<char*>(buf.data()), buf.size());
-    hash1->update(buf.data(), buf.size());
+    quint32 bytes_read;
+    while ((bytes_read = stream.readRawData(reinterpret_cast<char*>(buf.data()), IN_BUFFER_SIZE)) > 0)
+    {
+        hash1->update(buf.data(), buf.size());
+    }
     QString result1 = QString::fromStdString(Botan::hex_encode(hash1->final ()));
 
     // Now, try to encrypt it. The original is deleted, and the output is cleartxt.txt.arsenic
@@ -94,9 +106,13 @@ bool encryptFile()
     std::unique_ptr<Botan::HashFunction> hash2(Botan::HashFunction::create("SHA-256"));
     QFile src_file2(QDir::cleanPath("cleartxt.txt"));
     src_file2.open(QIODevice::ReadOnly);
+    QDataStream stream2(&src_file2);
     Botan::SecureVector<uint8_t> buf2(IN_BUFFER_SIZE);
-    src_file2.read(reinterpret_cast<char*>(buf2.data()), buf2.size());
-    hash2->update(buf2.data(), buf2.size());
+    quint32 bytes_read2;
+    while ((bytes_read2 = stream2.readRawData(reinterpret_cast<char*>(buf2.data()), IN_BUFFER_SIZE)) > 0)
+    {
+        hash2->update(buf2.data(), buf2.size());
+    }
     QString result2 = QString::fromStdString(Botan::hex_encode(hash2->final ()));
 
     return(result1 == result2);

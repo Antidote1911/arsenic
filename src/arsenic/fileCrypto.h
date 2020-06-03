@@ -1,6 +1,5 @@
-#ifndef CRYPTO_H
-#define CRYPTO_H
-
+#ifndef FILECRYPTO_H
+#define FILECRYPTO_H
 
 #include "botan_all.h"
 #include <QObject>
@@ -64,7 +63,6 @@ private:
     quint32 m_argonmem;
     quint32 m_argoniter;
     bool m_direction;
-    QString errorCodeToString(int error_code);
 };
 
-#endif // CRYPTO_H
+#endif // FILECRYPTO_H
