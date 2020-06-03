@@ -164,6 +164,7 @@ void TripleEncryption::generateTripleNonce()
 
 Botan::InitializationVector TripleEncryption::getTripleNonce()
 {
+    Botan::InitializationVector TripleNonce;
     return(m_tripleNonce);
 }
 

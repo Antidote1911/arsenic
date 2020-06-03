@@ -10,19 +10,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QMimeData>
-
-#include "stringCrypto.h"
-
-#include <QtGlobal>
-#if defined(Q_OS_UNIX)
-    #include "botan_all.h"
-#endif
-
-#if defined(Q_OS_WIN)
-    #include "botan_all.h"
-#endif
-
-
+#include "botan_all.h"
 
 HashCheckDialog::HashCheckDialog(QWidget *parent)
     : QDialog(parent)
