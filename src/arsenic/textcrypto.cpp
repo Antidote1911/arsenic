@@ -18,44 +18,39 @@ int textCrypto::encryptString(QString plaintext, QString password)
     /* Version code is First 24 bits of SHA-256("Arsenic Cryptobox")
      * Output format is:
      * version    (4 bytes)
-     * salt       (10 bytes) for Argon2
+     * salt       (16 bytes) for Argon2
      * nonce1     (24 bytes) for ChaCha20Poly1305
      * nonce2     (24 bytes) for AES-256/GCM
      * nonce3     (24 bytes) for Serpent/GCM
      * ciphertext
      */
 
+    const auto CRYPTOBOX_VERSION_CODE { 0x2EC4993A };
+    const auto VERSION_CODE_LEN { 4 };
+
+    const auto clear { plaintext.toStdString() };
     // Copy input data to a buffer
-    const uint32_t CRYPTOBOX_VERSION_CODE = 0x2EC4993A;
-    const size_t VERSION_CODE_LEN = 4;
-
-    string clear = plaintext.toStdString();
-    SecureVector<uint8_t> pt(clear.data(), clear.data() + clear.length());
-
-    /*
-     * Version code is First 24 bits of SHA-256("Arsenic Cryptobox"), followed by 8 0 bits
-     * for later use as flags, etc if needed
-     */
-
+    const SecureVector<quint8> pt(clear.data(), clear.data() + clear.length());
 
     // Now we can do the triple encryption
-    TripleEncryption encrypt(0);
-    encrypt.generateSalt();
-    encrypt.derivePassword(password, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
-    encrypt.setAdd(APP_URL);
-    encrypt.generateTripleNonce();
-    auto outbuffer = encrypt.finish(pt);
+    // Randomize the 16 bytes salt and the three 24 bytes nonces
+    AutoSeeded_RNG rng;
+    const auto argonSalt { rng.random_vec(ARGON_SALT_LEN) };
+    const auto tripleNonce { rng.random_vec(CIPHER_IV_LEN * 3) };
 
-    auto iv = encrypt.getTripleNonce();
-    auto salt = encrypt.getSalt();
+    TripleEncryption encrypt(0);
+    encrypt.setSalt(argonSalt);
+    encrypt.derivePassword(password, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
+    encrypt.setTripleNonce(tripleNonce);
+    const auto outbuffer { encrypt.finish(pt) };
 
     SecureVector<quint8> final (VERSION_CODE_LEN);
     for (size_t i = 0; i != VERSION_CODE_LEN; ++i)
     {
         final[i] = get_byte(i, CRYPTOBOX_VERSION_CODE);
     }
-    final.insert(final.end(), salt.begin(), salt.end());
-    final.insert(final.end(), iv.begin(), iv.end());
+    final.insert(final.end(), argonSalt.begin(), argonSalt.end());
+    final.insert(final.end(), tripleNonce.begin(), tripleNonce.end());
     final.insert(final.end(), outbuffer.begin(), outbuffer.end());
 
     m_result = QString::fromStdString(PEM_Code::encode(final, "ARSENIC CRYPTOBOX MESSAGE"));
@@ -64,11 +59,11 @@ int textCrypto::encryptString(QString plaintext, QString password)
 
 int textCrypto::decryptString(QString cipher, QString password)
 {
-    const size_t CRYPTOBOX_HEADER_LEN = VERSION_CODE_LEN + ARGON_SALT_LEN + CIPHER_IV_LEN * 3;
-    const string cipherStr = cipher.toStdString();
+    const auto CRYPTOBOX_HEADER_LEN { VERSION_CODE_LEN + ARGON_SALT_LEN + CIPHER_IV_LEN * 3 };
+    const auto cipherStr { cipher.toStdString() };
 
     DataSource_Memory input_src(cipherStr);
-    SecureVector<uint8_t> ciphertext;
+    SecureVector<quint8> ciphertext;
     try {
         ciphertext = PEM_Code::decode_check_label(input_src, "ARSENIC CRYPTOBOX MESSAGE");
     }
@@ -81,7 +76,7 @@ int textCrypto::decryptString(QString cipher, QString password)
         return(INVALID_CRYPTOBOX_IMPUT);
     }
 
-    for (size_t i = 0; i != VERSION_CODE_LEN; ++i)
+    for (auto i { 0 }; i != VERSION_CODE_LEN; ++i)
     {
         if (ciphertext[i] != get_byte(i, CRYPTOBOX_VERSION_CODE)) {
             return(BAD_CRYPTOBOX_VERSION);
@@ -98,7 +93,6 @@ int textCrypto::decryptString(QString cipher, QString password)
     TripleEncryption decrypt(1);
     decrypt.setSalt(salt);
     decrypt.derivePassword(password, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
-    decrypt.setAdd(APP_URL);
     decrypt.setTripleNonce(tripleNonce.bits_of());
     SecureVector<quint8> outbuffer;
     try {
@@ -117,7 +111,7 @@ int textCrypto::decryptString(QString cipher, QString password)
         return(INTEGRITY_FAILURE);
     }
 
-    const string out(outbuffer.begin(), outbuffer.end()); //std::string out(reinterpret_cast<const char*>(ciphertext.data()), ciphertext.size());
+    const string out(outbuffer.begin(), outbuffer.end()); //std::string out(reinterpret_cast<const char*>(outbuffer.data()), outbuffer.size());
     m_result = QString::fromStdString(out);
     return(DECRYPT_SUCCESS);
 }

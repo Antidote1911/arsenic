@@ -160,7 +160,10 @@ void MainWindow::loadLogFile()
 
 void MainWindow::abortJob()
 {
-    Crypto->aborted = true;
+    if (Crypto->isRunning()) {
+        Crypto->abort();
+        Crypto->wait();
+    }
 }
 
 
@@ -560,11 +563,12 @@ void MainWindow::aboutArsenic()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    Q_UNUSED(event);
     // save prefs before quitting
     savePreferences();
 
     if (Crypto->isRunning()) {
-        Crypto->aborted = true;
+        Crypto->abort();
         Crypto->wait();
     }
 }

@@ -1,16 +1,7 @@
 ﻿// clang-format off
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
-
-
-#include <QtGlobal>
-#if defined(Q_OS_UNIX)
-    #include "botan_all.h"
-#endif
-
-#if defined(Q_OS_WIN)
-    #include "botan_all.h"
-#endif
+#include "botan_all.h"
 
 #include <QDebug>
 #include <QTranslator>

@@ -13,23 +13,17 @@ public:
     explicit Crypto_Thread(QObject *parent = 0);
     void run();
 
-    bool aborted = false;
-
     void setParam(bool direction,
                   QStringList filenames,
                   const QString password,
                   quint32 argonmem,
                   quint32 argoniter,
                   bool deletefile);
-
+    int result;
 
     qint32 encrypt(const QString filename);
     qint32 decrypt(const QString filename);
-    int result;
-
-    QString outfileresult;
-    bool m_deletefile;
-
+    void abort();
 
 signals:
     void updateProgress(const QString& path, quint32 percent);
@@ -39,30 +33,14 @@ signals:
     void sourceDeletedAfterSuccess(QString inputFileName);
 
 private:
-    bool mstop;
-    Botan::SecureVector<char> convertStringToVectorChar(QString qstring);
-    Botan::SecureVector<char> convertStringToVectorChar(std::string string);
-
-    Botan::SecureVector<quint8> convertStringToVectorquint8(QString qstring);
-    Botan::SecureVector<quint8> convertStringToVectorquint8(std::string string);
-    Botan::SecureVector<quint8> convertIntToVectorquint8(qint64 num);
-
-    Botan::SecureVector<quint8> calculateHash(Botan::SecureVector<char> pass_buffer,
-                                              Botan::SecureVector<quint8> salt_buffer,
-                                              quint32 memlimit,
-                                              quint32 iterations);
-
-    QString removeExtension(const QString& fileName,
-                            const QString& extension);
-
     QString uniqueFileName(const QString& fileName);
-
     QStringList m_filenames;
     QString m_password;
-    QString m_encoding;
     quint32 m_argonmem;
     quint32 m_argoniter;
     bool m_direction;
+    bool m_deletefile;
+    bool m_aborted = false;
 };
 
 #endif // FILECRYPTO_H

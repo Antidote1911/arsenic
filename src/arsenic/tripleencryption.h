@@ -2,6 +2,7 @@
 #define TRIPLEENCRYPTION_H
 
 #include "botan_all.h"
+#include "constants.h"
 #include <QObject>
 
 
@@ -11,39 +12,26 @@ class TripleEncryption : public QObject
 public:
     explicit TripleEncryption(int mode = 0, QObject *parent = nullptr);
 
-    void generateSalt();
     void setSalt(Botan::OctetString salt);
-    Botan::OctetString getSalt();
     void derivePassword(QString pass, quint32 memlimit, quint32 iterations);
-
-    void generateTripleNonce();
-    void setTripleNonce(Botan::InitializationVector nonce);
-    Botan::InitializationVector getTripleNonce();
-
+    void setTripleNonce(Botan::SecureVector<quint8> nonce);
     void setTripleKey(Botan::SymmetricKey masterKey);
-    void setAdd(QString add);
-
     Botan::SecureVector<quint8> finish(Botan::SecureVector<quint8> buffer);
 
 private:
     void incrementNonce();
-    Botan::SecureVector<quint8> m_incrementedChachaNonce;
-    Botan::SecureVector<quint8> m_incrementedAesNonce;
-    Botan::SecureVector<quint8> m_incrementedSerpentNonce;
     Botan::Cipher_Dir m_direction;
-
-    Botan::InitializationVector m_tripleNonce;
-    Botan::InitializationVector m_nonceChaCha20;
-    Botan::InitializationVector m_nonceAes;
-    Botan::InitializationVector m_nonceSerpent;
+    Botan::SecureVector<quint8> m_tripleNonce;
+    Botan::SecureVector<quint8> m_nonceChaCha20;
+    Botan::SecureVector<quint8> m_nonceAes;
+    Botan::SecureVector<quint8> m_nonceSerpent;
 
     std::unique_ptr<Botan::AEAD_Mode> m_engineChacha;
     std::unique_ptr<Botan::AEAD_Mode> m_engineAes;
     std::unique_ptr<Botan::AEAD_Mode> m_engineSerpent;
 
-    Botan::SecureVector<quint8> outBuffer;
+    Botan::SecureVector<quint8> m_outBuffer;
 
-    QString m_password;
     Botan::SymmetricKey m_chachaKey;
     Botan::SymmetricKey m_aesKey;
     Botan::SymmetricKey m_serpentKey;

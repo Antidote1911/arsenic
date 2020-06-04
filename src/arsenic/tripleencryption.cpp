@@ -18,17 +18,12 @@ TripleEncryption::TripleEncryption(int mode, QObject *parent) : QObject(parent)
     m_engineSerpent = AEAD_Mode::create("Serpent/GCM", m_direction);
 }
 
+
 void TripleEncryption::setSalt(Botan::OctetString salt)
 {
     m_salt = salt;
 }
 
-void TripleEncryption::generateSalt()
-{
-    AutoSeeded_RNG rng;
-    auto argonSalt { rng.random_vec(ARGON_SALT_LEN) };
-    m_salt = argonSalt;
-}
 
 void TripleEncryption::derivePassword(QString password, quint32 memlimit, quint32 iterations)
 {
@@ -39,7 +34,9 @@ void TripleEncryption::derivePassword(QString password, quint32 memlimit, quint3
     SecureVector<quint8> key_buffer(CIPHER_KEY_LEN * 3);
 
     // mem,ops,threads
-    auto default_pwhash { pwdhash_fam->from_params(memlimit, iterations, PARALLELISM_INTERACTIVE) };
+    const auto default_pwhash { pwdhash_fam->from_params(memlimit,
+                                                         iterations,
+                                                         PARALLELISM_INTERACTIVE) };
 
     default_pwhash->derive_key(key_buffer.data(),
                                key_buffer.size(),
@@ -65,8 +62,7 @@ void TripleEncryption::derivePassword(QString password, quint32 memlimit, quint3
 
 void TripleEncryption::setTripleKey(SymmetricKey masterKey)
 {
-    // split the triple nonce
-
+    // split the triple key
     const auto* n { masterKey.begin() };
     const SymmetricKey chachaKey(n, CIPHER_KEY_LEN);
     const SymmetricKey aesKey(&n[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
@@ -75,13 +71,19 @@ void TripleEncryption::setTripleKey(SymmetricKey masterKey)
     m_engineChacha->set_key(chachaKey);
     m_engineAes->set_key(aesKey);
     m_engineSerpent->set_key(serpentKey);
+
+    const auto strAdd = ARs::APP_URL.toStdString();
+    SecureVector<quint8> vecAdd(strAdd.begin(), strAdd.end());
+
+    m_engineChacha->set_ad(vecAdd);
+    m_engineAes->set_ad(vecAdd);
+    m_engineSerpent->set_ad(vecAdd);
 }
 
-
-void TripleEncryption::setTripleNonce(InitializationVector nonce)
+void TripleEncryption::setTripleNonce(SecureVector<quint8> nonce)
 {
     // split the triple nonce
-    const auto* n { nonce.begin() };
+    const auto* n { nonce.begin().base() };
     const InitializationVector iv1(n, CIPHER_IV_LEN);
     const InitializationVector iv2(&n[CIPHER_IV_LEN], CIPHER_IV_LEN);
     const InitializationVector iv3(&n[CIPHER_IV_LEN + CIPHER_IV_LEN], CIPHER_IV_LEN);
@@ -91,84 +93,38 @@ void TripleEncryption::setTripleNonce(InitializationVector nonce)
     m_nonceSerpent = iv3.bits_of();
 }
 
-void TripleEncryption::setAdd(QString add)
-{
-    const auto strAdd { add.toStdString() };
-    SecureVector<quint8> vecAdd(strAdd.begin(), strAdd.end());
-
-    m_engineChacha->set_ad(vecAdd);
-    m_engineAes->set_ad(vecAdd);
-    m_engineSerpent->set_ad(vecAdd);
-}
-
 void TripleEncryption::incrementNonce()
 {
-    auto tmp1 = m_nonceChaCha20.bits_of();
-    Botan::Sodium::sodium_increment(tmp1.data(), CIPHER_IV_LEN);
-    m_nonceChaCha20 = tmp1;
-
-    auto tmp2 = m_nonceAes.bits_of();
-    Botan::Sodium::sodium_increment(tmp2.data(), CIPHER_IV_LEN);
-    m_nonceAes = tmp2;
-
-    auto tmp3 = m_nonceSerpent.bits_of();
-    Botan::Sodium::sodium_increment(tmp3.data(), CIPHER_IV_LEN);
-    m_nonceSerpent = tmp3;
+    Sodium::sodium_increment(m_nonceChaCha20.data(), CIPHER_IV_LEN);
+    Sodium::sodium_increment(m_nonceAes.data(), CIPHER_IV_LEN);
+    Sodium::sodium_increment(m_nonceSerpent.data(), CIPHER_IV_LEN);
 }
 
 SecureVector<quint8> TripleEncryption::finish(SecureVector<quint8> buffer)
 {
     if (m_direction == ENCRYPTION) {
         incrementNonce();
-        auto test = m_nonceChaCha20.bits_of();
-        m_engineChacha->start(m_nonceChaCha20.bits_of());
+        m_engineChacha->start(m_nonceChaCha20);
         m_engineChacha->finish(buffer);
 
-        m_engineAes->start(m_nonceAes.bits_of());
+        m_engineAes->start(m_nonceAes);
         m_engineAes->finish(buffer);
 
-        m_engineSerpent->start(m_nonceSerpent.bits_of());
+        m_engineSerpent->start(m_nonceSerpent);
         m_engineSerpent->finish(buffer);
     }
     else {
         incrementNonce();
-        m_engineSerpent->start(m_nonceSerpent.bits_of());
+        m_engineSerpent->start(m_nonceSerpent);
         m_engineSerpent->finish(buffer);
 
-        m_engineAes->start(m_nonceAes.bits_of());
+        m_engineAes->start(m_nonceAes);
         m_engineAes->finish(buffer);
 
-        m_engineChacha->start(m_nonceChaCha20.bits_of());
+        m_engineChacha->start(m_nonceChaCha20);
         m_engineChacha->finish(buffer);
     }
 
-    outBuffer = buffer;
+    m_outBuffer = buffer;
     return(buffer);
-}
-
-void TripleEncryption::generateTripleNonce()
-{
-    AutoSeeded_RNG rng;
-    auto nonceChaCha20 { rng.random_vec(CIPHER_IV_LEN) };
-    auto nonceAes { rng.random_vec(CIPHER_IV_LEN) };
-    auto nonceSerpent { rng.random_vec(CIPHER_IV_LEN) };
-
-    m_nonceChaCha20 = nonceChaCha20;
-    m_nonceAes = nonceAes;
-    m_nonceSerpent = nonceSerpent;
-
-    nonceChaCha20.insert(nonceChaCha20.end(), nonceAes.begin(), nonceAes.end());
-    nonceChaCha20.insert(nonceChaCha20.end(), nonceSerpent.begin(), nonceSerpent.end());
-    m_tripleNonce = nonceChaCha20;
-}
-
-Botan::InitializationVector TripleEncryption::getTripleNonce()
-{
-    Botan::InitializationVector TripleNonce;
-    return(m_tripleNonce);
-}
-
-Botan::OctetString TripleEncryption::getSalt()
-{
-    return(m_salt);
 }
