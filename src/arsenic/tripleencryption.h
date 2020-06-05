@@ -16,7 +16,7 @@ public:
     void derivePassword(QString pass, quint32 memlimit, quint32 iterations);
     void setTripleNonce(Botan::SecureVector<quint8> nonce);
     void setTripleKey(Botan::SymmetricKey masterKey);
-    Botan::SecureVector<quint8> finish(Botan::SecureVector<quint8> buffer);
+    Botan::SecureVector<quint8> finish(Botan::SecureVector<quint8> &buffer);
 
 private:
     void incrementNonce();

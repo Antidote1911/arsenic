@@ -145,7 +145,7 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
     encrypt.derivePassword(m_password, m_argonmem, m_argoniter);
     encrypt.setTripleNonce(tripleNonce);
-    SecureVector<quint8> outbuffer = encrypt.finish(master_buffer);
+    encrypt.finish(master_buffer);
 
     if (!src_file.exists() || !src_info.isFile()) {
         return(SRC_CANNOT_OPEN_READ);
@@ -180,7 +180,7 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     // Write the salt, the 3 nonces and the encrypted header in the file
     des_stream.writeRawData(reinterpret_cast<char*>(argonSalt.data()), ARGON_SALT_LEN);
     des_stream.writeRawData(reinterpret_cast<char*>(tripleNonce.data()), CIPHER_IV_LEN * 3);
-    des_stream.writeRawData(reinterpret_cast<char*>(outbuffer.data()), outbuffer.size());
+    des_stream.writeRawData(reinterpret_cast<char*>(master_buffer.data()), master_buffer.size());
 
     // now, move on to the actual data
     QDataStream src_stream(&src_file);
@@ -190,16 +190,18 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
 
     auto processed { 0. };
     quint32 bytes_read;
-    SecureVector<quint8> buf(IN_BUFFER_SIZE);
+    SecureVector<quint8> inBuf(IN_BUFFER_SIZE);
+    SecureVector<quint8> outBuf;
 
-    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(buf.data()), IN_BUFFER_SIZE)) > 0)
+    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(inBuf.data()), IN_BUFFER_SIZE)) > 0) //65536
     {
         // calculate percentage proccessed
         processed += bytes_read;
         emit updateProgress(src_path, (processed / fileSize) * 100);
 
-        encryptedBloc = encrypt.finish(buf);
-        des_stream.writeRawData(reinterpret_cast<char*>(encryptedBloc.data()), encryptedBloc.size());
+        outBuf = inBuf;
+        encrypt.finish(outBuf);
+        des_stream.writeRawData(reinterpret_cast<char *>(outBuf.data()), outBuf.size()); // 65584
     }
 
     if (m_aborted) {
@@ -311,9 +313,8 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     decrypt.setSalt(salt_buffer);
     decrypt.derivePassword(m_password, m_argonmem, m_argoniter);
     decrypt.setTripleNonce(tripleNonce);
-    SecureVector<quint8> outbuffer;
     try {
-        outbuffer = decrypt.finish(master_buffer);
+        decrypt.finish(master_buffer);
     } catch (const Botan::Invalid_Authentication_Tag&) {
         return(INVALID_TAG);
     } catch (const Botan::Integrity_Failure&) {
@@ -323,7 +324,7 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     }
 
     // get from the decrypted header the three internal keys and the original filename
-    const auto* mk2 { outbuffer.begin().base() };
+    const auto* mk2 { master_buffer.begin().base() };
     const OctetString name(mk2, fileNameSize);
 
     // create the decrypted file
@@ -348,17 +349,19 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     //The percentage is calculated by dividing the progress (value() - minimum()) divided by maximum() - minimum().
     auto processed { 0. };
     quint32 bytes_read;
-    SecureVector<quint8> buf(IN_BUFFER_SIZE + MACBYTES * 3);
+    SecureVector<quint8> inBuf(IN_BUFFER_SIZE + MACBYTES * 3);
+    SecureVector<quint8> outBuf;
 
-    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(buf.data()), IN_BUFFER_SIZE + MACBYTES * 3)) > 0)
+    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(inBuf.data()), IN_BUFFER_SIZE + MACBYTES * 3)) > 0)
     {
         // calculate percentage proccessed
         processed += bytes_read - MACBYTES * 3;
         emit updateProgress(src_path, (processed / originalfileSize) * 100);
 
         try {
-            decryptedBloc = decrypt.finish(buf);
-            des_stream.writeRawData(reinterpret_cast<char*>(decryptedBloc.data()), decryptedBloc.size());
+            outBuf = inBuf;
+            decrypt.finish(outBuf);
+            des_stream.writeRawData(reinterpret_cast<char *>(outBuf.data()), outBuf.size());
         } catch (const Botan::Invalid_Authentication_Tag&) {
             des_file.remove();
             return(INVALID_TAG);

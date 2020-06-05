@@ -30,7 +30,7 @@ int textCrypto::encryptString(QString plaintext, QString password)
 
     const auto clear { plaintext.toStdString() };
     // Copy input data to a buffer
-    const SecureVector<quint8> pt(clear.data(), clear.data() + clear.length());
+    SecureVector<quint8> pt(clear.data(), clear.data() + clear.length());
 
     // Now we can do the triple encryption
     // Randomize the 16 bytes salt and the three 24 bytes nonces
@@ -42,7 +42,7 @@ int textCrypto::encryptString(QString plaintext, QString password)
     encrypt.setSalt(argonSalt);
     encrypt.derivePassword(password, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
     encrypt.setTripleNonce(tripleNonce);
-    const auto outbuffer { encrypt.finish(pt) };
+    encrypt.finish(pt);
 
     SecureVector<quint8> final (VERSION_CODE_LEN);
     for (size_t i = 0; i != VERSION_CODE_LEN; ++i)
@@ -51,7 +51,7 @@ int textCrypto::encryptString(QString plaintext, QString password)
     }
     final.insert(final.end(), argonSalt.begin(), argonSalt.end());
     final.insert(final.end(), tripleNonce.begin(), tripleNonce.end());
-    final.insert(final.end(), outbuffer.begin(), outbuffer.end());
+    final.insert(final.end(), pt.begin(), pt.end());
 
     m_result = QString::fromStdString(PEM_Code::encode(final, "ARSENIC CRYPTOBOX MESSAGE"));
     return(CRYPT_SUCCESS);

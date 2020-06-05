@@ -100,7 +100,7 @@ void TripleEncryption::incrementNonce()
     Sodium::sodium_increment(m_nonceSerpent.data(), CIPHER_IV_LEN);
 }
 
-SecureVector<quint8> TripleEncryption::finish(SecureVector<quint8> buffer)
+SecureVector<quint8> TripleEncryption::finish(SecureVector<quint8> &buffer)
 {
     if (m_direction == ENCRYPTION) {
         incrementNonce();
