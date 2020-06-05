@@ -191,7 +191,6 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     auto processed { 0. };
     quint32 bytes_read;
     SecureVector<quint8> inBuf(IN_BUFFER_SIZE);
-    SecureVector<quint8> outBuf;
 
     while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(inBuf.data()), IN_BUFFER_SIZE)) > 0) //65536
     {
@@ -199,9 +198,10 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
         processed += bytes_read;
         emit updateProgress(src_path, (processed / fileSize) * 100);
 
-        outBuf = inBuf;
-        encrypt.finish(outBuf);
-        des_stream.writeRawData(reinterpret_cast<char *>(outBuf.data()), outBuf.size()); // 65584
+        inBuf.resize(bytes_read);
+        encrypt.finish(inBuf);
+        des_stream.writeRawData(reinterpret_cast<char *>(inBuf.data()), inBuf.size()); // 65584
+        inBuf.resize(IN_BUFFER_SIZE);
     }
 
     if (m_aborted) {
@@ -350,7 +350,6 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     auto processed { 0. };
     quint32 bytes_read;
     SecureVector<quint8> inBuf(IN_BUFFER_SIZE + MACBYTES * 3);
-    SecureVector<quint8> outBuf;
 
     while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(inBuf.data()), IN_BUFFER_SIZE + MACBYTES * 3)) > 0)
     {
@@ -359,9 +358,10 @@ qint32 Crypto_Thread::decrypt(QString src_path)
         emit updateProgress(src_path, (processed / originalfileSize) * 100);
 
         try {
-            outBuf = inBuf;
-            decrypt.finish(outBuf);
-            des_stream.writeRawData(reinterpret_cast<char *>(outBuf.data()), outBuf.size());
+            inBuf.resize(bytes_read);
+            decrypt.finish(inBuf);
+            des_stream.writeRawData(reinterpret_cast<char *>(inBuf.data()), inBuf.size());
+            inBuf.resize(IN_BUFFER_SIZE + MACBYTES * 3);
         } catch (const Botan::Invalid_Authentication_Tag&) {
             des_file.remove();
             return(INVALID_TAG);

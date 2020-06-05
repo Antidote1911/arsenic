@@ -46,10 +46,10 @@ bool encryptString()
 bool encryptFile()
 {
     // We generate a ramdom file
-    Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE * 50);
+    Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE * 50 + 30);
     Botan::AutoSeeded_RNG rng;
 
-    main_buffer = rng.random_vec(IN_BUFFER_SIZE * 50);
+    main_buffer = rng.random_vec(IN_BUFFER_SIZE * 50 + 30);
     QFile::remove(QDir::cleanPath("cleartxt.txt")); //clear previous file
     QFile::remove(QDir::cleanPath("cleartxt.txt.arsenic"));
 
