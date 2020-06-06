@@ -1,5 +1,6 @@
 #include "tripleencryption.h"
 #include "constants.h"
+#include <cassert>
 
 using namespace Botan;
 using namespace ARs;
