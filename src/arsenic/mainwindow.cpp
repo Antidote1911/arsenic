@@ -781,15 +781,14 @@ void MainWindow::encryptText()
         displayPasswordNotMatch();
         return;
     }
-    try {
-        auto plaintext{m_ui->cryptoPadEditor->toPlainText()};
-        textCrypto encrypt;
-        encrypt.start(m_ui->password_0->text(), 0);
-        encrypt.finish(plaintext);
+    auto plaintext{m_ui->cryptoPadEditor->toPlainText()};
+    textCrypto encrypt;
+    encrypt.start(m_ui->password_0->text(), 0);
+    int result = encrypt.finish(plaintext);
+    if (result != CRYPT_SUCCESS) {
+        displayMessageBox(tr("Encryption Error!"), errorCodeToString(result));
+    } else {
         m_ui->cryptoPadEditor->setPlainText(plaintext);
-    } catch (std::exception const &e) {
-        auto error = e.what();
-        displayMessageBox(tr("Encryption Error!"), error);
     }
 }
 
@@ -806,8 +805,13 @@ void MainWindow::decryptText()
     auto ciphertext{m_ui->cryptoPadEditor->toPlainText()};
     textCrypto decrypt;
     decrypt.start(m_ui->password_0->text(), 1);
-    decrypt.finish(ciphertext);
-    m_ui->cryptoPadEditor->setPlainText(ciphertext);
+
+    int result = decrypt.finish(ciphertext);
+    if (result != DECRYPT_SUCCESS) {
+        displayMessageBox(tr("Decryption Error!"), errorCodeToString(result));
+    } else {
+        m_ui->cryptoPadEditor->setPlainText(ciphertext);
+    }
 }
 
 void MainWindow::displayMessageBox(QString title, QString text)

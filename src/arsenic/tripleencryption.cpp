@@ -7,6 +7,8 @@ using namespace ARs;
 TripleEncryption::TripleEncryption(int mode, QObject *parent)
     : QObject(parent)
 {
+    assert(mode == 0 || mode == 1 && "Mode argument must be 0 for encrypt or 1 for decrypt.");
+
     if (mode == 0) {
         m_direction = ENCRYPTION;
     } else {
@@ -20,6 +22,7 @@ TripleEncryption::TripleEncryption(int mode, QObject *parent)
 
 void TripleEncryption::setSalt(Botan::OctetString salt)
 {
+    assert(salt.size() == ARGON_SALT_LEN && "Salt must be 16 bytes.");
     m_salt = salt;
 }
 
@@ -40,38 +43,15 @@ void TripleEncryption::derivePassword(QString password, quint32 memlimit, quint3
     const SymmetricKey ChaCha20_key(mk, CIPHER_KEY_LEN);
     const SymmetricKey AES_key(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
     const SymmetricKey Serpent_key(&mk[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-    m_chachaKey = ChaCha20_key;
-    m_aesKey = AES_key;
-    m_serpentKey = Serpent_key;
-    m_masterKey = key_buffer;
 
     m_engineChacha->set_key(ChaCha20_key);
     m_engineAes->set_key(AES_key);
     m_engineSerpent->set_key(Serpent_key);
 }
 
-void TripleEncryption::setTripleKey(SymmetricKey masterKey)
-{
-    // split the triple key
-    const auto *n{masterKey.begin()};
-    const SymmetricKey chachaKey(n, CIPHER_KEY_LEN);
-    const SymmetricKey aesKey(&n[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-    const SymmetricKey serpentKey(&n[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
-
-    m_engineChacha->set_key(chachaKey);
-    m_engineAes->set_key(aesKey);
-    m_engineSerpent->set_key(serpentKey);
-
-    const auto strAdd = ARs::APP_URL.toStdString();
-    SecureVector<quint8> vecAdd(strAdd.begin(), strAdd.end());
-
-    m_engineChacha->set_ad(vecAdd);
-    m_engineAes->set_ad(vecAdd);
-    m_engineSerpent->set_ad(vecAdd);
-}
-
 void TripleEncryption::setTripleNonce(SecureVector<quint8> nonce)
 {
+    assert(nonce.size() == CIPHER_IV_LEN * 3 && "Triple nonce must be 24*3 bytes.");
     // split the triple nonce
     const auto *n{nonce.begin().base()};
     const InitializationVector iv1(n, CIPHER_IV_LEN);
@@ -90,7 +70,7 @@ void TripleEncryption::incrementNonce()
     Sodium::sodium_increment(m_nonceSerpent.data(), CIPHER_IV_LEN);
 }
 
-SecureVector<quint8> TripleEncryption::finish(SecureVector<quint8> &buffer)
+void TripleEncryption::finish(SecureVector<quint8> &buffer)
 {
     if (m_direction == ENCRYPTION) {
         incrementNonce();
@@ -113,7 +93,4 @@ SecureVector<quint8> TripleEncryption::finish(SecureVector<quint8> &buffer)
         m_engineChacha->start(m_nonceChaCha20);
         m_engineChacha->finish(buffer);
     }
-
-    m_outBuffer = buffer;
-    return (buffer);
 }

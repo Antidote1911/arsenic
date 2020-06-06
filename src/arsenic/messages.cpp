@@ -5,7 +5,6 @@
 QString errorCodeToString(int error_code)
 {
     QString ret_string;
-
     switch (error_code) {
     case CRYPT_SUCCESS:
         ret_string += QObject::tr("Data successfully encrypted !");
@@ -48,53 +47,52 @@ QString errorCodeToString(int error_code)
         break;
 
     case SRC_BODY_READ_ERROR:
-        ret_string += QObject::tr("The file could not be read !");
+        ret_string += QObject::tr("The file could not be read.");
         break;
 
     case DATA_ENCRYPT_ERROR:
-        ret_string += QObject::tr("The file's data could not be encrypted !");
+        ret_string += QObject::tr("The file's data could not be encrypted.");
         break;
 
     case DES_BODY_WRITE_ERROR:
-        ret_string += QObject::tr("The encrypted file could not be written to !");
+        ret_string += QObject::tr("The encrypted file could not be written to.");
         break;
 
     case SRC_HEADER_READ_ERROR:
-        ret_string += QObject::tr("Can't read the header !");
+        ret_string += QObject::tr("Can't read the header.");
         break;
 
     case SRC_HEADER_INVALID_TAG:
-        ret_string += QObject::tr("Invalid Authentication Tag. could not decrypt the header. Incorrect password or corrupted file !");
+        ret_string += QObject::tr("Authentication Failure. Could not decrypt the header. Incorrect password or corrupted file.");
         break;
 
     case SRC_HEADER_INTEGRITY_FAILURE:
-        ret_string += QObject::tr("Header Integrity Failure. Incorrect password or corrupted file !");
+        ret_string += QObject::tr("Header Integrity Failure. Incorrect password or corrupted file.");
         break;
 
     case INVALID_TAG:
-        ret_string += QObject::tr("Invalid Authentication Tag. The file is corrupted !");
+        ret_string += QObject::tr("Authentication Failure. Wrong password, or data are corrupted.");
         break;
 
     case INTEGRITY_FAILURE:
-        ret_string += QObject::tr("File Integrity Failure. The file is corrupted !");
+        ret_string += QObject::tr("File Integrity Failure. Data are corrupted.");
         break;
 
     case ABORTED_BY_USER:
-        ret_string += QObject::tr("Aborted by user ! Intermediate file is deleted !");
+        ret_string += QObject::tr("Aborted by user ! Intermediate file is deleted.");
         break;
 
     case INVALID_CRYPTOBOX_IMPUT:
-        ret_string += QObject::tr("Invalid CryptoBox input");
+        ret_string += QObject::tr("Invalid Arsenic CryptoBox input.");
         break;
 
     case BAD_CRYPTOBOX_VERSION:
-        ret_string += QObject::tr("Bad CryptoBox version");
+        ret_string += QObject::tr("Bad Arsenic CryptoBox version.");
         break;
 
     case BAD_CRYPTOBOX_PEM_HEADER:
-        ret_string += QObject::tr("Bad PEM header found");
+        ret_string += QObject::tr("Bad Arsenic CryptoBox header.");
         break;
     }
-
     return (ret_string);
 }

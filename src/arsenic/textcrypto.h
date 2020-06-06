@@ -10,11 +10,11 @@ public:
     explicit textCrypto(QObject *parent = nullptr);
 
     void start(QString password, int dirrection);
-    void finish(QString &text);
+    int finish(QString &text);
 
 private:
-    void encryptString(QString &plaintext, QString password);
-    void decryptString(QString &ciphertext, QString password);
+    int encryptString(QString &plaintext, QString password);
+    int decryptString(QString &ciphertext, QString password);
 
     QString m_password;
     int m_dirrection;

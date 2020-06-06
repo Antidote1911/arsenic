@@ -5,6 +5,7 @@
 #include "tripleencryption.h"
 #include <QString>
 #include <QTextStream>
+#include <stdexcept>
 
 using namespace ARs;
 using namespace Botan;
@@ -14,7 +15,7 @@ textCrypto::textCrypto(QObject *parent)
     : QObject(parent)
 {
 }
-void textCrypto::encryptString(QString &plaintext, QString password)
+int textCrypto::encryptString(QString &plaintext, QString password)
 {
     /* Version code is First 24 bits of SHA-256("Arsenic Cryptobox")
      * Output format is:
@@ -54,21 +55,28 @@ void textCrypto::encryptString(QString &plaintext, QString password)
     final.insert(final.end(), pt.begin(), pt.end());
 
     plaintext = (QString::fromStdString(PEM_Code::encode(final, "ARSENIC CRYPTOBOX MESSAGE")));
+    return (CRYPT_SUCCESS);
 }
 
-void textCrypto::decryptString(QString &cipher, QString password)
+int textCrypto::decryptString(QString &cipher, QString password)
 {
     const auto CRYPTOBOX_HEADER_LEN{VERSION_CODE_LEN + ARGON_SALT_LEN + CIPHER_IV_LEN * 3};
     const auto cipherStr{cipher.toStdString()};
 
     DataSource_Memory input_src(cipherStr);
     SecureVector<quint8> ciphertext;
-
-    ciphertext = PEM_Code::decode_check_label(input_src, "ARSENIC CRYPTOBOX MESSAGE");
-
-    for (auto i{0}; i != VERSION_CODE_LEN; ++i) {
-        ciphertext[i] != get_byte(i, CRYPTOBOX_VERSION_CODE);
+    try {
+        ciphertext = PEM_Code::decode_check_label(input_src, "ARSENIC CRYPTOBOX MESSAGE");
+    } catch (Botan::Exception const &e) {
+        return (BAD_CRYPTOBOX_PEM_HEADER);
     }
+    if (ciphertext.size() < CRYPTOBOX_HEADER_LEN) {
+        return (INVALID_CRYPTOBOX_IMPUT);
+    }
+    for (auto i = 0; i != VERSION_CODE_LEN; ++i)
+        if (ciphertext[i] != get_byte(i, CRYPTOBOX_VERSION_CODE)) {
+            return (BAD_CRYPTOBOX_VERSION);
+        }
     const auto *tmp{ciphertext.begin().base()};
     const OctetString version(tmp, VERSION_CODE_LEN);
     const OctetString salt(&tmp[VERSION_CODE_LEN], ARGON_SALT_LEN);
@@ -81,10 +89,19 @@ void textCrypto::decryptString(QString &cipher, QString password)
     decrypt.setSalt(salt);
     decrypt.derivePassword(password, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
     decrypt.setTripleNonce(tripleNonce.bits_of());
-    decrypt.finish(ciphertext);
+    try {
+        decrypt.finish(ciphertext);
+    } catch (const Botan::Invalid_Authentication_Tag &) {
+        return (INVALID_TAG);
+    } catch (const Botan::Integrity_Failure &) {
+        return (INTEGRITY_FAILURE);
+    } catch (const Botan::Decoding_Error &) {
+        return (INTEGRITY_FAILURE);
+    }
 
     const string out(ciphertext.begin(), ciphertext.end()); // std::string out(reinterpret_cast<const char*>(outbuffer.data()), outbuffer.size());
     cipher = (QString::fromStdString(out));
+    return (DECRYPT_SUCCESS);
 }
 
 void textCrypto::start(QString password, int dirrection)
@@ -93,11 +110,13 @@ void textCrypto::start(QString password, int dirrection)
     m_dirrection = dirrection;
 }
 
-void textCrypto::finish(QString &text)
+int textCrypto::finish(QString &text)
 {
+    int result;
     if (m_dirrection == 0) {
-        encryptString(text, m_password);
+        result = encryptString(text, m_password);
     } else {
-        decryptString(text, m_password);
+        result = decryptString(text, m_password);
     }
+    return (result);
 }

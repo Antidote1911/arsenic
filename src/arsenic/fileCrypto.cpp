@@ -61,7 +61,7 @@ void Crypto_Thread::run()
         if (m_direction == true) {
             emit statusMessage("");
             emit statusMessage(QDateTime::currentDateTime().toString("dddd dd MMMM yyyy (hh:mm:ss)") + " encryption of " + inputFileName);
-            qint32 result = encrypt(inputFileName);
+            int result = encrypt(inputFileName);
             emit statusMessage(errorCodeToString(result));
             if (m_aborted) // Reset abort flag
             {
@@ -192,11 +192,9 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     QFile src_file(QDir::cleanPath(src_path));
     QFileInfo src_info(src_file);
     if (!src_file.exists() || !src_info.isFile()) {
-        emit statusMessage("Error: can't read the file");
         return (SRC_CANNOT_OPEN_READ);
     }
     if (!src_file.open(QIODevice::ReadOnly)) {
-        emit statusMessage("Error: can't read the file");
         return (SRC_CANNOT_OPEN_READ);
     }
     // open the source file and extract all informations necessary for decryption
@@ -207,7 +205,6 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     quint32 magic;
     src_stream >> magic;
     if (magic != 0x41525345) {
-        emit statusMessage("Error: this file is not an Arsenic file");
         return (NOT_AN_ARSENIC_FILE);
     }
     // Read and check the version
@@ -280,7 +277,6 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     const auto originalName{QString::fromStdString(tmp)};
     QFile des_file(uniqueFileName(QDir::cleanPath(src_info.absolutePath() + "/" + originalName)));
     if (!des_file.open(QIODevice::WriteOnly)) {
-        emit statusMessage("Error: the output file can't be open for writing");
         return (DES_CANNOT_OPEN_WRITE);
     }
     QDataStream des_stream(&des_file);

@@ -1,4 +1,4 @@
-version: 0.9.{build}
+version: 3.0
 
 environment:
   matrix:
@@ -33,8 +33,8 @@ build_script:
 
 after_build:
     - cd %APPVEYOR_BUILD_FOLDER%
-    - mkdir arsenic_win_x64
-    - cd arsenic_win_x64
+    - mkdir arsenic_%VERSION%_win_x64
+    - cd arsenic_%VERSION%_win_x64
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\botan\release\botan.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\zxcvbn\release\zxcvbn.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
@@ -43,5 +43,5 @@ after_build:
 
 artifacts:
   #- path: \release\arsenic-*.exe
-  - path: arsenic_win_x64
+  - path: arsenic_%VERSION%_win_x64
     type: zip

@@ -3,7 +3,8 @@
 
 #include <QString>
 
-enum : int {
+enum : int
+{
     CRYPT_SUCCESS,
     DECRYPT_SUCCESS,
     NOT_AN_ARSENIC_FILE,
