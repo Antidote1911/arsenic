@@ -20,15 +20,13 @@
 #include "configDialog.h"
 #include "constants.h"
 #include "fileCrypto.h"
-#include "textcrypto.h"
 #include "hashcheckdialog.h"
-#include "passwordGeneratorDialog.h"
 #include "loghtml.h"
 #include "messages.h"
+#include "passwordGeneratorDialog.h"
+#include "textcrypto.h"
 
 using namespace ARs;
-
-
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -46,44 +44,44 @@ MainWindow::MainWindow(QWidget *parent)
     delegate();
 
     // General
-    connect(m_ui->menuAboutArsenic, &QAction::triggered, this, [ = ] { aboutArsenic(); });
-    connect(m_ui->menuHashCalculator, &QAction::triggered, this, [ = ] { hashCalculator(); });
-    connect(m_ui->menuAboutQt, &QAction::triggered, this, [ = ] { qApp->aboutQt(); });
-    connect(m_ui->menuPassGenerator, &QAction::triggered, this, [ = ] { generator(); });
-    connect(m_ui->pushPassGenerator, &QPushButton::clicked, this, [ = ] { generator(); });
-    connect(m_ui->menuQuit, &QAction::triggered, this, [ = ] { quit(); });
-    connect(m_ui->menuQuit2, &QAction::triggered, this, [ = ] { quit(); });
-    connect(m_ui->menuQuit3, &QAction::triggered, this, [ = ] { quit(); });
-    connect(m_ui->menuConfiguration, &QAction::triggered, this, [ = ] { configuration(); });
-    connect(m_ui->menuDarkTheme, &QAction::triggered, this, [ = ](const bool& checked) { dark_theme(checked); });
-    connect(m_ui->menuViewToolbar, &QAction::triggered, this, [ = ](const bool& checked) { m_ui->toolBar->setVisible(checked); });
-    connect(m_ui->toolBar, &QToolBar::visibilityChanged, this, [ = ](const bool& checked) { m_ui->menuViewToolbar->setChecked(checked); });
-    connect(m_ui->menuArgon2Tests, &QAction::triggered, this, [ = ] { Argon2_tests(); });
-    connect(m_ui->tabWidget, &QTabWidget::currentChanged, this, [ = ](const quint32& index) { switchTab(index); });
-    connect(m_ui->comboViewpass, &QCheckBox::stateChanged, this, [ = ](const quint32& index) { viewPassStateChanged(index); });
+    connect(m_ui->menuAboutArsenic, &QAction::triggered, this, [=] { aboutArsenic(); });
+    connect(m_ui->menuHashCalculator, &QAction::triggered, this, [=] { hashCalculator(); });
+    connect(m_ui->menuAboutQt, &QAction::triggered, this, [=] { qApp->aboutQt(); });
+    connect(m_ui->menuPassGenerator, &QAction::triggered, this, [=] { generator(); });
+    connect(m_ui->pushPassGenerator, &QPushButton::clicked, this, [=] { generator(); });
+    connect(m_ui->menuQuit, &QAction::triggered, this, [=] { quit(); });
+    connect(m_ui->menuQuit2, &QAction::triggered, this, [=] { quit(); });
+    connect(m_ui->menuQuit3, &QAction::triggered, this, [=] { quit(); });
+    connect(m_ui->menuConfiguration, &QAction::triggered, this, [=] { configuration(); });
+    connect(m_ui->menuDarkTheme, &QAction::triggered, this, [=](const bool &checked) { dark_theme(checked); });
+    connect(m_ui->menuViewToolbar, &QAction::triggered, this, [=](const bool &checked) { m_ui->toolBar->setVisible(checked); });
+    connect(m_ui->toolBar, &QToolBar::visibilityChanged, this, [=](const bool &checked) { m_ui->menuViewToolbar->setChecked(checked); });
+    connect(m_ui->menuArgon2Tests, &QAction::triggered, this, [=] { Argon2_tests(); });
+    connect(m_ui->tabWidget, &QTabWidget::currentChanged, this, [=](const quint32 &index) { switchTab(index); });
+    connect(m_ui->comboViewpass, &QCheckBox::stateChanged, this, [=](const quint32 &index) { viewPassStateChanged(index); });
 
     // EncryptPad
-    connect(m_ui->menuOpenTxt, &QAction::triggered, this, [ = ] { openTxtFile(); });
-    connect(m_ui->menuSaveTxt, &QAction::triggered, this, [ = ] { saveTxtFile(); });
-    connect(m_ui->menuSaveTxtAs, &QAction::triggered, this, [ = ] { saveTxtFileAs(); });
-    connect(m_ui->menuEncryptTxt, &QAction::triggered, this, [ = ] { encryptText(); });
-    connect(m_ui->menuDecryptTxt, &QAction::triggered, this, [ = ] { decryptText(); });
-    connect(m_ui->menuClearEditor, &QAction::triggered, this, [ = ] { clearEditor(); });
-    connect(m_ui->pushEncryptTxt, &QPushButton::clicked, this, [ = ] { encryptText(); });
-    connect(m_ui->pushDecryptTxt, &QPushButton::clicked, this, [ = ] { decryptText(); });
+    connect(m_ui->menuOpenTxt, &QAction::triggered, this, [=] { openTxtFile(); });
+    connect(m_ui->menuSaveTxt, &QAction::triggered, this, [=] { saveTxtFile(); });
+    connect(m_ui->menuSaveTxtAs, &QAction::triggered, this, [=] { saveTxtFileAs(); });
+    connect(m_ui->menuEncryptTxt, &QAction::triggered, this, [=] { encryptText(); });
+    connect(m_ui->menuDecryptTxt, &QAction::triggered, this, [=] { decryptText(); });
+    connect(m_ui->menuClearEditor, &QAction::triggered, this, [=] { clearEditor(); });
+    connect(m_ui->pushEncryptTxt, &QPushButton::clicked, this, [=] { encryptText(); });
+    connect(m_ui->pushDecryptTxt, &QPushButton::clicked, this, [=] { decryptText(); });
 
     // log
-    connect(m_ui->menuClearLogView, &QAction::triggered, this, [ = ] { clearLog(); });
+    connect(m_ui->menuClearLogView, &QAction::triggered, this, [=] { clearLog(); });
 
     // EncryptFile
-    connect(m_ui->menuAddFiles, &QAction::triggered, this, [ = ] { addFiles(); });
-    connect(m_ui->menuRemoveAllFiles, &QAction::triggered, this, [ = ] { clearListFiles(); });
-    connect(m_ui->menuEncryptList, &QAction::triggered, this, [ = ] { encryptFiles(); });
-    connect(m_ui->menuDecryptList, &QAction::triggered, this, [ = ] { decryptFiles(); });
-    connect(m_ui->pushEncrypt, &QPushButton::clicked, this, [ = ] { encryptFiles(); });
-    connect(m_ui->pushDecrypt, &QPushButton::clicked, this, [ = ] { decryptFiles(); });
-    connect(m_ui->menuAbortJob, &QAction::triggered, this, [ = ] { abortJob(); });
-    connect(Crypto, SIGNAL(updateProgress(QString,quint32)), this, SLOT(onPercentProgress(QString,quint32)));
+    connect(m_ui->menuAddFiles, &QAction::triggered, this, [=] { addFiles(); });
+    connect(m_ui->menuRemoveAllFiles, &QAction::triggered, this, [=] { clearListFiles(); });
+    connect(m_ui->menuEncryptList, &QAction::triggered, this, [=] { encryptFiles(); });
+    connect(m_ui->menuDecryptList, &QAction::triggered, this, [=] { decryptFiles(); });
+    connect(m_ui->pushEncrypt, &QPushButton::clicked, this, [=] { encryptFiles(); });
+    connect(m_ui->pushDecrypt, &QPushButton::clicked, this, [=] { decryptFiles(); });
+    connect(m_ui->menuAbortJob, &QAction::triggered, this, [=] { abortJob(); });
+    connect(Crypto, SIGNAL(updateProgress(QString, quint32)), this, SLOT(onPercentProgress(QString, quint32)));
     connect(Crypto, SIGNAL(statusMessage(QString)), this, SLOT(onMessageChanged(QString)));
     connect(Crypto, SIGNAL(addEncrypted(QString)), this, SLOT(AddEncryptedFile(QString)));
     connect(Crypto, SIGNAL(addDecrypted(QString)), this, SLOT(AddDecryptedFile(QString)));
@@ -106,18 +104,13 @@ MainWindow::MainWindow(QWidget *parent)
      */
 }
 
-
-MainWindow::~MainWindow()
-{
-}
-
+MainWindow::~MainWindow() {}
 
 void MainWindow::session()
 {
     // show the main window and load from the default item list
     show();
 }
-
 
 void MainWindow::removeDeletedFile(QString filepath)
 {
@@ -128,12 +121,10 @@ void MainWindow::removeDeletedFile(QString filepath)
 
     item = items[0];
     auto index = item->row();
-
     if (fileListModelCrypto->hasChildren()) {
         fileListModelCrypto->removeRow(index);
     }
 }
-
 
 void MainWindow::AddEncryptedFile(QString filepath)
 {
@@ -142,7 +133,6 @@ void MainWindow::AddEncryptedFile(QString filepath)
     }
 }
 
-
 void MainWindow::AddDecryptedFile(QString filepath)
 {
     if (config()->get("GUI/AddDecrypted").toBool()) {
@@ -150,13 +140,11 @@ void MainWindow::AddDecryptedFile(QString filepath)
     }
 }
 
-
 void MainWindow::loadLogFile()
 {
     logHtml log;
     m_ui->textLogs->setText(log.load());
 }
-
 
 void MainWindow::abortJob()
 {
@@ -165,7 +153,6 @@ void MainWindow::abortJob()
         Crypto->wait();
     }
 }
-
 
 void MainWindow::onMessageChanged(QString message)
 {
@@ -186,32 +173,25 @@ void MainWindow::clearLog()
     log.clear();
 }
 
-
 void MainWindow::encryptFiles()
 {
     if (getListFiles().isEmpty()) {
         displayEmptyJob();
         return;
     }
-
     if (m_ui->password_0->text().isEmpty()) {
         displayEmptyPassword();
         return;
     }
-
     if (m_ui->password_0->text() != m_ui->password_1->text()) {
         displayPasswordNotMatch();
         return;
     }
-
-    Crypto->setParam(true, getListFiles(), m_ui->password_0->text(),
-                     config()->get("CRYPTO/argonMemory").toInt(),
-                     config()->get("CRYPTO/argonItr").toInt(),
+    Crypto->setParam(true, getListFiles(), m_ui->password_0->text(), config()->get("CRYPTO/argonMemory").toInt(), config()->get("CRYPTO/argonItr").toInt(),
                      m_ui->CheckDeleteFiles->isChecked());
 
     Crypto->start();
 }
-
 
 void MainWindow::decryptFiles()
 {
@@ -219,66 +199,52 @@ void MainWindow::decryptFiles()
         displayEmptyJob();
         return;
     }
-
     if (m_ui->password_0->text().isEmpty()) {
         displayEmptyPassword();
         return;
     }
-
-    Crypto->setParam(false, getListFiles(), m_ui->password_0->text(),
-                     config()->get("CRYPTO/argonMemory").toInt(),
-                     config()->get("CRYPTO/argonItr").toInt(),
+    Crypto->setParam(false, getListFiles(), m_ui->password_0->text(), config()->get("CRYPTO/argonMemory").toInt(), config()->get("CRYPTO/argonItr").toInt(),
                      m_ui->CheckDeleteFiles->isChecked());
 
     Crypto->start();
 }
 
-
 QStringList MainWindow::getListFiles()
 {
     const auto rowCountCrypto = fileListModelCrypto->rowCount();
     QStringList fileList;
-
     if (0 < rowCountCrypto) {
-        for (auto row = 0; row < rowCountCrypto; ++row)
-        {
+        for (auto row = 0; row < rowCountCrypto; ++row) {
             QStandardItem *item = fileListModelCrypto->item(row, 2);
             fileList.append(item->text());
         }
     }
-
-    return(fileList);
+    return (fileList);
 }
-
 
 void MainWindow::clearEditor()
 {
     m_ui->cryptoPadEditor->clear();
 }
 
-
-void MainWindow::onPercentProgress(const QString& path, quint32 percent)
+void MainWindow::onPercentProgress(const QString &path, quint32 percent)
 {
     QList<QStandardItem *> items;
-    QStandardItem          *item;
-    QStandardItem          *progressItem;
+    QStandardItem *item;
+    QStandardItem *progressItem;
 
     items = fileListModelCrypto->findItems(path, Qt::MatchExactly, 2);
-
     if (0 < items.size()) {
         item = items[0];
         auto index = item->row();
-
         if (nullptr != item) {
             progressItem = fileListModelCrypto->item(index, 4);
-
             if (nullptr != progressItem) {
                 progressItem->setData(percent, Qt::DisplayRole);
             }
         }
     }
 }
-
 
 void MainWindow::switchTab(quint32 index)
 {
@@ -293,7 +259,6 @@ void MainWindow::switchTab(quint32 index)
         m_ui->label->show();
         m_ui->pushPassGenerator->show();
     }
-
     if (index == 1) {
         m_ui->menuCryptopad->menuAction()->setVisible(true);
         m_ui->menuLog->menuAction()->setVisible(false);
@@ -305,7 +270,6 @@ void MainWindow::switchTab(quint32 index)
         m_ui->label->show();
         m_ui->pushPassGenerator->show();
     }
-
     if (index == 2) {
         m_ui->menuLog->menuAction()->setVisible(true);
         m_ui->menuCryptopad->menuAction()->setVisible(false);
@@ -318,7 +282,6 @@ void MainWindow::switchTab(quint32 index)
         m_ui->pushPassGenerator->hide();
     }
 }
-
 
 void MainWindow::cryptoFileView()
 {
@@ -337,15 +300,13 @@ void MainWindow::cryptoFileView()
     m_ui->fileListViewCrypto->verticalHeader()->setVisible(false);
 
     // Minimize all row height in Tables
-    m_ui->fileListViewCrypto->verticalHeader()->setDefaultSectionSize(
-        m_ui->fileListViewCrypto->verticalHeader()->minimumSectionSize());
+    m_ui->fileListViewCrypto->verticalHeader()->setDefaultSectionSize(m_ui->fileListViewCrypto->verticalHeader()->minimumSectionSize());
 }
-
 
 void MainWindow::delegate()
 {
     // Custom delegate paints progress bar and file close button for each file
-    Delegate *delegate = new Delegate { this };
+    Delegate *delegate = new Delegate{this};
 
     m_ui->fileListViewCrypto->setItemDelegate(delegate);
     m_ui->fileListViewCrypto->setModel(fileListModelCrypto);
@@ -353,100 +314,88 @@ void MainWindow::delegate()
     connect(delegate, &Delegate::removeRow, this, &MainWindow::removeFile);
 }
 
-
 void MainWindow::addFiles()
 {
     // Open a file dialog to get files
-    const auto files = QFileDialog::getOpenFileNames(
-        this, tr("Add File(s)"),
-        config()->get("GUI/lastDirectory").toByteArray());
-
-    if (files.isEmpty()) { // if no file selected
+    const auto files = QFileDialog::getOpenFileNames(this, tr("Add File(s)"), config()->get("GUI/lastDirectory").toByteArray());
+    if (files.isEmpty()) // if no file selected
+    {
         return;
     }
-
-
     // Save this directory to return to later
-    const auto fileName { files[0] };
+    const auto fileName{files[0]};
 
     config()->set("GUI/lastDirectory", fileName.left(fileName.lastIndexOf("/")));
-
-    for (const QString& file : files) // add files to the model
+    for (const QString &file : files) // add files to the model
     {
         addFilePathToModel(file);
     }
 }
 
-
-void MainWindow::addFilePathToModel(const QString& filePath)
+void MainWindow::addFilePathToModel(const QString &filePath)
 {
-    QFileInfo fileInfo { filePath };
+    QFileInfo fileInfo{filePath};
+    if (fileInfo.exists() && fileInfo.isFile()) // If the file exists, add it to the model
+    {
+        const auto fileSize{getFileSize((fileInfo.size()))};
+        const auto fileName{fileInfo.fileName()};
 
-    if (fileInfo.exists() && fileInfo.isFile()) { // If the file exists, add it to the model
-        const auto fileSize { getFileSize((fileInfo.size())) };
-        const auto fileName { fileInfo.fileName() };
-
-        const auto fileItem { new QStandardItem { fileName } };
+        const auto fileItem{new QStandardItem{fileName}};
         fileItem->setDragEnabled(false);
         fileItem->setDropEnabled(false);
         fileItem->setEditable(false);
         fileItem->setSelectable(false);
         fileItem->setToolTip(fileName);
-        const auto fileVariant { QVariant::fromValue(fileName) };
+        const auto fileVariant{QVariant::fromValue(fileName)};
         fileItem->setData(fileVariant);
 
-        const auto pathItem { new QStandardItem { filePath } };
+        const auto pathItem{new QStandardItem{filePath}};
         pathItem->setDragEnabled(false);
         pathItem->setDropEnabled(false);
         pathItem->setEditable(false);
         pathItem->setSelectable(false);
         pathItem->setToolTip(filePath);
-        const auto pathVariant { QVariant::fromValue(filePath) };
+        const auto pathVariant{QVariant::fromValue(filePath)};
         pathItem->setData(pathVariant);
 
-        const auto sizeItem { new QStandardItem { fileSize } };
+        const auto sizeItem{new QStandardItem{fileSize}};
         sizeItem->setDragEnabled(false);
         sizeItem->setDropEnabled(false);
         sizeItem->setEditable(false);
         sizeItem->setSelectable(false);
         sizeItem->setToolTip(QString::number(fileInfo.size()) + " bytes");
-        const auto sizeVariant { QVariant::fromValue(fileSize) };
+        const auto sizeVariant{QVariant::fromValue(fileSize)};
         sizeItem->setData(sizeVariant);
 
-        const auto progressItem { new QStandardItem {} };
+        const auto progressItem{new QStandardItem{}};
         progressItem->setDragEnabled(false);
         progressItem->setDropEnabled(false);
         progressItem->setEditable(false);
         progressItem->setSelectable(false);
 
-        const auto closeFileItem { new QStandardItem {} };
+        const auto closeFileItem{new QStandardItem{}};
         closeFileItem->setDragEnabled(false);
         closeFileItem->setDropEnabled(false);
         closeFileItem->setEditable(false);
         closeFileItem->setSelectable(false);
 
-        const QList<QStandardItem *> items = { closeFileItem, fileItem, pathItem,
-                                               sizeItem, progressItem };
+        const QList<QStandardItem *> items = {closeFileItem, fileItem, pathItem, sizeItem, progressItem};
 
         // Search to see if this item is already in the model
         auto addNewItem = true;
 
         const auto rowCryptoCount = fileListModelCrypto->rowCount();
-
-        for (auto row = 0; row < rowCryptoCount; ++row)
-        {
+        for (auto row = 0; row < rowCryptoCount; ++row) {
             auto testItem = fileListModelCrypto->item(row, 1);
-
             if (testItem->data().toString() == pathItem->data().toString()) {
                 addNewItem = false;
             }
         }
-
-        if (addNewItem) { // Add the item to the model if it's new
+        if (addNewItem) // Add the item to the model if it's new
+        {
             fileListModelCrypto->appendRow(items);
         }
     }
-
     m_ui->fileListViewCrypto->resizeColumnsToContents();
     m_ui->fileListViewCrypto->setColumnWidth(2, 100); // Limit the "path" to 100
     // px
@@ -454,12 +403,10 @@ void MainWindow::addFilePathToModel(const QString& filePath)
     // End if file exists and is a file
 }
 
-
-void MainWindow::removeFile(const QModelIndex& index)
+void MainWindow::removeFile(const QModelIndex &index)
 {
     fileListModelCrypto->removeRow(index.row());
 }
-
 
 void MainWindow::clearListFiles()
 {
@@ -468,10 +415,9 @@ void MainWindow::clearListFiles()
     }
 }
 
-
 void MainWindow::generator()
 {
-    auto pwGenerator { new PasswordGeneratorDialog };
+    auto pwGenerator{new PasswordGeneratorDialog};
 
     pwGenerator->setStandaloneMode(true);
     connect(pwGenerator, SIGNAL(appliedPassword(QString)), SLOT(setPassword(QString)));
@@ -479,13 +425,11 @@ void MainWindow::generator()
     pwGenerator->exec();
 }
 
-
 void MainWindow::setPassword(QString pass)
 {
     m_ui->password_0->setText(pass);
     m_ui->password_1->setText(pass);
 }
-
 
 void MainWindow::loadPreferences()
 {
@@ -493,12 +437,10 @@ void MainWindow::loadPreferences()
         auto warn_text = QString(tr("Access error for config file %1").arg(config()->getFileName()));
         QMessageBox::warning(this, tr("Could not load configuration"), warn_text);
     }
-
     if (isVisible()) {
         config()->set("GUI/MainWindowGeometry", saveGeometry());
         config()->set("GUI/MainWindowState", saveState());
     }
-
     loadLanguage(config()->get("GUI/Language").toString());
     m_ui->CheckDeleteFiles->setChecked(config()->get("GUI/deleteFinished").toBool());
     switchTab(config()->get("GUI/currentIndexTab").toInt());
@@ -506,37 +448,30 @@ void MainWindow::loadPreferences()
 
     restoreGeometry(config()->get("GUI/MainWindowGeometry").toByteArray());
     restoreState(config()->get("GUI/MainWindowState").toByteArray());
-
     if (config()->get("GUI/darkTheme").toBool()) {
         m_ui->menuDarkTheme->setChecked(true);
         skin.setSkin("dark");
-    }
-    else {
+    } else {
         m_ui->menuDarkTheme->setChecked(false);
         skin.setSkin("notheme");
     }
-
     if (config()->get("GUI/showToolbar").toBool()) {
         m_ui->menuViewToolbar->setChecked(true);
         m_ui->toolBar->setVisible(true);
-    }
-    else {
+    } else {
         m_ui->menuViewToolbar->setChecked(false);
         m_ui->toolBar->setVisible(false);
     }
-
     if (config()->get("GUI/showPassword").toBool()) {
         m_ui->comboViewpass->setChecked(true);
         m_ui->password_0->setEchoMode(QLineEdit::Normal);
         m_ui->password_1->setEchoMode(QLineEdit::Normal);
-    }
-    else {
+    } else {
         m_ui->comboViewpass->setChecked(false);
         m_ui->password_0->setEchoMode(QLineEdit::Password);
         m_ui->password_1->setEchoMode(QLineEdit::Password);
     }
 }
-
 
 void MainWindow::savePreferences()
 {
@@ -544,7 +479,6 @@ void MainWindow::savePreferences()
         config()->set("GUI/MainWindowGeometry", saveGeometry());
         config()->set("GUI/MainWindowState", saveState());
     }
-
     config()->set("GUI/darkTheme", m_ui->menuDarkTheme->isChecked());
     config()->set("GUI/showPassword", m_ui->comboViewpass->isChecked());
     config()->set("GUI/Language", m_currLang);
@@ -553,32 +487,27 @@ void MainWindow::savePreferences()
     config()->set("GUI/deleteFinished", m_ui->CheckDeleteFiles->isChecked());
 }
 
-
 void MainWindow::aboutArsenic()
 {
-    auto *aboutDialog { new AboutDialog(this) };
+    auto *aboutDialog{new AboutDialog(this)};
     aboutDialog->open();
 }
-
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     Q_UNUSED(event);
     // save prefs before quitting
     savePreferences();
-
     if (Crypto->isRunning()) {
         Crypto->abort();
         Crypto->wait();
     }
 }
 
-
 void MainWindow::quit()
 {
     close();
 }
-
 
 void MainWindow::configuration()
 {
@@ -586,19 +515,16 @@ void MainWindow::configuration()
     confDialog->exec();
 }
 
-
 void MainWindow::viewPassStateChanged(quint32 state)
 {
     if (state == 0) {
         m_ui->password_0->setEchoMode(QLineEdit::Password);
         m_ui->password_1->setEchoMode(QLineEdit::Password);
-    }
-    else {
+    } else {
         m_ui->password_0->setEchoMode(QLineEdit::Normal);
         m_ui->password_1->setEchoMode(QLineEdit::Normal);
     }
 }
-
 
 void MainWindow::hashCalculator()
 {
@@ -606,24 +532,20 @@ void MainWindow::hashCalculator()
     hashdlg->exec();
 }
 
-
 void MainWindow::Argon2_tests()
 {
     auto *Argon2_tests = new ArgonTests(this);
     Argon2_tests->open();
 }
 
-
 void MainWindow::dark_theme(bool checked)
 {
     if (checked) {
         skin.setSkin("dark");
-    }
-    else {
+    } else {
         skin.setSkin("notheme");
     }
 }
-
 
 // we create the menu entries dynamically, dependent on the existing
 // translations.
@@ -632,30 +554,28 @@ void MainWindow::createLanguageMenu(void)
     QActionGroup *langGroup = new QActionGroup(m_ui->menuLanguage);
     langGroup->setExclusive(true);
 
-    connect(langGroup, SIGNAL(triggered(QAction*)), this, SLOT(slotLanguageChanged(QAction*)));
+    connect(langGroup, SIGNAL(triggered(QAction *)), this, SLOT(slotLanguageChanged(QAction *)));
 
     // format systems language
-    auto defaultLocale { QLocale::system().name() };        // e.g. "de_DE"
+    auto defaultLocale{QLocale::system().name()}; // e.g. "de_DE"
 
     defaultLocale.truncate(defaultLocale.lastIndexOf('_')); // e.g. "de"
 
-    #ifdef Q_OS_WIN
+#ifdef Q_OS_WIN
     m_langPath = QApplication::applicationDirPath();
     m_langPath.append("/languages");
-    #endif
-    #ifdef Q_OS_UNIX
+#endif
+#ifdef Q_OS_UNIX
     m_langPath = "/usr/share/arsenic/languages/";
-    #endif
+#endif
     QDir dir(m_langPath);
     QStringList fileNames = dir.entryList(QStringList("arsenic_*.qm"));
-
-    for (int i = 0; i < fileNames.size(); ++i)
-    {
+    for (int i = 0; i < fileNames.size(); ++i) {
         // get locale extracted by filename
         QString locale;
-        locale = fileNames[i];                          // "TranslationExample_de.qm"
-        locale.truncate(locale.lastIndexOf('.'));       // "TranslationExample_de"
-        locale.remove(0, locale.indexOf('_') + 1);      // "de"
+        locale = fileNames[i];                     // "TranslationExample_de.qm"
+        locale.truncate(locale.lastIndexOf('.'));  // "TranslationExample_de"
+        locale.remove(0, locale.indexOf('_') + 1); // "de"
 
         QString lang = QLocale::languageToString(QLocale(locale).language());
         QIcon ico(QString("%1/%2.svg").arg(m_langPath).arg(locale));
@@ -666,14 +586,12 @@ void MainWindow::createLanguageMenu(void)
 
         m_ui->menuLanguage->addAction(action);
         langGroup->addAction(action);
-
         // set default translators and language checked
         if (config()->get("GUI/Language").toString() == locale) {
             action->setChecked(true);
         }
     }
 }
-
 
 // Called every time, when a menu entry of the language menu is called
 void MainWindow::slotLanguageChanged(QAction *action)
@@ -685,12 +603,11 @@ void MainWindow::slotLanguageChanged(QAction *action)
     }
 }
 
-
-void MainWindow::loadLanguage(const QString& rLanguage)
+void MainWindow::loadLanguage(const QString &rLanguage)
 {
     if (m_currLang != rLanguage) {
         m_currLang = rLanguage;
-        auto locale { QLocale(m_currLang) };
+        auto locale{QLocale(m_currLang)};
         QLocale::setDefault(locale);
         auto languageName = QLocale::languageToString(locale.language());
         switchTranslator(m_translator, QString("arsenic_%1.qm").arg(rLanguage));
@@ -700,32 +617,28 @@ void MainWindow::loadLanguage(const QString& rLanguage)
     }
 }
 
-
-void MainWindow::switchTranslator(QTranslator& translator,
-                                  const QString& filename)
+void MainWindow::switchTranslator(QTranslator &translator, const QString &filename)
 {
     // remove the old translator
     qApp->removeTranslator(&translator);
 #ifdef Q_OS_WIN
     // load the new translator
-    auto path { QApplication::applicationDirPath() };
+    auto path{QApplication::applicationDirPath()};
     path.append("/languages/");
-    #endif
+#endif
 #ifdef Q_OS_UNIX
     auto path = "/usr/share/arsenic/languages/";
 #endif
-
-    if (translator.load(path + filename)) {     // Here Path and Filename has to be entered because
-        qApp->installTranslator(&translator);   // the system didn't find the QM Files else
+    if (translator.load(path + filename)) // Here Path and Filename has to be entered because
+    {
+        qApp->installTranslator(&translator); // the system didn't find the QM Files else
     }
 }
-
 
 void MainWindow::changeEvent(QEvent *event)
 {
     if (0 != event) {
-        switch (event->type())
-        {
+        switch (event->type()) {
         // this event is send if a translator is loaded
         case QEvent::LanguageChange:
             m_ui->retranslateUi(this);
@@ -735,44 +648,33 @@ void MainWindow::changeEvent(QEvent *event)
             break;
 
         // this event is send, if the system, language changes
-        case QEvent::LocaleChange:
-        {
-            auto locale { QLocale::system().name() };
+        case QEvent::LocaleChange: {
+            auto locale{QLocale::system().name()};
             locale.truncate(locale.lastIndexOf('_'));
             loadLanguage(locale);
-        }
-        break;
+        } break;
         }
     }
-
     QMainWindow::changeEvent(event);
 }
-
 
 void MainWindow::openTxtFile()
 {
     if (maybeSave()) {
-        auto fileName { QFileDialog::getOpenFileName(this) };
-
+        auto fileName{QFileDialog::getOpenFileName(this)};
         if (!fileName.isEmpty()) {
             loadFile(fileName);
         }
     }
 }
 
-
-void MainWindow::loadFile(const QString& fileName)
+void MainWindow::loadFile(const QString &fileName)
 {
     QFile file(fileName);
-
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        QMessageBox::warning(
-            this, tr("Read Error !"),
-            tr("Cannot read file %1:\n%2.")
-            .arg(QDir::toNativeSeparators(fileName), file.errorString()));
+        QMessageBox::warning(this, tr("Read Error !"), tr("Cannot read file %1:\n%2.").arg(QDir::toNativeSeparators(fileName), file.errorString()));
         return;
     }
-
     QTextStream in(&file);
 
 #ifndef QT_NO_CURSOR
@@ -787,32 +689,26 @@ void MainWindow::loadFile(const QString& fileName)
     m_ui->statusBar->showMessage(tr("File loaded"), 2000);
 }
 
-
-void MainWindow::setCurrentFile(const QString& fileName)
+void MainWindow::setCurrentFile(const QString &fileName)
 {
     curFile = fileName;
     m_ui->cryptoPadEditor->document()->setModified(false);
     setWindowModified(false);
 
     QString shownName = curFile;
-
     if (curFile.isEmpty()) {
         shownName = "untitled.txt";
     }
-
     setWindowFilePath(shownName);
 }
 
-
-bool MainWindow::saveFile(const QString& fileName)
+bool MainWindow::saveFile(const QString &fileName)
 {
     QFile file(fileName);
-
     if (!file.open(QFile::WriteOnly | QFile::Text)) {
         QMessageBox::warning(this, tr("Write Error !"), tr("Cannot write file %1:\n%2.").arg(QDir::toNativeSeparators(fileName), file.errorString()));
-        return(false);
+        return (false);
     }
-
     QTextStream out(&file);
 
 #ifndef QT_NO_CURSOR
@@ -826,61 +722,50 @@ bool MainWindow::saveFile(const QString& fileName)
     setCurrentFile(fileName);
     m_ui->statusBar->showMessage(tr("File saved"), 2000);
     out.flush();
-    return(true);
+    return (true);
 }
-
 
 bool MainWindow::maybeSave()
 {
     if (!m_ui->cryptoPadEditor->document()->isModified()) {
-        return(true);
+        return (true);
     }
-
-    const QMessageBox::StandardButton ret = QMessageBox::warning(
-        this, tr("Application"),
-        tr("The document has been modified.\n"
-           "Do you want to save your changes?"),
-        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
-
-    switch (ret)
-    {
+    const QMessageBox::StandardButton ret = QMessageBox::warning(this, tr("Application"),
+                                                                 tr("The document has been modified.\n"
+                                                                    "Do you want to save your changes?"),
+                                                                 QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+    switch (ret) {
     case QMessageBox::Save:
-        return(saveTxtFile());
+        return (saveTxtFile());
 
     case QMessageBox::Cancel:
-        return(false);
+        return (false);
 
     default:
         break;
     }
-    return(true);
+    return (true);
 }
-
 
 bool MainWindow::saveTxtFile()
 {
     if (curFile.isEmpty()) {
-        return(saveTxtFileAs());
-    }
-    else {
-        return(saveFile(curFile));
+        return (saveTxtFileAs());
+    } else {
+        return (saveFile(curFile));
     }
 }
-
 
 bool MainWindow::saveTxtFileAs()
 {
     QFileDialog dialog(this);
     dialog.setWindowModality(Qt::WindowModal);
     dialog.setAcceptMode(QFileDialog::AcceptSave);
-
     if (dialog.exec() != QDialog::Accepted) {
-        return(false);
+        return (false);
     }
-
-    return(saveFile(dialog.selectedFiles().first()));
+    return (saveFile(dialog.selectedFiles().first()));
 }
-
 
 void MainWindow::encryptText()
 {
@@ -888,29 +773,25 @@ void MainWindow::encryptText()
         displayEmptyEditor();
         return;
     }
-
     if (m_ui->password_0->text().isEmpty()) {
         displayEmptyPassword();
         return;
     }
-
     if (m_ui->password_0->text() != m_ui->password_1->text()) {
         displayPasswordNotMatch();
         return;
     }
-
     try {
-        auto plaintext { m_ui->cryptoPadEditor->toPlainText() };
+        auto plaintext{m_ui->cryptoPadEditor->toPlainText()};
         textCrypto encrypt;
-        encrypt.encryptString(plaintext, m_ui->password_0->text());
-        m_ui->cryptoPadEditor->setPlainText(encrypt.getResult());
-    }
-    catch (std::exception const& e) {
+        encrypt.start(m_ui->password_0->text(), 0);
+        encrypt.finish(plaintext);
+        m_ui->cryptoPadEditor->setPlainText(plaintext);
+    } catch (std::exception const &e) {
         auto error = e.what();
         displayMessageBox(tr("Encryption Error!"), error);
     }
 }
-
 
 void MainWindow::decryptText()
 {
@@ -918,31 +799,21 @@ void MainWindow::decryptText()
         displayEmptyEditor();
         return;
     }
-
     if (m_ui->password_0->text().isEmpty()) {
         displayEmptyPassword();
         return;
     }
-
-
-    auto ciphertext { m_ui->cryptoPadEditor->toPlainText() };
+    auto ciphertext{m_ui->cryptoPadEditor->toPlainText()};
     textCrypto decrypt;
-    int result = decrypt.decryptString(ciphertext, m_ui->password_0->text());
-
-    if (result == 1) {
-        m_ui->cryptoPadEditor->setPlainText(decrypt.getResult());
-    }
-    else {
-        displayMessageBox(tr("Decryption Error!"), errorCodeToString(result));
-    }
+    decrypt.start(m_ui->password_0->text(), 1);
+    decrypt.finish(ciphertext);
+    m_ui->cryptoPadEditor->setPlainText(ciphertext);
 }
-
 
 void MainWindow::displayMessageBox(QString title, QString text)
 {
     QMessageBox::warning(this, (title), (text));
 }
-
 
 void MainWindow::displayPasswordNotMatch()
 {
@@ -951,26 +822,19 @@ void MainWindow::displayPasswordNotMatch()
                             "sure they were entered correctly and try again."));
 }
 
-
 void MainWindow::displayEmptyPassword()
 {
-    QMessageBox::warning(this, tr("Passphrase field is empty !"),
-                         tr("You must enter a passphrase."));
+    QMessageBox::warning(this, tr("Passphrase field is empty !"), tr("You must enter a passphrase."));
 }
-
 
 void MainWindow::displayEmptyJob()
 {
-    QMessageBox::warning(
-        this, tr("Job list is empty !"),
-        tr("You must add file(s) to the job list to start processing."));
+    QMessageBox::warning(this, tr("Job list is empty !"), tr("You must add file(s) to the job list to start processing."));
 }
-
 
 void MainWindow::displayEmptyEditor()
 {
-    QMessageBox::warning(this, tr("Text editor is empty !"),
-                         tr("You must add text to editor to start processing."));
+    QMessageBox::warning(this, tr("Text editor is empty !"), tr("You must add text to editor to start processing."));
 }
 
 QString MainWindow::getFileSize(qint64 size)
@@ -980,31 +844,23 @@ QString MainWindow::getFileSize(qint64 size)
     static const double GiB = pow(2, 30);
     static const double TiB = pow(2, 40);
     static const double PiB = pow(2, 50);
-
     // convert to appropriate units based on the size of the item
     if (size >= 0) {
         static const int precision = 0;
-
         if (size < KiB) {
-            return(QString::number(size, 'f', precision) + " B");
+            return (QString::number(size, 'f', precision) + " B");
+        } else if (size < MiB) {
+            return (QString::number(size / KiB, 'f', precision) + " KiB");
+        } else if (size < GiB) {
+            return (QString::number(size / MiB, 'f', precision) + " MiB");
+        } else if (size < TiB) {
+            return (QString::number(size / GiB, 'f', precision) + " GiB");
+        } else if (size < PiB) {
+            return (QString::number(size / TiB, 'f', precision) + " TiB");
+        } else {
+            return (QString::number(size / PiB, 'f', precision) + " PiB");
         }
-        else if (size < MiB) {
-            return(QString::number(size / KiB, 'f', precision) + " KiB");
-        }
-        else if (size < GiB) {
-            return(QString::number(size / MiB, 'f', precision) + " MiB");
-        }
-        else if (size < TiB) {
-            return(QString::number(size / GiB, 'f', precision) + " GiB");
-        }
-        else if (size < PiB) {
-            return(QString::number(size / TiB, 'f', precision) + " TiB");
-        }
-        else {
-            return(QString::number(size / PiB, 'f', precision) + " PiB");
-        }
-    }
-    else {
-        return("");
+    } else {
+        return ("");
     }
 }

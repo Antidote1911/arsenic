@@ -25,12 +25,12 @@
 
 #include "Config.h"
 
-Clipboard* Clipboard::m_instance(nullptr);
+Clipboard *Clipboard::m_instance(nullptr);
 #ifdef Q_OS_MACOS
 QPointer<MacPasteboard> Clipboard::m_pasteboard(nullptr);
 #endif
 
-Clipboard::Clipboard(QObject* parent)
+Clipboard::Clipboard(QObject *parent)
     : QObject(parent)
     , m_timer(new QTimer(this))
 {
@@ -44,11 +44,11 @@ Clipboard::Clipboard(QObject* parent)
     connect(qApp, SIGNAL(aboutToQuit()), SLOT(clearCopiedText()));
 }
 
-void Clipboard::setText(const QString& text)
+void Clipboard::setText(const QString &text)
 {
-    QClipboard* clipboard = QApplication::clipboard();
+    QClipboard *clipboard = QApplication::clipboard();
 
-    QMimeData* mime = new QMimeData;
+    QMimeData *mime = new QMimeData;
 #ifdef Q_OS_MACOS
     mime->setText(text);
     mime->setData("application/x-nspasteboard-concealed-type", text.toUtf8());
@@ -84,7 +84,7 @@ void Clipboard::clearCopiedText()
 
 void Clipboard::clearClipboard()
 {
-    QClipboard* clipboard = QApplication::clipboard();
+    QClipboard *clipboard = QApplication::clipboard();
 
     if (!clipboard) {
         qWarning("Unable to access the clipboard.");
@@ -102,7 +102,7 @@ void Clipboard::clearClipboard()
     m_lastCopied.clear();
 }
 
-Clipboard* Clipboard::instance()
+Clipboard *Clipboard::instance()
 {
     if (!m_instance) {
         m_instance = new Clipboard(qApp);

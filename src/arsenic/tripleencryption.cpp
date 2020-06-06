@@ -4,12 +4,12 @@
 using namespace Botan;
 using namespace ARs;
 
-TripleEncryption::TripleEncryption(int mode, QObject *parent) : QObject(parent)
+TripleEncryption::TripleEncryption(int mode, QObject *parent)
+    : QObject(parent)
 {
     if (mode == 0) {
         m_direction = ENCRYPTION;
-    }
-    else {
+    } else {
         m_direction = DECRYPTION;
     }
 
@@ -18,34 +18,25 @@ TripleEncryption::TripleEncryption(int mode, QObject *parent) : QObject(parent)
     m_engineSerpent = AEAD_Mode::create("Serpent/GCM", m_direction);
 }
 
-
 void TripleEncryption::setSalt(Botan::OctetString salt)
 {
     m_salt = salt;
 }
 
-
 void TripleEncryption::derivePassword(QString password, quint32 memlimit, quint32 iterations)
 {
-    const auto pass { password.toStdString() };
+    const auto pass{password.toStdString()};
     SecureVector<char> pass_buffer(pass.begin(), pass.end());
 
-    auto pwdhash_fam { PasswordHashFamily::create("Argon2id") };
+    auto pwdhash_fam{PasswordHashFamily::create("Argon2id")};
     SecureVector<quint8> key_buffer(CIPHER_KEY_LEN * 3);
 
     // mem,ops,threads
-    const auto default_pwhash { pwdhash_fam->from_params(memlimit,
-                                                         iterations,
-                                                         PARALLELISM_INTERACTIVE) };
+    const auto default_pwhash{pwdhash_fam->from_params(memlimit, iterations, PARALLELISM_INTERACTIVE)};
 
-    default_pwhash->derive_key(key_buffer.data(),
-                               key_buffer.size(),
-                               pass_buffer.data(),
-                               pass_buffer.size(),
-                               m_salt.bits_of().data(),
-                               m_salt.size());
+    default_pwhash->derive_key(key_buffer.data(), key_buffer.size(), pass_buffer.data(), pass_buffer.size(), m_salt.bits_of().data(), m_salt.size());
 
-    const auto* mk { key_buffer.begin().base() };
+    const auto *mk{key_buffer.begin().base()};
     const SymmetricKey ChaCha20_key(mk, CIPHER_KEY_LEN);
     const SymmetricKey AES_key(&mk[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
     const SymmetricKey Serpent_key(&mk[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
@@ -59,11 +50,10 @@ void TripleEncryption::derivePassword(QString password, quint32 memlimit, quint3
     m_engineSerpent->set_key(Serpent_key);
 }
 
-
 void TripleEncryption::setTripleKey(SymmetricKey masterKey)
 {
     // split the triple key
-    const auto* n { masterKey.begin() };
+    const auto *n{masterKey.begin()};
     const SymmetricKey chachaKey(n, CIPHER_KEY_LEN);
     const SymmetricKey aesKey(&n[CIPHER_KEY_LEN], CIPHER_KEY_LEN);
     const SymmetricKey serpentKey(&n[CIPHER_KEY_LEN + CIPHER_KEY_LEN], CIPHER_KEY_LEN);
@@ -83,7 +73,7 @@ void TripleEncryption::setTripleKey(SymmetricKey masterKey)
 void TripleEncryption::setTripleNonce(SecureVector<quint8> nonce)
 {
     // split the triple nonce
-    const auto* n { nonce.begin().base() };
+    const auto *n{nonce.begin().base()};
     const InitializationVector iv1(n, CIPHER_IV_LEN);
     const InitializationVector iv2(&n[CIPHER_IV_LEN], CIPHER_IV_LEN);
     const InitializationVector iv3(&n[CIPHER_IV_LEN + CIPHER_IV_LEN], CIPHER_IV_LEN);
@@ -112,8 +102,7 @@ SecureVector<quint8> TripleEncryption::finish(SecureVector<quint8> &buffer)
 
         m_engineSerpent->start(m_nonceSerpent);
         m_engineSerpent->finish(buffer);
-    }
-    else {
+    } else {
         incrementNonce();
         m_engineSerpent->start(m_nonceSerpent);
         m_engineSerpent->finish(buffer);
@@ -126,5 +115,5 @@ SecureVector<quint8> TripleEncryption::finish(SecureVector<quint8> &buffer)
     }
 
     m_outBuffer = buffer;
-    return(buffer);
+    return (buffer);
 }

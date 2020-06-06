@@ -32,6 +32,7 @@ CONFIG(debug, debug|release) {
 DISTFILES += \
     .appveyor.yml \
     .travis.yml \
+    .clang-format \
     LICENSE \
     README.md \
     README_FR.md \

@@ -1,13 +1,12 @@
 #include "messages.h"
-#include <QString>
 #include <QObject>
+#include <QString>
 
 QString errorCodeToString(int error_code)
 {
     QString ret_string;
 
-    switch (error_code)
-    {
+    switch (error_code) {
     case CRYPT_SUCCESS:
         ret_string += QObject::tr("Data successfully encrypted !");
         break;
@@ -97,5 +96,5 @@ QString errorCodeToString(int error_code)
         break;
     }
 
-    return(ret_string);
+    return (ret_string);
 }

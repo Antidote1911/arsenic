@@ -25,7 +25,8 @@
 
 typedef QVector<QChar> PasswordGroup;
 
-class PasswordGenerator {
+class PasswordGenerator
+{
 public:
     enum CharClass {
         LowerLetters = (1 << 0),
@@ -54,18 +55,18 @@ public:
 public:
     PasswordGenerator();
 
-    double estimateEntropy(const QString& password);
+    double estimateEntropy(const QString &password);
     void setLength(int length);
-    void setCharClasses(const CharClasses& classes);
-    void setFlags(const GeneratorFlags& flags);
-    void setExcludedChars(const QString& chars);
+    void setCharClasses(const CharClasses &classes);
+    void setFlags(const GeneratorFlags &flags);
+    void setExcludedChars(const QString &chars);
 
     bool isValid() const;
 
     QString generatePassword() const;
 
     static const int DefaultLength = 16;
-    static const char* DefaultExcludedChars;
+    static const char *DefaultExcludedChars;
     static constexpr bool DefaultLower = (DefaultCharset & LowerLetters) != 0;
     static constexpr bool DefaultUpper = (DefaultCharset & UpperLetters) != 0;
     static constexpr bool DefaultNumbers = (DefaultCharset & Numbers) != 0;

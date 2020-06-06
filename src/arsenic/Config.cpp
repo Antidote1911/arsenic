@@ -35,53 +35,46 @@ using namespace ARs;
  */
 static const QMap<QString, QString> deprecationMap = {
     // >2.3.4
-    { QStringLiteral("security/hidepassworddetails"), QStringLiteral("security/HidePasswordPreviewPanel") },
+    {QStringLiteral("security/hidepassworddetails"), QStringLiteral("security/HidePasswordPreviewPanel")},
     // >2.3.4
-    { QStringLiteral("GUI/HideDetailsView"), QStringLiteral("GUI/HidePreviewPanel") },
+    {QStringLiteral("GUI/HideDetailsView"), QStringLiteral("GUI/HidePreviewPanel")},
     // >2.3.4
-    { QStringLiteral("GUI/DetailSplitterState"), QStringLiteral("GUI/PreviewSplitterState") },
+    {QStringLiteral("GUI/DetailSplitterState"), QStringLiteral("GUI/PreviewSplitterState")},
     // >2.3.4
-    { QStringLiteral("security/IconDownloadFallbackToGoogle"), QStringLiteral("security/IconDownloadFallback") },
+    {QStringLiteral("security/IconDownloadFallbackToGoogle"), QStringLiteral("security/IconDownloadFallback")},
 };
 
 Config *Config::m_instance(nullptr);
 
-QVariant Config::get(const QString& key)
+QVariant Config::get(const QString &key)
 {
-    return(m_settings->value(key, m_defaults.value(key)));
+    return (m_settings->value(key, m_defaults.value(key)));
 }
 
-
-QVariant Config::get(const QString& key, const QVariant& defaultValue)
+QVariant Config::get(const QString &key, const QVariant &defaultValue)
 {
-    return(m_settings->value(key, defaultValue));
+    return (m_settings->value(key, defaultValue));
 }
-
 
 bool Config::hasAccessError()
 {
-    return(m_settings->status() & QSettings::AccessError);
+    return (m_settings->status() & QSettings::AccessError);
 }
-
 
 QString Config::getFileName()
 {
-    return(m_settings->fileName());
+    return (m_settings->fileName());
 }
 
-
-void Config::set(const QString& key, const QVariant& value)
+void Config::set(const QString &key, const QVariant &value)
 {
-    if (m_settings->contains(key) && (m_settings->value(key) == value))
-        return;
+    if (m_settings->contains(key) && (m_settings->value(key) == value)) return;
 
     const bool surpressSignal = !m_settings->contains(key) && m_defaults.value(key) == value;
     m_settings->setValue(key, value);
 
-    if (!surpressSignal)
-        emit changed(key);
+    if (!surpressSignal) emit changed(key);
 }
-
 
 /**
  * Sync configuration with persistent storage.
@@ -95,21 +88,17 @@ void Config::sync()
     m_settings->sync();
 }
 
-
 void Config::resetToDefaults()
 {
-    for (const auto& setting : m_defaults.keys())
-    {
+    for (const auto &setting : m_defaults.keys()) {
         m_settings->setValue(setting, m_defaults.value(setting));
     }
 }
 
-
 void Config::upgrade()
 {
     const auto keys = deprecationMap.keys();
-    for (const auto& setting : keys)
-    {
+    for (const auto &setting : keys) {
         if (m_settings->contains(setting)) {
             if (!deprecationMap.value(setting).isEmpty())
                 // Add entry with new name and old entry's value
@@ -133,13 +122,11 @@ void Config::upgrade()
      */
 }
 
-
-Config::Config(const QString& fileName, QObject *parent)
+Config::Config(const QString &fileName, QObject *parent)
     : QObject(parent)
 {
     init(fileName);
 }
-
 
 Config::Config(QObject *parent)
     : QObject(parent)
@@ -149,8 +136,7 @@ Config::Config(QObject *parent)
 
     if (QFile::exists(portablePath)) {
         init(portablePath);
-    }
-    else{
+    } else {
         QString userPath;
         QString homePath = QDir::homePath();
 
@@ -161,11 +147,9 @@ Config::Config(QObject *parent)
         if (env.isEmpty()) {
             userPath = homePath;
             userPath += "/.config";
-        }
-        else if (env[0] == '/') {
+        } else if (env[0] == '/') {
             userPath = QFile::decodeName(env);
-        }
-        else{
+        } else {
             userPath = homePath;
             userPath += '/';
             userPath += QFile::decodeName(env);
@@ -188,13 +172,9 @@ Config::Config(QObject *parent)
     }
 }
 
+Config::~Config() {}
 
-Config::~Config()
-{
-}
-
-
-void Config::init(const QString& fileName)
+void Config::init(const QString &fileName)
 {
     m_settings.reset(new QSettings(fileName, QSettings::IniFormat));
     upgrade();
@@ -217,22 +197,18 @@ void Config::init(const QString& fileName)
     m_defaults.insert("SECURITY/clearclipboardtimeout", DEFAULT_CLIPBOARD_TIMEOUT);
 }
 
-
 Config *Config::instance()
 {
-    if (!m_instance)
-        m_instance = new Config(qApp);
+    if (!m_instance) m_instance = new Config(qApp);
 
-    return(m_instance);
+    return (m_instance);
 }
 
-
-void Config::createConfigFromFile(const QString& file)
+void Config::createConfigFromFile(const QString &file)
 {
     Q_ASSERT(!m_instance);
     m_instance = new Config(file, qApp);
 }
-
 
 void Config::createTempFileInstance()
 {

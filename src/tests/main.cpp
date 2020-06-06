@@ -4,59 +4,57 @@
 #include "../arsenic/constants.h"
 #include "../arsenic/fileCrypto.h"
 #include "../arsenic/textcrypto.h"
+#include "botan_all.h"
 #include "catch.hpp"
 #include <QDataStream>
 #include <QDir>
 #include <QFile>
-#include "botan_all.h"
-
 
 using namespace ARs;
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
-
     int result = Catch::Session().run(argc, argv);
-
-    return(result < 0xff ? result : 0xff);
+    return (result < 0xff ? result : 0xff);
 }
 
 int Factorial(int number)
 {
-    return(number <= 1 ? number : Factorial(number - 1) * number); // fail
+    return (number <= 1 ? number : Factorial(number - 1) * number); // fail
 }
 
 bool encryptString()
 {
-    textCrypto encrypt;
 
     QString plaintext = "my super secret message";
     QString password = "mypassword";
 
-    encrypt.encryptString(plaintext, password);
-    QString encrypted = encrypt.getResult();
+    textCrypto encrypt;
+    encrypt.start(password, 0);
+    encrypt.finish(plaintext);
 
     textCrypto decrypt;
-    decrypt.decryptString(encrypted, password);
-    QString decrypted = decrypt.getResult();
-    return(plaintext == decrypted);
+    decrypt.start(password, 1);
+    decrypt.finish(plaintext);
+
+    return (plaintext == "my super secret message");
 }
 
 bool encryptFile()
 {
     // We generate a ramdom file
-    Botan::SecureVector<quint8> main_buffer(IN_BUFFER_SIZE * 50 + 30);
+    Botan::SecureVector<quint8> main_buffer(100000);
     Botan::AutoSeeded_RNG rng;
 
-    main_buffer = rng.random_vec(IN_BUFFER_SIZE * 50 + 30);
-    QFile::remove(QDir::cleanPath("cleartxt.txt")); //clear previous file
+    main_buffer = rng.random_vec(100000);
+    QFile::remove(QDir::cleanPath("cleartxt.txt")); // clear previous file
     QFile::remove(QDir::cleanPath("cleartxt.txt.arsenic"));
 
     QFile src_file(QDir::cleanPath("cleartxt.txt"));
     src_file.open(QIODevice::WriteOnly);
     QDataStream des_stream(&src_file);
-    des_stream.writeRawData(reinterpret_cast<char*>(main_buffer.data()), main_buffer.size());
+    des_stream.writeRawData(reinterpret_cast<char *>(main_buffer.data()), main_buffer.size());
     src_file.close();
 
     // Calculate the SHA-256 of the generated file for future comparison
@@ -65,23 +63,17 @@ bool encryptFile()
     QDataStream stream(&src_file);
     Botan::SecureVector<uint8_t> buf(IN_BUFFER_SIZE);
     quint32 bytes_read;
-    while ((bytes_read = stream.readRawData(reinterpret_cast<char*>(buf.data()), IN_BUFFER_SIZE)) > 0)
-    {
+    while ((bytes_read = stream.readRawData(reinterpret_cast<char *>(buf.data()), IN_BUFFER_SIZE)) > 0) {
         hash1->update(buf.data(), buf.size());
     }
-    QString result1 = QString::fromStdString(Botan::hex_encode(hash1->final ()));
+    QString result1 = QString::fromStdString(Botan::hex_encode(hash1->final()));
 
     // Now, try to encrypt it. The original is deleted, and the output is cleartxt.txt.arsenic
     QStringList list;
     list.append("cleartxt.txt");
 
     Crypto_Thread Crypto;
-    Crypto.setParam(true,
-                    list,
-                    "mypassword",
-                    DEFAULT_ARGON_MEM_LIMIT,
-                    DEFAULT_ARGON_ITR_LIMIT,
-                    true);
+    Crypto.setParam(true, list, "mypassword", DEFAULT_ARGON_MEM_LIMIT, DEFAULT_ARGON_ITR_LIMIT, true);
 
     Crypto.start();
     Crypto.wait();
@@ -92,12 +84,7 @@ bool encryptFile()
     QStringList list2;
     list2.append("cleartxt.txt.arsenic");
 
-    Crypto.setParam(false,
-                    list2,
-                    "mypassword",
-                    DEFAULT_ARGON_MEM_LIMIT,
-                    DEFAULT_ARGON_ITR_LIMIT,
-                    true);
+    Crypto.setParam(false, list2, "mypassword", DEFAULT_ARGON_MEM_LIMIT, DEFAULT_ARGON_ITR_LIMIT, true);
 
     Crypto.start();
     Crypto.wait();
@@ -109,18 +96,17 @@ bool encryptFile()
     QDataStream stream2(&src_file2);
     Botan::SecureVector<uint8_t> buf2(IN_BUFFER_SIZE);
     quint32 bytes_read2;
-    while ((bytes_read2 = stream2.readRawData(reinterpret_cast<char*>(buf2.data()), IN_BUFFER_SIZE)) > 0)
-    {
+    while ((bytes_read2 = stream2.readRawData(reinterpret_cast<char *>(buf2.data()), IN_BUFFER_SIZE)) > 0) {
         hash2->update(buf2.data(), buf2.size());
     }
-    QString result2 = QString::fromStdString(Botan::hex_encode(hash2->final ()));
+    QString result2 = QString::fromStdString(Botan::hex_encode(hash2->final()));
 
-    return(result1 == result2);
+    return (result1 == result2);
 }
 
 QString upper(QString str)
 {
-    return(str.toUpper());
+    return (str.toUpper());
 }
 
 TEST_CASE("Factorials of 1 and higher are computed(pass) ", "[single - file] ")

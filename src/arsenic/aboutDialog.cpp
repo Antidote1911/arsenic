@@ -22,10 +22,6 @@
 
 #include <QClipboard>
 
-/*******************************************************************************
-*
-*******************************************************************************/
-
 static const QString aboutMaintainers = R"(
 <p><ul>
     <li>Fabrice Corraire (<a href="https://github.com/Antidote1911">Antidote1911</a>)</li>
@@ -78,7 +74,7 @@ AboutDialog::AboutDialog(QWidget *parent)
 
     m_ui->iconLabel->setPixmap(qApp->windowIcon().pixmap(48));
 
-    //QString debugInfo = Tools::debugInfo().append("\n").append(Crypto::debugInfo());
+    // QString debugInfo = Tools::debugInfo().append("\n").append(Crypto::debugInfo());
     m_ui->debugInfo->setPlainText(debugInfo);
 
     m_ui->maintainers->setText(aboutMaintainers);
@@ -101,11 +97,7 @@ AboutDialog::AboutDialog(QWidget *parent)
     connect(m_ui->copyToClipboard, SIGNAL(clicked()), SLOT(copyToClipboard()));
 }
 
-
-AboutDialog::~AboutDialog()
-{
-}
-
+AboutDialog::~AboutDialog() {}
 
 void AboutDialog::copyToClipboard()
 {

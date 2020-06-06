@@ -5,7 +5,6 @@
 #include "constants.h"
 #include <QObject>
 
-
 class TripleEncryption : public QObject
 {
     Q_OBJECT

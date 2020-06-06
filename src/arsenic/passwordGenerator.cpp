@@ -21,13 +21,12 @@
 
 #include <QtGlobal>
 #if defined(Q_OS_UNIX)
-    #include "botan_all.h"
+#include "botan_all.h"
 #endif
 
 #if defined(Q_OS_WIN)
 #include "botan_all.h"
 #endif
-
 
 const char *PasswordGenerator::DefaultExcludedChars = "";
 
@@ -39,12 +38,10 @@ PasswordGenerator::PasswordGenerator()
 {
 }
 
-
-double PasswordGenerator::estimateEntropy(const QString& password)
+double PasswordGenerator::estimateEntropy(const QString &password)
 {
-    return(ZxcvbnMatch(password.toLatin1(), nullptr, nullptr));
+    return (ZxcvbnMatch(password.toLatin1(), nullptr, nullptr));
 }
-
 
 void PasswordGenerator::setLength(int length)
 {
@@ -56,8 +53,7 @@ void PasswordGenerator::setLength(int length)
     m_length = length;
 }
 
-
-void PasswordGenerator::setCharClasses(const CharClasses& classes)
+void PasswordGenerator::setCharClasses(const CharClasses &classes)
 {
     if (classes == 0) {
         m_classes = DefaultCharset;
@@ -67,18 +63,15 @@ void PasswordGenerator::setCharClasses(const CharClasses& classes)
     m_classes = classes;
 }
 
-
-void PasswordGenerator::setFlags(const GeneratorFlags& flags)
+void PasswordGenerator::setFlags(const GeneratorFlags &flags)
 {
     m_flags = flags;
 }
 
-
-void PasswordGenerator::setExcludedChars(const QString& chars)
+void PasswordGenerator::setExcludedChars(const QString &chars)
 {
     m_excluded = chars;
 }
-
 
 QString PasswordGenerator::generatePassword() const
 {
@@ -87,10 +80,8 @@ QString PasswordGenerator::generatePassword() const
     const QVector<PasswordGroup> groups = passwordGroups();
 
     QVector<QChar> passwordChars;
-    for (const PasswordGroup& group : groups)
-    {
-        for (QChar ch : group)
-        {
+    for (const PasswordGroup &group : groups) {
+        for (QChar ch : group) {
             passwordChars.append(ch);
         }
     }
@@ -98,61 +89,51 @@ QString PasswordGenerator::generatePassword() const
     QString password;
 
     if (m_flags & CharFromEveryGroup) {
-        for (const auto& group : groups)
-        {
+        for (const auto &group : groups) {
             int pos = Botan::Sodium::randombytes_uniform(static_cast<quint32>(group.size()));
 
             password.append(group[pos]);
         }
 
-        for (int i = groups.size(); i < m_length; i++)
-        {
+        for (int i = groups.size(); i < m_length; i++) {
             int pos = Botan::Sodium::randombytes_uniform(static_cast<quint32>(passwordChars.size()));
 
             password.append(passwordChars[pos]);
         }
 
         // shuffle chars
-        for (int i = (password.size() - 1); i >= 1; i--)
-        {
+        for (int i = (password.size() - 1); i >= 1; i--) {
             int j = Botan::Sodium::randombytes_uniform(static_cast<quint32>(i + 1));
 
             QChar tmp = password[i];
             password[i] = password[j];
             password[j] = tmp;
         }
-    }
-    else {
-        for (int i = 0; i < m_length; i++)
-        {
+    } else {
+        for (int i = 0; i < m_length; i++) {
             int pos = Botan::Sodium::randombytes_uniform(static_cast<quint32>(passwordChars.size()));
 
             password.append(passwordChars[pos]);
         }
     }
 
-    return(password);
+    return (password);
 }
-
 
 bool PasswordGenerator::isValid() const
 {
     if (m_classes == 0) {
-        return(false);
+        return (false);
+    } else if (m_length == 0) {
+        return (false);
     }
-    else if (m_length == 0) {
-        return(false);
-    }
-
 
     if ((m_flags & CharFromEveryGroup) && (m_length < numCharClasses())) {
-        return(false);
+        return (false);
     }
 
-
-    return(!passwordGroups().isEmpty());
+    return (!passwordGroups().isEmpty());
 }
-
 
 QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 {
@@ -161,8 +142,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
     if (m_classes & LowerLetters) {
         PasswordGroup group;
 
-        for (int i = 97; i <= (97 + 25); i++)
-        {
+        for (int i = 97; i <= (97 + 25); i++) {
             if ((m_flags & ExcludeLookAlike) && (i == 108)) { // "l"
                 continue;
             }
@@ -176,8 +156,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
     if (m_classes & UpperLetters) {
         PasswordGroup group;
 
-        for (int i = 65; i <= (65 + 25); i++)
-        {
+        for (int i = 65; i <= (65 + 25); i++) {
             if ((m_flags & ExcludeLookAlike) && ((i == 73) || (i == 79))) { // "I" and "O"
                 continue;
             }
@@ -191,8 +170,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
     if (m_classes & Numbers) {
         PasswordGroup group;
 
-        for (int i = 48; i < (48 + 10); i++)
-        {
+        for (int i = 48; i < (48 + 10); i++) {
             if ((m_flags & ExcludeLookAlike) && ((i == 48) || (i == 49))) { // "0" and "1"
                 continue;
             }
@@ -274,8 +252,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         PasswordGroup group;
 
         // #$%&
-        for (int i = 35; i <= 38; i++)
-        {
+        for (int i = 35; i <= 38; i++) {
             group.append(i);
         }
         // @^`~
@@ -292,13 +269,11 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 
         // [U+0080, U+009F] are C1 control characters,
         // U+00A0 is non-breaking space
-        for (int i = 161; i <= 172; i++)
-        {
+        for (int i = 161; i <= 172; i++) {
             group.append(i);
         }
         // U+00AD is soft hyphen (format character)
-        for (int i = 174; i <= 255; i++)
-        {
+        for (int i = 174; i <= 255; i++) {
             if ((m_flags & ExcludeLookAlike) && (i == 249)) { // "﹒"
                 continue;
             }
@@ -312,15 +287,12 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
     // Loop over character groups and remove excluded characters from them;
     // remove empty groups
     int i = 0;
-    while (i != passwordGroups.size())
-    {
+    while (i != passwordGroups.size()) {
         PasswordGroup group = passwordGroups[i];
 
-        for (QChar ch : m_excluded)
-        {
+        for (QChar ch : m_excluded) {
             int j = group.indexOf(ch);
-            while (j != -1)
-            {
+            while (j != -1) {
                 group.remove(j);
                 j = group.indexOf(ch);
             }
@@ -329,15 +301,13 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         if (!group.isEmpty()) {
             passwordGroups.replace(i, group);
             ++i;
-        }
-        else {
+        } else {
             passwordGroups.remove(i);
         }
     }
 
-    return(passwordGroups);
+    return (passwordGroups);
 }
-
 
 int PasswordGenerator::numCharClasses() const
 {
@@ -383,5 +353,5 @@ int PasswordGenerator::numCharClasses() const
         numClasses++;
     }
 
-    return(numClasses);
+    return (numClasses);
 }

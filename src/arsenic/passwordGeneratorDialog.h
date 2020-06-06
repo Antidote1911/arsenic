@@ -30,57 +30,58 @@ namespace Ui {
 class PasswordGeneratorDialog;
 }
 
-class PasswordGeneratorDialog : public QDialog {
-   Q_OBJECT
+class PasswordGeneratorDialog : public QDialog
+{
+    Q_OBJECT
 
 public:
-   explicit PasswordGeneratorDialog(QDialog *parent = nullptr);
-   ~PasswordGeneratorDialog();
-   void loadSettings();
-   void saveSettings();
-   void reset(int length = 0);
-   void setStandaloneMode(bool standalone);
-   QString getGeneratedPassword();
-   bool isPasswordVisible() const;
+    explicit PasswordGeneratorDialog(QDialog *parent = nullptr);
+    ~PasswordGeneratorDialog();
+    void loadSettings();
+    void saveSettings();
+    void reset(int length = 0);
+    void setStandaloneMode(bool standalone);
+    QString getGeneratedPassword();
+    bool isPasswordVisible() const;
 
 protected:
-   void showEvent(QShowEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 public slots:
-   void regeneratePassword();
-   void applyPassword();
-   void copyPassword();
-   void setPasswordVisible(bool visible);
+    void regeneratePassword();
+    void applyPassword();
+    void copyPassword();
+    void setPasswordVisible(bool visible);
 
 signals:
-   void appliedPassword(const QString& password);
-   void dialogTerminated();
+    void appliedPassword(const QString &password);
+    void dialogTerminated();
 
 private slots:
-   void updateButtonsEnabled(const QString& password);
-   void updatePasswordStrength(const QString& password);
-   void selectSimpleMode();
-   void selectAdvancedMode();
-   void excludeHexChars();
+    void updateButtonsEnabled(const QString &password);
+    void updatePasswordStrength(const QString &password);
+    void selectSimpleMode();
+    void selectAdvancedMode();
+    void excludeHexChars();
 
-   void passwordSliderMoved();
-   void passwordSpinBoxChanged();
-   void colorStrengthIndicator(double entropy);
+    void passwordSliderMoved();
+    void passwordSpinBoxChanged();
+    void colorStrengthIndicator(double entropy);
 
-   void updateGenerator();
+    void updateGenerator();
 
 private:
-   bool m_updatingSpinBox;
-   bool m_standalone = false;
+    bool m_updatingSpinBox;
+    bool m_standalone = false;
 
-   PasswordGenerator::CharClasses charClasses();
-   PasswordGenerator::GeneratorFlags generatorFlags();
+    PasswordGenerator::CharClasses charClasses();
+    PasswordGenerator::GeneratorFlags generatorFlags();
 
-   const std::unique_ptr <PasswordGenerator> m_passwordGenerator;
-   const std::unique_ptr <Ui::PasswordGeneratorDialog> m_ui;
+    const std::unique_ptr<PasswordGenerator> m_passwordGenerator;
+    const std::unique_ptr<Ui::PasswordGeneratorDialog> m_ui;
 
 protected:
-   void keyPressEvent(QKeyEvent *e) override;
+    void keyPressEvent(QKeyEvent *e) override;
 };
 
 #endif // KEEPASSX_PASSWORDGENERATORDIALOG_H

@@ -15,7 +15,6 @@ public:
 private:
     QString getPath();
 
-
 signals:
 };
 

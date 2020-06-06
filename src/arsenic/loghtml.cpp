@@ -1,12 +1,13 @@
 #include <QDir>
 #include <QFile>
 #include <QIODevice>
-#include <QTextStream>
 #include <QStandardPaths>
+#include <QTextStream>
 
 #include "loghtml.h"
 
-logHtml::logHtml(QObject *parent) : QObject(parent)
+logHtml::logHtml(QObject *parent)
+    : QObject(parent)
 {
 }
 
@@ -21,7 +22,7 @@ QString logHtml::load()
     QFile logfile(getPath());
     logfile.open(QIODevice::ReadOnly | QIODevice::Text);
     QString out = logfile.readAll();
-    return(out);
+    return (out);
 }
 
 void logHtml::append(QString text)
@@ -45,11 +46,9 @@ QString logHtml::getPath()
     if (env.isEmpty()) {
         userPath = homePath;
         userPath += "/.config";
-    }
-    else if (env[0] == '/') {
+    } else if (env[0] == '/') {
         userPath = QFile::decodeName(env);
-    }
-    else {
+    } else {
         userPath = homePath;
         userPath += '/';
         userPath += QFile::decodeName(env);
@@ -67,5 +66,5 @@ QString logHtml::getPath()
 #else
     userPath += "arsenic_log.html";
 #endif
-    return(userPath);
+    return (userPath);
 }

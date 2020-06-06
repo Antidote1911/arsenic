@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
     QCommandLineOption passphraseOption(QStringList() << "p"
                                                       << "passphrase"
                                                       << "pass",
-                                        QCoreApplication::translate("main", "The passphrase for encrypt or decrypt <source>."), QCoreApplication::translate("main", "passphrase"));
+                                        QCoreApplication::translate("main", "The passphrase for encrypt or decrypt <source>."),
+                                        QCoreApplication::translate("main", "passphrase"));
     parser.addOption(passphraseOption);
 
     // Process the actual command line arguments given by the user
@@ -59,51 +60,39 @@ int main(int argc, char *argv[])
 
         if (enc && dec) {
             cout << "ERROR: You must choose encryption OR decryption." << endl;
-            return(0);
+            return (0);
         }
 
         if (passphrase.size() < ARs::MIN_PASS_LENGTH) {
             cout << "Passphrase must be minimum " + QString::number(ARs::MIN_PASS_LENGTH) + "characters" << endl;
-            return(0);
+            return (0);
         }
 
         if (enc) {
             QStringList listFiles;
             listFiles.append(targetFile);
-            Crypto.setParam(true,
-                            listFiles,
-                            passphrase,
-                            config()->get("CRYPTO/argonMemory").toInt(),
-                            config()->get("CRYPTO/argonItr").toInt(),
-                            false);
+            Crypto.setParam(true, listFiles, passphrase, config()->get("CRYPTO/argonMemory").toInt(), config()->get("CRYPTO/argonItr").toInt(), false);
 
             Crypto.start();
             Crypto.wait();
-            cout << endl
-                 << resultat << endl;
-            return(0);
+            cout << endl << resultat << endl;
+            return (0);
         }
 
         if (dec) {
             QStringList listFiles;
             listFiles.append(targetFile);
-            Crypto.setParam(false,
-                            listFiles,
-                            passphrase,
-                            config()->get("CRYPTO/argonMemory").toInt(),
-                            config()->get("CRYPTO/argonItr").toInt(),
-                            false);
+            Crypto.setParam(false, listFiles, passphrase, config()->get("CRYPTO/argonMemory").toInt(), config()->get("CRYPTO/argonItr").toInt(), false);
             Crypto.start();
             Crypto.wait();
-            return(0);
+            return (0);
         }
 
         cout << "Invalids or no arguments" << endl;
-        return(0);
-    }
-    else {
+        return (0);
+    } else {
         MainWindow w;
         w.session();
-        return(app.exec());
+        return (app.exec());
     }
 }
