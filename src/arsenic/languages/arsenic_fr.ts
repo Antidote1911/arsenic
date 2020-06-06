@@ -137,12 +137,12 @@
         <translation type="vanished">Algorithme de chiffrage pour les fichiers</translation>
     </message>
     <message>
-        <location filename="../configDialog.cpp" line="30"/>
+        <location filename="../configDialog.cpp" line="26"/>
         <source>Access error for config file %1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../configDialog.cpp" line="31"/>
+        <location filename="../configDialog.cpp" line="27"/>
         <source>Could not load configuration</source>
         <translation>Impossible de charger la configuration</translation>
     </message>
@@ -150,95 +150,84 @@
 <context>
     <name>Crypto_Thread</name>
     <message>
-        <location filename="../crypto.cpp" line="611"/>
         <source>This file is not an Arsenic File !</source>
-        <translation>Ce fichier ne provient d&apos;Arsenic !</translation>
+        <translation type="vanished">Ce fichier ne provient d&apos;Arsenic !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="615"/>
         <source>The file was not found !</source>
-        <translation>Le fichier n&apos;a pas été trouvé !</translation>
+        <translation type="vanished">Le fichier n&apos;a pas été trouvé !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="619"/>
         <source>The file could not be opened for reading !</source>
-        <translation>Impossible d&apos;ouvrir le fichier en lecture !</translation>
+        <translation type="vanished">Impossible d&apos;ouvrir le fichier en lecture !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="623"/>
         <source>The password could not be hashed !</source>
-        <translation>Impossible de hasher le password !</translation>
+        <translation type="vanished">Impossible de hasher le password !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="627"/>
         <source>The intermediate file header could not be encrypted !</source>
-        <translation>Impossible de chiffrer le header !</translation>
+        <translation type="vanished">Impossible de chiffrer le header !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="631"/>
         <source>The encrypted file already exists !</source>
-        <translation>Le fichier existe déja !</translation>
+        <translation type="vanished">Le fichier existe déja !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="635"/>
         <source>The encrypted file could not be opened for writin !</source>
-        <translation>Impossible d&apos;ouvrir le fichier en écriture !</translation>
+        <translation type="vanished">Impossible d&apos;ouvrir le fichier en écriture !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="639"/>
-        <location filename="../crypto.cpp" line="651"/>
         <source>The encrypted file could not be written to !</source>
-        <translation>Impossible d&apos;écrire le fichier !</translation>
+        <translation type="vanished">Impossible d&apos;écrire le fichier !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="643"/>
         <source>The file could not be read !</source>
-        <translation>Impossible de lire le fichier !</translation>
+        <translation type="vanished">Impossible de lire le fichier !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="647"/>
         <source>The file&apos;s data could not be encrypted !</source>
-        <translation>Impossible de chiffrer les données !</translation>
+        <translation type="vanished">Impossible de chiffrer les données !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="655"/>
         <source>Can&apos;t read the header !</source>
-        <translation>Impossible de lire le header !</translation>
+        <translation type="vanished">Impossible de lire le header !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="659"/>
         <source>Invalid Authentication Tag. could not decrypt the header. Incorrect password or corrupted file !</source>
-        <translation>Authentification invalide. Impossible de déchiffrer le header. Mot de passe incorrect ou le fichier est corrompu !</translation>
+        <translation type="vanished">Authentification invalide. Impossible de déchiffrer le header. Mot de passe incorrect ou le fichier est corrompu !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="663"/>
         <source>Header Integrity Failure. Incorrect password or corrupted file !</source>
-        <translation>Imposssible de dédchffrer le header. Password incorrect, ou fichier corrompu !</translation>
+        <translation type="vanished">Imposssible de dédchffrer le header. Password incorrect, ou fichier corrompu !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="668"/>
         <source>Invalid Authentication Tag. The file is corrupted !</source>
-        <translation>Authentification invalide. Impossible de déchiffrer le fichier. Mot de passe incorrect ou le fichier est corrompu !</translation>
+        <translation type="vanished">Authentification invalide. Impossible de déchiffrer le fichier. Mot de passe incorrect ou le fichier est corrompu !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="672"/>
         <source>File Integrity Failure. The file is corrupted !</source>
-        <translation>Imposssible de dédchffrer le fichier. Password incorrect, ou fichier corrompu !</translation>
+        <translation type="vanished">Imposssible de dédchffrer le fichier. Password incorrect, ou fichier corrompu !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="676"/>
         <source>Aborted by user ! Intermediate file is deleted !</source>
-        <translation>Opération stoppée par l&apos;utilisateur. Le fichier incomplet a été supprimé !</translation>
+        <translation type="vanished">Opération stoppée par l&apos;utilisateur. Le fichier incomplet a été supprimé !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="680"/>
         <source>The file was successfully encrypted !</source>
-        <translation>Le fichier a été chiffré avec succés !</translation>
+        <translation type="vanished">Le fichier a été chiffré avec succés !</translation>
     </message>
     <message>
-        <location filename="../crypto.cpp" line="684"/>
         <source>The file was successfully decrypted !</source>
-        <translation>Le fichier a été déchiffré avec succés !</translation>
+        <translation type="vanished">Le fichier a été déchiffré avec succés !</translation>
+    </message>
+</context>
+<context>
+    <name>Delegate</name>
+    <message>
+        <location filename="../Delegate.cpp" line="90"/>
+        <source>%1%</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -279,12 +268,12 @@
         <translation>Copier</translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="65"/>
+        <location filename="../hashcheckdialog.cpp" line="53"/>
         <source>Load file...</source>
         <translation>Ouvrir Fichier...</translation>
     </message>
     <message>
-        <location filename="../hashcheckdialog.cpp" line="139"/>
+        <location filename="../hashcheckdialog.cpp" line="134"/>
         <source>error</source>
         <translation>erreur</translation>
     </message>
@@ -377,7 +366,7 @@
     </message>
     <message>
         <location filename="../mainwindow.ui" line="344"/>
-        <location filename="../mainwindow.cpp" line="358"/>
+        <location filename="../mainwindow.cpp" line="320"/>
         <source>Add File(s)</source>
         <translation>Ajouter Fichier(s)</translation>
     </message>
@@ -494,85 +483,85 @@
         <translation>Enlever tous les fichiers de la liste</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="323"/>
+        <location filename="../mainwindow.cpp" line="289"/>
         <source>Remove File</source>
         <translation>Enlever Fichier</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="324"/>
+        <location filename="../mainwindow.cpp" line="290"/>
         <source>Name</source>
         <translation>Nom</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="325"/>
+        <location filename="../mainwindow.cpp" line="291"/>
         <source>Path</source>
         <translation>Chemin</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="326"/>
+        <location filename="../mainwindow.cpp" line="292"/>
         <source>Size</source>
         <translation>Taille</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="327"/>
+        <location filename="../mainwindow.cpp" line="293"/>
         <source>Progress</source>
         <translation>Progression</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="490"/>
+        <location filename="../mainwindow.cpp" line="437"/>
         <source>Access error for config file %1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="491"/>
+        <location filename="../mainwindow.cpp" line="438"/>
         <source>Could not load configuration</source>
         <translation>Impossible de charger la configuration</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="764"/>
+        <location filename="../mainwindow.cpp" line="675"/>
         <source>Read Error !</source>
         <translation>Erreur de lecture !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="765"/>
+        <location filename="../mainwindow.cpp" line="675"/>
         <source>Cannot read file %1:
 %2.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="781"/>
+        <location filename="../mainwindow.cpp" line="689"/>
         <source>File loaded</source>
         <translation>Fichier chargé</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="806"/>
+        <location filename="../mainwindow.cpp" line="709"/>
         <source>Write Error !</source>
         <translation>Erreur d&apos;écriture !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="806"/>
+        <location filename="../mainwindow.cpp" line="709"/>
         <source>Cannot write file %1:
 %2.</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="821"/>
+        <location filename="../mainwindow.cpp" line="723"/>
         <source>File saved</source>
         <translation>Fichier enregistré</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="834"/>
+        <location filename="../mainwindow.cpp" line="733"/>
         <source>Application</source>
         <translation>Arsenic</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="835"/>
+        <location filename="../mainwindow.cpp" line="734"/>
         <source>The document has been modified.
 Do you want to save your changes?</source>
         <translation>Le document à été modifié. Voulez-vous enregistrer les changemments ?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="964"/>
+        <location filename="../mainwindow.cpp" line="841"/>
         <source>Text editor is empty !</source>
         <translation>L&apos;editeur de texte est vide !</translation>
     </message>
@@ -581,47 +570,47 @@ Do you want to save your changes?</source>
         <translation type="vanished">Vous devez ajouter du texte !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="949"/>
+        <location filename="../mainwindow.cpp" line="831"/>
         <source>Passphrase field is empty !</source>
         <translation>Pas de passphrase !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="950"/>
+        <location filename="../mainwindow.cpp" line="831"/>
         <source>You must enter a passphrase.</source>
         <translation>Vous devez entrer une passphrase.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="941"/>
+        <location filename="../mainwindow.cpp" line="824"/>
         <source>Passphrase do not match!</source>
         <translation>La passphrases et sa confirmation ne correspondent pas !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="942"/>
+        <location filename="../mainwindow.cpp" line="825"/>
         <source>The passphrase fields do not match. Please make sure they were entered correctly and try again.</source>
         <translation>Le mot de passe et sa confirmation ne correspondent pas. Merci de vérifier qu&apos;ils ont étés entrés correctement.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="904"/>
+        <location filename="../mainwindow.cpp" line="789"/>
         <source>Encryption Error!</source>
         <translation>Erreur Inrerne de chiffrage !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="928"/>
+        <location filename="../mainwindow.cpp" line="811"/>
         <source>Decryption Error!</source>
         <translation>Erreur Inrerne de déchiffrage !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="957"/>
+        <location filename="../mainwindow.cpp" line="836"/>
         <source>Job list is empty !</source>
         <translation>La liste de fichiers est vide !</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="958"/>
+        <location filename="../mainwindow.cpp" line="836"/>
         <source>You must add file(s) to the job list to start processing.</source>
         <translation>Vous devez ajouter de(s) fichier(s) pour faire cela.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="965"/>
+        <location filename="../mainwindow.cpp" line="841"/>
         <source>You must add text to editor to start processing.</source>
         <translation>Vous devez ajouter du texte pour faire cela.</translation>
     </message>
@@ -828,7 +817,7 @@ Do you want to save your changes?</source>
     </message>
     <message>
         <location filename="../passwordGeneratorDialog.ui" line="998"/>
-        <location filename="../passwordGeneratorDialog.cpp" line="165"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="155"/>
         <source>Accept</source>
         <translation>Acceprer</translation>
     </message>
@@ -843,46 +832,159 @@ Do you want to save your changes?</source>
         <translation>Régénérer</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="162"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="152"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="208"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="192"/>
         <source>Entropy: %1 bit</source>
         <translation>Entropie: %1 bit</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="338"/>
-        <location filename="../passwordGeneratorDialog.cpp" line="341"/>
-        <location filename="../passwordGeneratorDialog.cpp" line="344"/>
-        <location filename="../passwordGeneratorDialog.cpp" line="347"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="306"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="309"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="312"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="315"/>
         <source>Password Quality: %1</source>
         <translation>Qualité: %1</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="338"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="306"/>
         <source>Poor</source>
         <comment>Password quality</comment>
         <translation>Trés faible</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="341"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="309"/>
         <source>Weak</source>
         <comment>Password quality</comment>
         <translation>faible</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="344"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="312"/>
         <source>Good</source>
         <comment>Password quality</comment>
         <translation>bon</translation>
     </message>
     <message>
-        <location filename="../passwordGeneratorDialog.cpp" line="347"/>
+        <location filename="../passwordGeneratorDialog.cpp" line="315"/>
         <source>Excellent</source>
         <comment>Password quality</comment>
         <translation>exellent</translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <location filename="../messages.cpp" line="10"/>
+        <source>Data successfully encrypted !</source>
+        <translation>Les données ont étés chiffrées avec succès !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="14"/>
+        <source>Data successfully decrypted !</source>
+        <translation>Les données ont étés déchiffrées avec succès !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="18"/>
+        <source>This file is not an Arsenic File !</source>
+        <translation>Ce fichier ne provient d&apos;Arsenic !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="22"/>
+        <source>The file was not found !</source>
+        <translation>Le fichier n&apos;a pas été trouvé !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="26"/>
+        <source>The file could not be opened for reading !</source>
+        <translation>Impossible d&apos;ouvrir le fichier en lecture !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="30"/>
+        <source>The password could not be hashed !</source>
+        <translation>Impossible de hasher le password !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="34"/>
+        <source>The intermediate file header could not be encrypted !</source>
+        <translation>Impossible de chiffrer le header !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="38"/>
+        <source>The encrypted file already exists !</source>
+        <translation>Le fichier existe déja !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="42"/>
+        <source>The encrypted file could not be opened for writin !</source>
+        <translation>Impossible d&apos;ouvrir le fichier en écriture !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="46"/>
+        <source>The encrypted file could not be written to !</source>
+        <translation>Impossible d&apos;écrire le fichier !</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="50"/>
+        <source>The file could not be read.</source>
+        <translation>Impossible de lire le fichier.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="54"/>
+        <source>The file&apos;s data could not be encrypted.</source>
+        <translation>Impossible de chiffrer les données.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="58"/>
+        <source>The encrypted file could not be written to.</source>
+        <translation>Impossible d&apos;écrire le fichier.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="62"/>
+        <source>Can&apos;t read the header.</source>
+        <translation>Impossible de lire le header.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="66"/>
+        <source>Authentication Failure. Could not decrypt the header. Incorrect password or corrupted file.</source>
+        <translation>Authentification invalide. Impossible de déchiffrer le header. Password invalide, ou données corrompues.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="70"/>
+        <source>Header Integrity Failure. Incorrect password or corrupted file.</source>
+        <translation>Integritée du header invalide. Mot de passe incorrect, ou données corrompues.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="74"/>
+        <source>Authentication Failure. Wrong password, or data are corrupted.</source>
+        <translation>Authentification invalide. Mot de passe incorrect, ou données corrompues.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="78"/>
+        <source>File Integrity Failure. Data are corrupted.</source>
+        <translation>Integritée invalide. Mot de passe incorrect, ou données corrompues.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="82"/>
+        <source>Aborted by user ! Intermediate file is deleted.</source>
+        <translation>Annulé par l&apos;utilisateur ! Le fichier incomplet à été supprimé.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="86"/>
+        <source>Invalid Arsenic CryptoBox input.</source>
+        <translation>Données Arsenic Cryptobox Invalides.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="90"/>
+        <source>Bad Arsenic CryptoBox version.</source>
+        <translation>Mauvaise version d&apos; Arsenic Cryptobox.</translation>
+    </message>
+    <message>
+        <location filename="../messages.cpp" line="94"/>
+        <source>Bad Arsenic CryptoBox header.</source>
+        <translation>Invalide Arsenic Cryptobox header.</translation>
     </message>
 </context>
 <context>
@@ -908,7 +1010,7 @@ Do you want to save your changes?</source>
         <translation>Le password pour chiffrer ou déchiffrer &lt;source&gt;.</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="42"/>
+        <location filename="../main.cpp" line="43"/>
         <source>passphrase</source>
         <translation>password</translation>
     </message>
