@@ -91,12 +91,8 @@ int textCrypto::decryptString(QString &cipher, QString password)
     decrypt.setTripleNonce(tripleNonce.bits_of());
     try {
         decrypt.finish(ciphertext);
-    } catch (const Botan::Invalid_Authentication_Tag &) {
-        return (INVALID_TAG);
-    } catch (const Botan::Integrity_Failure &) {
-        return (INTEGRITY_FAILURE);
-    } catch (const Botan::Decoding_Error &) {
-        return (INTEGRITY_FAILURE);
+    } catch (const Botan::Exception &) {
+        return (DECRYPT_FAIL);
     }
 
     const string out(ciphertext.begin(), ciphertext.end()); // std::string out(reinterpret_cast<const char*>(outbuffer.data()), outbuffer.size());

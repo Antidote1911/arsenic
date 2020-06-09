@@ -6,6 +6,7 @@
 
 QT       += core gui
 CONFIG += c++17
+QMAKE_CXXFLAGS += -std=c++17
 TEMPLATE = app
 
 CONFIG(release, debug|release): TARGET = arsenic
@@ -51,7 +52,8 @@ HEADERS += \
     progressbar.h \
     skin.h \
     textcrypto.h \
-    tripleencryption.h
+    tripleencryption.h \
+    utils.h
 
 SOURCES += \
     Config.cpp \
@@ -70,7 +72,8 @@ SOURCES += \
     passwordGeneratorDialog.cpp \
     skin.cpp \
     textcrypto.cpp \
-    tripleencryption.cpp
+    tripleencryption.cpp \
+    utils.cpp
 
 RESOURCES += \
     rsc.qrc

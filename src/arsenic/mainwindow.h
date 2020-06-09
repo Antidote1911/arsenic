@@ -90,7 +90,6 @@ private:
     void delegate();
     void removeFile(const QModelIndex &index);
     void addFilePathToModel(const QString &filePath);
-    QString getFileSize(qint64 size);
 
     Crypto_Thread *Crypto;
     QStringList getListFiles();

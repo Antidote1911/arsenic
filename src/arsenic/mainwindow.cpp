@@ -11,7 +11,6 @@
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QPlainTextEdit>
-#include <cmath>
 
 #include "Config.h"
 #include "Delegate.h"
@@ -25,6 +24,7 @@
 #include "messages.h"
 #include "passwordGeneratorDialog.h"
 #include "textcrypto.h"
+#include "utils.h"
 
 using namespace ARs;
 
@@ -337,7 +337,7 @@ void MainWindow::addFilePathToModel(const QString &filePath)
     QFileInfo fileInfo{filePath};
     if (fileInfo.exists() && fileInfo.isFile()) // If the file exists, add it to the model
     {
-        const auto fileSize{getFileSize((fileInfo.size()))};
+        const auto fileSize{Utils::getFileSize((fileInfo.size()))};
         const auto fileName{fileInfo.fileName()};
 
         const auto fileItem{new QStandardItem{fileName}};
@@ -794,6 +794,12 @@ void MainWindow::encryptText()
 
 void MainWindow::decryptText()
 {
+    std::vector<int> const tableau_entiers{1, 3, 5, 7, 9};
+    std::vector<QString> const tableau_qstring{"hfhgfh", "hyuyu", "5.123"};
+
+    Utils::afficher(tableau_qstring);
+    Utils::afficher(tableau_entiers);
+
     if (m_ui->cryptoPadEditor->toPlainText().isEmpty()) {
         displayEmptyEditor();
         return;
@@ -839,32 +845,4 @@ void MainWindow::displayEmptyJob()
 void MainWindow::displayEmptyEditor()
 {
     QMessageBox::warning(this, tr("Text editor is empty !"), tr("You must add text to editor to start processing."));
-}
-
-QString MainWindow::getFileSize(qint64 size)
-{
-    static const double KiB = pow(2, 10);
-    static const double MiB = pow(2, 20);
-    static const double GiB = pow(2, 30);
-    static const double TiB = pow(2, 40);
-    static const double PiB = pow(2, 50);
-    // convert to appropriate units based on the size of the item
-    if (size >= 0) {
-        static const int precision = 0;
-        if (size < KiB) {
-            return (QString::number(size, 'f', precision) + " B");
-        } else if (size < MiB) {
-            return (QString::number(size / KiB, 'f', precision) + " KiB");
-        } else if (size < GiB) {
-            return (QString::number(size / MiB, 'f', precision) + " MiB");
-        } else if (size < TiB) {
-            return (QString::number(size / GiB, 'f', precision) + " GiB");
-        } else if (size < PiB) {
-            return (QString::number(size / TiB, 'f', precision) + " TiB");
-        } else {
-            return (QString::number(size / PiB, 'f', precision) + " PiB");
-        }
-    } else {
-        return ("");
-    }
 }
