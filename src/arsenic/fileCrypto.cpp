@@ -29,45 +29,36 @@ void Crypto_Thread::setParam(bool direction, QStringList filenames, const QStrin
     m_password = password;
     m_direction = direction;
     m_deletefile = deletefile;
-    if (argonmem == 0)
-    {
+    if (argonmem == 0) {
         m_argonmem = MEMLIMIT_INTERACTIVE;
     }
-    if (argonmem == 1)
-    {
+    if (argonmem == 1) {
         m_argonmem = MEMLIMIT_MODERATE;
     }
-    if (argonmem == 2)
-    {
+    if (argonmem == 2) {
         m_argonmem = MEMLIMIT_SENSITIVE;
     }
     ////////////////////////////////////////////////
-    if (argoniter == 0)
-    {
+    if (argoniter == 0) {
         m_argoniter = ITERATION_INTERACTIVE;
     }
-    if (argoniter == 1)
-    {
+    if (argoniter == 1) {
         m_argoniter = ITERATION_MODERATE;
     }
-    if (argoniter == 2)
-    {
+    if (argoniter == 2) {
         m_argoniter = ITERATION_SENSITIVE;
     }
 }
 
 void Crypto_Thread::run()
 {
-    for (auto &inputFileName : m_filenames)
-    {
-        if (m_aborted)
-        {
+    for (auto &inputFileName : m_filenames) {
+        if (m_aborted) {
             m_aborted = true;
             Crypto_Thread::terminate();
             return;
         }
-        if (m_direction == true)
-        {
+        if (m_direction == true) {
             emit statusMessage("");
             emit statusMessage(QDateTime::currentDateTime().toString("dddd dd MMMM yyyy (hh:mm:ss)") + " encryption of " + inputFileName);
             int result = encrypt(inputFileName);
@@ -77,8 +68,7 @@ void Crypto_Thread::run()
                 m_aborted = false;
                 return;
             }
-        }
-        else {
+        } else {
             emit statusMessage("");
             emit statusMessage(QDateTime::currentDateTime().toString("dddd dd MMMM yyyy (hh:mm:ss)") + " decryption of " + inputFileName);
             int result = decrypt(inputFileName);
@@ -112,13 +102,13 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
      */
     QFile src_file(QDir::cleanPath(src_path));
     QFileInfo src_info(src_file);
-    const auto fileSize{ src_info.size() };
+    const auto fileSize{src_info.size()};
     const auto fileName = src_info.fileName().toUtf8();
     const auto fileNameSize = fileName.size();
     AutoSeeded_RNG rng;
-    const auto randomData{ rng.random_vec(IN_BUFFER_SIZE) };
-    auto argonSalt{ rng.random_vec(ARGON_SALT_LEN) };
-    auto tripleNonce{ rng.random_vec(CIPHER_IV_LEN * 3) };
+    const auto randomData{rng.random_vec(IN_BUFFER_SIZE)};
+    auto argonSalt{rng.random_vec(ARGON_SALT_LEN)};
+    auto tripleNonce{rng.random_vec(CIPHER_IV_LEN * 3)};
 
     // Append the file name to the buffer and some random data
     SecureVector<quint8> master_buffer(fileName.size() + randomData.size());
@@ -128,30 +118,26 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     // Triple encryption of the buffer who contain the original name of the file
     // and some random data
 
-    TripleEncryption encrypt(0);
+    TripleEncryption encrypt(true);
     encrypt.setSalt(argonSalt);
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
 
     encrypt.derivePassword(m_password, m_argonmem, m_argoniter);
     encrypt.setTripleNonce(tripleNonce);
     encrypt.finish(master_buffer);
-    if (!src_file.exists() || !src_info.isFile())
-    {
-        return(SRC_CANNOT_OPEN_READ);
+    if (!src_file.exists() || !src_info.isFile()) {
+        return (SRC_CANNOT_OPEN_READ);
     }
-    if (!src_file.open(QIODevice::ReadOnly))
-    {
-        return(SRC_CANNOT_OPEN_READ);
+    if (!src_file.open(QIODevice::ReadOnly)) {
+        return (SRC_CANNOT_OPEN_READ);
     }
     // create the new file, the path should normally be to the same directory as the source
     QFile des_file(QDir::cleanPath(src_path) + DEFAULT_EXTENSION);
-    if (des_file.exists())
-    {
-        return(DES_FILE_EXISTS);
+    if (des_file.exists()) {
+        return (DES_FILE_EXISTS);
     }
-    if (!des_file.open(QIODevice::WriteOnly))
-    {
-        return(DES_CANNOT_OPEN_WRITE);
+    if (!des_file.open(QIODevice::WriteOnly)) {
+        return (DES_CANNOT_OPEN_WRITE);
     }
     QDataStream des_stream(&des_file);
     des_stream.setVersion(QDataStream::Qt_5_0);
@@ -172,11 +158,10 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
     // now, move on to the actual data
     QDataStream src_stream(&src_file);
     emit statusMessage("Encryption... Please wait...");
-    auto processed{ 0. };
+    auto processed{0.};
     quint32 bytes_read;
     SecureVector<quint8> inBuf(IN_BUFFER_SIZE);
-    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char *>(inBuf.data()), IN_BUFFER_SIZE)) > 0)
-    {
+    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char *>(inBuf.data()), IN_BUFFER_SIZE)) > 0) {
         // calculate percentage proccessed
         processed += bytes_read;
         emit updateProgress(src_path, (processed / fileSize) * 100);
@@ -186,21 +171,19 @@ qint32 Crypto_Thread::encrypt(const QString src_path)
         des_stream.writeRawData(reinterpret_cast<char *>(inBuf.data()), inBuf.size());
         inBuf.resize(IN_BUFFER_SIZE);
     }
-    if (m_aborted)
-    {
+    if (m_aborted) {
         emit updateProgress(src_path, 0);
         des_file.close();
         des_file.remove();
-        return(ABORTED_BY_USER);
+        return (ABORTED_BY_USER);
     }
-    if (m_deletefile)
-    {
+    if (m_deletefile) {
         src_file.close();
         QFile::remove(src_path);
         emit sourceDeletedAfterSuccess(src_path);
     }
     emit addEncrypted(des_file.fileName());
-    return(CRYPT_SUCCESS);
+    return (CRYPT_SUCCESS);
 }
 
 qint32 Crypto_Thread::decrypt(QString src_path)
@@ -208,13 +191,11 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     emit updateProgress(src_path, 0);
     QFile src_file(QDir::cleanPath(src_path));
     QFileInfo src_info(src_file);
-    if (!src_file.exists() || !src_info.isFile())
-    {
-        return(SRC_CANNOT_OPEN_READ);
+    if (!src_file.exists() || !src_info.isFile()) {
+        return (SRC_CANNOT_OPEN_READ);
     }
-    if (!src_file.open(QIODevice::ReadOnly))
-    {
-        return(SRC_CANNOT_OPEN_READ);
+    if (!src_file.open(QIODevice::ReadOnly)) {
+        return (SRC_CANNOT_OPEN_READ);
     }
     // open the source file and extract all informations necessary for decryption
     QDataStream src_stream(&src_file);
@@ -223,22 +204,19 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     // Read and check the header
     quint32 magic;
     src_stream >> magic;
-    if (magic != 0x41525345)
-    {
-        return(NOT_AN_ARSENIC_FILE);
+    if (magic != 0x41525345) {
+        return (NOT_AN_ARSENIC_FILE);
     }
     // Read and check the version
     QVersionNumber version;
     src_stream >> version;
     emit statusMessage("this file is encrypted with Arsenic version " + version.toString());
-    if (version < APP_VERSION)
-    {
+    if (version < APP_VERSION) {
         emit statusMessage("Warning: this is file is encrypted by an old Arsenic Version...");
         emit statusMessage("Warning: version of encrypted file " + version.toString());
         emit statusMessage("Warning: version of your Arsenic " + APP_VERSION.toString());
     }
-    if (version > APP_VERSION)
-    {
+    if (version > APP_VERSION) {
         emit statusMessage("Warning: this file is encrypted with a more recent version of Arsenic...");
         emit statusMessage("Warning: version of encrypted file " + version.toString());
         emit statusMessage("Warning: version of your Arsenic " + APP_VERSION.toString());
@@ -253,9 +231,8 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     qint64 fileNameSize;
     src_stream >> fileNameSize;
     // On most systems the maximum filename length is 255 bytes
-    if (fileNameSize > 255)
-    {
-        return(SRC_HEADER_READ_ERROR);
+    if (fileNameSize > 255) {
+        return (SRC_HEADER_READ_ERROR);
     }
     qint64 originalfileSize;
     src_stream >> originalfileSize;
@@ -264,46 +241,39 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     SecureVector<quint8> tripleNonce(CIPHER_IV_LEN * 3);
     SecureVector<quint8> master_buffer(fileNameSize + IN_BUFFER_SIZE + MACBYTES * 3);
     // Read the salt, the three nonces and the header
-    if (!src_stream.readRawData(reinterpret_cast<char *>(salt_buffer.data()), ARGON_SALT_LEN))
-    {
-        return(SRC_HEADER_READ_ERROR);
+    if (!src_stream.readRawData(reinterpret_cast<char *>(salt_buffer.data()), ARGON_SALT_LEN)) {
+        return (SRC_HEADER_READ_ERROR);
     }
-    if (!src_stream.readRawData(reinterpret_cast<char *>(tripleNonce.data()), CIPHER_IV_LEN * 3))
-    {
-        return(SRC_HEADER_READ_ERROR);
+    if (!src_stream.readRawData(reinterpret_cast<char *>(tripleNonce.data()), CIPHER_IV_LEN * 3)) {
+        return (SRC_HEADER_READ_ERROR);
     }
-    if (!src_stream.readRawData(reinterpret_cast<char *>(master_buffer.data()), master_buffer.size()))
-    {
-        return(SRC_HEADER_READ_ERROR);
+    if (!src_stream.readRawData(reinterpret_cast<char *>(master_buffer.data()), master_buffer.size())) {
+        return (SRC_HEADER_READ_ERROR);
     }
     // calculate the internal key with Argon2 and split them in three
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
 
     // decrypt header
-    TripleEncryption decrypt(1);
+    TripleEncryption decrypt(false);
     decrypt.setSalt(salt_buffer);
     decrypt.derivePassword(m_password, m_argonmem, m_argoniter);
     decrypt.setTripleNonce(tripleNonce);
-    try
-    {
+    try {
         decrypt.finish(master_buffer);
-    }
-    catch (const Botan::Exception &)
-    {
-        return(DECRYPT_FAIL);
+    } catch (const Botan::Exception &) {
+        return (DECRYPT_FAIL);
     }
 
     // get from the decrypted header the three internal keys and the original filename
-    const auto *mk2{ master_buffer.begin().base() };
+    const auto *mk2{master_buffer.begin().base()};
     const OctetString name(mk2, fileNameSize);
 
     // create the decrypted file
-    const string tmp{ (name.begin()), name.end() };
-    const auto originalName{ QString::fromStdString(tmp) };
+    const string tmp{(name.begin()), name.end()};
+    const auto originalName{QString::fromStdString(tmp)};
     QFile des_file(uniqueFileName(QDir::cleanPath(src_info.absolutePath() + "/" + originalName)));
-    if (!des_file.open(QIODevice::WriteOnly))
-    {
-        return(DES_CANNOT_OPEN_WRITE);
+    if (!des_file.open(QIODevice::WriteOnly)) {
+        return (DES_CANNOT_OPEN_WRITE);
     }
     QDataStream des_stream(&des_file);
     des_stream.setVersion(QDataStream::Qt_5_0);
@@ -314,62 +284,55 @@ qint32 Crypto_Thread::decrypt(QString src_path)
     emit statusMessage("Decryption... Please wait.");
 
     // The percentage is calculated by dividing the progress (value() - minimum()) divided by maximum() - minimum().
-    auto processed{ 0. };
+    auto processed{0.};
     quint32 bytes_read;
     SecureVector<quint8> inBuf(IN_BUFFER_SIZE + MACBYTES * 3);
-    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char *>(inBuf.data()), IN_BUFFER_SIZE + MACBYTES * 3)) > 0)
-    {
+    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char *>(inBuf.data()), IN_BUFFER_SIZE + MACBYTES * 3)) > 0) {
         // calculate percentage proccessed
         processed += bytes_read - MACBYTES * 3;
         emit updateProgress(src_path, (processed / originalfileSize) * 100);
-        try
-        {
+        try {
             inBuf.resize(bytes_read);
             decrypt.finish(inBuf);
             des_stream.writeRawData(reinterpret_cast<char *>(inBuf.data()), inBuf.size());
             inBuf.resize(IN_BUFFER_SIZE + MACBYTES * 3);
-        }
-        catch (const Botan::Exception &)
-        {
+        } catch (const Botan::Exception &) {
             des_file.remove();
-            return(DECRYPT_FAIL);
+            return (DECRYPT_FAIL);
         }
         emit updateProgress(src_path, 100);
     }
-    if (m_deletefile)
-    {
+    if (m_deletefile) {
         src_file.close();
         src_file.remove();
         emit sourceDeletedAfterSuccess(src_path);
     }
     QFileInfo des_info(des_file);
     emit addDecrypted(des_info.filePath());
-    return(DECRYPT_SUCCESS);
+    return (DECRYPT_SUCCESS);
 }
 
 QString Crypto_Thread::uniqueFileName(const QString &fileName)
 {
-    QFileInfo originalFile{ fileName };
-    auto uniqueFileName{ fileName };
-    auto foundUniqueFileName{ false };
-    auto i{ 0 };
-    while (!foundUniqueFileName && i < 100000)
-    {
-        QFileInfo uniqueFile{ uniqueFileName };
+    QFileInfo originalFile{fileName};
+    auto uniqueFileName{fileName};
+    auto foundUniqueFileName{false};
+    auto i{0};
+    while (!foundUniqueFileName && i < 100000) {
+        QFileInfo uniqueFile{uniqueFileName};
         if (uniqueFile.exists() && uniqueFile.isFile()) // Write number of copies before file extension
         {
-            uniqueFileName = originalFile.absolutePath() % QDir::separator() % originalFile.baseName() % QString{ " (%1)" }.arg(i + 2);
+            uniqueFileName = originalFile.absolutePath() % QDir::separator() % originalFile.baseName() % QString{" (%1)"}.arg(i + 2);
             if (!originalFile.completeSuffix().isEmpty()) // Add the file extension if there is one
             {
                 uniqueFileName += QStringLiteral(".") % originalFile.completeSuffix();
             }
             ++i;
-        }
-        else {
+        } else {
             foundUniqueFileName = true;
         }
     }
-    return(uniqueFileName);
+    return (uniqueFileName);
 }
 
 void Crypto_Thread::abort()

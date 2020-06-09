@@ -9,7 +9,7 @@ class TripleEncryption : public QObject
 {
     Q_OBJECT
 public:
-    explicit TripleEncryption(int mode = 0, QObject *parent = nullptr);
+    explicit TripleEncryption(bool mode = true, QObject *parent = nullptr);
 
     void setSalt(Botan::OctetString salt);
     void derivePassword(QString pass, quint32 memlimit, quint32 iterations);

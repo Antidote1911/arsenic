@@ -5,12 +5,11 @@
 using namespace Botan;
 using namespace ARs;
 
-TripleEncryption::TripleEncryption(int mode, QObject *parent)
+TripleEncryption::TripleEncryption(bool mode, QObject *parent)
     : QObject(parent)
 {
-    assert(mode == 0 || mode == 1 && "Mode argument must be 0 for encrypt or 1 for decrypt.");
 
-    if (mode == 0) {
+    if (mode) {
         m_direction = ENCRYPTION;
     } else {
         m_direction = DECRYPTION;

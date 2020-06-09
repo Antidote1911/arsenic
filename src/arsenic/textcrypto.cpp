@@ -40,7 +40,7 @@ int textCrypto::encryptString(QString &plaintext, QString password)
     const auto argonSalt{rng.random_vec(ARGON_SALT_LEN)};
     const auto tripleNonce{rng.random_vec(CIPHER_IV_LEN * 3)};
 
-    TripleEncryption encrypt(0);
+    TripleEncryption encrypt(true);
     encrypt.setSalt(argonSalt);
     encrypt.derivePassword(password, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
     encrypt.setTripleNonce(tripleNonce);
@@ -85,7 +85,7 @@ int textCrypto::decryptString(QString &cipher, QString password)
     ciphertext.erase(ciphertext.begin(), ciphertext.begin() + CRYPTOBOX_HEADER_LEN);
 
     // Now we can do the triple decryption
-    TripleEncryption decrypt(1);
+    TripleEncryption decrypt(false);
     decrypt.setSalt(salt);
     decrypt.derivePassword(password, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
     decrypt.setTripleNonce(tripleNonce.bits_of());
