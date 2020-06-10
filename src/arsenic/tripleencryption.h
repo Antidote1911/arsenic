@@ -4,19 +4,19 @@
 #include "botan_all.h"
 #include "constants.h"
 #include <QObject>
+#include <memory>
 
-class TripleEncryption : public QObject
-{
+class TripleEncryption : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit TripleEncryption(bool mode = true, QObject *parent = nullptr);
 
-    void setSalt(Botan::OctetString salt);
-    void derivePassword(QString pass, quint32 memlimit, quint32 iterations);
-    void setTripleNonce(Botan::SecureVector<quint8> nonce);
+    void setSalt(const Botan::OctetString &salt);
+    void derivePassword(const QString &password, quint32 memlimit, quint32 iterations);
+    void setTripleNonce(const Botan::SecureVector<quint8> &nonce);
     void finish(Botan::SecureVector<quint8> &buffer);
 
-private:
+  private:
     void incrementNonce();
     Botan::Cipher_Dir m_direction;
     Botan::SecureVector<quint8> m_nonceChaCha20;
@@ -29,7 +29,7 @@ private:
 
     Botan::OctetString m_salt;
 
-signals:
+  signals:
 };
 
 #endif // TRIPLEENCRYPTION_H

@@ -15,7 +15,7 @@ textCrypto::textCrypto(QObject *parent)
     : QObject(parent)
 {
 }
-int textCrypto::encryptString(QString &plaintext, QString password)
+quint32 textCrypto::encryptString(QString &plaintext, QString const &password)
 {
     /* Version code is First 24 bits of SHA-256("Arsenic Cryptobox")
      * Output format is:
@@ -27,18 +27,18 @@ int textCrypto::encryptString(QString &plaintext, QString password)
      * ciphertext
      */
 
-    const auto CRYPTOBOX_VERSION_CODE{0x2EC4993A};
-    const auto VERSION_CODE_LEN{4};
+    const auto CRYPTOBOX_VERSION_CODE = 0x2EC4993A;
+    const auto VERSION_CODE_LEN       = 4;
 
-    const auto clear{plaintext.toStdString()};
+    const auto clear = plaintext.toStdString();
     // Copy input data to a buffer
     SecureVector<quint8> pt(clear.data(), clear.data() + clear.length());
 
     // Now we can do the triple encryption
     // Randomize the 16 bytes salt and the three 24 bytes nonces
     AutoSeeded_RNG rng;
-    const auto argonSalt{rng.random_vec(ARGON_SALT_LEN)};
-    const auto tripleNonce{rng.random_vec(CIPHER_IV_LEN * 3)};
+    const auto argonSalt   = rng.random_vec(ARGON_SALT_LEN);
+    const auto tripleNonce = rng.random_vec(CIPHER_IV_LEN * 3);
 
     TripleEncryption encrypt(true);
     encrypt.setSalt(argonSalt);
@@ -58,16 +58,17 @@ int textCrypto::encryptString(QString &plaintext, QString password)
     return (CRYPT_SUCCESS);
 }
 
-int textCrypto::decryptString(QString &cipher, QString password)
+quint32 textCrypto::decryptString(QString &cipher, QString const &password)
 {
-    const auto CRYPTOBOX_HEADER_LEN{VERSION_CODE_LEN + ARGON_SALT_LEN + CIPHER_IV_LEN * 3};
-    const auto cipherStr{cipher.toStdString()};
+    const auto CRYPTOBOX_HEADER_LEN = VERSION_CODE_LEN + ARGON_SALT_LEN + CIPHER_IV_LEN * 3;
+    const auto cipherStr            = cipher.toStdString();
 
     DataSource_Memory input_src(cipherStr);
     SecureVector<quint8> ciphertext;
     try {
         ciphertext = PEM_Code::decode_check_label(input_src, "ARSENIC CRYPTOBOX MESSAGE");
-    } catch (Botan::Exception const &e) {
+    }
+    catch (Botan::Exception const &e) {
         return (BAD_CRYPTOBOX_PEM_HEADER);
     }
     if (ciphertext.size() < CRYPTOBOX_HEADER_LEN) {
@@ -91,27 +92,29 @@ int textCrypto::decryptString(QString &cipher, QString password)
     decrypt.setTripleNonce(tripleNonce.bits_of());
     try {
         decrypt.finish(ciphertext);
-    } catch (const Botan::Exception &) {
+    }
+    catch (const Botan::Exception &) {
         return (DECRYPT_FAIL);
     }
 
     const string out(ciphertext.begin(), ciphertext.end()); // std::string out(reinterpret_cast<const char*>(outbuffer.data()), outbuffer.size());
-    cipher = (QString::fromStdString(out));
+    cipher = QString::fromStdString(out);
     return (DECRYPT_SUCCESS);
 }
 
-void textCrypto::start(QString password, int dirrection)
+void textCrypto::start(const QString &password, bool dirrection)
 {
-    m_password = password;
+    m_password   = password;
     m_dirrection = dirrection;
 }
 
-int textCrypto::finish(QString &text)
+quint32 textCrypto::finish(QString &text)
 {
-    int result;
-    if (m_dirrection == 0) {
+    quint32 result;
+    if (m_dirrection) {
         result = encryptString(text, m_password);
-    } else {
+    }
+    else {
         result = decryptString(text, m_password);
     }
     return (result);

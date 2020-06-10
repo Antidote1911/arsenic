@@ -4,32 +4,38 @@
 #include <QMainWindow>
 #include <QStandardItemModel>
 #include <QTranslator>
+#include <QScopedPointer>
 
 #include "fileCrypto.h"
+#include "textcrypto.h"
 #include "skin.h"
+#include "hashcheckdialog.h"
+#include "argonTests.h"
+#include "loghtml.h"
+#include "passwordGeneratorDialog.h"
+#include "aboutDialog.h"
 
 namespace Ui {
 class MainWindow;
 }
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
 
-public:
+  public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
     void session();
 
-public slots:
+  public slots:
     void onPercentProgress(const QString &path, quint32 percent);
-    void onMessageChanged(QString message);
+    void onMessageChanged(const QString message);
     void AddEncryptedFile(QString filepath);
     void AddDecryptedFile(QString filepath);
     void removeDeletedFile(QString filepath);
 
-private slots:
+  private slots:
     void quit();
     void configuration();
     void viewPassStateChanged(quint32 index);
@@ -52,23 +58,24 @@ private slots:
     void clearListFiles();
     void clearLog();
 
-protected slots:
+  protected slots:
     // this slot is called by the language menu actions
     void slotLanguageChanged(QAction *action);
     void setPassword(QString);
 
-protected:
+  protected:
     void closeEvent(QCloseEvent *event) Q_DECL_OVERRIDE;
 
     // this event is called, when a new translator is loaded or the system language is changed
     void changeEvent(QEvent *event) Q_DECL_OVERRIDE;
 
-private:
-    const std::unique_ptr<Ui::MainWindow> m_ui;
+  private:
+    const QScopedPointer<Ui::MainWindow> m_ui;
     void loadPreferences();
     void savePreferences();
 
     Skin skin;
+
     void createLanguageMenu(void); // creates the language menu dynamically from the content of m_langPath
 
     QString m_langPath;                          // Path of language files. This is always fixed to /languages.
@@ -91,12 +98,15 @@ private:
     void removeFile(const QModelIndex &index);
     void addFilePathToModel(const QString &filePath);
 
-    Crypto_Thread *Crypto;
+    QScopedPointer<Crypto_Thread> m_file_crypto;
+    QScopedPointer<textCrypto> m_text_crypto;
+    QScopedPointer<logHtml> m_log;
+
     QStringList getListFiles();
     void loadLogFile();
 
     // simples messages box display
-    void displayMessageBox(QString title, QString text);
+    void displayMessageBox(const QString &title, const QString &text);
     void displayPasswordNotMatch();
     void displayEmptyPassword();
     void displayEmptyJob();

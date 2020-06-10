@@ -31,10 +31,10 @@
 const char *PasswordGenerator::DefaultExcludedChars = "";
 
 PasswordGenerator::PasswordGenerator()
-    : m_length(0)
-    , m_classes(nullptr)
-    , m_flags(nullptr)
-    , m_excluded(PasswordGenerator::DefaultExcludedChars)
+    : m_length(0),
+      m_classes(),
+      m_flags(),
+      m_excluded(PasswordGenerator::DefaultExcludedChars)
 {
 }
 
@@ -105,11 +105,12 @@ QString PasswordGenerator::generatePassword() const
         for (int i = (password.size() - 1); i >= 1; i--) {
             int j = Botan::Sodium::randombytes_uniform(static_cast<quint32>(i + 1));
 
-            QChar tmp = password[i];
+            QChar tmp   = password[i];
             password[i] = password[j];
             password[j] = tmp;
         }
-    } else {
+    }
+    else {
         for (int i = 0; i < m_length; i++) {
             int pos = Botan::Sodium::randombytes_uniform(static_cast<quint32>(passwordChars.size()));
 
@@ -124,7 +125,8 @@ bool PasswordGenerator::isValid() const
 {
     if (m_classes == 0) {
         return (false);
-    } else if (m_length == 0) {
+    }
+    else if (m_length == 0) {
         return (false);
     }
 
@@ -301,7 +303,8 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         if (!group.isEmpty()) {
             passwordGroups.replace(i, group);
             ++i;
-        } else {
+        }
+        else {
             passwordGroups.remove(i);
         }
     }

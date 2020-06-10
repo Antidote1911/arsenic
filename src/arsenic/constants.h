@@ -18,7 +18,7 @@ const QString APP_DESCRIPTION        { "Strong encryption" };
 const QString APP_URL                { "https://github.com/Antidote1911" };
 const quint32 MAGIC_NUMBER           { 0x41525345 };
 const quint32 CRYPTOBOX_VERSION_CODE { 0x2EC4993A };
-const size_t VERSION_CODE_LEN        { 4 };
+const quint32 VERSION_CODE_LEN        { 4 };
 
 // Default constants for Arsenic preferences
 const QString DEFAULT_EXTENSION         { ".arsenic" };
@@ -40,7 +40,7 @@ const quint32 DEFAULT_CLIPBOARD_TIMEOUT { 10 };
 const QString BOTAN_VERSION             { QString::fromStdString(Botan::version_string()) };
 
 const QString DEFAULT_LIST_PATH         { "session.qtlist" };
-const qint32 MIN_PASS_LENGTH            { 8 };
+const int MIN_PASS_LENGTH            { 8 };
 
 // Default constants for Crypto engine
 const quint32 MACBYTES                  { 16 };

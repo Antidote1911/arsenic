@@ -13,8 +13,7 @@
 #include <QMimeData>
 
 HashCheckDialog::HashCheckDialog(QWidget *parent)
-    : QDialog(parent)
-    , m_ui(new Ui::HashCheckDialog)
+    : QDialog(parent), m_ui(new Ui::HashCheckDialog)
 {
     m_ui->setupUi(this);
 
@@ -78,21 +77,21 @@ void HashCheckDialog::calculate(const QString &text)
     if (f_info.isFile()) {
         file.open(QIODevice::ReadOnly);
 
-        const int block_size = (file.size() > 1024 * 1024) ? 10 * 1024 : 1024;
+        const quint32 block_size = (file.size() > 1024 * 1024) ? 10 * 1024 : 1024;
         // char buffer[10*1024]; // allocate enough space for both cases so msvc will be happy
-        int bytes_read;
+        quint32 bytes_read;
 
-        int progress_max = file.size() / block_size;
-        progress_max = (progress_max > 0) ? progress_max : 1;
+        quint32 progress_max = file.size() / block_size;
+        progress_max         = (progress_max > 0) ? progress_max : 1;
         m_ui->progressBar->setMaximum(progress_max);
         m_ui->progressBar->reset();
 
-        Botan::SecureVector<uint8_t> buf(10 * 1024);
+        Botan::SecureVector<quint8> buf(10 * 1024);
 
         // QCryptographicHash hash(hash_algorithm);
 
         cancel_calculation = false;
-        isCalculating = true;
+        isCalculating      = true;
         std::unique_ptr<Botan::HashFunction> hash2(Botan::HashFunction::create(text.toStdString()));
 
         while ((hash2 && !cancel_calculation && (bytes_read = file.read(reinterpret_cast<char *>(buf.data()), block_size)) > 0)) {
@@ -111,7 +110,8 @@ void HashCheckDialog::calculate(const QString &text)
         if (!hash2) {
             m_ui->checksumEdit->setText("Invalid algo");
         }
-    } else {
+    }
+    else {
         m_ui->checksumEdit->setText("SRC_CANNOT_OPEN_READ");
     }
 
@@ -139,7 +139,8 @@ void HashCheckDialog::closeEvent(QCloseEvent *event)
 {
     if (isCalculating) {
         event->ignore();
-    } else {
+    }
+    else {
         event->accept();
     }
 }
@@ -170,7 +171,8 @@ void HashCheckDialog::textChanged(const QString &text)
 
     if (f_info.isFile()) {
         m_ui->calculateButton->setEnabled(true);
-    } else {
+    }
+    else {
         m_ui->calculateButton->setEnabled(false);
         m_ui->checksumEdit->setText("SRC_CANNOT_OPEN_READ");
     }

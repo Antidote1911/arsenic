@@ -3,7 +3,7 @@
 
 #include <QString>
 
-enum : int {
+enum : quint32 {
     CRYPT_SUCCESS,
     DECRYPT_SUCCESS,
     DECRYPT_FAIL,
@@ -16,9 +16,10 @@ enum : int {
     ABORTED_BY_USER,
     INVALID_CRYPTOBOX_IMPUT,
     BAD_CRYPTOBOX_VERSION,
-    BAD_CRYPTOBOX_PEM_HEADER
+    BAD_CRYPTOBOX_PEM_HEADER,
+    EMPTY_PASSWORD
 };
 
-QString errorCodeToString(int error_code);
+QString errorCodeToString(quint32 error_code);
 
 #endif // MESSAGES_H

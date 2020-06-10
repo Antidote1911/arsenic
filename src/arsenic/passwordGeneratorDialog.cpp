@@ -28,10 +28,7 @@
 #include "passwordGenerator.h"
 
 PasswordGeneratorDialog::PasswordGeneratorDialog(QDialog *parent)
-    : QDialog(parent)
-    , m_updatingSpinBox(false)
-    , m_passwordGenerator(new PasswordGenerator())
-    , m_ui(new Ui::PasswordGeneratorDialog())
+    : QDialog(parent), m_updatingSpinBox(false), m_passwordGenerator(new PasswordGenerator()), m_ui(new Ui::PasswordGeneratorDialog())
 {
     m_ui->setupUi(this);
 
@@ -112,7 +109,8 @@ void PasswordGeneratorDialog::saveSettings()
         config()->set("generator/UpperCase", m_ui->checkBoxUpper->isChecked());
         config()->set("generator/Numbers", m_ui->checkBoxNumbers->isChecked());
         config()->set("generator/EASCII", m_ui->checkBoxExtASCII->isChecked());
-    } else {
+    }
+    else {
         config()->set("generator/LowerCase", m_ui->checkBoxLowerAdv->isChecked());
         config()->set("generator/UpperCase", m_ui->checkBoxUpperAdv->isChecked());
         config()->set("generator/Numbers", m_ui->checkBoxNumbersAdv->isChecked());
@@ -151,7 +149,8 @@ void PasswordGeneratorDialog::setStandaloneMode(bool standalone)
     if (standalone) {
         m_ui->buttonApply->setText(tr("Close"));
         setPasswordVisible(true);
-    } else
+    }
+    else
         m_ui->buttonApply->setText(tr("Accept"));
 }
 
@@ -237,7 +236,8 @@ void PasswordGeneratorDialog::setPasswordVisible(bool visible)
     if (visible) {
         m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-off.svg"));
         m_ui->editNewPassword->setEchoMode(QLineEdit::Normal);
-    } else {
+    }
+    else {
         m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-on.svg"));
         m_ui->editNewPassword->setEchoMode(QLineEdit::Password);
     }
@@ -304,13 +304,16 @@ void PasswordGeneratorDialog::colorStrengthIndicator(double entropy)
     if (entropy < 40) {
         m_ui->entropyProgressBar->setStyleSheet(style.arg("#c0392b"));
         m_ui->strengthLabel->setText(tr("Password Quality: %1").arg(tr("Poor", "Password quality")));
-    } else if ((entropy >= 40) && (entropy < 65)) {
+    }
+    else if ((entropy >= 40) && (entropy < 65)) {
         m_ui->entropyProgressBar->setStyleSheet(style.arg("#f39c1f"));
         m_ui->strengthLabel->setText(tr("Password Quality: %1").arg(tr("Weak", "Password quality")));
-    } else if ((entropy >= 65) && (entropy < 100)) {
+    }
+    else if ((entropy >= 65) && (entropy < 100)) {
         m_ui->entropyProgressBar->setStyleSheet(style.arg("#11d116"));
         m_ui->strengthLabel->setText(tr("Password Quality: %1").arg(tr("Good", "Password quality")));
-    } else {
+    }
+    else {
         m_ui->entropyProgressBar->setStyleSheet(style.arg("#27ae60"));
         m_ui->strengthLabel->setText(tr("Password Quality: %1").arg(tr("Excellent", "Password quality")));
     }
@@ -330,7 +333,8 @@ PasswordGenerator::CharClasses PasswordGeneratorDialog::charClasses()
         if (m_ui->checkBoxSpecialChars->isChecked()) classes |= PasswordGenerator::SpecialCharacters;
 
         if (m_ui->checkBoxExtASCII->isChecked()) classes |= PasswordGenerator::EASCII;
-    } else {
+    }
+    else {
         if (m_ui->checkBoxLowerAdv->isChecked()) classes |= PasswordGenerator::LowerLetters;
 
         if (m_ui->checkBoxUpperAdv->isChecked()) classes |= PasswordGenerator::UpperLetters;
@@ -368,7 +372,7 @@ PasswordGenerator::GeneratorFlags PasswordGeneratorDialog::generatorFlags()
 
 void PasswordGeneratorDialog::updateGenerator()
 {
-    PasswordGenerator::CharClasses classes = charClasses();
+    PasswordGenerator::CharClasses classes  = charClasses();
     PasswordGenerator::GeneratorFlags flags = generatorFlags();
 
     int minLength = 0;

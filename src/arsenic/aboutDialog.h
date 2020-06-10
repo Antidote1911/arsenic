@@ -2,7 +2,7 @@
 #define ABOUTDIALOG_H
 
 #include <QDialog>
-#include <memory>
+#include <QScopedPointer>
 
 namespace Ui {
 class AboutDialog;
@@ -11,15 +11,15 @@ class AboutDialog;
 class AboutDialog : public QDialog {
     Q_OBJECT
 
-public:
+  public:
     explicit AboutDialog(QWidget* parent = nullptr);
     ~AboutDialog();
 
-protected slots:
+  protected slots:
     void copyToClipboard();
 
-private:
-    const std::unique_ptr<Ui::AboutDialog> m_ui;
+  private:
+    const QScopedPointer<Ui::AboutDialog> m_ui;
 };
 
 #endif // ABOUTDIALOG_H

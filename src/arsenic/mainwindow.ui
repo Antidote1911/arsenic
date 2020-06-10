@@ -203,7 +203,7 @@
        </widget>
       </item>
       <item row="1" column="2">
-       <widget class="QPushButton" name="pushPassGenerator">
+       <widget class="QPushButton" name="pushGenerator">
         <property name="text">
          <string>Generator</string>
         </property>
@@ -214,7 +214,7 @@
        </widget>
       </item>
       <item row="0" column="2">
-       <widget class="QCheckBox" name="comboViewpass">
+       <widget class="QCheckBox" name="checkViewpass">
         <property name="text">
          <string>View Pass</string>
         </property>
@@ -238,7 +238,7 @@
      <string>Files Encryption</string>
     </property>
     <addaction name="menuAddFiles"/>
-    <addaction name="menuRemoveAllFiles"/>
+    <addaction name="menuClearList"/>
     <addaction name="menuEncryptList"/>
     <addaction name="menuDecryptList"/>
     <addaction name="menuAbortJob"/>
@@ -271,7 +271,7 @@
     <property name="title">
      <string>Utils</string>
     </property>
-    <addaction name="menuPassGenerator"/>
+    <addaction name="menuGenerator"/>
     <addaction name="menuHashCalculator"/>
     <addaction name="menuArgon2Tests"/>
    </widget>
@@ -323,13 +323,13 @@
     <bool>false</bool>
    </attribute>
    <addaction name="menuAddFiles"/>
-   <addaction name="menuRemoveAllFiles"/>
+   <addaction name="menuClearList"/>
    <addaction name="separator"/>
    <addaction name="menuOpenTxt"/>
    <addaction name="menuSaveTxt"/>
    <addaction name="menuClearEditor"/>
    <addaction name="separator"/>
-   <addaction name="menuPassGenerator"/>
+   <addaction name="menuGenerator"/>
    <addaction name="menuHashCalculator"/>
    <addaction name="menuConfiguration"/>
    <addaction name="menuAboutArsenic"/>
@@ -372,7 +372,7 @@
     <string>Configuration</string>
    </property>
   </action>
-  <action name="menuPassGenerator">
+  <action name="menuGenerator">
    <property name="icon">
     <iconset resource="rsc.qrc">
      <normaloff>:/pixmaps/alpha-g-circle-outline.svg</normaloff>:/pixmaps/alpha-g-circle-outline.svg</iconset>
@@ -497,7 +497,7 @@
     <string>Abort Job</string>
    </property>
   </action>
-  <action name="menuRemoveAllFiles">
+  <action name="menuClearList">
    <property name="icon">
     <iconset resource="rsc.qrc">
      <normaloff>:/pixmaps/remove_file.png</normaloff>:/pixmaps/remove_file.png</iconset>

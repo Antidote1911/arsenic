@@ -30,7 +30,7 @@ void logHtml::append(QString text)
     QFile logfile(getPath());
     logfile.open(QIODevice::ReadWrite | QIODevice::Text);
     QTextStream out(&logfile);
-    out << text << endl;
+    out << text << Qt::endl;
     logfile.close();
 }
 
@@ -46,9 +46,11 @@ QString logHtml::getPath()
     if (env.isEmpty()) {
         userPath = homePath;
         userPath += "/.config";
-    } else if (env[0] == '/') {
+    }
+    else if (env[0] == '/') {
         userPath = QFile::decodeName(env);
-    } else {
+    }
+    else {
         userPath = homePath;
         userPath += '/';
         userPath += QFile::decodeName(env);

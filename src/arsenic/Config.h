@@ -19,16 +19,15 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <QScopedPointer>
 #include <QVariant>
-#include <memory>
+#include <QScopedPointer>
 
 class QSettings;
 
 class Config : public QObject {
     Q_OBJECT
 
-public:
+  public:
     Q_DISABLE_COPY(Config)
 
     ~Config() override;
@@ -44,10 +43,10 @@ public:
     static void createConfigFromFile(const QString& file);
     static void createTempFileInstance();
 
-signals:
+  signals:
     void changed(const QString& key);
 
-private:
+  private:
     Config(const QString& fileName, QObject* parent);
     explicit Config(QObject* parent);
     void init(const QString& fileName);
@@ -55,7 +54,7 @@ private:
 
     static Config* m_instance;
 
-    std::unique_ptr<QSettings> m_settings;
+    QScopedPointer<QSettings> m_settings;
     QHash<QString, QVariant> m_defaults;
 };
 

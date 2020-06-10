@@ -1,33 +1,37 @@
 #ifndef FILECRYPTO_H
 #define FILECRYPTO_H
 
-#include "botan_all.h"
 #include <QObject>
 #include <QThread>
 
-class Crypto_Thread : public QThread
-{
+#include "botan_all.h"
+
+class Crypto_Thread : public QThread {
     Q_OBJECT
 
-public:
+  public:
     explicit Crypto_Thread(QObject *parent = 0);
     void run();
 
-    void setParam(bool direction, QStringList filenames, const QString password, quint32 argonmem, quint32 argoniter, bool deletefile);
-    int result;
+    void setParam(bool direction,
+                  QStringList const &filenames,
+                  QString const &password,
+                  quint32 const argonmem,
+                  quint32 const argoniter,
+                  bool const deletefile);
 
-    qint32 encrypt(const QString filename);
-    qint32 decrypt(const QString filename);
     void abort();
 
-signals:
+  signals:
     void updateProgress(const QString &path, quint32 percent);
-    void statusMessage(QString message);
-    void addEncrypted(QString inputFileName);
-    void addDecrypted(QString inputFileName);
-    void sourceDeletedAfterSuccess(QString inputFileName);
+    void statusMessage(const QString &message);
+    void addEncrypted(const QString &inputFileName);
+    void addDecrypted(const QString &inputFileName);
+    void deletedAfterSuccess(const QString &inputFileName);
 
-private:
+  private:
+    quint32 encrypt(const QString &src_path);
+    quint32 decrypt(const QString &src_path);
     QString uniqueFileName(const QString &fileName);
     QStringList m_filenames;
     QString m_password;

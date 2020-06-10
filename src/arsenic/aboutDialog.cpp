@@ -48,8 +48,7 @@ static const QString aboutContributors = R"(
 )";
 
 AboutDialog::AboutDialog(QWidget *parent)
-    : QDialog(parent)
-    , m_ui(new Ui::AboutDialog())
+    : QDialog(parent), m_ui(new Ui::AboutDialog)
 {
     m_ui->setupUi(this);
 
@@ -97,7 +96,9 @@ AboutDialog::AboutDialog(QWidget *parent)
     connect(m_ui->copyToClipboard, SIGNAL(clicked()), SLOT(copyToClipboard()));
 }
 
-AboutDialog::~AboutDialog() {}
+AboutDialog::~AboutDialog()
+{
+}
 
 void AboutDialog::copyToClipboard()
 {

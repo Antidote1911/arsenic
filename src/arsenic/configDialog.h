@@ -3,7 +3,7 @@
 
 #include <QDialog>
 #include <QSettings>
-#include <memory>
+#include <QScopedPointer>
 
 namespace Ui {
 class ConfigDialog;
@@ -12,17 +12,17 @@ class ConfigDialog;
 class ConfigDialog : public QDialog {
     Q_OBJECT
 
-public:
+  public:
     explicit ConfigDialog(QWidget* parent = nullptr);
     ~ConfigDialog();
     void loadSettings();
 
-private slots:
+  private slots:
     void saveSettings();
     // void reject();
 
-private:
-    const std::unique_ptr<Ui::ConfigDialog> m_ui;
+  private:
+    const QScopedPointer<Ui::ConfigDialog> m_ui;
 };
 
 #endif // CONFIGDIALOG_H

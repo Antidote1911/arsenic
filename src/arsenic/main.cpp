@@ -55,16 +55,16 @@ int main(int argc, char *argv[])
     if ((args.size() == 1) && parser.isSet(passphraseOption)) {
         const auto targetFile = args.at(0);
         const auto passphrase = parser.value(passphraseOption);
-        const auto enc = parser.isSet(encryptOption);
-        const auto dec = parser.isSet(decryptOption);
+        const auto enc        = parser.isSet(encryptOption);
+        const auto dec        = parser.isSet(decryptOption);
 
         if (enc && dec) {
-            cout << "ERROR: You must choose encryption OR decryption." << endl;
+            cout << "ERROR: You must choose encryption OR decryption." << Qt::endl;
             return (0);
         }
 
         if (passphrase.size() < ARs::MIN_PASS_LENGTH) {
-            cout << "Passphrase must be minimum " + QString::number(ARs::MIN_PASS_LENGTH) + "characters" << endl;
+            cout << "Passphrase must be minimum " + QString::number(ARs::MIN_PASS_LENGTH) + "characters" << Qt::endl;
             return (0);
         }
 
@@ -75,7 +75,8 @@ int main(int argc, char *argv[])
 
             Crypto.start();
             Crypto.wait();
-            cout << endl << resultat << endl;
+            cout << Qt::endl
+                 << resultat << Qt::endl;
             return (0);
         }
 
@@ -88,9 +89,10 @@ int main(int argc, char *argv[])
             return (0);
         }
 
-        cout << "Invalids or no arguments" << endl;
+        cout << "Invalids or no arguments" << Qt::endl;
         return (0);
-    } else {
+    }
+    else {
         MainWindow w;
         w.session();
         return (app.exec());

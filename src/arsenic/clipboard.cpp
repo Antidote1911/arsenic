@@ -31,8 +31,7 @@ QPointer<MacPasteboard> Clipboard::m_pasteboard(nullptr);
 #endif
 
 Clipboard::Clipboard(QObject *parent)
-    : QObject(parent)
-    , m_timer(new QTimer(this))
+    : QObject(parent), m_timer(new QTimer(this))
 {
 #ifdef Q_OS_MACOS
     if (!m_pasteboard) {
@@ -55,7 +54,7 @@ void Clipboard::setText(const QString &text)
     clipboard->setMimeData(mime, QClipboard::Clipboard);
 #else
     const QString secretStr = "secret";
-    QByteArray secretBa = secretStr.toUtf8();
+    QByteArray secretBa     = secretStr.toUtf8();
     mime->setText(text);
     mime->setData("x-kde-passwordManagerHint", secretBa);
     clipboard->setMimeData(mime, QClipboard::Clipboard);

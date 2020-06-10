@@ -12,28 +12,27 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 
+#include "aboutDialog.h"
 #include "Config.h"
 #include "Delegate.h"
-#include "aboutDialog.h"
-#include "argonTests.h"
 #include "configDialog.h"
 #include "constants.h"
-#include "fileCrypto.h"
-#include "hashcheckdialog.h"
 #include "loghtml.h"
 #include "messages.h"
 #include "passwordGeneratorDialog.h"
-#include "textcrypto.h"
+#include "hashcheckdialog.h"
 #include "utils.h"
+#include "argonTests.h"
 
 using namespace ARs;
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , m_ui(new Ui::MainWindow)
+    : QMainWindow(parent), m_ui(new Ui::MainWindow)
 {
     m_ui->setupUi(this);
-    Crypto = new Crypto_Thread(this);
+    m_file_crypto.reset(new Crypto_Thread);
+    m_text_crypto.reset(new textCrypto);
+    m_log.reset(new logHtml);
 
     createLanguageMenu();
     loadPreferences();
@@ -44,64 +43,54 @@ MainWindow::MainWindow(QWidget *parent)
     delegate();
 
     // General
-    connect(m_ui->menuAboutArsenic, &QAction::triggered, this, [=] { aboutArsenic(); });
+
+    // clang-format off
+    connect(m_ui->menuAboutArsenic, &QAction::triggered, this,   [=] { aboutArsenic(); });
     connect(m_ui->menuHashCalculator, &QAction::triggered, this, [=] { hashCalculator(); });
-    connect(m_ui->menuAboutQt, &QAction::triggered, this, [=] { qApp->aboutQt(); });
-    connect(m_ui->menuPassGenerator, &QAction::triggered, this, [=] { generator(); });
-    connect(m_ui->pushPassGenerator, &QPushButton::clicked, this, [=] { generator(); });
-    connect(m_ui->menuQuit, &QAction::triggered, this, [=] { quit(); });
-    connect(m_ui->menuQuit2, &QAction::triggered, this, [=] { quit(); });
-    connect(m_ui->menuQuit3, &QAction::triggered, this, [=] { quit(); });
-    connect(m_ui->menuConfiguration, &QAction::triggered, this, [=] { configuration(); });
-    connect(m_ui->menuDarkTheme, &QAction::triggered, this, [=](const bool &checked) { dark_theme(checked); });
-    connect(m_ui->menuViewToolbar, &QAction::triggered, this, [=](const bool &checked) { m_ui->toolBar->setVisible(checked); });
-    connect(m_ui->toolBar, &QToolBar::visibilityChanged, this, [=](const bool &checked) { m_ui->menuViewToolbar->setChecked(checked); });
-    connect(m_ui->menuArgon2Tests, &QAction::triggered, this, [=] { Argon2_tests(); });
-    connect(m_ui->tabWidget, &QTabWidget::currentChanged, this, [=](const quint32 &index) { switchTab(index); });
-    connect(m_ui->comboViewpass, &QCheckBox::stateChanged, this, [=](const quint32 &index) { viewPassStateChanged(index); });
+    connect(m_ui->menuAboutQt, &QAction::triggered, this,        [=] { qApp->aboutQt(); });
+    connect(m_ui->menuGenerator, &QAction::triggered, this,      [=] { generator(); });
+    connect(m_ui->pushGenerator, &QPushButton::clicked, this,    [=] { generator(); });
+    connect(m_ui->menuQuit, &QAction::triggered, this,           [=] { quit(); });
+    connect(m_ui->menuQuit2, &QAction::triggered, this,          [=] { quit(); });
+    connect(m_ui->menuQuit3, &QAction::triggered, this,          [=] { quit(); });
+    connect(m_ui->menuConfiguration, &QAction::triggered, this,  [=] { configuration(); });
+    connect(m_ui->menuArgon2Tests, &QAction::triggered, this,    [=] { Argon2_tests(); });
+    connect(m_ui->menuDarkTheme, &QAction::triggered, this,      [=](const bool &checked) { dark_theme(checked); });
+    connect(m_ui->menuViewToolbar, &QAction::triggered, this,    [=](const bool &checked) { m_ui->toolBar->setVisible(checked); });
+    connect(m_ui->toolBar, &QToolBar::visibilityChanged, this,   [=](const bool &checked) { m_ui->menuViewToolbar->setChecked(checked); });
+    connect(m_ui->tabWidget, &QTabWidget::currentChanged, this,  [=](const quint32 &index) { switchTab(index); });
+    connect(m_ui->checkViewpass, &QCheckBox::stateChanged, this, [=](const quint32 &index) { viewPassStateChanged(index); });
 
     // EncryptPad
-    connect(m_ui->menuOpenTxt, &QAction::triggered, this, [=] { openTxtFile(); });
-    connect(m_ui->menuSaveTxt, &QAction::triggered, this, [=] { saveTxtFile(); });
-    connect(m_ui->menuSaveTxtAs, &QAction::triggered, this, [=] { saveTxtFileAs(); });
-    connect(m_ui->menuEncryptTxt, &QAction::triggered, this, [=] { encryptText(); });
-    connect(m_ui->menuDecryptTxt, &QAction::triggered, this, [=] { decryptText(); });
-    connect(m_ui->menuClearEditor, &QAction::triggered, this, [=] { clearEditor(); });
-    connect(m_ui->pushEncryptTxt, &QPushButton::clicked, this, [=] { encryptText(); });
-    connect(m_ui->pushDecryptTxt, &QPushButton::clicked, this, [=] { decryptText(); });
+    connect(m_ui->menuOpenTxt, &QAction::triggered, this,        [=] { openTxtFile(); });
+    connect(m_ui->menuSaveTxt, &QAction::triggered, this,        [=] { saveTxtFile(); });
+    connect(m_ui->menuSaveTxtAs, &QAction::triggered, this,      [=] { saveTxtFileAs(); });
+    connect(m_ui->menuEncryptTxt, &QAction::triggered, this,     [=] { encryptText(); });
+    connect(m_ui->menuDecryptTxt, &QAction::triggered, this,     [=] { decryptText(); });
+    connect(m_ui->menuClearEditor, &QAction::triggered, this,    [=] { clearEditor(); });
+    connect(m_ui->pushEncryptTxt, &QPushButton::clicked, this,   [=] { encryptText(); });
+    connect(m_ui->pushDecryptTxt, &QPushButton::clicked, this,   [=] { decryptText(); });
 
     // log
-    connect(m_ui->menuClearLogView, &QAction::triggered, this, [=] { clearLog(); });
+    connect(m_ui->menuClearLogView, &QAction::triggered, this,   [=] { clearLog(); });
 
     // EncryptFile
-    connect(m_ui->menuAddFiles, &QAction::triggered, this, [=] { addFiles(); });
-    connect(m_ui->menuRemoveAllFiles, &QAction::triggered, this, [=] { clearListFiles(); });
-    connect(m_ui->menuEncryptList, &QAction::triggered, this, [=] { encryptFiles(); });
-    connect(m_ui->menuDecryptList, &QAction::triggered, this, [=] { decryptFiles(); });
-    connect(m_ui->pushEncrypt, &QPushButton::clicked, this, [=] { encryptFiles(); });
-    connect(m_ui->pushDecrypt, &QPushButton::clicked, this, [=] { decryptFiles(); });
-    connect(m_ui->menuAbortJob, &QAction::triggered, this, [=] { abortJob(); });
-    connect(Crypto, SIGNAL(updateProgress(QString, quint32)), this, SLOT(onPercentProgress(QString, quint32)));
-    connect(Crypto, SIGNAL(statusMessage(QString)), this, SLOT(onMessageChanged(QString)));
-    connect(Crypto, SIGNAL(addEncrypted(QString)), this, SLOT(AddEncryptedFile(QString)));
-    connect(Crypto, SIGNAL(addDecrypted(QString)), this, SLOT(AddDecryptedFile(QString)));
-    connect(Crypto, SIGNAL(sourceDeletedAfterSuccess(QString)), this, SLOT(removeDeletedFile(QString)));
-    // connect(this,&MainWindow::on_stop,&myjob,&MyJob::obj_slot_stop);
+    connect(m_ui->menuAddFiles, &QAction::triggered, this,       [=] { addFiles(); });
+    connect(m_ui->menuClearList, &QAction::triggered, this,      [=] { clearListFiles(); });
+    connect(m_ui->menuEncryptList, &QAction::triggered, this,    [=] { encryptFiles(); });
+    connect(m_ui->menuDecryptList, &QAction::triggered, this,    [=] { decryptFiles(); });
+    connect(m_ui->pushEncrypt, &QPushButton::clicked, this,      [=] { encryptFiles(); });
+    connect(m_ui->pushDecrypt, &QPushButton::clicked, this,      [=] { decryptFiles(); });
+    connect(m_ui->menuAbortJob, &QAction::triggered, this,       [=] { abortJob(); });
 
-    // note that some password information will be discarded if the text
-    // characters entered use more than	1 byte per character in UTF-8
-    // ui->password_0->setMaxLength(crypto_secretbox_KEYBYTES);
-    // ui->password_1->setMaxLength(crypto_secretbox_KEYBYTES);
-
-    // create the temp directory and session.qtlist if they don't exist already
-
-    /* QFile list_file(DEFAULT_LIST_PATH);
-     *
-     * if (!list_file.exists()) {
-     *  list_file.open(QIODevice::WriteOnly);
-     *  list_file.close();
-     * }
-     */
+    connect(m_file_crypto.get(), &Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
+    connect(m_file_crypto.get(), &Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
+    connect(m_file_crypto.get(), &Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
+    connect(m_file_crypto.get(), &Crypto_Thread::addDecrypted, this,          [=](const QString &filepath) { AddDecryptedFile(filepath); });
+    connect(m_file_crypto.get(), &Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
+    //connect(&pwGenerator, &PasswordGeneratorDialog::appliedPassword, this, [=](const QString &password) { setPassword(password); });
+    //connect(&pwGenerator, SIGNAL(dialogTerminated()), &pwGenerator, SLOT(close()));
+    // clang-format on
 }
 
 MainWindow::~MainWindow() {}
@@ -119,7 +108,7 @@ void MainWindow::removeDeletedFile(QString filepath)
 
     items = fileListModelCrypto->findItems(filepath, Qt::MatchExactly, 2);
 
-    item = items[0];
+    item       = items[0];
     auto index = item->row();
     if (fileListModelCrypto->hasChildren()) {
         fileListModelCrypto->removeRow(index);
@@ -142,15 +131,14 @@ void MainWindow::AddDecryptedFile(QString filepath)
 
 void MainWindow::loadLogFile()
 {
-    logHtml log;
-    m_ui->textLogs->setText(log.load());
+    m_ui->textLogs->setText(m_log->load());
 }
 
 void MainWindow::abortJob()
 {
-    if (Crypto->isRunning()) {
-        Crypto->abort();
-        Crypto->wait();
+    if (m_file_crypto->isRunning()) {
+        m_file_crypto->abort();
+        m_file_crypto->wait();
     }
 }
 
@@ -161,16 +149,13 @@ void MainWindow::onMessageChanged(QString message)
     c.movePosition(QTextCursor::End);
     m_ui->textLogs->setTextCursor(c);
     m_ui->textLogs->append(message);
-
-    logHtml log;
-    log.append(m_ui->textLogs->toHtml());
+    m_log->append(m_ui->textLogs->toHtml());
 }
 
 void MainWindow::clearLog()
 {
     m_ui->textLogs->clear();
-    logHtml log;
-    log.clear();
+    m_log->clear();
 }
 
 void MainWindow::encryptFiles()
@@ -187,10 +172,14 @@ void MainWindow::encryptFiles()
         displayPasswordNotMatch();
         return;
     }
-    Crypto->setParam(true, getListFiles(), m_ui->password_0->text(), config()->get("CRYPTO/argonMemory").toInt(), config()->get("CRYPTO/argonItr").toInt(),
-                     m_ui->CheckDeleteFiles->isChecked());
+    m_file_crypto->setParam(true,
+                            getListFiles(),
+                            m_ui->password_0->text(),
+                            config()->get("CRYPTO/argonMemory").toInt(),
+                            config()->get("CRYPTO/argonItr").toInt(),
+                            m_ui->CheckDeleteFiles->isChecked());
 
-    Crypto->start();
+    m_file_crypto->start();
 }
 
 void MainWindow::decryptFiles()
@@ -203,10 +192,14 @@ void MainWindow::decryptFiles()
         displayEmptyPassword();
         return;
     }
-    Crypto->setParam(false, getListFiles(), m_ui->password_0->text(), config()->get("CRYPTO/argonMemory").toInt(), config()->get("CRYPTO/argonItr").toInt(),
-                     m_ui->CheckDeleteFiles->isChecked());
+    m_file_crypto->setParam(false,
+                            getListFiles(),
+                            m_ui->password_0->text(),
+                            config()->get("CRYPTO/argonMemory").toInt(),
+                            config()->get("CRYPTO/argonItr").toInt(),
+                            m_ui->CheckDeleteFiles->isChecked());
 
-    Crypto->start();
+    m_file_crypto->start();
 }
 
 QStringList MainWindow::getListFiles()
@@ -235,7 +228,7 @@ void MainWindow::onPercentProgress(const QString &path, quint32 percent)
 
     items = fileListModelCrypto->findItems(path, Qt::MatchExactly, 2);
     if (0 < items.size()) {
-        item = items[0];
+        item       = items[0];
         auto index = item->row();
         if (nullptr != item) {
             progressItem = fileListModelCrypto->item(index, 4);
@@ -254,10 +247,10 @@ void MainWindow::switchTab(quint32 index)
         m_ui->menuFile->menuAction()->setVisible(true);
         m_ui->password_0->show();
         m_ui->password_1->show();
-        m_ui->comboViewpass->show();
+        m_ui->checkViewpass->show();
         m_ui->password_label->show();
         m_ui->label->show();
-        m_ui->pushPassGenerator->show();
+        m_ui->pushGenerator->show();
     }
     if (index == 1) {
         m_ui->menuCryptopad->menuAction()->setVisible(true);
@@ -265,10 +258,10 @@ void MainWindow::switchTab(quint32 index)
         m_ui->menuFile->menuAction()->setVisible(false);
         m_ui->password_0->show();
         m_ui->password_1->show();
-        m_ui->comboViewpass->show();
+        m_ui->checkViewpass->show();
         m_ui->password_label->show();
         m_ui->label->show();
-        m_ui->pushPassGenerator->show();
+        m_ui->pushGenerator->show();
     }
     if (index == 2) {
         m_ui->menuLog->menuAction()->setVisible(true);
@@ -276,10 +269,10 @@ void MainWindow::switchTab(quint32 index)
         m_ui->menuFile->menuAction()->setVisible(false);
         m_ui->password_0->hide();
         m_ui->password_1->hide();
-        m_ui->comboViewpass->hide();
+        m_ui->checkViewpass->hide();
         m_ui->password_label->hide();
         m_ui->label->hide();
-        m_ui->pushPassGenerator->hide();
+        m_ui->pushGenerator->hide();
     }
 }
 
@@ -422,6 +415,7 @@ void MainWindow::generator()
     pwGenerator->setStandaloneMode(true);
     connect(pwGenerator, SIGNAL(appliedPassword(QString)), SLOT(setPassword(QString)));
     connect(pwGenerator, SIGNAL(dialogTerminated()), pwGenerator, SLOT(close()));
+    pwGenerator->setStandaloneMode(true);
     pwGenerator->exec();
 }
 
@@ -451,23 +445,26 @@ void MainWindow::loadPreferences()
     if (config()->get("GUI/darkTheme").toBool()) {
         m_ui->menuDarkTheme->setChecked(true);
         skin.setSkin("dark");
-    } else {
+    }
+    else {
         m_ui->menuDarkTheme->setChecked(false);
         skin.setSkin("notheme");
     }
     if (config()->get("GUI/showToolbar").toBool()) {
         m_ui->menuViewToolbar->setChecked(true);
         m_ui->toolBar->setVisible(true);
-    } else {
+    }
+    else {
         m_ui->menuViewToolbar->setChecked(false);
         m_ui->toolBar->setVisible(false);
     }
     if (config()->get("GUI/showPassword").toBool()) {
-        m_ui->comboViewpass->setChecked(true);
+        m_ui->checkViewpass->setChecked(true);
         m_ui->password_0->setEchoMode(QLineEdit::Normal);
         m_ui->password_1->setEchoMode(QLineEdit::Normal);
-    } else {
-        m_ui->comboViewpass->setChecked(false);
+    }
+    else {
+        m_ui->checkViewpass->setChecked(false);
         m_ui->password_0->setEchoMode(QLineEdit::Password);
         m_ui->password_1->setEchoMode(QLineEdit::Password);
     }
@@ -475,22 +472,18 @@ void MainWindow::loadPreferences()
 
 void MainWindow::savePreferences()
 {
+    // clang-format off
     if (isVisible()) {
         config()->set("GUI/MainWindowGeometry", saveGeometry());
-        config()->set("GUI/MainWindowState", saveState());
+        config()->set("GUI/MainWindowState",    saveState());
     }
-    config()->set("GUI/darkTheme", m_ui->menuDarkTheme->isChecked());
-    config()->set("GUI/showPassword", m_ui->comboViewpass->isChecked());
-    config()->set("GUI/Language", m_currLang);
-    config()->set("GUI/showToolbar", m_ui->menuViewToolbar->isChecked());
+    config()->set("GUI/darkTheme",       m_ui->menuDarkTheme->isChecked());
+    config()->set("GUI/showPassword",    m_ui->checkViewpass->isChecked());
+    config()->set("GUI/Language",        m_currLang);
+    config()->set("GUI/showToolbar",     m_ui->menuViewToolbar->isChecked());
     config()->set("GUI/currentIndexTab", m_ui->tabWidget->currentIndex());
-    config()->set("GUI/deleteFinished", m_ui->CheckDeleteFiles->isChecked());
-}
-
-void MainWindow::aboutArsenic()
-{
-    auto *aboutDialog{new AboutDialog(this)};
-    aboutDialog->open();
+    config()->set("GUI/deleteFinished",  m_ui->CheckDeleteFiles->isChecked());
+    // clang-format on
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -498,9 +491,9 @@ void MainWindow::closeEvent(QCloseEvent *event)
     Q_UNUSED(event);
     // save prefs before quitting
     savePreferences();
-    if (Crypto->isRunning()) {
-        Crypto->abort();
-        Crypto->wait();
+    if (m_file_crypto->isRunning()) {
+        m_file_crypto->abort();
+        m_file_crypto->wait();
     }
 }
 
@@ -520,7 +513,8 @@ void MainWindow::viewPassStateChanged(quint32 state)
     if (state == 0) {
         m_ui->password_0->setEchoMode(QLineEdit::Password);
         m_ui->password_1->setEchoMode(QLineEdit::Password);
-    } else {
+    }
+    else {
         m_ui->password_0->setEchoMode(QLineEdit::Normal);
         m_ui->password_1->setEchoMode(QLineEdit::Normal);
     }
@@ -528,21 +522,29 @@ void MainWindow::viewPassStateChanged(quint32 state)
 
 void MainWindow::hashCalculator()
 {
-    auto *hashdlg = new HashCheckDialog(this);
-    hashdlg->exec();
+    auto *m_hashDialog = new HashCheckDialog(this);
+    m_hashDialog->open();
+}
+
+void MainWindow::aboutArsenic()
+{
+    auto *aboutDialog = new AboutDialog(this);
+    aboutDialog->open();
 }
 
 void MainWindow::Argon2_tests()
 {
-    auto *Argon2_tests = new ArgonTests(this);
-    Argon2_tests->open();
+
+    auto *argon2_tests_Dialog = new ArgonTests(this);
+    argon2_tests_Dialog->exec();
 }
 
 void MainWindow::dark_theme(bool checked)
 {
     if (checked) {
         skin.setSkin("dark");
-    } else {
+    }
+    else {
         skin.setSkin("notheme");
     }
 }
@@ -639,20 +641,20 @@ void MainWindow::changeEvent(QEvent *event)
 {
     if (0 != event) {
         switch (event->type()) {
-        // this event is send if a translator is loaded
-        case QEvent::LanguageChange:
-            m_ui->retranslateUi(this);
+            // this event is send if a translator is loaded
+            case QEvent::LanguageChange:
+                m_ui->retranslateUi(this);
 
-        default:
-            break;
-            break;
+            default:
+                break;
+                break;
 
-        // this event is send, if the system, language changes
-        case QEvent::LocaleChange: {
-            auto locale{QLocale::system().name()};
-            locale.truncate(locale.lastIndexOf('_'));
-            loadLanguage(locale);
-        } break;
+            // this event is send, if the system, language changes
+            case QEvent::LocaleChange: {
+                auto locale{QLocale::system().name()};
+                locale.truncate(locale.lastIndexOf('_'));
+                loadLanguage(locale);
+            } break;
         }
     }
     QMainWindow::changeEvent(event);
@@ -735,14 +737,14 @@ bool MainWindow::maybeSave()
                                                                     "Do you want to save your changes?"),
                                                                  QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
     switch (ret) {
-    case QMessageBox::Save:
-        return (saveTxtFile());
+        case QMessageBox::Save:
+            return (saveTxtFile());
 
-    case QMessageBox::Cancel:
-        return (false);
+        case QMessageBox::Cancel:
+            return (false);
 
-    default:
-        break;
+        default:
+            break;
     }
     return (true);
 }
@@ -751,7 +753,8 @@ bool MainWindow::saveTxtFile()
 {
     if (curFile.isEmpty()) {
         return (saveTxtFileAs());
-    } else {
+    }
+    else {
         return (saveFile(curFile));
     }
 }
@@ -782,12 +785,13 @@ void MainWindow::encryptText()
         return;
     }
     auto plaintext{m_ui->cryptoPadEditor->toPlainText()};
-    textCrypto encrypt;
-    encrypt.start(m_ui->password_0->text(), 0);
-    int result = encrypt.finish(plaintext);
+
+    m_text_crypto->start(m_ui->password_0->text(), true);
+    quint32 result = m_text_crypto->finish(plaintext);
     if (result != CRYPT_SUCCESS) {
         displayMessageBox(tr("Encryption Error!"), errorCodeToString(result));
-    } else {
+    }
+    else {
         m_ui->cryptoPadEditor->setPlainText(plaintext);
     }
 }
@@ -809,18 +813,18 @@ void MainWindow::decryptText()
         return;
     }
     auto ciphertext{m_ui->cryptoPadEditor->toPlainText()};
-    textCrypto decrypt;
-    decrypt.start(m_ui->password_0->text(), 1);
+    m_text_crypto->start(m_ui->password_0->text(), false);
 
-    int result = decrypt.finish(ciphertext);
+    quint32 result = m_text_crypto->finish(ciphertext);
     if (result != DECRYPT_SUCCESS) {
         displayMessageBox(tr("Decryption Error!"), errorCodeToString(result));
-    } else {
+    }
+    else {
         m_ui->cryptoPadEditor->setPlainText(ciphertext);
     }
 }
 
-void MainWindow::displayMessageBox(QString title, QString text)
+void MainWindow::displayMessageBox(const QString &title, const QString &text)
 {
     QMessageBox::warning(this, (title), (text));
 }
@@ -834,15 +838,18 @@ void MainWindow::displayPasswordNotMatch()
 
 void MainWindow::displayEmptyPassword()
 {
-    QMessageBox::warning(this, tr("Passphrase field is empty !"), tr("You must enter a passphrase."));
+    QMessageBox::warning(this, tr("Passphrase field is empty !"),
+                         tr("You must enter a passphrase."));
 }
 
 void MainWindow::displayEmptyJob()
 {
-    QMessageBox::warning(this, tr("Job list is empty !"), tr("You must add file(s) to the job list to start processing."));
+    QMessageBox::warning(this, tr("Job list is empty !"),
+                         tr("You must add file(s) to the job list to start processing."));
 }
 
 void MainWindow::displayEmptyEditor()
 {
-    QMessageBox::warning(this, tr("Text editor is empty !"), tr("You must add text to editor to start processing."));
+    QMessageBox::warning(this, tr("Text editor is empty !"),
+                         tr("You must add text to editor to start processing."));
 }

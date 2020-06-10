@@ -22,7 +22,7 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QLabel>
-#include <memory>
+#include <QScopedPointer>
 
 #include "passwordGenerator.h"
 
@@ -30,11 +30,10 @@ namespace Ui {
 class PasswordGeneratorDialog;
 }
 
-class PasswordGeneratorDialog : public QDialog
-{
+class PasswordGeneratorDialog : public QDialog {
     Q_OBJECT
 
-public:
+  public:
     explicit PasswordGeneratorDialog(QDialog *parent = nullptr);
     ~PasswordGeneratorDialog();
     void loadSettings();
@@ -44,20 +43,20 @@ public:
     QString getGeneratedPassword();
     bool isPasswordVisible() const;
 
-protected:
+  protected:
     void showEvent(QShowEvent *event) override;
 
-public slots:
+  public slots:
     void regeneratePassword();
     void applyPassword();
     void copyPassword();
     void setPasswordVisible(bool visible);
 
-signals:
+  signals:
     void appliedPassword(const QString &password);
     void dialogTerminated();
 
-private slots:
+  private slots:
     void updateButtonsEnabled(const QString &password);
     void updatePasswordStrength(const QString &password);
     void selectSimpleMode();
@@ -70,17 +69,17 @@ private slots:
 
     void updateGenerator();
 
-private:
+  private:
     bool m_updatingSpinBox;
     bool m_standalone = false;
 
     PasswordGenerator::CharClasses charClasses();
     PasswordGenerator::GeneratorFlags generatorFlags();
 
-    const std::unique_ptr<PasswordGenerator> m_passwordGenerator;
-    const std::unique_ptr<Ui::PasswordGeneratorDialog> m_ui;
+    const QScopedPointer<PasswordGenerator> m_passwordGenerator;
+    const QScopedPointer<Ui::PasswordGeneratorDialog> m_ui;
 
-protected:
+  protected:
     void keyPressEvent(QKeyEvent *e) override;
 };
 

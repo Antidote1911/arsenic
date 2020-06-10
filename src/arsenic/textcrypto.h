@@ -3,23 +3,22 @@
 
 #include <QObject>
 
-class textCrypto : public QObject
-{
+class textCrypto : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit textCrypto(QObject *parent = nullptr);
 
-    void start(QString password, int dirrection);
-    int finish(QString &text);
+    void start(const QString &password, bool dirrection);
+    quint32 finish(QString &text);
 
-private:
-    int encryptString(QString &plaintext, QString password);
-    int decryptString(QString &ciphertext, QString password);
+  private:
+    quint32 encryptString(QString &plaintext, const QString &password);
+    quint32 decryptString(QString &ciphertext, const QString &password);
 
     QString m_password;
-    int m_dirrection;
+    bool m_dirrection;
 
-signals:
+  signals:
 };
 
 #endif // TEXTCRYPTO_H
