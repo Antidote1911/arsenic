@@ -21,7 +21,7 @@ before_build:
     - qmake arsenic.pro
 
 build_script:
-  - '%make%'
+  - mingw32-make
   #- cd %APPVEYOR_BUILD_FOLDER%\src\arsenic\release\arsenic.exe
   #- arsenic.exe -e -p mysuperbadpassphrase pixmaps/test.jpg
   #- arsenic.exe -d -p mysuperbadpassphrase pixmaps/test.jpg.ars
