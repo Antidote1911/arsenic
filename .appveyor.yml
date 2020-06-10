@@ -12,22 +12,16 @@ configuration: Release
 
 install:
   - set QTDIR=C:\Qt\5.14.2\mingw73_64
-  - choco install -y InnoSetup
-  - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw730_64\bin;%PATH%;"C:\Program Files (x86)\Inno Setup 5"
+  - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw730_64\bin;%PATH%;
 
 before_build:
     # Prepare the out-of-source build directory.
-    - cd %APPVEYOR_BUILD_FOLDER%
     - qmake arsenic.pro
 
 build_script:
   - mingw32-make
-  #- cd %APPVEYOR_BUILD_FOLDER%\src\arsenic\release\arsenic.exe
-  #- arsenic.exe -e -p mysuperbadpassphrase pixmaps/test.jpg
-  #- arsenic.exe -d -p mysuperbadpassphrase pixmaps/test.jpg.ars
 
 after_build:
-    - cd %APPVEYOR_BUILD_FOLDER%
     - mkdir arsenic_win_x64
     - cd arsenic_win_x64
     - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
