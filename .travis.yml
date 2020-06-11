@@ -9,6 +9,7 @@ services:
   - xvfb
 
 before_install:
+  - sudo add-apt-repository ppa:ymshenyu/qt514
   - sudo apt-get update -qq
 
 install:
