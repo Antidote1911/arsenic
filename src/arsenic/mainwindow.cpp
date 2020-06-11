@@ -11,6 +11,7 @@
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QScopedPointer>
 
 #include "aboutDialog.h"
 #include "Config.h"
@@ -83,11 +84,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_ui->pushDecrypt, &QPushButton::clicked, this,      [=] { decryptFiles(); });
     connect(m_ui->menuAbortJob, &QAction::triggered, this,       [=] { abortJob(); });
 
-    connect(m_file_crypto.get(), &Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
-    connect(m_file_crypto.get(), &Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
-    connect(m_file_crypto.get(), &Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
-    connect(m_file_crypto.get(), &Crypto_Thread::addDecrypted, this,          [=](const QString &filepath) { AddDecryptedFile(filepath); });
-    connect(m_file_crypto.get(), &Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
+    connect(m_file_crypto.data(), &Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
+    connect(m_file_crypto.data(), &Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
+    connect(m_file_crypto.data(), &Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
+    connect(m_file_crypto.data(), &Crypto_Thread::addDecrypted, this,          [=](const QString &filepath) { AddDecryptedFile(filepath); });
+    connect(m_file_crypto.data(), &Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
     //connect(&pwGenerator, &PasswordGeneratorDialog::appliedPassword, this, [=](const QString &password) { setPassword(password); });
     //connect(&pwGenerator, SIGNAL(dialogTerminated()), &pwGenerator, SLOT(close()));
     // clang-format on
