@@ -59,12 +59,12 @@ int main(int argc, char *argv[])
         const auto dec        = parser.isSet(decryptOption);
 
         if (enc && dec) {
-            cout << "ERROR: You must choose encryption OR decryption." << Qt::endl;
+            cout << "ERROR: You must choose encryption OR decryption." << endl;
             return (0);
         }
 
         if (passphrase.size() < ARs::MIN_PASS_LENGTH) {
-            cout << "Passphrase must be minimum " + QString::number(ARs::MIN_PASS_LENGTH) + "characters" << Qt::endl;
+            cout << "Passphrase must be minimum " + QString::number(ARs::MIN_PASS_LENGTH) + "characters" << endl;
             return (0);
         }
 
@@ -75,8 +75,8 @@ int main(int argc, char *argv[])
 
             Crypto.start();
             Crypto.wait();
-            cout << Qt::endl
-                 << resultat << Qt::endl;
+            cout << endl
+                 << resultat << endl;
             return (0);
         }
 
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
             return (0);
         }
 
-        cout << "Invalids or no arguments" << Qt::endl;
+        cout << "Invalids or no arguments" << endl;
         return (0);
     }
     else {

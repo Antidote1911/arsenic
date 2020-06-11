@@ -9,14 +9,11 @@ services:
   - xvfb
 
 before_install:
-  - sudo add-apt-repository -y ppa:beineri/opt-qt-5.14.0-bionic
   - sudo apt-get update -qq
-  - sudo apt-get install qt514-meta-full
 
 install:
   # Qt5
-  - sudo update-alternatives --install /usr/bin/qmake qmake /usr/lib/x86_64-linux-gnu/qt5/bin/qmake 100
-  - sudo update-alternatives --config qmake
+  - sudo apt-get install -qq libqt5webkit5-dev qtdeclarative5-dev
   - export QMAKE=/usr/lib/x86_64-linux-gnu/qt5/bin/qmake
 
 before_script:

@@ -30,7 +30,7 @@ void logHtml::append(QString text)
     QFile logfile(getPath());
     logfile.open(QIODevice::ReadWrite | QIODevice::Text);
     QTextStream out(&logfile);
-    out << text << Qt::endl;
+    out << text << endl;
     logfile.close();
 }
 
