@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/Antidote1911/Arsenic.svg?branch=master)](https://travis-ci.org/Antidote1911/Arsenic)
+[![Build Status](https://travis-ci.org/Antidote1911/arsenic.svg?branch=master)](https://travis-ci.org/Antidote1911/arsenic)
 [![Build status](https://ci.appveyor.com/api/projects/status/eid3dqq4c28u7sf4?svg=true)](https://ci.appveyor.com/project/Antidote1911/arsenic)
 
 # Arsenic
