@@ -12,23 +12,24 @@ configuration: Release
 
 install:
   - set QTDIR=C:\Qt\5.14.2\mingw73_64
-  - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw730_64\bin;%PATH%;
+  - choco install -y InnoSetup
+  - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw730_64\bin;%PATH%;"C:\Program Files (x86)\Inno Setup 5"
 
 before_build:
-    # Prepare the out-of-source build directory.
-    - qmake arsenic.pro
+  - qmake arsenic.pro
 
 build_script:
   - mingw32-make
 
 after_build:
-    - mkdir arsenic_win_x64
-    - cd arsenic_win_x64
-    - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
-    - xcopy %APPVEYOR_BUILD_FOLDER%\src\botan\release\botan.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
-    - xcopy %APPVEYOR_BUILD_FOLDER%\src\zxcvbn\release\zxcvbn.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
-    - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
-    - windeployqt arsenic.exe
+  - mkdir arsenic_win_x64
+  - cd arsenic_win_x64
+  - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+  - xcopy %APPVEYOR_BUILD_FOLDER%\src\botan\release\botan.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+  - xcopy %APPVEYOR_BUILD_FOLDER%\src\zxcvbn\release\zxcvbn.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+  - xcopy %APPVEYOR_BUILD_FOLDER%\src\arsenic\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
+  - windeployqt arsenic.exe
+  - iscc innosetup.iss
 
 artifacts:
   #- path: \release\arsenic-*.exe
