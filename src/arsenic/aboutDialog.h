@@ -2,7 +2,7 @@
 #define ABOUTDIALOG_H
 
 #include <QDialog>
-#include <QScopedPointer>
+#include <memory>
 
 namespace Ui {
 class AboutDialog;
@@ -19,7 +19,7 @@ class AboutDialog : public QDialog {
     void copyToClipboard();
 
   private:
-    const QScopedPointer<Ui::AboutDialog> m_ui;
+    const std::unique_ptr<Ui::AboutDialog> m_ui;
 };
 
 #endif // ABOUTDIALOG_H

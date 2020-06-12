@@ -3,7 +3,7 @@
 
 #include <QDialog>
 #include <QSettings>
-#include <QScopedPointer>
+#include <memory>
 
 namespace Ui {
 class ConfigDialog;
@@ -22,7 +22,7 @@ class ConfigDialog : public QDialog {
     // void reject();
 
   private:
-    const QScopedPointer<Ui::ConfigDialog> m_ui;
+    const std::unique_ptr<Ui::ConfigDialog> m_ui;
 };
 
 #endif // CONFIGDIALOG_H

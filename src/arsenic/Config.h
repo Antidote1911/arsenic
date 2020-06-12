@@ -20,7 +20,7 @@
 #define CONFIG_H
 
 #include <QVariant>
-#include <QScopedPointer>
+#include <memory>
 
 class QSettings;
 
@@ -54,7 +54,7 @@ class Config : public QObject {
 
     static Config* m_instance;
 
-    QScopedPointer<QSettings> m_settings;
+    std::unique_ptr<QSettings> m_settings;
     QHash<QString, QVariant> m_defaults;
 };
 

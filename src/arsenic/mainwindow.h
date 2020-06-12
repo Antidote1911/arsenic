@@ -4,16 +4,14 @@
 #include <QMainWindow>
 #include <QStandardItemModel>
 #include <QTranslator>
-#include <QScopedPointer>
+#include <QActionGroup>
 
 #include "fileCrypto.h"
 #include "textcrypto.h"
 #include "skin.h"
-#include "hashcheckdialog.h"
-#include "argonTests.h"
 #include "loghtml.h"
-#include "passwordGeneratorDialog.h"
-#include "aboutDialog.h"
+#include "Delegate.h"
+#include <memory>
 
 namespace Ui {
 class MainWindow;
@@ -60,7 +58,7 @@ class MainWindow : public QMainWindow {
 
   protected slots:
     // this slot is called by the language menu actions
-    void slotLanguageChanged(QAction *action);
+    void slotLanguageChanged(QAction *m1_action);
     void setPassword(QString);
 
   protected:
@@ -70,14 +68,18 @@ class MainWindow : public QMainWindow {
     void changeEvent(QEvent *event) Q_DECL_OVERRIDE;
 
   private:
-    const QScopedPointer<Ui::MainWindow> m_ui;
+    const std::unique_ptr<Ui::MainWindow> m_ui;
+    std::unique_ptr<Skin> m_skin;
+    std::unique_ptr<logHtml> m_log;
+    std::unique_ptr<textCrypto> m_text_crypto;
+    std::unique_ptr<Crypto_Thread> m_file_crypto;
+    std::unique_ptr<QStandardItemModel> fileListModelCrypto;
+    std::unique_ptr<Delegate> m_delegate;
+    std::unique_ptr<QActionGroup> m_langGroup;
+
     void loadPreferences();
     void savePreferences();
-
-    Skin skin;
-
-    void createLanguageMenu(void); // creates the language menu dynamically from the content of m_langPath
-
+    void createLanguageMenu(void);               // creates the language menu dynamically from the content of m_langPath
     QString m_langPath;                          // Path of language files. This is always fixed to /languages.
     void loadLanguage(const QString &rLanguage); // loads a language by the given language shortcur (e.g. de, en)
 
@@ -92,15 +94,10 @@ class MainWindow : public QMainWindow {
     bool saveFile(const QString &fileName);
     void loadFile(const QString &fileName);
 
-    QStandardItemModel *fileListModelCrypto;
     void cryptoFileView();
     void delegate();
     void removeFile(const QModelIndex &index);
     void addFilePathToModel(const QString &filePath);
-
-    QScopedPointer<Crypto_Thread> m_file_crypto;
-    QScopedPointer<textCrypto> m_text_crypto;
-    QScopedPointer<logHtml> m_log;
 
     QStringList getListFiles();
     void loadLogFile();

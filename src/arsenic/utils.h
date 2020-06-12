@@ -3,31 +3,36 @@
 
 #include <QDebug>
 #include <QObject>
-#include <iostream>
 
-class Utils : public QObject
-{
+class Utils : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit Utils(QObject *parent = nullptr);
     static QString getFileSize(qint64 size);
-    template <typename T> static void afficher(std::vector<T> const &v);
 
-signals:
+    template <typename T>
+    static void debugMessage(T test);
+
+  signals:
 };
 
-// Version générique
-template <typename T> void Utils::afficher(std::vector<T> const &v)
+template <typename T>
+void Utils::debugMessage(T test)
 {
-    if constexpr (std::is_same_v<T, const QString>) {
-        for (auto const &e : v) {
-            qDebug() << QString::number(e);
-        }
-    } else {
-        for (auto const &e : v) {
+    if constexpr (std::is_same_v<T, std::vector<QString>>) {
+        for (auto const &e : test) {
             qDebug() << e;
         }
+        return;
+    }
+    if constexpr (std::is_same_v<T, std::string>) {
+        QString qstr = QString::fromStdString(test);
+        qDebug() << qstr;
+        return;
+    }
+
+    else {
+        qDebug() << test;
     }
 }
-
 #endif // UTILS_H

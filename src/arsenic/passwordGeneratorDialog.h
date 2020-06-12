@@ -22,7 +22,7 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QLabel>
-#include <QScopedPointer>
+#include <memory>
 
 #include "passwordGenerator.h"
 
@@ -76,8 +76,8 @@ class PasswordGeneratorDialog : public QDialog {
     PasswordGenerator::CharClasses charClasses();
     PasswordGenerator::GeneratorFlags generatorFlags();
 
-    const QScopedPointer<PasswordGenerator> m_passwordGenerator;
-    const QScopedPointer<Ui::PasswordGeneratorDialog> m_ui;
+    const std::unique_ptr<PasswordGenerator> m_passwordGenerator;
+    const std::unique_ptr<Ui::PasswordGeneratorDialog> m_ui;
 
   protected:
     void keyPressEvent(QKeyEvent *e) override;

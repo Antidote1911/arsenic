@@ -11,14 +11,12 @@
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QPlainTextEdit>
-#include <QScopedPointer>
 
 #include "aboutDialog.h"
 #include "Config.h"
 #include "Delegate.h"
 #include "configDialog.h"
 #include "constants.h"
-#include "loghtml.h"
 #include "messages.h"
 #include "passwordGeneratorDialog.h"
 #include "hashcheckdialog.h"
@@ -31,9 +29,11 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(new Ui::MainWindow)
 {
     m_ui->setupUi(this);
-    m_file_crypto.reset(new Crypto_Thread);
-    m_text_crypto.reset(new textCrypto);
-    m_log.reset(new logHtml);
+
+    m_file_crypto = std::make_unique<Crypto_Thread>();
+    m_text_crypto = std::make_unique<textCrypto>();
+    m_log         = std::make_unique<logHtml>();
+    m_skin        = std::make_unique<Skin>();
 
     createLanguageMenu();
     loadPreferences();
@@ -44,7 +44,6 @@ MainWindow::MainWindow(QWidget *parent)
     delegate();
 
     // General
-
     // clang-format off
     connect(m_ui->menuAboutArsenic, &QAction::triggered, this,   [=] { aboutArsenic(); });
     connect(m_ui->menuHashCalculator, &QAction::triggered, this, [=] { hashCalculator(); });
@@ -84,11 +83,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_ui->pushDecrypt, &QPushButton::clicked, this,      [=] { decryptFiles(); });
     connect(m_ui->menuAbortJob, &QAction::triggered, this,       [=] { abortJob(); });
 
-    connect(m_file_crypto.data(), &Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
-    connect(m_file_crypto.data(), &Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
-    connect(m_file_crypto.data(), &Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
-    connect(m_file_crypto.data(), &Crypto_Thread::addDecrypted, this,          [=](const QString &filepath) { AddDecryptedFile(filepath); });
-    connect(m_file_crypto.data(), &Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
+    connect(m_file_crypto.get(), &Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
+    connect(m_file_crypto.get(), &Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
+    connect(m_file_crypto.get(), &Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
+    connect(m_file_crypto.get(), &Crypto_Thread::addDecrypted, this,          [=](const QString &filepath) { AddDecryptedFile(filepath); });
+    connect(m_file_crypto.get(), &Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
     //connect(&pwGenerator, &PasswordGeneratorDialog::appliedPassword, this, [=](const QString &password) { setPassword(password); });
     //connect(&pwGenerator, SIGNAL(dialogTerminated()), &pwGenerator, SLOT(close()));
     // clang-format on
@@ -106,9 +105,7 @@ void MainWindow::removeDeletedFile(QString filepath)
 {
     QList<QStandardItem *> items;
     QStandardItem *item;
-
-    items = fileListModelCrypto->findItems(filepath, Qt::MatchExactly, 2);
-
+    items      = fileListModelCrypto->findItems(filepath, Qt::MatchExactly, 2);
     item       = items[0];
     auto index = item->row();
     if (fileListModelCrypto->hasChildren()) {
@@ -279,7 +276,7 @@ void MainWindow::switchTab(quint32 index)
 
 void MainWindow::cryptoFileView()
 {
-    fileListModelCrypto = new QStandardItemModel(0, 5);
+    fileListModelCrypto = std::make_unique<QStandardItemModel>(0, 5);
     fileListModelCrypto->setHeaderData(0, Qt::Horizontal, tr("Remove File"));
     fileListModelCrypto->setHeaderData(1, Qt::Horizontal, tr("Name"));
     fileListModelCrypto->setHeaderData(2, Qt::Horizontal, tr("Path"));
@@ -300,12 +297,13 @@ void MainWindow::cryptoFileView()
 void MainWindow::delegate()
 {
     // Custom delegate paints progress bar and file close button for each file
-    Delegate *delegate = new Delegate{this};
 
-    m_ui->fileListViewCrypto->setItemDelegate(delegate);
-    m_ui->fileListViewCrypto->setModel(fileListModelCrypto);
+    m_delegate = std::make_unique<Delegate>();
 
-    connect(delegate, &Delegate::removeRow, this, &MainWindow::removeFile);
+    m_ui->fileListViewCrypto->setItemDelegate(m_delegate.get());
+    m_ui->fileListViewCrypto->setModel(fileListModelCrypto.get());
+
+    connect(m_delegate.get(), &Delegate::removeRow, this, &MainWindow::removeFile);
 }
 
 void MainWindow::addFiles()
@@ -391,8 +389,7 @@ void MainWindow::addFilePathToModel(const QString &filePath)
         }
     }
     m_ui->fileListViewCrypto->resizeColumnsToContents();
-    m_ui->fileListViewCrypto->setColumnWidth(2, 100); // Limit the "path" to 100
-    // px
+    m_ui->fileListViewCrypto->setColumnWidth(2, 100); // Limit the "path" to 100 px
 
     // End if file exists and is a file
 }
@@ -411,7 +408,7 @@ void MainWindow::clearListFiles()
 
 void MainWindow::generator()
 {
-    auto pwGenerator{new PasswordGeneratorDialog};
+    auto pwGenerator = new PasswordGeneratorDialog;
 
     pwGenerator->setStandaloneMode(true);
     connect(pwGenerator, SIGNAL(appliedPassword(QString)), SLOT(setPassword(QString)));
@@ -445,11 +442,11 @@ void MainWindow::loadPreferences()
     restoreState(config()->get("GUI/MainWindowState").toByteArray());
     if (config()->get("GUI/darkTheme").toBool()) {
         m_ui->menuDarkTheme->setChecked(true);
-        skin.setSkin("dark");
+        m_skin->setSkin("dark");
     }
     else {
         m_ui->menuDarkTheme->setChecked(false);
-        skin.setSkin("notheme");
+        m_skin->setSkin("notheme");
     }
     if (config()->get("GUI/showToolbar").toBool()) {
         m_ui->menuViewToolbar->setChecked(true);
@@ -492,10 +489,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     Q_UNUSED(event);
     // save prefs before quitting
     savePreferences();
-    if (m_file_crypto->isRunning()) {
-        m_file_crypto->abort();
-        m_file_crypto->wait();
-    }
+    abortJob();
 }
 
 void MainWindow::quit()
@@ -530,7 +524,7 @@ void MainWindow::hashCalculator()
 void MainWindow::aboutArsenic()
 {
     auto *aboutDialog = new AboutDialog(this);
-    aboutDialog->open();
+    aboutDialog->exec();
 }
 
 void MainWindow::Argon2_tests()
@@ -543,10 +537,10 @@ void MainWindow::Argon2_tests()
 void MainWindow::dark_theme(bool checked)
 {
     if (checked) {
-        skin.setSkin("dark");
+        m_skin->setSkin("dark");
     }
     else {
-        skin.setSkin("notheme");
+        m_skin->setSkin("notheme");
     }
 }
 
@@ -554,13 +548,13 @@ void MainWindow::dark_theme(bool checked)
 // translations.
 void MainWindow::createLanguageMenu(void)
 {
-    QActionGroup *langGroup = new QActionGroup(m_ui->menuLanguage);
-    langGroup->setExclusive(true);
+    m_langGroup = std::make_unique<QActionGroup>(m_ui->menuLanguage);
+    m_langGroup->setExclusive(true);
 
-    connect(langGroup, SIGNAL(triggered(QAction *)), this, SLOT(slotLanguageChanged(QAction *)));
+    connect(m_langGroup.get(), SIGNAL(triggered(QAction *)), this, SLOT(slotLanguageChanged(QAction *)));
 
     // format systems language
-    auto defaultLocale{QLocale::system().name()}; // e.g. "de_DE"
+    auto defaultLocale = QLocale::system().name(); // e.g. "de_DE"
 
     defaultLocale.truncate(defaultLocale.lastIndexOf('_')); // e.g. "de"
 
@@ -588,7 +582,7 @@ void MainWindow::createLanguageMenu(void)
         action->setData(locale);
 
         m_ui->menuLanguage->addAction(action);
-        langGroup->addAction(action);
+        m_langGroup->addAction(action);
         // set default translators and language checked
         if (config()->get("GUI/Language").toString() == locale) {
             action->setChecked(true);
@@ -788,7 +782,7 @@ void MainWindow::encryptText()
     auto plaintext{m_ui->cryptoPadEditor->toPlainText()};
 
     m_text_crypto->start(m_ui->password_0->text(), true);
-    quint32 result = m_text_crypto->finish(plaintext);
+    quint32 result = m_text_crypto.get()->finish(plaintext);
     if (result != CRYPT_SUCCESS) {
         displayMessageBox(tr("Encryption Error!"), errorCodeToString(result));
     }
@@ -799,11 +793,6 @@ void MainWindow::encryptText()
 
 void MainWindow::decryptText()
 {
-    std::vector<int> const tableau_entiers{1, 3, 5, 7, 9};
-    std::vector<QString> const tableau_qstring{"hfhgfh", "hyuyu", "5.123"};
-
-    Utils::afficher(tableau_qstring);
-    Utils::afficher(tableau_entiers);
 
     if (m_ui->cryptoPadEditor->toPlainText().isEmpty()) {
         displayEmptyEditor();

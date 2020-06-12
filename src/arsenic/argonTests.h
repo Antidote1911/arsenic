@@ -2,7 +2,7 @@
 #define ARGONTESTS_H
 
 #include <QDialog>
-#include <QScopedPointer>
+#include <memory>
 
 namespace Ui {
 class ArgonTests;
@@ -16,7 +16,7 @@ class ArgonTests : public QDialog {
     ~ArgonTests();
 
   private:
-    const QScopedPointer<Ui::ArgonTests> m_ui;
+    const std::unique_ptr<Ui::ArgonTests> m_ui;
 };
 
 #endif // ARGONTESTS_H

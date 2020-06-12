@@ -19,18 +19,24 @@ QString Utils::getFileSize(qint64 size)
         static const int precision = 0;
         if (size < KiB) {
             return (QString::number(size, 'f', precision) + " B");
-        } else if (size < MiB) {
+        }
+        else if (size < MiB) {
             return (QString::number(size / KiB, 'f', precision) + " KiB");
-        } else if (size < GiB) {
+        }
+        else if (size < GiB) {
             return (QString::number(size / MiB, 'f', precision) + " MiB");
-        } else if (size < TiB) {
+        }
+        else if (size < TiB) {
             return (QString::number(size / GiB, 'f', precision) + " GiB");
-        } else if (size < PiB) {
+        }
+        else if (size < PiB) {
             return (QString::number(size / TiB, 'f', precision) + " TiB");
-        } else {
+        }
+        else {
             return (QString::number(size / PiB, 'f', precision) + " PiB");
         }
-    } else {
+    }
+    else {
         return ("");
     }
 }

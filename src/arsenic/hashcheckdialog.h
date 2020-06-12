@@ -3,7 +3,7 @@
 
 #include <QDialog>
 #include <QMessageBox>
-#include <QScopedPointer>
+#include <memory>
 
 namespace Ui {
 class HashCheckDialog;
@@ -30,7 +30,7 @@ class HashCheckDialog : public QDialog {
     void copyToClipboard();
 
   private:
-    const QScopedPointer<Ui::HashCheckDialog> m_ui;
+    const std::unique_ptr<Ui::HashCheckDialog> m_ui;
     bool cancel_calculation;
     bool isCalculating;
 };
