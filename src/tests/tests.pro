@@ -31,6 +31,14 @@ HEADERS += catch.hpp \
 
 
 linux {
+    LIBS += -L$$OUT_PWD/../quazip/ -lquazip
+    INCLUDEPATH += $$PWD/../quazip/
+    DEPENDPATH += $$PWD/../quazip/
+
+    LIBS += -L$$OUT_PWD/../zlib/ -lzlib
+    INCLUDEPATH += $$PWD/../zlib/
+    DEPENDPATH += $$PWD/../zlib/
+
     LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
     INCLUDEPATH += $$PWD/../zxcvbn/
     DEPENDPATH += $$PWD/../zxcvbn/
@@ -51,6 +59,18 @@ linux {
 }
 
 win32-g++ {
+    LIBS += -L$$OUT_PWD/../quazip/release/ -lquazip
+    INCLUDEPATH += $$PWD/../quazip/
+    DEPENDPATH += $$PWD/../quazip/
+
+    LIBS += -L$$OUT_PWD/../zlib/release/ -lzlib
+    INCLUDEPATH += $$PWD/../zlib/
+    DEPENDPATH += $$PWD/../zlib/
+
+    LIBS += -L$$OUT_PWD/../zxcvbn/release/ -lzxcvbn
+    INCLUDEPATH += $$PWD/../zxcvbn/
+    DEPENDPATH += $$PWD/../zxcvbn/
+
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/

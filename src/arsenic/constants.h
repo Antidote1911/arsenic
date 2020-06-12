@@ -2,6 +2,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 #include "botan_all.h"
+#include "zlib.h"
 
 #include <QDebug>
 #include <QTranslator>
@@ -38,6 +39,7 @@ const bool DEFAULT_SHOW_TOOLBAR         { true };
 const bool DEFAULT_CLEAR_CLIPBOARD      { true };
 const quint32 DEFAULT_CLIPBOARD_TIMEOUT { 10 };
 const QString BOTAN_VERSION             { QString::fromStdString(Botan::version_string()) };
+const QString ZLIB_Version              {ZLIB_VERSION};
 
 const QString DEFAULT_LIST_PATH         { "session.qtlist" };
 const int MIN_PASS_LENGTH            { 8 };
