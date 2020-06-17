@@ -14,7 +14,8 @@
 #include "messages.h"
 #include "tripleencryption.h"
 #include "utils.h"
-#include "quazip/JlCompress.h"
+#include "JlCompress.h"
+#include "quazip.h"
 
 using namespace ARs;
 using namespace Botan;
