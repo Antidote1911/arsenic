@@ -1,6 +1,7 @@
 QT -= gui
 
 CONFIG += c++17 console
+QMAKE_CXXFLAGS += -std=c++17
 CONFIG -= app_bundle
 TARGET = tests
 
