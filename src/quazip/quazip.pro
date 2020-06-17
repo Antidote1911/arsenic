@@ -4,6 +4,7 @@ QT -= gui
 
 # Creating pkgconfig .pc file
 CONFIG += create_prl no_install_prl create_pc
+CONFIG += staticlib
 
 QMAKE_PKGCONFIG_PREFIX = $$PREFIX
 QMAKE_PKGCONFIG_INCDIR = $$headers.path
