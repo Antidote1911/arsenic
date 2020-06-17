@@ -76,6 +76,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // EncryptFile
     connect(m_ui->menuAddFiles, &QAction::triggered, this,       [=] { addFiles(); });
+    connect(m_ui->menuAddFolder, &QAction::triggered, this,       [=] { addFolder(); });
     connect(m_ui->menuClearList, &QAction::triggered, this,      [=] { clearListFiles(); });
     connect(m_ui->menuEncryptList, &QAction::triggered, this,    [=] { encryptFiles(); });
     connect(m_ui->menuDecryptList, &QAction::triggered, this,    [=] { decryptFiles(); });
@@ -86,11 +87,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_file_crypto.get(), &Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
     connect(m_file_crypto.get(), &Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
     connect(m_file_crypto.get(), &Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
-    connect(m_file_crypto.get(), &Crypto_Thread::addDecrypted, this,          [=](const QString &filepath) { AddDecryptedFile(filepath); });
     connect(m_file_crypto.get(), &Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
     //connect(&pwGenerator, &PasswordGeneratorDialog::appliedPassword, this, [=](const QString &password) { setPassword(password); });
     //connect(&pwGenerator, SIGNAL(dialogTerminated()), &pwGenerator, SLOT(close()));
     // clang-format on
+
+    // create the temp directory if not already exist.
+    QDir tempPath = Utils::getTempPath();
+    if (!tempPath.exists())
+        tempPath.mkdir(Utils::getTempPath());
 }
 
 MainWindow::~MainWindow() {}
@@ -324,12 +329,29 @@ void MainWindow::addFiles()
     }
 }
 
+void MainWindow::addFolder()
+{
+    // Open a file dialog to get files
+    const auto directory = QFileDialog::getExistingDirectory(this, tr("Add Folder"), config()->get("GUI/lastDirectory").toByteArray());
+    addFilePathToModel(directory);
+}
+
 void MainWindow::addFilePathToModel(const QString &filePath)
 {
     QFileInfo fileInfo{filePath};
-    if (fileInfo.exists() && fileInfo.isFile()) // If the file exists, add it to the model
+    QString fileSize;
+    qint64 dirSize;
+    if (fileInfo.exists() && fileInfo.isFile() | fileInfo.isDir()) // If the file exists, add it to the model
     {
-        const auto fileSize{Utils::getFileSize((fileInfo.size()))};
+        if (fileInfo.isDir()) {
+
+            dirSize  = Utils::getDirSize(filePath);
+            fileSize = Utils::getFileSize(dirSize);
+        }
+        else {
+            fileSize = Utils::getFileSize(fileInfo.size());
+        }
+
         const auto fileName{fileInfo.fileName()};
 
         const auto fileItem{new QStandardItem{fileName}};
@@ -355,7 +377,13 @@ void MainWindow::addFilePathToModel(const QString &filePath)
         sizeItem->setDropEnabled(false);
         sizeItem->setEditable(false);
         sizeItem->setSelectable(false);
-        sizeItem->setToolTip(QString::number(fileInfo.size()) + " bytes");
+        if (fileInfo.isDir()) {
+            sizeItem->setToolTip(QString::number(dirSize) + " bytes");
+        }
+        else {
+            sizeItem->setToolTip(QString::number(fileInfo.size()) + " bytes");
+        }
+
         const auto sizeVariant{QVariant::fromValue(fileSize)};
         sizeItem->setData(sizeVariant);
 

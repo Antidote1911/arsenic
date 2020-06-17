@@ -7,24 +7,28 @@
 #include "../arsenic/constants.h"
 #include "../arsenic/fileCrypto.h"
 #include "../arsenic/textcrypto.h"
+#include "../arsenic/utils.h"
 #include "botan_all.h"
 #include "catch.hpp"
 
 using namespace ARs;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     QCoreApplication a(argc, argv);
     int result = Catch::Session().run(argc, argv);
     return (result < 0xff ? result : 0xff);
 }
 
-int Factorial(int number) {
-    return (number <= 1 ? number : Factorial(number - 1) * number);  // fail
+int Factorial(int number)
+{
+    return (number <= 1 ? number : Factorial(number - 1) * number); // fail
 }
 
-bool encryptString() {
+bool encryptString()
+{
     QString plaintext = "my super secret message";
-    QString password = "mypassword";
+    QString password  = "mypassword";
 
     textCrypto encrypt;
     encrypt.start(password, true);
@@ -37,13 +41,14 @@ bool encryptString() {
     return (plaintext == "my super secret message");
 }
 
-bool encryptFile() {
+bool encryptFile()
+{
     // We generate a ramdom file
     Botan::SecureVector<quint8> main_buffer(100000);
     Botan::AutoSeeded_RNG rng;
 
     main_buffer = rng.random_vec(100000);
-    QFile::remove(QDir::cleanPath("cleartxt.txt"));  // clear previous file
+    QFile::remove(QDir::cleanPath("cleartxt.txt")); // clear previous file
     QFile::remove(QDir::cleanPath("cleartxt.txt.arsenic"));
 
     QFile src_file(QDir::cleanPath("cleartxt.txt"));
@@ -101,24 +106,29 @@ bool encryptFile() {
     return (result1 == result2);
 }
 
-QString upper(QString str) {
+QString upper(QString str)
+{
     return (str.toUpper());
 }
 
-TEST_CASE("Factorials of 1 and higher are computed(pass) ", "[single - file] ") {
+TEST_CASE("Factorials of 1 and higher are computed(pass) ", "[single - file] ")
+{
     REQUIRE(Factorial(1) == 1);
     REQUIRE(Factorial(2) == 2);
     REQUIRE(Factorial(3) == 6);
     REQUIRE(Factorial(10) == 3628800);
 }
 
-TEST_CASE("Upper ", "[single - file] ") {
+TEST_CASE("Upper ", "[single - file] ")
+{
     REQUIRE(upper("test") == "TEST");
 }
 
-TEST_CASE("File Encryption / decryption ", "[single - file] ") {
+TEST_CASE("File Encryption / decryption ", "[single - file] ")
+{
     REQUIRE(encryptFile() == true);
 }
-TEST_CASE("String Encryption / decryption ", "[single - file] ") {
+TEST_CASE("String Encryption / decryption ", "[single - file] ")
+{
     REQUIRE(encryptString() == true);
 }

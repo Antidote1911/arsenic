@@ -9,6 +9,9 @@ class Utils : public QObject {
   public:
     explicit Utils(QObject *parent = nullptr);
     static QString getFileSize(qint64 size);
+    static qint64 getDirSize(const QString &curr_path);
+    static void clearDir(const QString &dir_path);
+    static QString getTempPath();
 
     template <typename T>
     static void debugMessage(T test);

@@ -243,7 +243,7 @@
     <addaction name="menuDecryptList"/>
     <addaction name="menuAbortJob"/>
     <addaction name="menuQuit"/>
-    <addaction name="actionAddFolder"/>
+    <addaction name="menuAddFolder"/>
    </widget>
    <widget class="QMenu" name="menuLog">
     <property name="title">
@@ -507,7 +507,7 @@
     <string>Remove All Files From List</string>
    </property>
   </action>
-  <action name="actionAddFolder">
+  <action name="menuAddFolder">
    <property name="text">
     <string>Add Folder</string>
    </property>

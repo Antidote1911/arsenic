@@ -13,6 +13,8 @@
 #include "constants.h"
 #include "messages.h"
 #include "tripleencryption.h"
+#include "utils.h"
+#include "JlCompress.h"
 
 using namespace ARs;
 using namespace Botan;
@@ -62,11 +64,46 @@ void Crypto_Thread::run()
             Crypto_Thread::terminate();
             return;
         }
+        // remove any junk in the temp directory
+        QString temp_path = Utils::getTempPath();
+        Utils::clearDir(temp_path);
+
+        QFile src_file(QDir::cleanPath(inputFileName));
+        QFileInfo src_info(src_file);
+        QByteArray src_name = src_info.fileName().toUtf8();
 
         if (m_direction == true) {
             emit statusMessage("");
             emit statusMessage(QDateTime::currentDateTime().toString("dddd dd MMMM yyyy (hh:mm:ss)") + " encryption of " + inputFileName);
-            quint32 result = encrypt(inputFileName);
+            // test if it is a floler. If yes, compress it before encrypt
+
+            QString zip_path = QDir::cleanPath(Utils::getTempPath() + "tmp.zip");
+            QuaZip qz(zip_path);
+
+            quint32 result = 0;
+            if (src_info.isFile()) {
+                int ret_val = JlCompress::compressFile(zip_path, inputFileName);
+                if (ret_val) {
+                    qz.open(QuaZip::mdAdd);
+                    qz.setComment("ARSENIC FILE");
+                    qz.close();
+                }
+                result = encrypt(zip_path, inputFileName);
+                QFile::remove(zip_path);
+            }
+            else if (src_info.isDir()) {
+                int ret_val = JlCompress::compressDir(zip_path, inputFileName);
+                if (ret_val) {
+                    qz.open(QuaZip::mdAdd);
+                    qz.setComment("ARSENIC DIR");
+                    qz.close();
+                }
+
+                result = encrypt(zip_path, inputFileName);
+
+                QFile::remove(zip_path);
+            }
+
             emit statusMessage(errorCodeToString(result));
 
             if (m_aborted) {
@@ -77,7 +114,22 @@ void Crypto_Thread::run()
         else {
             emit statusMessage("");
             emit statusMessage(QDateTime::currentDateTime().toString("dddd dd MMMM yyyy (hh:mm:ss)") + " decryption of " + inputFileName);
-            quint32 result = decrypt(inputFileName);
+            QString decrypt_name;
+            quint32 result       = decrypt(inputFileName, &decrypt_name);
+            QString decrypt_path = Utils::getTempPath() + "tmp.zip";
+            QuaZip qz(decrypt_path);
+            qz.open(QuaZip::mdUnzip);
+            QString item_type = qz.getComment();
+            QString unzip_dir;
+            if (item_type == "ARSENIC FILE")
+                unzip_dir = QDir::cleanPath(src_info.path());
+            else
+                unzip_dir = QDir::cleanPath(src_info.path() + "/" + decrypt_name);
+
+            qz.close();
+            JlCompress::extractDir(decrypt_path, unzip_dir);
+            QFile::remove(decrypt_path);
+
             emit statusMessage(errorCodeToString(result));
 
             if (m_aborted) {
@@ -87,9 +139,8 @@ void Crypto_Thread::run()
     }
 }
 
-quint32 Crypto_Thread::encrypt(const QString& src_path)
+quint32 Crypto_Thread::encrypt(const QString& src_path, const QString& des_path)
 {
-    emit updateProgress(src_path, 0);
 
     /* format is:
      * MAGIC_NUMBER
@@ -109,9 +160,12 @@ quint32 Crypto_Thread::encrypt(const QString& src_path)
 
     QFile src_file(QDir::cleanPath(src_path));
     QFileInfo src_info(src_file);
+    QFileInfo src_info2(des_path);
     const auto fileSize     = src_info.size();
-    const auto fileName     = src_info.fileName().toUtf8();
+    const auto fileName     = src_info2.fileName().toUtf8();
     const auto fileNameSize = fileName.size();
+
+    emit updateProgress(src_info2.filePath(), 0);
 
     AutoSeeded_RNG rng;
     auto argonSalt        = rng.random_vec(ARGON_SALT_LEN);
@@ -139,8 +193,8 @@ quint32 Crypto_Thread::encrypt(const QString& src_path)
     if (!src_file.open(QIODevice::ReadOnly))
         return (SRC_CANNOT_OPEN_READ);
 
-    // create the new file, the path should normally be to the same directory as the source
-    QFile des_file(QDir::cleanPath(src_path) + DEFAULT_EXTENSION);
+    // create the new file.
+    QFile des_file(des_path + DEFAULT_EXTENSION);
 
     if (des_file.exists())
         return (DES_FILE_EXISTS);
@@ -173,7 +227,7 @@ quint32 Crypto_Thread::encrypt(const QString& src_path)
     while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(inBuf.data()), IN_BUFFER_SIZE)) > 0) {
         // calculate percentage proccessed
         processed += bytes_read;
-        emit updateProgress(src_path, (processed / fileSize) * 100);
+        emit updateProgress(src_info2.filePath(), (processed / fileSize) * 100);
         // ...
         inBuf.resize(bytes_read);
         encrypt.finish(inBuf);
@@ -182,23 +236,24 @@ quint32 Crypto_Thread::encrypt(const QString& src_path)
     }
 
     if (m_aborted) {
-        emit updateProgress(src_path, 0);
+        emit updateProgress(src_info2.filePath(), 0);
         des_file.close();
         des_file.remove();
         return (ABORTED_BY_USER);
     }
 
     if (m_deletefile) {
-        src_file.close();
-        src_file.remove();
-        emit deletedAfterSuccess(src_path);
+        QFile::remove(des_path);
+        emit deletedAfterSuccess(des_path);
     }
     emit addEncrypted(des_file.fileName());
     return (CRYPT_SUCCESS);
 }
 
-quint32 Crypto_Thread::decrypt(const QString& src_path)
+quint32 Crypto_Thread::decrypt(const QString& src_path, QString* decrypt_name)
 {
+    QString temp_path = Utils::getTempPath();
+
     emit updateProgress(src_path, 0);
     QFile src_file(QDir::cleanPath(src_path));
     QFileInfo src_info(src_file);
@@ -290,7 +345,12 @@ quint32 Crypto_Thread::decrypt(const QString& src_path)
     // create the decrypted file
     const string tmp{(name.begin()), name.end()}; // string tmp(reinterpret_cast<const char*>(name.begin()), name.size());
     const auto originalName = QString::fromStdString(tmp);
-    QFile des_file(uniqueFileName(QDir::cleanPath(src_info.absolutePath() + "/" + originalName)));
+
+    // return the name of the decrypted file
+    if (decrypt_name != nullptr)
+        *decrypt_name = originalName;
+
+    QFile des_file(temp_path + "/tmp.zip");
 
     if (!des_file.open(QIODevice::WriteOnly))
         return (DES_CANNOT_OPEN_WRITE);
@@ -327,7 +387,6 @@ quint32 Crypto_Thread::decrypt(const QString& src_path)
         emit deletedAfterSuccess(src_path);
     }
     QFileInfo des_info(des_file);
-    emit addDecrypted(des_info.filePath());
     return (DECRYPT_SUCCESS);
 }
 

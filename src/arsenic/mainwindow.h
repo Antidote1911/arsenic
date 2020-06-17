@@ -48,6 +48,7 @@ class MainWindow : public QMainWindow {
     void encryptText();
     void decryptText();
     void addFiles();
+    void addFolder();
     void switchTab(quint32 index);
     void clearEditor();
     void encryptFiles();
@@ -89,6 +90,8 @@ class MainWindow : public QMainWindow {
     void switchTranslator(QTranslator &translator, const QString &filename);
     bool maybeSave();
     void setCurrentFile(const QString &fileName);
+
+    QString tempPath;
 
     QString curFile;
     bool saveFile(const QString &fileName);
