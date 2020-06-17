@@ -10,6 +10,7 @@
 #include "../arsenic/utils.h"
 #include "botan_all.h"
 #include "catch.hpp"
+#include "JlCompress.h"
 
 using namespace ARs;
 
