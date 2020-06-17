@@ -77,7 +77,7 @@ win32-g++ {
     LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
-    LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
+    LIBS += -ladvapi32 -luser32 -lpthread
 }
 
 

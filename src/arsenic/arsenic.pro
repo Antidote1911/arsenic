@@ -123,7 +123,7 @@ win32-g++ {
     INCLUDEPATH += $$PWD/../botan/win_mingw64/
     DEPENDPATH += $$PWD/../botan/win_mingw64/
 
-    LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
+    LIBS += -ladvapi32 -luser32 -lpthread
 }
 
 TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_en.ts
