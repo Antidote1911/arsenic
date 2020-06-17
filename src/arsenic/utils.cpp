@@ -2,6 +2,7 @@
 #include <cmath>
 #include <vector>
 #include <QDir>
+#include <QStandardPaths>
 
 Utils::Utils(QObject *parent)
     : QObject(parent)
