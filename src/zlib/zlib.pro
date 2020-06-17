@@ -2,8 +2,7 @@ QT       -= core gui
 
 TARGET = zlib
 TEMPLATE = lib
-# Use this for static sodium rather than the default dynamic
-CONFIG += staticlib
+
 CONFIG += warn_off
 
 HEADERS += \
