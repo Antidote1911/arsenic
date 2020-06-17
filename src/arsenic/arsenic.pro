@@ -23,8 +23,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # no qDebug in release mode
 CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
-#LIBS += -lsodium
 DEFINES += QUAZIP_STATIC
+
 win32:RC_ICONS += /pixmaps/app.ico
 
 FORMS += \
