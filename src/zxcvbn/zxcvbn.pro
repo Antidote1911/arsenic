@@ -4,7 +4,6 @@ TARGET = zxcvbn
 TEMPLATE = lib
 
 CONFIG += warn_off
-CONFIG += staticlib
 
 HEADERS += \
     dict-src.h \
