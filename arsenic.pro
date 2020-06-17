@@ -12,7 +12,6 @@ SUBDIRS += src/zlib/zlib.pro \
            src/quazip/quazip.pro \
            src/botan/botan.pro \
            src/zxcvbn/zxcvbn.pro \
-           src/tests/tests.pro \
            src/arsenic
 
 
