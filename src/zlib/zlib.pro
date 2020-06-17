@@ -3,6 +3,7 @@ QT       -= core gui
 TARGET = zlib
 TEMPLATE = lib
 
+CONFIG += staticlib
 CONFIG += warn_off
 
 HEADERS += \
