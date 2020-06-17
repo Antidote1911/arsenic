@@ -20,6 +20,7 @@ SOURCES += \
     ../arsenic/tripleencryption.cpp \
     ../arsenic/messages.cpp \
     ../arsenic/textcrypto.cpp \
+    ../arsenic/quazip.cpp \
     ../arsenic/utils.cpp \
     main.cpp
 
@@ -29,6 +30,7 @@ HEADERS += catch.hpp \
     ../arsenic/tripleencryption.h \
     ../arsenic/messages.h \
     ../arsenic/utils.h \
+    ../arsenic/quazip.h \
     ../arsenic/textcrypto.h
 
 
