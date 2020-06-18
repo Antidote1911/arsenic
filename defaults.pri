@@ -6,9 +6,9 @@ QMAKE_CXXFLAGS += -std=c++17
 DEFINES += QUAZIP_STATIC
 
 # Quazip
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/quazip/release/ -lquazip
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/quazip/debug/ -lquazip
-else:unix: LIBS += -L$$OUT_PWD/../thirdparty/quazip/ -lquazip
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/quazip/release/ -lQt5Quazip
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/quazip/debug/ -lQt5Quazip
+else:unix: LIBS += -L$$OUT_PWD/../thirdparty/quazip/ -lQt5Quazip
 
 INCLUDEPATH += $$PWD/thirdparty/quazip
 
