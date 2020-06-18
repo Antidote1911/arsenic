@@ -12,7 +12,7 @@ QMAKE_PKGCONFIG_REQUIRES = Qt5Core
 
 # The ABI version.
 
-!win32:VERSION = 1.0.0
+VERSION = 1.0.0
 
 # 1.0.0 is the first stable ABI.
 # The next binary incompatible change will be 2.0.0 and so on.
@@ -23,22 +23,29 @@ QMAKE_PKGCONFIG_REQUIRES = Qt5Core
 # the VERSION variable will stay the same.
 
 # For example:
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 # QuaZIP 1.0 is released after some 0.x, keeping binary compatibility.
 # VERSION stays 1.0.0.
 # Then some binary incompatible change is introduced. QuaZIP goes up to
 # 2.0, VERSION to 2.0.0.
 # And so on.
 
+greaterThan(QT_MAJOR_VERSION, 4) {
+    # disable all the Qt APIs deprecated before Qt 6.0.0
+    DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
+    TARGET = Qt5Quazip
+} else {
+    TARGET = QtQuazip
+}
 
 # This one handles dllimport/dllexport directives.
 DEFINES += QUAZIP_BUILD
-DEFINES+=QT_NO_CAST_FROM_ASCII
-DEFINES+=QT_NO_CAST_TO_ASCII
+DEFINES += QT_NO_CAST_FROM_ASCII
+DEFINES += QT_NO_CAST_TO_ASCII
 # You'll need to define this one manually if using a build system other
 # than qmake or using QuaZIP sources directly in your project.
 CONFIG(staticlib): DEFINES += QUAZIP_STATIC
-CONFIG += warn_off
+
 # Input
 include(quazip.pri)
 
@@ -53,7 +60,7 @@ unix:!symbian {
     headers.files=$$HEADERS
     target.path=$$PREFIX/lib/$${LIB_ARCH}
     QMAKE_PKGCONFIG_DESTDIR = pkgconfig
-
+    #INSTALLS += headers target
 
 	OBJECTS_DIR=.obj
 	MOC_DIR=.moc
@@ -61,11 +68,9 @@ unix:!symbian {
 }
 
 win32 {
-    INCLUDEPATH += $$PWD/../zlib/
-    DEPENDPATH += $$PWD/../zlib/
     headers.path=$$PREFIX/include/quazip
     headers.files=$$HEADERS
-
+    #INSTALLS += headers target
     CONFIG(staticlib){
         target.path=$$PREFIX/lib
         QMAKE_PKGCONFIG_LIBDIR = $$PREFIX/lib/
