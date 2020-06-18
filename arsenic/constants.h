@@ -3,7 +3,6 @@
 #define CONSTANTS_H
 #include "botan_all.h"
 #include "zlib.h"
-#include "quazip.h"
 
 #include <QDebug>
 #include <QTranslator>
