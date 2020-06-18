@@ -53,7 +53,7 @@ unix:!symbian {
     headers.files=$$HEADERS
     target.path=$$PREFIX/lib/$${LIB_ARCH}
     QMAKE_PKGCONFIG_DESTDIR = pkgconfig
-    INSTALLS += headers target
+
 
 	OBJECTS_DIR=.obj
 	MOC_DIR=.moc
@@ -65,7 +65,7 @@ win32 {
     DEPENDPATH += $$PWD/../zlib/
     headers.path=$$PREFIX/include/quazip
     headers.files=$$HEADERS
-    INSTALLS += headers target
+
     CONFIG(staticlib){
         target.path=$$PREFIX/lib
         QMAKE_PKGCONFIG_LIBDIR = $$PREFIX/lib/
