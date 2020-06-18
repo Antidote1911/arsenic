@@ -37,10 +37,10 @@
 
 /*
 * This file was automatically generated running
-* 'configure.py --cc=clang --amalgamation --disable-modules=pkcs11'
+* 'configure.py --amalgamation --disable-shared --disable-modules=pkcs11'
 *
 * Target
-*  - Compiler: clang++ -fstack-protector -m64 -pthread -std=c++11 -D_REENTRANT -O3
+*  - Compiler: g++ -fstack-protector -m64 -pthread -std=c++11 -D_REENTRANT -O3
 *  - Arch: x86_64
 *  - OS: linux
 */
@@ -69,7 +69,7 @@
 #define BOTAN_SYSTEM_CERT_BUNDLE "/etc/ssl/certs/ca-certificates.crt"
 
 #ifndef BOTAN_DLL
-  #define BOTAN_DLL __attribute__((visibility("default")))
+  #define BOTAN_DLL 
 #endif
 
 /* Target identification and feature test macros */
@@ -89,7 +89,7 @@
 #define BOTAN_TARGET_OS_HAS_THREADS
 
 
-#define BOTAN_BUILD_COMPILER_IS_CLANG
+#define BOTAN_BUILD_COMPILER_IS_GCC
 
 
 

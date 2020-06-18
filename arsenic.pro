@@ -8,27 +8,10 @@ TEMPLATE      = subdirs
 CONFIG += ordered
 QMAKE_CXXFLAGS += -std=c++17
 
-SUBDIRS += src/zlib/zlib.pro \
-           src/quazip/quazip.pro \
-           src/botan/botan.pro \
-           src/zxcvbn/zxcvbn.pro \
-           src/arsenic
+SUBDIRS += thirdparty \
+           arsenic \
+           tests
 
-
-linux-g++ {
-CONFIG(release, debug|release) {
-    message(Building GCC Release (Qt $${QT_VERSION}))}
-CONFIG(debug, debug|release) {
-    message(Building GCC Debug (Qt $${QT_VERSION}))}
-}
-
-
-linux-clang {
-CONFIG(release, debug|release) {
-    message(Building clang Release (Qt $${QT_VERSION}))}
-CONFIG(debug, debug|release) {
-    message(Building clang Debug (Qt $${QT_VERSION}))}
-}
 
 DISTFILES += \
     .appveyor.yml \

@@ -80,49 +80,40 @@ RESOURCES += \
     rsc.qrc
 
 linux {
-    LIBS += -L$$OUT_PWD/../quazip/ -lquazip
-    INCLUDEPATH += $$PWD/../quazip/
-    DEPENDPATH += $$PWD/../quazip/
+    LIBS += -L$$OUT_PWD/../thirdparty/quazip/ -lquazip
+    INCLUDEPATH += $$PWD/../thirdparty/quazip/
+    DEPENDPATH += $$PWD/../thirdparty/quazip/
 
-    LIBS += -L$$OUT_PWD/../zlib/ -lzlib
-    INCLUDEPATH += $$PWD/../zlib/
-    DEPENDPATH += $$PWD/../zlib/
+    LIBS += -L$$OUT_PWD/../thirdparty/zlib/ -lzlib
+    INCLUDEPATH += $$PWD/../thirdparty/zlib/
+    DEPENDPATH += $$PWD/../thirdparty/zlib/
 
-    LIBS += -L$$OUT_PWD/../zxcvbn/ -lzxcvbn
-    INCLUDEPATH += $$PWD/../zxcvbn/
-    DEPENDPATH += $$PWD/../zxcvbn/
+    LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/ -lzxcvbn
+    INCLUDEPATH += $$PWD/../thirdparty/zxcvbn/
+    DEPENDPATH += $$PWD/../thirdparty/zxcvbn/
 
-    equals(QMAKE_CXX, clang++)
-    {
-        LIBS += -L$$OUT_PWD/../botan/ -lbotan
-        INCLUDEPATH += $$PWD/../botan/linux_clang/
-        DEPENDPATH += $$PWD/../botan/linux_clang/
-    }
+    LIBS += -L$$OUT_PWD/../thirdparty/botan/ -lbotan
+    INCLUDEPATH += $$PWD/../thirdparty/botan/unix/
+    DEPENDPATH += $$PWD/../thirdparty/botan/unix/
 
-    equals(QMAKE_CXX, g++)
-    {
-        LIBS += -L$$OUT_PWD/../botan/ -lbotan
-        INCLUDEPATH += $$PWD/../botan/linux_gcc/
-        DEPENDPATH += $$PWD/../botan/linux_gcc/
-    }
 }
 
 win32-g++ {
-    LIBS += -L$$OUT_PWD/../quazip/release/ -lquazip
-    INCLUDEPATH += $$PWD/../quazip/
-    DEPENDPATH += $$PWD/../quazip/
+    LIBS += -L$$OUT_PWD/../thirdparty/quazip/release/ -lquazip
+    INCLUDEPATH += $$PWD/../thirdparty/quazip/
+    DEPENDPATH += $$PWD/../thirdparty/quazip/
 
-    LIBS += -L$$OUT_PWD/../zlib/release/ -lzlib
-    INCLUDEPATH += $$PWD/../zlib/
-    DEPENDPATH += $$PWD/../zlib/
+    LIBS += -L$$OUT_PWD/../thirdparty/zlib/release/ -lzlib
+    INCLUDEPATH += $$PWD/../thirdparty/zlib/
+    DEPENDPATH += $$PWD/../thirdparty/zlib/
 
-    LIBS += -L$$OUT_PWD/../zxcvbn/release/ -lzxcvbn
-    INCLUDEPATH += $$PWD/../zxcvbn/
-    DEPENDPATH += $$PWD/../zxcvbn/
+    LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/release/ -lzxcvbn
+    INCLUDEPATH += $$PWD/../thirdparty/zxcvbn/
+    DEPENDPATH += $$PWD/../thirdparty/zxcvbn/
 
-    LIBS += -L$$OUT_PWD/../botan/release/ -lbotan
-    INCLUDEPATH += $$PWD/../botan/win_mingw64/
-    DEPENDPATH += $$PWD/../botan/win_mingw64/
+    LIBS += -L$$OUT_PWD/../thirdparty/botan/release/ -lbotan
+    INCLUDEPATH += $$PWD/../thirdparty/botan/win/
+    DEPENDPATH += $$PWD/../thirdparty/botan/win/
 
     LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
 }
