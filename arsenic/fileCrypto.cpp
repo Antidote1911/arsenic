@@ -84,6 +84,7 @@ void Crypto_Thread::run()
             QString zip_path = QDir::cleanPath(Utils::getTempPath() + "tmp.zip");
             QuaZip qz(zip_path);
 
+            emit statusMessage("Compressing... Please wait.");
             quint32 result = 0;
             if (src_info.isFile()) {
                 int ret_val = JlCompress::compressFile(zip_path, inputFileName);
@@ -103,8 +104,8 @@ void Crypto_Thread::run()
                     qz.close();
                 }
 
+                emit statusMessage("Encrypting... Please wait.");
                 result = encrypt(zip_path, inputFileName);
-
                 QFile::remove(zip_path);
             }
 
@@ -119,6 +120,7 @@ void Crypto_Thread::run()
             emit statusMessage("");
             emit statusMessage(QDateTime::currentDateTime().toString("dddd dd MMMM yyyy (hh:mm:ss)") + " decryption of " + inputFileName);
             QString decrypt_name;
+            emit statusMessage("Deccrypting... Please wait.");
             quint32 result       = decrypt(inputFileName, &decrypt_name);
             QString decrypt_path = Utils::getTempPath() + "tmp.zip";
             QuaZip qz(decrypt_path);
@@ -131,6 +133,7 @@ void Crypto_Thread::run()
                 unzip_dir = QDir::cleanPath(src_info.path() + "/" + decrypt_name);
 
             qz.close();
+            emit statusMessage("Decompressing... Please wait.");
             JlCompress::extractDir(decrypt_path, unzip_dir);
             QFile::remove(decrypt_path);
 
