@@ -3,6 +3,7 @@
 #define CONSTANTS_H
 #include "botan_all.h"
 #include "zlib.h"
+#include "quazip.h"
 
 #include <QDebug>
 #include <QTranslator>
@@ -12,7 +13,7 @@
 namespace ARs // for Arsenic Preferences
 {
 // Global app infos
-const QVersionNumber APP_VERSION     { 3, 5, 0 };
+const QVersionNumber APP_VERSION     { 3, 5, 1 };
 const QString APP_SHORT_NAME         { "Arsenic" };
 const QString APP_LONG_NAME          { "Arsenic " + APP_VERSION.toString() };
 const QString APP_DESCRIPTION        { "Strong encryption" };
