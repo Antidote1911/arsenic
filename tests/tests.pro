@@ -3,6 +3,7 @@ QT -= gui
 CONFIG += c++17 console
 CONFIG -= app_bundle
 TARGET = tests
+QMAKE_CXXFLAGS += -std=c++17
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
@@ -31,6 +32,7 @@ HEADERS += catch.hpp \
     ../arsenic/utils.h \
     ../arsenic/textcrypto.h
 
+DEFINES += QUAZIP_STATIC
 
 linux {
     LIBS += -L$$OUT_PWD/../thirdparty/quazip/ -lquazip
