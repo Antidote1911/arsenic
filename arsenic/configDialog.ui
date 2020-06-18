@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>458</width>
-    <height>368</height>
+    <width>385</width>
+    <height>306</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -145,13 +145,6 @@
       <string>Files Encryption</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="1" column="0">
-       <widget class="QCheckBox" name="checkAddDecrypted">
-        <property name="text">
-         <string>Add finished decrypted files to list</string>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="0">
        <widget class="QCheckBox" name="checkAddEncrypted">
         <property name="text">

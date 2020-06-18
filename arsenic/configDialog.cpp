@@ -8,8 +8,7 @@
 #include <QMessageBox>
 
 ConfigDialog::ConfigDialog(QWidget *parent)
-    : QDialog(parent)
-    , m_ui(new Ui::ConfigDialog)
+    : QDialog(parent), m_ui(new Ui::ConfigDialog)
 {
     m_ui->setupUi(this);
     connect(this, SIGNAL(accepted()), SLOT(saveSettings()));
@@ -31,7 +30,6 @@ void ConfigDialog::loadSettings()
     m_ui->spinBox_clip->setValue(config()->get("SECURITY/clearclipboardtimeout").toInt());
     m_ui->checkBox_empty->setChecked(config()->get("SECURITY/clearclipboard").toBool());
     m_ui->checkAddEncrypted->setChecked(config()->get("GUI/AddEncrypted").toBool());
-    m_ui->checkAddDecrypted->setChecked(config()->get("GUI/AddDecrypted").toBool());
 }
 
 void ConfigDialog::saveSettings()
@@ -41,5 +39,4 @@ void ConfigDialog::saveSettings()
     config()->set("SECURITY/clearclipboardtimeout", m_ui->spinBox_clip->value());
     config()->set("SECURITY/clearclipboard", m_ui->checkBox_empty->isChecked());
     config()->set("GUI/AddEncrypted", m_ui->checkAddEncrypted->isChecked());
-    config()->set("GUI/AddDecrypted", m_ui->checkAddDecrypted->isChecked());
 }
