@@ -59,6 +59,9 @@ void Crypto_Thread::setParam(bool direction,
 
 void Crypto_Thread::run()
 {
+    // initialize the zipping text codec, specifically, for use in encryption and decryption
+    QuaZip::setDefaultFileNameCodec("UTF-8");
+
     for (auto& inputFileName : m_filenames) {
         if (m_aborted) {
             m_aborted = true;
