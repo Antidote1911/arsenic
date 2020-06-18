@@ -18,6 +18,7 @@
 
 #include "aboutDialog.h"
 #include "constants.h"
+#include "utils.h"
 #include "ui_aboutDialog.h"
 
 #include <QClipboard>
@@ -71,6 +72,7 @@ AboutDialog::AboutDialog(QWidget *parent)
     debugInfo.append("Hostname: " + QSysInfo::machineHostName()).append("\n");
     debugInfo.append(ARs::BOTAN_VERSION).append("\n");
     debugInfo.append("Zlib version: " + ARs::ZLIB_Version).append("\n");
+    debugInfo.append("Tmp folder: " + Utils::getTempPath()).append("\n");
 
     m_ui->iconLabel->setPixmap(qApp->windowIcon().pixmap(48));
 
