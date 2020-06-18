@@ -8,8 +8,8 @@
 #include "../arsenic/fileCrypto.h"
 #include "../arsenic/textcrypto.h"
 #include "../arsenic/utils.h"
-#include "botan_all.h"
 #include "catch.hpp"
+#include "botan_all.h"
 
 using namespace ARs;
 
