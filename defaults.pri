@@ -11,7 +11,6 @@ else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/quazi
 else:unix: LIBS += -L$$OUT_PWD/../thirdparty/quazip/ -lquazip
 
 INCLUDEPATH += $$PWD/thirdparty/quazip
-DEPENDPATH += $$PWD/thirdparty/quazip
 
 # Zlib
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zlib/release/ -lzlib
@@ -19,7 +18,6 @@ else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zlib/
 else:unix: LIBS += -L$$OUT_PWD/../thirdparty/zlib/ -lzlib
 
 INCLUDEPATH += $$PWD/thirdparty/zlib
-DEPENDPATH += $$PWD/thirdparty/zlib
 
 # zxcvbn
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/release/ -lzxcvbn
@@ -27,7 +25,6 @@ else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zxcvb
 else:unix: LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/ -lzxcvbn
 
 INCLUDEPATH += $$PWD/thirdparty/zxcvbn
-DEPENDPATH += $$PWD/thirdparty/zxcvbn
 
 
 # Botan
@@ -36,10 +33,8 @@ else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/botan
 else:unix: LIBS += -L$$OUT_PWD/../thirdparty/botan/ -lbotan
 
 unix:INCLUDEPATH += $$PWD/thirdparty/botan/unix/
-unix:DEPENDPATH += $$PWD/thirdparty/botan/unix/
 
 win32:INCLUDEPATH += $$PWD/thirdparty/botan/win/
-win32:DEPENDPATH += $$PWD/thirdparty/botan/win/
 
 # specific windows
 win32:LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
