@@ -8,13 +8,14 @@
 #include <QTranslator>
 #include <QUnhandledException>
 #include <QtGlobal>
+#include <iostream>
 
 #include "constants.h"
 
+using namespace std;
+
 int main(int argc, char *argv[])
 {
-    QTextStream cin(stdin);
-    QTextStream cout(stdout);
 
     QApplication app(argc, argv);
     app.setOrganizationName(ARs::APP_LONG_NAME);
@@ -64,7 +65,9 @@ int main(int argc, char *argv[])
         }
 
         if (passphrase.size() < ARs::MIN_PASS_LENGTH) {
-            cout << "Passphrase must be minimum " + QString::number(ARs::MIN_PASS_LENGTH) + "characters" << endl;
+            auto tmp            = QString::number(ARs::MIN_PASS_LENGTH);
+            std::string minimum = tmp.toUtf8().constData();
+            cout << "Passphrase must be minimum " + minimum + " characters" << endl;
             return (0);
         }
 
@@ -72,11 +75,8 @@ int main(int argc, char *argv[])
             QStringList listFiles;
             listFiles.append(targetFile);
             Crypto.setParam(true, listFiles, passphrase, config()->get("CRYPTO/argonMemory").toInt(), config()->get("CRYPTO/argonItr").toInt(), false);
-
             Crypto.start();
             Crypto.wait();
-            cout << endl
-                 << resultat << endl;
             return (0);
         }
 
