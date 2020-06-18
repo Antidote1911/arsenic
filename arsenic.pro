@@ -13,6 +13,12 @@ SUBDIRS += thirdparty \
            arsenic \
            tests
 
+arsenic.depends = thirdparty
+tests.depends = thirdparty
+
+OTHER_FILES += \
+    defaults.pri
+
 
 DISTFILES += \
     .appveyor.yml \
