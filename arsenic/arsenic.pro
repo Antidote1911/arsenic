@@ -5,8 +5,6 @@
 #-------------------------------------------------
 
 QT       += core gui
-CONFIG += c++17
-QMAKE_CXXFLAGS += -std=c++17
 TEMPLATE = app
 
 CONFIG(release, debug|release): TARGET = arsenic

@@ -1,5 +1,7 @@
-
 SRC_DIR = $$PWD
+
+CONFIG += c++17
+QMAKE_CXXFLAGS += -std=c++17
 
 DEFINES += QUAZIP_STATIC
 
