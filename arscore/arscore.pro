@@ -28,6 +28,7 @@ HEADERS += \
     messages.h \
     constants.h
 
+DEFINES += QUAZIP_STATIC
 
 # Quazip
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/quazip/release/ -lQt5Quazip
