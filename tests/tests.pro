@@ -18,19 +18,20 @@ DEFINES += QT_DEPRECATED_WARNINGS
 include(../defaults.pri)
 
 SOURCES += \
+    main.cpp \
     ../arsenic/fileCrypto.cpp \
     ../arsenic/tripleencryption.cpp \
-    ../arsenic/messages.cpp \
-    ../arsenic/textcrypto.cpp \
     ../arsenic/utils.cpp \
-    main.cpp
+    ../arsenic/textcrypto.cpp \
+    ../arsenic/messages.cpp
 
-HEADERS += catch.hpp \
-    ../arsenic/constants.h \
+HEADERS += \
     ../arsenic/fileCrypto.h \
     ../arsenic/tripleencryption.h \
-    ../arsenic/messages.h \
     ../arsenic/utils.h \
-    ../arsenic/textcrypto.h
+    ../arsenic/textcrypto.h \
+    ../arsenic/messages.h
 
-
+INCLUDEPATH += \
+    ../arsenic \
+    ../thirdparty

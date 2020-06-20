@@ -106,3 +106,4 @@ DISTFILES += \
     flags.files = languages/*.svg
     flags.path = /usr/share/arsenic/languages/
     INSTALLS += flags
+

@@ -37,5 +37,3 @@ win32:INCLUDEPATH += $$PWD/thirdparty/botan/win/
 
 # specific windows
 win32:LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
-
-

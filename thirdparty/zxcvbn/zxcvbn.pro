@@ -15,3 +15,4 @@ SOURCES += \
 #INSTALL Linux
     target.path = /usr/lib/
     INSTALLS += target
+

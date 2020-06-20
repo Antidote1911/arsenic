@@ -4,12 +4,14 @@
 #include <QDataStream>
 #include <QDir>
 #include <QFile>
-#include "../arsenic/constants.h"
-#include "../arsenic/fileCrypto.h"
-#include "../arsenic/textcrypto.h"
-#include "../arsenic/utils.h"
+#include "constants.h"
+#include "fileCrypto.h"
+#include "textcrypto.h"
+#include "utils.h"
 #include "catch.hpp"
 #include "botan_all.h"
+#include "messages.h"
+#include "tripleencryption.h"
 
 using namespace ARs;
 
@@ -33,7 +35,6 @@ bool encryptString()
     textCrypto encrypt;
     encrypt.start(password, true);
     encrypt.finish(plaintext);
-
     textCrypto decrypt;
     decrypt.start(password, false);
     decrypt.finish(plaintext);
