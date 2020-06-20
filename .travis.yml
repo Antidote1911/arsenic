@@ -24,8 +24,8 @@ script:
   - if [ "${CC}" == "gcc" ]; then export CC="g++" ; export CXX="g++" ; echo "Rexported gcc" ; fi
   - qmake -qt=qt5 arsenic.pro -spec linux-$CC
   - make
-  - sudo cp thirdparty/zxcvbn/libzxcvbn.so.1 /usr/lib/libzxcvbn.so.1
-  - sudo cp arscore/libarscore.so.1 /usr/lib/libarscore.so.1
+  - sudo cp thirdparty/zxcvbn/libzxcvbn.so.1.0.0 /usr/lib/libzxcvbn.so.1.0.0
+  - sudo cp arscore/libarscore.so.1.0.0 /usr/lib/libarscore.so.1.0.0
   - arsenic/./arsenic -e -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg
   - arsenic/./arsenic -d -p mysuperbadpassphrase src/arsenic/pixmaps/test.jpg.arsenic
   - ./tests/tests
