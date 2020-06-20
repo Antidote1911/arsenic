@@ -31,7 +31,7 @@ HEADERS += \
     ../arsenic/utils.h \
     ../arsenic/textcrypto.h \
     ../arsenic/messages.h
+    
 
 INCLUDEPATH += \
-    ../arsenic \
-    ../thirdparty
+    ../arsenic
