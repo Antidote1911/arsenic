@@ -26,6 +26,7 @@ SOURCES += \
     ../arsenic/messages.cpp
 
 HEADERS += \
+    ../catch.hpp \
     ../arsenic/fileCrypto.h \
     ../arsenic/tripleencryption.h \
     ../arsenic/utils.h \
