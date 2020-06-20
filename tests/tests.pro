@@ -1,3 +1,5 @@
+include(../defaults.pri)
+
 QT -= gui
 
 CONFIG += console
@@ -15,23 +17,19 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-include(../defaults.pri)
+# Catch
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/catch/release/ -lcatch
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/catch/debug/ -lcatch
+else:unix: LIBS += -L$$OUT_PWD/../thirdparty/catch/ -lcatch
+INCLUDEPATH += $$PWD/../thirdparty/catch
+
+# core
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../arscore/release/ -larscore
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../arscore/debug/ -larscore
+else:unix: LIBS += -L$$OUT_PWD/../arscore/ -larscore
+INCLUDEPATH += $$PWD/../arscore
+
+
 
 SOURCES += \
-    main.cpp \
-    ../arsenic/fileCrypto.cpp \
-    ../arsenic/tripleencryption.cpp \
-    ../arsenic/utils.cpp \
-    ../arsenic/textcrypto.cpp \
-    ../arsenic/messages.cpp
-
-HEADERS += \
-    ../arsenic/fileCrypto.h \
-    ../arsenic/tripleencryption.h \
-    ../arsenic/utils.h \
-    ../arsenic/textcrypto.h \
-    ../arsenic/messages.h
-    
-
-INCLUDEPATH += \
-    ../arsenic
+    main.cpp

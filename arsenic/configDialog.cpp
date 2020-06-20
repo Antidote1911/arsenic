@@ -1,6 +1,6 @@
 #include "configDialog.h"
 #include "Config.h"
-#include "constants.h"
+#include <constants.h>
 #include "ui_configDialog.h"
 #include <QCheckBox>
 #include <QComboBox>

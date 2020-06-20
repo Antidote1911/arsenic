@@ -3,10 +3,16 @@
 #include <vector>
 #include <QDir>
 #include <QStandardPaths>
+#include "botan_all.h"
 
 Utils::Utils(QObject *parent)
     : QObject(parent)
 {
+}
+
+QString Utils::getBotanVersion()
+{
+    return QString::fromStdString(Botan::version_string());
 }
 
 QString Utils::getTempPath()

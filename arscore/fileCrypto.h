@@ -4,8 +4,6 @@
 #include <QObject>
 #include <QThread>
 
-#include "botan_all.h"
-
 class Crypto_Thread : public QThread {
     Q_OBJECT
 

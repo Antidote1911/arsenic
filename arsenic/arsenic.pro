@@ -1,8 +1,4 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2015-03-05T23:12:44
-#
-#-------------------------------------------------
+include(../defaults.pri)
 
 QT       += core gui
 TEMPLATE = app
@@ -21,10 +17,14 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # no qDebug in release mode
 CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
-
 win32:RC_ICONS += /pixmaps/app.ico
 
-include(../defaults.pri)
+# core
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../arscore/release/ -larscore
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../arscore/debug/ -larscore
+else:unix: LIBS += -L$$OUT_PWD/../arscore/ -larscore
+INCLUDEPATH += $$PWD/../arscore
+
 
 FORMS += \
     aboutDialog.ui \
@@ -41,19 +41,12 @@ HEADERS += \
     argonTests.h \
     clipboard.h \
     configDialog.h \
-    constants.h \
-    fileCrypto.h \
     hashcheckdialog.h \
     loghtml.h \
     mainwindow.h \
-    messages.h \
-    passwordGenerator.h \
     passwordGeneratorDialog.h \
     progressbar.h \
-    skin.h \
-    textcrypto.h \
-    tripleencryption.h \
-    utils.h
+    skin.h
 
 SOURCES += \
     Config.cpp \
@@ -62,18 +55,12 @@ SOURCES += \
     argonTests.cpp \
     clipboard.cpp \
     configDialog.cpp \
-    fileCrypto.cpp \
     hashcheckdialog.cpp \
     loghtml.cpp \
     main.cpp \
     mainwindow.cpp \
-    messages.cpp \
-    passwordGenerator.cpp \
     passwordGeneratorDialog.cpp \
-    skin.cpp \
-    textcrypto.cpp \
-    tripleencryption.cpp \
-    utils.cpp
+    skin.cpp
 
 RESOURCES += \
     rsc.qrc

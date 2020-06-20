@@ -18,4 +18,3 @@ win32-g++ {
     SOURCES += win/botan_all.cpp
     HEADERS += win/botan_all.h
 }
-

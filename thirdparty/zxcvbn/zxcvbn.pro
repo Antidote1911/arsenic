@@ -1,4 +1,4 @@
-QT       -= core gui
+QT       -= core
 
 TARGET = zxcvbn
 TEMPLATE = lib

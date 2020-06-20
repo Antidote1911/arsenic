@@ -24,6 +24,7 @@ after_build:
     - mkdir arsenic_win_x64
     - cd arsenic_win_x64
     - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+    - xcopy %APPVEYOR_BUILD_FOLDER%\arscore\release\arscore.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\thirdparty\botan\release\botan.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\thirdparty\zxcvbn\release\zxcvbn.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I

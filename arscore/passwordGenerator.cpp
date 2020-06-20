@@ -20,13 +20,7 @@
 #include "zxcvbn.h"
 
 #include <QtGlobal>
-#if defined(Q_OS_UNIX)
 #include "botan_all.h"
-#endif
-
-#if defined(Q_OS_WIN)
-#include "botan_all.h"
-#endif
 
 const char *PasswordGenerator::DefaultExcludedChars = "";
 

@@ -12,6 +12,7 @@ class Utils : public QObject {
     static qint64 getDirSize(const QString &curr_path);
     static void clearDir(const QString &dir_path);
     static QString getTempPath();
+    static QString getBotanVersion();
 
     template <typename T>
     static void debugMessage(T test);
