@@ -17,12 +17,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-# Catch
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/catch/release/ -lcatch
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/catch/debug/ -lcatch
-else:unix: LIBS += -L$$OUT_PWD/../thirdparty/catch/ -lcatch
-INCLUDEPATH += $$PWD/../thirdparty/catch
-
 # core
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../arscore/release/ -larscore
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../arscore/debug/ -larscore
