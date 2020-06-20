@@ -23,7 +23,18 @@ else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../arscore/debug/ -
 else:unix: LIBS += -L$$OUT_PWD/../arscore/ -larscore
 INCLUDEPATH += $$PWD/../arscore
 
+# Catch
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/catch/release/ -lcatch
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/catch/debug/ -lcatch
+else:unix: LIBS += -L$$OUT_PWD/../thirdparty/catch/ -lcatch
+INCLUDEPATH += $$PWD/../thirdparty/catch
 
+# Botan
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/botan/release/ -lbotan
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/botan/debug/ -lbotan
+else:unix: LIBS += -L$$OUT_PWD/../thirdparty/botan/ -lbotan
+unix:INCLUDEPATH += $$PWD/../thirdparty/botan/unix/
+win32:INCLUDEPATH += $$PWD/../thirdparty/botan/win/
 
 SOURCES += \
     main.cpp
