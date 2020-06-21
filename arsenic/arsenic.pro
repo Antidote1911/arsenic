@@ -32,6 +32,12 @@ else:unix: LIBS += -L$$OUT_PWD/../thirdparty/botan/ -lbotan
 unix:INCLUDEPATH += $$PWD/../thirdparty/botan/unix/
 win32:INCLUDEPATH += $$PWD/../thirdparty/botan/win/
 
+# zxcvbn
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/release/ -lzxcvbn
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/debug/ -lzxcvbn
+else:unix: LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/ -lzxcvbn
+INCLUDEPATH += $$PWD/../thirdparty/zxcvbn
+
 FORMS += \
     aboutDialog.ui \
     argonTests.ui \
