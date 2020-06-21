@@ -1,4 +1,5 @@
-include(../defaults.pri)
+CONFIG += c++17
+QMAKE_CXXFLAGS += -std=c++17
 
 QT       -= core
 
