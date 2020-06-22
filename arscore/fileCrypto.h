@@ -4,6 +4,12 @@
 #include <QObject>
 #include <QThread>
 
+#ifdef FILECRYPTO_EXPORT
+#define FILECRYPTO_API Q_DECL_EXPORT
+#else
+#define FILECRYPTO_API Q_DECL_IMPORT
+#endif
+
 class Crypto_Thread : public QThread {
     Q_OBJECT
 
