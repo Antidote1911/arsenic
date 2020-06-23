@@ -5,7 +5,6 @@ TEMPLATE = subdirs
 CONFIG  += ordered
 
 SUBDIRS += thirdparty \
-           arscore \
            arsenic \
            tests
 

@@ -22,4 +22,17 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 SOURCES += \
+    ../arsenic/fileCrypto.cpp \
+    ../arsenic/tripleencryption.cpp \
+    ../arsenic/messages.cpp \
+    ../arsenic/textcrypto.cpp \
+    ../arsenic/utils.cpp \
     main.cpp
+
+HEADERS += catch.hpp \
+    ../arsenic/constants.h \
+    ../arsenic/fileCrypto.h \
+    ../arsenic/tripleencryption.h \
+    ../arsenic/messages.h \
+    ../arsenic/utils.h \
+    ../arsenic/textcrypto.h
