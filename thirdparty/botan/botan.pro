@@ -54,7 +54,7 @@ BOTAN_MODULES = aes aead gcm eax chacha20poly1305 serpent serpent_avx2 serpent_s
                 hex hash md5 sha1 sha1_sse2 sha1_x86 sha2_32 sha2_32_bmi2 sha2_32_x86 sha2_64 sha2_64_bmi2 \
                 simd system_rng
 
-OTHER_FLAGS = --amalgamation --minimized-build  --disable-shared \
+OTHER_FLAGS = --amalgamation --minimized-build  --disable-shared --build-targets="static" \
               --enable-modules=$$join(BOTAN_MODULES,",",,)
 win32-g++ {
     BOTAN_OS_SWITCH = "--os=mingw"
