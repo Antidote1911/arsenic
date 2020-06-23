@@ -25,9 +25,7 @@ INCLUDEPATH += $$OUT_PWD/../thirdparty/botan/build
 DEPENDPATH += $$OUT_PWD/../thirdparty/botan/build
 
 # zxcvbn
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/release/ -lzxcvbn
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/debug/ -lzxcvbn
-else:unix: LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/ -lzxcvbn
+LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/build/ -lzxcvbn
 INCLUDEPATH += $$PWD/thirdparty/zxcvbn
 
 # Catch
