@@ -21,7 +21,8 @@ build_script:
     - mingw32-make
 
 after_build:
-    - %APPVEYOR_BUILD_FOLDER%\tests\release\tests.exe
+    - cd %APPVEYOR_BUILD_FOLDER%\tests\release\
+    - tests.exe
     - cd %APPVEYOR_BUILD_FOLDER%
     - mkdir arsenic_win_x64
     - cd arsenic_win_x64
