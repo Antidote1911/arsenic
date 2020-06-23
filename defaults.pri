@@ -12,25 +12,23 @@ else:unix: LIBS += -L$$OUT_PWD/../thirdparty/quazip/ -lQt5Quazip
 
 INCLUDEPATH += $$PWD/thirdparty/quazip
 
-# Zlib
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zlib/release/ -lzlib
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zlib/debug/ -lzlib
-else:unix: LIBS += -L$$OUT_PWD/../thirdparty/zlib/ -lzlib
-
-INCLUDEPATH += $$PWD/thirdparty/zlib
-
-# Botan
-LIBS += -L$$OUT_PWD/../thirdparty/botan/build/ -lbotan-2
-INCLUDEPATH += $$OUT_PWD/../thirdparty/botan/build
-DEPENDPATH += $$OUT_PWD/../thirdparty/botan/build
-
 # zxcvbn
 LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/build/ -lzxcvbn
 INCLUDEPATH += $$PWD/thirdparty/zxcvbn
 
+# Zlib
+LIBS += -L$$OUT_PWD/../thirdparty/zlib//build/ -lzlib
+INCLUDEPATH += $$PWD/thirdparty/zlib
+
 # Catch
 LIBS += -L$$OUT_PWD/../thirdparty/catch/build/ -lcatch
 INCLUDEPATH += $$PWD/thirdparty/catch
+
+# Botan
+LIBS += -L$$OUT_PWD/../thirdparty/botan/build/ -lbotan-2
+INCLUDEPATH += $$OUT_PWD/../thirdparty/botan/build
+
+
 
 INCLUDEPATH += $$PWD/arsenic
 

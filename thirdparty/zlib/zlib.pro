@@ -38,3 +38,4 @@ SOURCES += \
     uncompr.c \
     zutil.c
 
+DESTDIR = build
