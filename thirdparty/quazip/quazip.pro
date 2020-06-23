@@ -49,12 +49,6 @@ CONFIG(staticlib): DEFINES += QUAZIP_STATIC
 # Input
 include(quazip.pri)
 
-
-CONFIG(debug, debug|release) {
-     mac: TARGET = $$join(TARGET,,,_debug) 
-     win32: TARGET = $$join(TARGET,,,d)
-}
-
 unix:!symbian {
     headers.path=$$PREFIX/include/quazip
     headers.files=$$HEADERS
@@ -116,3 +110,4 @@ symbian {
     }
 }
 
+DESTDIR = build
