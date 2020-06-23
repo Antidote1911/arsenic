@@ -20,8 +20,8 @@ else:unix: LIBS += -L$$OUT_PWD/../thirdparty/zlib/ -lzlib
 INCLUDEPATH += $$PWD/thirdparty/zlib
 
 # Botan
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/botan/release/build/ -lbotan-2
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/botan/debug/build/ -lbotan-2
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/botan/build/release/ -lbotan-2
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/botan/build/debug/ -lbotan-2
 else:unix: LIBS += -L$$OUT_PWD/../thirdparty/botan/build/ -lbotan-2
 INCLUDEPATH += $$OUT_PWD/../thirdparty/botan/build
 DEPENDPATH += $$OUT_PWD/../thirdparty/botan/build
