@@ -38,6 +38,7 @@ osx: QMAKE_DISTCLEAN += -r $$BOTAN_SOURCE_DIR $$BOTAN_BUILD_DIR
 TARGET = $$BOTAN_LIB_NAME
 PRECOMPILED_HEADER =
 CONFIG -= qt
+CONFIG += staticlib
 
 msvc: BOTAN_CC_TYPE = msvc
 clang: BOTAN_CC_TYPE = clang
@@ -112,5 +113,5 @@ make.commands = cd $$BOTAN_BUILD_DIR_FOR_SHELL && $(MAKE)
 QMAKE_EXTRA_COMPILERS += make
 
 
-install.commands = cd $$BOTAN_BUILD_DIR_FOR_SHELL && $(MAKE) install
-QMAKE_EXTRA_TARGETS += install
+#install.commands = cd $$BOTAN_BUILD_DIR_FOR_SHELL && $(MAKE) install
+#QMAKE_EXTRA_TARGETS += install
