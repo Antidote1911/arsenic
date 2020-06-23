@@ -22,9 +22,10 @@ INCLUDEPATH += $$PWD/thirdparty/zlib
 # Botan
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/botan/release/ -lbotan
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/botan/debug/ -lbotan
-else:unix: LIBS += -L$$OUT_PWD/../thirdparty/botan/ -lbotan
-unix:INCLUDEPATH += $$PWD/thirdparty/botan/unix/
-win32:INCLUDEPATH += $$PWD/thirdparty/botan/win/
+else:unix: LIBS += -L$$OUT_PWD/../thirdparty/botan/build/ -lbotan-2
+unix:INCLUDEPATH += $$OUT_PWD/../thirdparty/botan/build
+unix:DEPENDPATH += $$OUT_PWD/../thirdparty/botan/build
+win32:INCLUDEPATH += $$OUT_PWD/../thirdparty/botan/build
 
 # zxcvbn
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/release/ -lzxcvbn

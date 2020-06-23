@@ -8,9 +8,8 @@ SUBDIRS += thirdparty \
            arsenic \
            tests
 
-arscore.depends = thirdparty
-arsenic.depends = arscore
-tests.depends = arscore
+arsenic.depends = thirdparty
+tests.depends = thirdparty
 
 DISTFILES += .appveyor.yml \
              .travis.yml \

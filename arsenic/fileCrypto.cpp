@@ -10,6 +10,7 @@
 #include <QThread>
 
 #include "botan_all.h"
+
 #include "constants.h"
 #include "messages.h"
 #include "tripleencryption.h"
