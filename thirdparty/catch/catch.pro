@@ -8,3 +8,5 @@ CONFIG += warn_off
 
 HEADERS += \
     catch.hpp
+
+DESTDIR = build

@@ -31,9 +31,7 @@ else:unix: LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/ -lzxcvbn
 INCLUDEPATH += $$PWD/thirdparty/zxcvbn
 
 # Catch
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/catch/release/ -lcatch
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../thirdparty/catch/debug/ -lcatch
-else:unix: LIBS += -L$$OUT_PWD/../thirdparty/catch/ -lcatch
+LIBS += -L$$OUT_PWD/../thirdparty/catch/build/ -lcatch
 INCLUDEPATH += $$PWD/thirdparty/catch
 
 INCLUDEPATH += $$PWD/arsenic
