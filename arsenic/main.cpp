@@ -14,6 +14,11 @@
 
 using namespace std;
 
+void handler(QString val)
+{
+    std::cout << val.toStdString() << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -52,6 +57,7 @@ int main(int argc, char *argv[])
 
     QString resultat;
     Crypto_Thread Crypto;
+    QObject::connect(&Crypto, &Crypto_Thread::statusMessage, handler);
 
     if ((args.size() == 1) && parser.isSet(passphraseOption)) {
         const auto targetFile = args.at(0);

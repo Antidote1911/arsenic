@@ -109,7 +109,6 @@ void Crypto_Thread::run()
             }
 
             emit statusMessage(errorCodeToString(result));
-            std::cout << errorCodeToString(result).toStdString() << std::endl;
 
             if (m_aborted) {
                 m_aborted = false; // Reset abort flag
@@ -138,7 +137,6 @@ void Crypto_Thread::run()
             QFile::remove(decrypt_path);
 
             emit statusMessage(errorCodeToString(result));
-            std::cout << errorCodeToString(result).toStdString() << std::endl;
 
             if (m_aborted) {
                 m_aborted = false; // Reset abort flag
