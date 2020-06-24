@@ -10,15 +10,12 @@
 #include <QThread>
 
 #include "botan_all.h"
-
-#include "constants.h"
 #include "messages.h"
 #include "tripleencryption.h"
 #include "utils.h"
 #include "JlCompress.h"
 #include "quazip.h"
 
-using namespace ARs;
 using namespace Botan;
 using namespace std;
 
@@ -40,22 +37,22 @@ void Crypto_Thread::setParam(bool direction,
     m_deletefile = deletefile;
 
     if (argonmem == 0)
-        m_argonmem = MEMLIMIT_INTERACTIVE;
+        m_argonmem = m_const->MEMLIMIT_INTERACTIVE;
     if (argonmem == 1)
-        m_argonmem = MEMLIMIT_MODERATE;
+        m_argonmem = m_const->MEMLIMIT_MODERATE;
     if (argonmem == 2)
-        m_argonmem = MEMLIMIT_SENSITIVE;
+        m_argonmem = m_const->MEMLIMIT_SENSITIVE;
 
     ////////////////////////////////////////////////
 
     if (argoniter == 0)
-        m_argoniter = ITERATION_INTERACTIVE;
+        m_argoniter = m_const->ITERATION_INTERACTIVE;
 
     if (argoniter == 1)
-        m_argoniter = ITERATION_MODERATE;
+        m_argoniter = m_const->ITERATION_MODERATE;
 
     if (argoniter == 2)
-        m_argoniter = ITERATION_SENSITIVE;
+        m_argoniter = m_const->ITERATION_SENSITIVE;
 }
 
 void Crypto_Thread::run()
@@ -176,9 +173,9 @@ quint32 Crypto_Thread::encrypt(const QString& src_path, const QString& des_path)
     emit updateProgress(src_info2.filePath(), 0);
 
     AutoSeeded_RNG rng;
-    auto argonSalt        = rng.random_vec(ARGON_SALT_LEN);
-    auto tripleNonce      = rng.random_vec(CIPHER_IV_LEN * 3);
-    const auto randomData = rng.random_vec(IN_BUFFER_SIZE);
+    auto argonSalt        = rng.random_vec(m_const->ARGON_SALT_LEN);
+    auto tripleNonce      = rng.random_vec(m_const->CIPHER_IV_LEN * 3);
+    const auto randomData = rng.random_vec(m_const->IN_BUFFER_SIZE);
 
     // Append the file name to the buffer and some random data
     SecureVector<quint8> master_buffer(fileName.size() + randomData.size());
@@ -202,7 +199,7 @@ quint32 Crypto_Thread::encrypt(const QString& src_path, const QString& des_path)
         return (SRC_CANNOT_OPEN_READ);
 
     // create the new file.
-    QFile des_file(des_path + DEFAULT_EXTENSION);
+    QFile des_file(des_path + m_const->DEFAULT_EXTENSION);
 
     if (des_file.exists())
         return (DES_FILE_EXISTS);
@@ -213,16 +210,16 @@ quint32 Crypto_Thread::encrypt(const QString& src_path, const QString& des_path)
     des_stream.setVersion(QDataStream::Qt_5_0);
 
     // Write a "magic number" , arsenic version, argon2 parameters, etc...
-    des_stream << static_cast<quint32>(MAGIC_NUMBER);
-    des_stream << static_cast<QVersionNumber>(APP_VERSION);
+    des_stream << static_cast<quint32>(m_const->MAGIC_NUMBER);
+    des_stream << static_cast<QVersionNumber>(m_const->APP_VERSION);
     des_stream << static_cast<quint32>(m_argonmem);
     des_stream << static_cast<quint32>(m_argoniter);
     des_stream << static_cast<qint64>(fileNameSize);
     des_stream << static_cast<qint64>(fileSize);
 
     // Write the salt, the 3 nonces and the encrypted header in the file
-    des_stream.writeRawData(reinterpret_cast<char*>(argonSalt.data()), ARGON_SALT_LEN);
-    des_stream.writeRawData(reinterpret_cast<char*>(tripleNonce.data()), CIPHER_IV_LEN * 3);
+    des_stream.writeRawData(reinterpret_cast<char*>(argonSalt.data()), m_const->ARGON_SALT_LEN);
+    des_stream.writeRawData(reinterpret_cast<char*>(tripleNonce.data()), m_const->CIPHER_IV_LEN * 3);
     des_stream.writeRawData(reinterpret_cast<char*>(master_buffer.data()), master_buffer.size());
 
     // now, move on to the actual data
@@ -230,9 +227,9 @@ quint32 Crypto_Thread::encrypt(const QString& src_path, const QString& des_path)
     emit statusMessage("Encryption... Please wait...");
     auto processed  = 0.;
     auto bytes_read = 0;
-    SecureVector<quint8> inBuf(IN_BUFFER_SIZE);
+    SecureVector<quint8> inBuf(m_const->IN_BUFFER_SIZE);
 
-    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(inBuf.data()), IN_BUFFER_SIZE)) > 0) {
+    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(inBuf.data()), m_const->IN_BUFFER_SIZE)) > 0) {
         // calculate percentage proccessed
         processed += bytes_read;
         emit updateProgress(src_info2.filePath(), (processed / fileSize) * 100);
@@ -240,7 +237,7 @@ quint32 Crypto_Thread::encrypt(const QString& src_path, const QString& des_path)
         inBuf.resize(bytes_read);
         encrypt.finish(inBuf);
         des_stream.writeRawData(reinterpret_cast<char*>(inBuf.data()), inBuf.size());
-        inBuf.resize(IN_BUFFER_SIZE);
+        inBuf.resize(m_const->IN_BUFFER_SIZE);
     }
 
     if (m_aborted) {
@@ -288,16 +285,16 @@ quint32 Crypto_Thread::decrypt(const QString& src_path, QString* decrypt_name)
     src_stream >> version;
     emit statusMessage("this file is encrypted with Arsenic version " + version.toString());
 
-    if (version < APP_VERSION) {
+    if (version < m_const->APP_VERSION) {
         emit statusMessage("Warning: this is file is encrypted by an old Arsenic Version...");
         emit statusMessage("Warning: version of encrypted file " + version.toString());
-        emit statusMessage("Warning: version of your Arsenic " + APP_VERSION.toString());
+        emit statusMessage("Warning: version of your Arsenic " + m_const->APP_VERSION.toString());
     }
 
-    if (version > APP_VERSION) {
+    if (version > m_const->APP_VERSION) {
         emit statusMessage("Warning: this file is encrypted with a more recent version of Arsenic...");
         emit statusMessage("Warning: version of encrypted file " + version.toString());
-        emit statusMessage("Warning: version of your Arsenic " + APP_VERSION.toString());
+        emit statusMessage("Warning: version of your Arsenic " + m_const->APP_VERSION.toString());
     }
 
     // Read Argon2 parameters
@@ -317,15 +314,15 @@ quint32 Crypto_Thread::decrypt(const QString& src_path, QString* decrypt_name)
     qint64 originalfileSize;
     src_stream >> originalfileSize;
 
-    SecureVector<quint8> salt_buffer(ARGON_SALT_LEN);
-    SecureVector<quint8> tripleNonce(CIPHER_IV_LEN * 3);
-    SecureVector<quint8> master_buffer(fileNameSize + IN_BUFFER_SIZE + MACBYTES * 3);
+    SecureVector<quint8> salt_buffer(m_const->ARGON_SALT_LEN);
+    SecureVector<quint8> tripleNonce(m_const->CIPHER_IV_LEN * 3);
+    SecureVector<quint8> master_buffer(fileNameSize + m_const->IN_BUFFER_SIZE + m_const->MACBYTES * 3);
 
     // Read the salt, the three nonces and the header
-    if (!src_stream.readRawData(reinterpret_cast<char*>(salt_buffer.data()), ARGON_SALT_LEN))
+    if (!src_stream.readRawData(reinterpret_cast<char*>(salt_buffer.data()), m_const->ARGON_SALT_LEN))
         return (SRC_HEADER_READ_ERROR);
 
-    if (!src_stream.readRawData(reinterpret_cast<char*>(tripleNonce.data()), CIPHER_IV_LEN * 3))
+    if (!src_stream.readRawData(reinterpret_cast<char*>(tripleNonce.data()), m_const->CIPHER_IV_LEN * 3))
         return (SRC_HEADER_READ_ERROR);
 
     if (!src_stream.readRawData(reinterpret_cast<char*>(master_buffer.data()), master_buffer.size()))
@@ -371,16 +368,16 @@ quint32 Crypto_Thread::decrypt(const QString& src_path, QString* decrypt_name)
 
     auto processed  = 0.;
     auto bytes_read = 0;
-    SecureVector<quint8> inBuf(IN_BUFFER_SIZE + MACBYTES * 3);
-    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(inBuf.data()), IN_BUFFER_SIZE + MACBYTES * 3)) > 0) {
+    SecureVector<quint8> inBuf(m_const->IN_BUFFER_SIZE + m_const->MACBYTES * 3);
+    while (!m_aborted && (bytes_read = src_stream.readRawData(reinterpret_cast<char*>(inBuf.data()), m_const->IN_BUFFER_SIZE + m_const->MACBYTES * 3)) > 0) {
         // calculate percentage proccessed
-        processed += bytes_read - MACBYTES * 3;
+        processed += bytes_read - m_const->MACBYTES * 3;
         emit updateProgress(src_path, (processed / originalfileSize) * 100);
         try {
             inBuf.resize(bytes_read);
             decrypt.finish(inBuf);
             des_stream.writeRawData(reinterpret_cast<char*>(inBuf.data()), inBuf.size());
-            inBuf.resize(IN_BUFFER_SIZE + MACBYTES * 3);
+            inBuf.resize(m_const->IN_BUFFER_SIZE + m_const->MACBYTES * 3);
         }
         catch (const Botan::Exception&) {
             des_file.remove();

@@ -4,6 +4,8 @@
 #include <QDialog>
 #include <memory>
 
+#include "consts.h"
+
 namespace Ui {
 class AboutDialog;
 }
@@ -20,6 +22,7 @@ class AboutDialog : public QDialog {
 
   private:
     const std::unique_ptr<Ui::AboutDialog> m_ui;
+    const std::unique_ptr<consts> m_const;
 };
 
 #endif // ABOUTDIALOG_H

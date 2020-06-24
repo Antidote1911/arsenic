@@ -1,13 +1,11 @@
 #include "textcrypto.h"
 #include "botan_all.h"
-#include "constants.h"
 #include "messages.h"
 #include "tripleencryption.h"
 #include <QString>
 #include <QTextStream>
 #include <stdexcept>
 
-using namespace ARs;
 using namespace Botan;
 using namespace std;
 
@@ -37,12 +35,12 @@ quint32 textCrypto::encryptString(QString &plaintext, QString const &password)
     // Now we can do the triple encryption
     // Randomize the 16 bytes salt and the three 24 bytes nonces
     AutoSeeded_RNG rng;
-    const auto argonSalt   = rng.random_vec(ARGON_SALT_LEN);
-    const auto tripleNonce = rng.random_vec(CIPHER_IV_LEN * 3);
+    const auto argonSalt   = rng.random_vec(m_const->ARGON_SALT_LEN);
+    const auto tripleNonce = rng.random_vec(m_const->CIPHER_IV_LEN * 3);
 
     TripleEncryption encrypt(true);
     encrypt.setSalt(argonSalt);
-    encrypt.derivePassword(password, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
+    encrypt.derivePassword(password, m_const->MEMLIMIT_INTERACTIVE, m_const->ITERATION_INTERACTIVE);
     encrypt.setTripleNonce(tripleNonce);
     encrypt.finish(pt);
 
@@ -60,7 +58,7 @@ quint32 textCrypto::encryptString(QString &plaintext, QString const &password)
 
 quint32 textCrypto::decryptString(QString &cipher, QString const &password)
 {
-    const auto CRYPTOBOX_HEADER_LEN = VERSION_CODE_LEN + ARGON_SALT_LEN + CIPHER_IV_LEN * 3;
+    const auto CRYPTOBOX_HEADER_LEN = m_const->VERSION_CODE_LEN + m_const->ARGON_SALT_LEN + m_const->CIPHER_IV_LEN * 3;
     const auto cipherStr            = cipher.toStdString();
 
     DataSource_Memory input_src(cipherStr);
@@ -74,21 +72,21 @@ quint32 textCrypto::decryptString(QString &cipher, QString const &password)
     if (ciphertext.size() < CRYPTOBOX_HEADER_LEN) {
         return (INVALID_CRYPTOBOX_IMPUT);
     }
-    for (auto i = 0; i != VERSION_CODE_LEN; ++i)
-        if (ciphertext[i] != get_byte(i, CRYPTOBOX_VERSION_CODE)) {
+    for (auto i = 0; i != m_const->VERSION_CODE_LEN; ++i)
+        if (ciphertext[i] != get_byte(i, m_const->CRYPTOBOX_VERSION_CODE)) {
             return (BAD_CRYPTOBOX_VERSION);
         }
     const auto *tmp{ciphertext.begin().base()};
-    const OctetString version(tmp, VERSION_CODE_LEN);
-    const OctetString salt(&tmp[VERSION_CODE_LEN], ARGON_SALT_LEN);
-    const InitializationVector tripleNonce(&tmp[VERSION_CODE_LEN + ARGON_SALT_LEN], CIPHER_IV_LEN * 3);
+    const OctetString version(tmp, m_const->VERSION_CODE_LEN);
+    const OctetString salt(&tmp[m_const->VERSION_CODE_LEN], m_const->ARGON_SALT_LEN);
+    const InitializationVector tripleNonce(&tmp[m_const->VERSION_CODE_LEN + m_const->ARGON_SALT_LEN], m_const->CIPHER_IV_LEN * 3);
 
     ciphertext.erase(ciphertext.begin(), ciphertext.begin() + CRYPTOBOX_HEADER_LEN);
 
     // Now we can do the triple decryption
     TripleEncryption decrypt(false);
     decrypt.setSalt(salt);
-    decrypt.derivePassword(password, MEMLIMIT_INTERACTIVE, ITERATION_INTERACTIVE);
+    decrypt.derivePassword(password, m_const->MEMLIMIT_INTERACTIVE, m_const->ITERATION_INTERACTIVE);
     decrypt.setTripleNonce(tripleNonce.bits_of());
     try {
         decrypt.finish(ciphertext);

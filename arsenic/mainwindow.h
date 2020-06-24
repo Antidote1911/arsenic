@@ -10,6 +10,7 @@
 #include "textcrypto.h"
 #include "skin.h"
 #include "loghtml.h"
+#include "consts.h"
 #include "Delegate.h"
 #include <memory>
 
@@ -77,6 +78,8 @@ class MainWindow : public QMainWindow {
     std::unique_ptr<QStandardItemModel> fileListModelCrypto;
     std::unique_ptr<Delegate> m_delegate;
     std::unique_ptr<QActionGroup> m_langGroup;
+
+    const std::unique_ptr<consts> m_const;
 
     void loadPreferences();
     void savePreferences();

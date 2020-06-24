@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QThread>
 
+#include "consts.h"
+
 #ifdef FILECRYPTO_EXPORT
 #define FILECRYPTO_API Q_DECL_EXPORT
 #else
@@ -43,6 +45,8 @@ class Crypto_Thread : public QThread {
     bool m_direction;
     bool m_deletefile;
     bool m_aborted = false;
+
+    const std::unique_ptr<consts> m_const;
 };
 
 #endif // FILECRYPTO_H

@@ -17,15 +17,12 @@
  */
 
 #include "Config.h"
-#include "constants.h"
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryFile>
-
-using namespace ARs;
 
 /*
  * Map of configuration file settings that are either deprecated, or have
@@ -136,7 +133,8 @@ Config::Config(QObject *parent)
 
     if (QFile::exists(portablePath)) {
         init(portablePath);
-    } else {
+    }
+    else {
         QString userPath;
         QString homePath = QDir::homePath();
 
@@ -147,9 +145,11 @@ Config::Config(QObject *parent)
         if (env.isEmpty()) {
             userPath = homePath;
             userPath += "/.config";
-        } else if (env[0] == '/') {
+        }
+        else if (env[0] == '/') {
             userPath = QFile::decodeName(env);
-        } else {
+        }
+        else {
             userPath = homePath;
             userPath += '/';
             userPath += QFile::decodeName(env);
@@ -180,21 +180,21 @@ void Config::init(const QString &fileName)
     upgrade();
     connect(qApp, &QCoreApplication::aboutToQuit, this, &Config::sync);
 
-    m_defaults.insert("GUI/showPassword", DEFAULT_SHOW_PSW);
-    m_defaults.insert("GUI/deleteFinished", DEFAULT_DELETE_FINSHED);
-    m_defaults.insert("GUI/darkTheme", DEFAULT_DARK_THEME);
-    m_defaults.insert("GUI/Language", DEFAULT_LANGUAGE);
-    m_defaults.insert("GUI/showToolbar", DEFAULT_SHOW_TOOLBAR);
-    m_defaults.insert("GUI/lastDirectory", DEFAULT_LASTDIRECTORY);
-    m_defaults.insert("GUI/currentIndexTab", DEFAULT_INDEX_TAB);
-    m_defaults.insert("GUI/AddEncrypted", DEFAULT_ADD_ENCRYPTED);
-    m_defaults.insert("GUI/AddDecrypted", DEFAULT_ADD_DECRYPTED);
+    m_defaults.insert("GUI/showPassword", m_const->DEFAULT_SHOW_PSW);
+    m_defaults.insert("GUI/deleteFinished", m_const->DEFAULT_DELETE_FINSHED);
+    m_defaults.insert("GUI/darkTheme", m_const->DEFAULT_DARK_THEME);
+    m_defaults.insert("GUI/Language", m_const->DEFAULT_LANGUAGE);
+    m_defaults.insert("GUI/showToolbar", m_const->DEFAULT_SHOW_TOOLBAR);
+    m_defaults.insert("GUI/lastDirectory", m_const->DEFAULT_LASTDIRECTORY);
+    m_defaults.insert("GUI/currentIndexTab", m_const->DEFAULT_INDEX_TAB);
+    m_defaults.insert("GUI/AddEncrypted", m_const->DEFAULT_ADD_ENCRYPTED);
+    m_defaults.insert("GUI/AddDecrypted", m_const->DEFAULT_ADD_DECRYPTED);
 
-    m_defaults.insert("CRYPTO/argonMemory", DEFAULT_ARGON_MEM_LIMIT);
-    m_defaults.insert("CRYPTO/argonItr", DEFAULT_ARGON_ITR_LIMIT);
+    m_defaults.insert("CRYPTO/argonMemory", m_const->DEFAULT_ARGON_MEM_LIMIT);
+    m_defaults.insert("CRYPTO/argonItr", m_const->DEFAULT_ARGON_ITR_LIMIT);
 
-    m_defaults.insert("SECURITY/clearclipboard", DEFAULT_CLEAR_CLIPBOARD);
-    m_defaults.insert("SECURITY/clearclipboardtimeout", DEFAULT_CLIPBOARD_TIMEOUT);
+    m_defaults.insert("SECURITY/clearclipboard", m_const->DEFAULT_CLEAR_CLIPBOARD);
+    m_defaults.insert("SECURITY/clearclipboardtimeout", m_const->DEFAULT_CLIPBOARD_TIMEOUT);
 }
 
 Config *Config::instance()
@@ -213,7 +213,7 @@ void Config::createConfigFromFile(const QString &file)
 void Config::createTempFileInstance()
 {
     Q_ASSERT(!m_instance);
-    auto *tmpFile = new QTemporaryFile();
+    auto *tmpFile   = new QTemporaryFile();
     bool openResult = tmpFile->open();
     Q_ASSERT(openResult);
     Q_UNUSED(openResult);

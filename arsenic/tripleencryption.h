@@ -2,7 +2,8 @@
 #define TRIPLEENCRYPTION_H
 
 #include "botan_all.h"
-#include "constants.h"
+#include "consts.h"
+
 #include <QObject>
 #include <memory>
 
@@ -28,6 +29,8 @@ class TripleEncryption : public QObject {
     std::unique_ptr<Botan::AEAD_Mode> m_engineSerpent;
 
     Botan::OctetString m_salt;
+
+    const std::unique_ptr<consts> m_const;
 
   signals:
 };

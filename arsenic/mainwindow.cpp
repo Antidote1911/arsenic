@@ -16,14 +16,11 @@
 #include "Config.h"
 #include "Delegate.h"
 #include "configDialog.h"
-#include "constants.h"
 #include "messages.h"
 #include "passwordGeneratorDialog.h"
 #include "hashcheckdialog.h"
 #include "utils.h"
 #include "argonTests.h"
-
-using namespace ARs;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(new Ui::MainWindow)
@@ -39,7 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
     loadPreferences();
     loadLogFile();
 
-    setWindowTitle(APP_LONG_NAME);
+    setWindowTitle(m_const->APP_LONG_NAME);
     cryptoFileView();
     delegate();
 

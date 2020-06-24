@@ -2,6 +2,9 @@
 #define TEXTCRYPTO_H
 
 #include <QObject>
+#include <memory>
+
+#include "consts.h"
 
 class textCrypto : public QObject {
     Q_OBJECT
@@ -17,6 +20,8 @@ class textCrypto : public QObject {
 
     QString m_password;
     bool m_dirrection;
+
+    const std::unique_ptr<consts> m_const;
 
   signals:
 };

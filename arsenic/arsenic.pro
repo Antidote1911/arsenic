@@ -38,6 +38,7 @@ HEADERS += \
     argonTests.h \
     clipboard.h \
     configDialog.h \
+    consts.h \
     hashcheckdialog.h \
     loghtml.h \
     mainwindow.h \
@@ -49,8 +50,7 @@ HEADERS += \
     passwordGenerator.h \
     utils.h \
     textcrypto.h \
-    messages.h \
-    constants.h
+    messages.h
 
 SOURCES += \
     Config.cpp \
@@ -59,6 +59,7 @@ SOURCES += \
     argonTests.cpp \
     clipboard.cpp \
     configDialog.cpp \
+    consts.cpp \
     hashcheckdialog.cpp \
     loghtml.cpp \
     main.cpp \

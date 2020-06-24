@@ -17,7 +17,6 @@
  */
 
 #include "aboutDialog.h"
-#include "constants.h"
 #include "utils.h"
 #include "ui_aboutDialog.h"
 
@@ -57,22 +56,23 @@ AboutDialog::AboutDialog(QWidget *parent)
     setWindowFlags(Qt::Sheet);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
-    m_ui->nameLabel->setText(m_ui->nameLabel->text().replace("${VERSION}", ARs::APP_VERSION.toString()));
-    m_ui->descriptionLabel->setText(m_ui->descriptionLabel->text().replace("${DESCRIPTION}", ARs::APP_DESCRIPTION));
+    m_ui->nameLabel->setText(m_ui->nameLabel->text().replace("${VERSION}", m_const->APP_VERSION.toString()));
+    m_ui->descriptionLabel->setText(m_ui->descriptionLabel->text().replace("${DESCRIPTION}", m_const->APP_DESCRIPTION));
     QFont nameLabelFont = m_ui->nameLabel->font();
     nameLabelFont.setPointSize(nameLabelFont.pointSize() + 4);
     m_ui->nameLabel->setFont(nameLabelFont);
 
     QString debugInfo;
-    debugInfo.append(ARs::APP_LONG_NAME).append("\n");
+    debugInfo.append(m_const->APP_LONG_NAME).append("\n");
     debugInfo.append("Qt ").append(QString::fromLocal8Bit(qVersion())).append("\n");
     debugInfo.append("Operating system: " + QSysInfo::prettyProductName()).append("\n");
     debugInfo.append("CPU architecture: " + QSysInfo::currentCpuArchitecture()).append("\n");
     debugInfo.append("Kernel: " + QSysInfo::kernelType()).append(QSysInfo::kernelVersion()).append("\n");
     debugInfo.append("Hostname: " + QSysInfo::machineHostName()).append("\n");
-    debugInfo.append(ARs::BOTAN_VERSION).append("\n");
-    debugInfo.append("Zlib version: " + ARs::ZLIB_Version).append("\n");
+    debugInfo.append(m_const->BOTAN_VERSION).append("\n");
+    debugInfo.append("Zlib version: " + m_const->ZLIB_Version).append("\n");
     debugInfo.append("Tmp folder: " + Utils::getTempPath()).append("\n");
+    debugInfo.append("inline const: " + m_const->S);
 
     m_ui->iconLabel->setPixmap(qApp->windowIcon().pixmap(48));
 

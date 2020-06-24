@@ -10,7 +10,7 @@
 #include <QtGlobal>
 #include <iostream>
 
-#include "constants.h"
+#include "consts.h"
 
 using namespace std;
 
@@ -18,15 +18,15 @@ int main(int argc, char *argv[])
 {
 
     QApplication app(argc, argv);
-    app.setOrganizationName(ARs::APP_LONG_NAME);
-    app.setOrganizationDomain(ARs::APP_URL);
-    app.setApplicationName(ARs::APP_SHORT_NAME);
-    app.setApplicationVersion(ARs::APP_VERSION.toString());
+    app.setOrganizationName(consts::APP_LONG_NAME);
+    app.setOrganizationDomain(consts::APP_URL);
+    app.setApplicationName(consts::APP_SHORT_NAME);
+    app.setApplicationVersion(consts::APP_VERSION.toString());
     app.setWindowIcon(QIcon(":/pixmaps/app.png"));
     app.setStyle("Fusion");
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(ARs::APP_DESCRIPTION);
+    parser.setApplicationDescription(consts::APP_DESCRIPTION);
     parser.addHelpOption();
     parser.addVersionOption();
     parser.addPositionalArgument("source", QCoreApplication::translate("main", "Source file to encrypt or decrypt."));
@@ -64,8 +64,8 @@ int main(int argc, char *argv[])
             return (0);
         }
 
-        if (passphrase.size() < ARs::MIN_PASS_LENGTH) {
-            auto tmp            = QString::number(ARs::MIN_PASS_LENGTH);
+        if (passphrase.size() < consts::MIN_PASS_LENGTH) {
+            auto tmp            = QString::number(consts::MIN_PASS_LENGTH);
             std::string minimum = tmp.toUtf8().constData();
             cout << "Passphrase must be minimum " + minimum + " characters" << endl;
             return (0);

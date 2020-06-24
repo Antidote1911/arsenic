@@ -4,7 +4,7 @@
 #include <QDataStream>
 #include <QDir>
 #include <QFile>
-#include "constants.h"
+#include "consts.h"
 #include "fileCrypto.h"
 #include "textcrypto.h"
 #include "utils.h"
@@ -12,8 +12,6 @@
 #include "botan_all.h"
 #include "messages.h"
 #include "tripleencryption.h"
-
-using namespace ARs;
 
 int main(int argc, char* argv[])
 {
@@ -62,9 +60,9 @@ bool encryptFile()
     std::unique_ptr<Botan::HashFunction> hash1(Botan::HashFunction::create("SHA-256"));
     src_file.open(QIODevice::ReadOnly);
     QDataStream stream(&src_file);
-    Botan::SecureVector<uint8_t> buf(IN_BUFFER_SIZE);
+    Botan::SecureVector<uint8_t> buf(consts::IN_BUFFER_SIZE);
     quint32 bytes_read;
-    while ((bytes_read = stream.readRawData(reinterpret_cast<char*>(buf.data()), IN_BUFFER_SIZE)) > 0) {
+    while ((bytes_read = stream.readRawData(reinterpret_cast<char*>(buf.data()), consts::IN_BUFFER_SIZE)) > 0) {
         hash1->update(buf.data(), buf.size());
     }
     QString result1 = QString::fromStdString(Botan::hex_encode(hash1->final()));
@@ -75,7 +73,7 @@ bool encryptFile()
     list.append("cleartxt.txt");
 
     Crypto_Thread Crypto;
-    Crypto.setParam(true, list, "mypassword", DEFAULT_ARGON_MEM_LIMIT, DEFAULT_ARGON_ITR_LIMIT, true);
+    Crypto.setParam(true, list, "mypassword", consts::DEFAULT_ARGON_MEM_LIMIT, consts::DEFAULT_ARGON_ITR_LIMIT, true);
 
     Crypto.start();
     Crypto.wait();
@@ -86,7 +84,7 @@ bool encryptFile()
     QStringList list2;
     list2.append("cleartxt.txt.arsenic");
 
-    Crypto.setParam(false, list2, "mypassword", DEFAULT_ARGON_MEM_LIMIT, DEFAULT_ARGON_ITR_LIMIT, true);
+    Crypto.setParam(false, list2, "mypassword", consts::DEFAULT_ARGON_MEM_LIMIT, consts::DEFAULT_ARGON_ITR_LIMIT, true);
 
     Crypto.start();
     Crypto.wait();
@@ -97,9 +95,9 @@ bool encryptFile()
     QFile src_file2(QDir::cleanPath("cleartxt.txt"));
     src_file2.open(QIODevice::ReadOnly);
     QDataStream stream2(&src_file2);
-    Botan::SecureVector<uint8_t> buf2(IN_BUFFER_SIZE);
+    Botan::SecureVector<uint8_t> buf2(consts::IN_BUFFER_SIZE);
     quint32 bytes_read2;
-    while ((bytes_read2 = stream2.readRawData(reinterpret_cast<char*>(buf2.data()), IN_BUFFER_SIZE)) > 0) {
+    while ((bytes_read2 = stream2.readRawData(reinterpret_cast<char*>(buf2.data()), consts::IN_BUFFER_SIZE)) > 0) {
         hash2->update(buf2.data(), buf2.size());
     }
     QString result2 = QString::fromStdString(Botan::hex_encode(hash2->final()));

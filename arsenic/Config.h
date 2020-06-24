@@ -22,6 +22,8 @@
 #include <QVariant>
 #include <memory>
 
+#include "consts.h"
+
 class QSettings;
 
 class Config : public QObject {
@@ -56,6 +58,7 @@ class Config : public QObject {
 
     std::unique_ptr<QSettings> m_settings;
     QHash<QString, QVariant> m_defaults;
+    const std::unique_ptr<consts> m_const;
 };
 
 inline Config* config()
