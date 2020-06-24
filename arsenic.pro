@@ -4,12 +4,12 @@ OTHER_FILES += \
 TEMPLATE = subdirs
 CONFIG  += ordered
 
-SUBDIRS += thirdparty \
+SUBDIRS += 3rdparty \
            arsenic \
            tests
 
-arsenic.depends = thirdparty
-tests.depends = thirdparty
+arsenic.depends = 3rdparty
+tests.depends = 3rdparty
 
 DISTFILES += .appveyor.yml \
              .travis.yml \

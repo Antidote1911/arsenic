@@ -6,24 +6,24 @@ QMAKE_CXXFLAGS += -std=c++17
 DEFINES += QUAZIP_STATIC
 
 # Quazip
-LIBS += -L$$OUT_PWD/../thirdparty/quazip/build/ -lQt5Quazip
-INCLUDEPATH += $$PWD/thirdparty/quazip
+LIBS += -L$$OUT_PWD/../3rdparty/quazip/build/ -lQt5Quazip
+INCLUDEPATH += $$PWD/3rdparty/quazip
 
 # zxcvbn
-LIBS += -L$$OUT_PWD/../thirdparty/zxcvbn/build/ -lzxcvbn
-INCLUDEPATH += $$PWD/thirdparty/zxcvbn
+LIBS += -L$$OUT_PWD/../3rdparty/zxcvbn/build/ -lzxcvbn
+INCLUDEPATH += $$PWD/3rdparty/zxcvbn
 
 # Zlib
-LIBS += -L$$OUT_PWD/../thirdparty/zlib//build/ -lzlib
-INCLUDEPATH += $$PWD/thirdparty/zlib
+LIBS += -L$$OUT_PWD/../3rdparty/zlib//build/ -lzlib
+INCLUDEPATH += $$PWD/3rdparty/zlib
 
 # Catch
-LIBS += -L$$OUT_PWD/../thirdparty/catch/build/ -lcatch
-INCLUDEPATH += $$PWD/thirdparty/catch
+LIBS += -L$$OUT_PWD/../3rdparty/catch/build/ -lcatch
+INCLUDEPATH += $$PWD/3rdparty/catch
 
 # Botan
-LIBS += -L$$OUT_PWD/../thirdparty/botan/build/ -lbotan-2
-INCLUDEPATH += $$OUT_PWD/../thirdparty/botan/build
+LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
+INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
 
 
 
