@@ -15,6 +15,7 @@
 #include "utils.h"
 #include "JlCompress.h"
 #include "quazip.h"
+#include <iostream>
 
 using namespace Botan;
 using namespace std;
@@ -108,6 +109,7 @@ void Crypto_Thread::run()
             }
 
             emit statusMessage(errorCodeToString(result));
+            std::cout << errorCodeToString(result).toStdString() << std::endl;
 
             if (m_aborted) {
                 m_aborted = false; // Reset abort flag
