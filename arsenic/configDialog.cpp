@@ -24,18 +24,18 @@ void ConfigDialog::loadSettings()
         QString warn_text = QString(tr("Access error for config file %1").arg(config()->getFileName()));
         QMessageBox::warning(this, tr("Could not load configuration"), warn_text);
     }
-    m_ui->comboMemory->setCurrentIndex(config()->get("CRYPTO/argonMemory").toInt());
-    m_ui->comboOps->setCurrentIndex(config()->get("CRYPTO/argonItr").toInt());
-    m_ui->spinBox_clip->setValue(config()->get("SECURITY/clearclipboardtimeout").toInt());
-    m_ui->checkBox_empty->setChecked(config()->get("SECURITY/clearclipboard").toBool());
-    m_ui->checkAddEncrypted->setChecked(config()->get("GUI/AddEncrypted").toBool());
+    m_ui->comboMemory->setCurrentIndex(config()->get(Config::CRYPTO_argonMemory).toInt());
+    m_ui->comboOps->setCurrentIndex(config()->get(Config::CRYPTO_argonItr).toInt());
+    m_ui->spinBox_clip->setValue(config()->get(Config::SECURITY_clearclipboardtimeout).toInt());
+    m_ui->checkBox_empty->setChecked(config()->get(Config::SECURITY_clearclipboard).toBool());
+    m_ui->checkAddEncrypted->setChecked(config()->get(Config::GUI_AddEncrypted).toBool());
 }
 
 void ConfigDialog::saveSettings()
 {
-    config()->set("CRYPTO/argonMemory", m_ui->comboMemory->currentIndex());
-    config()->set("CRYPTO/argonItr", m_ui->comboOps->currentIndex());
-    config()->set("SECURITY/clearclipboardtimeout", m_ui->spinBox_clip->value());
-    config()->set("SECURITY/clearclipboard", m_ui->checkBox_empty->isChecked());
-    config()->set("GUI/AddEncrypted", m_ui->checkAddEncrypted->isChecked());
+    config()->set(Config::CRYPTO_argonMemory, m_ui->comboMemory->currentIndex());
+    config()->set(Config::CRYPTO_argonItr, m_ui->comboOps->currentIndex());
+    config()->set(Config::SECURITY_clearclipboardtimeout, m_ui->spinBox_clip->value());
+    config()->set(Config::SECURITY_clearclipboard, m_ui->checkBox_empty->isChecked());
+    config()->set(Config::GUI_AddEncrypted, m_ui->checkAddEncrypted->isChecked());
 }

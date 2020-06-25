@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
         if (enc) {
             QStringList listFiles;
             listFiles.append(targetFile);
-            Crypto.setParam(true, listFiles, passphrase, config()->get("CRYPTO/argonMemory").toInt(), config()->get("CRYPTO/argonItr").toInt(), false);
+            Crypto.setParam(true, listFiles, passphrase, config()->get(Config::CRYPTO_argonMemory).toInt(), config()->get(Config::CRYPTO_argonItr).toInt(), false);
             Crypto.start();
             Crypto.wait();
             return (0);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
         if (dec) {
             QStringList listFiles;
             listFiles.append(targetFile);
-            Crypto.setParam(false, listFiles, passphrase, config()->get("CRYPTO/argonMemory").toInt(), config()->get("CRYPTO/argonItr").toInt(), false);
+            Crypto.setParam(false, listFiles, passphrase, config()->get(Config::CRYPTO_argonMemory).toInt(), config()->get(Config::CRYPTO_argonItr).toInt(), false);
             Crypto.start();
             Crypto.wait();
             return (0);

@@ -31,7 +31,6 @@ class MainWindow : public QMainWindow {
     void onPercentProgress(const QString &path, quint32 percent);
     void onMessageChanged(const QString message);
     void AddEncryptedFile(QString filepath);
-    void AddDecryptedFile(QString filepath);
     void removeDeletedFile(QString filepath);
 
   private slots:

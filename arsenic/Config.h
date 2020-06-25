@@ -1,6 +1,6 @@
 /*
+ *  Copyright (C) 2020 KeePassXC Team <team@keepassxc.org>
  *  Copyright (C) 2011 Felix Geyer <debfx@fobos.de>
- *  Copyright (C) 2017 KeePassXC Team <team@keepassxc.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,13 +16,12 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef KEEPASSX_CONFIG_H
+#define KEEPASSX_CONFIG_H
 
+#include <QPointer>
+#include <QScopedPointer>
 #include <QVariant>
-#include <memory>
-
-#include "consts.h"
 
 class QSettings;
 
@@ -32,11 +31,57 @@ class Config : public QObject {
   public:
     Q_DISABLE_COPY(Config)
 
+    enum ConfigKey {
+        GUI_showPassword,
+        GUI_deleteFinished,
+        GUI_darkTheme,
+        GUI_Language,
+        GUI_showToolbar,
+        GUI_lastDirectory,
+        GUI_currentIndexTab,
+        GUI_AddEncrypted,
+
+        GUI_MainWindowGeometry,
+        GUI_MainWindowState,
+
+        CRYPTO_argonMemory,
+        CRYPTO_argonItr,
+
+        SECURITY_clearclipboard,
+        SECURITY_clearclipboardtimeout,
+
+        PasswordGenerator_LowerCase,
+        PasswordGenerator_UpperCase,
+        PasswordGenerator_Numbers,
+        PasswordGenerator_EASCII,
+        PasswordGenerator_AdvancedMode,
+        PasswordGenerator_SpecialChars,
+        PasswordGenerator_AdditionalChars,
+        PasswordGenerator_Braces,
+        PasswordGenerator_Punctuation,
+        PasswordGenerator_Quotes,
+        PasswordGenerator_Dashes,
+        PasswordGenerator_Math,
+        PasswordGenerator_Logograms,
+        PasswordGenerator_ExcludedChars,
+        PasswordGenerator_ExcludeAlike,
+        PasswordGenerator_EnsureEvery,
+        PasswordGenerator_Length,
+        PasswordGenerator_WordCount,
+        PasswordGenerator_WordSeparator,
+        PasswordGenerator_WordList,
+        PasswordGenerator_WordCase,
+        PasswordGenerator_Type,
+
+        // Special internal value
+        Deleted
+    };
+
     ~Config() override;
-    QVariant get(const QString& key);
-    QVariant get(const QString& key, const QVariant& defaultValue);
+    QVariant get(ConfigKey key);
     QString getFileName();
-    void set(const QString& key, const QVariant& value);
+    void set(ConfigKey key, const QVariant& value);
+    void remove(ConfigKey key);
     bool hasAccessError();
     void sync();
     void resetToDefaults();
@@ -46,19 +91,19 @@ class Config : public QObject {
     static void createTempFileInstance();
 
   signals:
-    void changed(const QString& key);
+    void changed(ConfigKey key);
 
   private:
-    Config(const QString& fileName, QObject* parent);
+    Config(const QString& fileName, QObject* parent = nullptr);
     explicit Config(QObject* parent);
-    void init(const QString& fileName);
-    void upgrade();
+    void init(const QString& configFileName, const QString& localConfigFileName = "");
+    void migrate();
 
-    static Config* m_instance;
+    static QPointer<Config> m_instance;
 
-    std::unique_ptr<QSettings> m_settings;
+    QScopedPointer<QSettings> m_settings;
+    QScopedPointer<QSettings> m_localSettings;
     QHash<QString, QVariant> m_defaults;
-    const std::unique_ptr<consts> m_const;
 };
 
 inline Config* config()
@@ -66,4 +111,4 @@ inline Config* config()
     return Config::instance();
 }
 
-#endif // CONFIG_H
+#endif // KEEPASSX_CONFIG_H

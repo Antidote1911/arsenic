@@ -117,14 +117,7 @@ void MainWindow::removeDeletedFile(QString filepath)
 
 void MainWindow::AddEncryptedFile(QString filepath)
 {
-    if (config()->get("GUI/AddEncrypted").toBool()) {
-        addFilePathToModel(filepath);
-    }
-}
-
-void MainWindow::AddDecryptedFile(QString filepath)
-{
-    if (config()->get("GUI/AddDecrypted").toBool()) {
+    if (config()->get(Config::GUI_AddEncrypted).toBool()) {
         addFilePathToModel(filepath);
     }
 }
@@ -175,8 +168,8 @@ void MainWindow::encryptFiles()
     m_file_crypto->setParam(true,
                             getListFiles(),
                             m_ui->password_0->text(),
-                            config()->get("CRYPTO/argonMemory").toInt(),
-                            config()->get("CRYPTO/argonItr").toInt(),
+                            config()->get(Config::CRYPTO_argonMemory).toInt(),
+                            config()->get(Config::CRYPTO_argonItr).toInt(),
                             m_ui->CheckDeleteFiles->isChecked());
 
     m_file_crypto->start();
@@ -195,8 +188,8 @@ void MainWindow::decryptFiles()
     m_file_crypto->setParam(false,
                             getListFiles(),
                             m_ui->password_0->text(),
-                            config()->get("CRYPTO/argonMemory").toInt(),
-                            config()->get("CRYPTO/argonItr").toInt(),
+                            config()->get(Config::CRYPTO_argonMemory).toInt(),
+                            config()->get(Config::CRYPTO_argonItr).toInt(),
                             m_ui->CheckDeleteFiles->isChecked());
 
     m_file_crypto->start();
@@ -311,7 +304,7 @@ void MainWindow::delegate()
 void MainWindow::addFiles()
 {
     // Open a file dialog to get files
-    const auto files = QFileDialog::getOpenFileNames(this, tr("Add File(s)"), config()->get("GUI/lastDirectory").toByteArray());
+    const auto files = QFileDialog::getOpenFileNames(this, tr("Add File(s)"), config()->get(Config::GUI_lastDirectory).toByteArray());
     if (files.isEmpty()) // if no file selected
     {
         return;
@@ -319,7 +312,7 @@ void MainWindow::addFiles()
     // Save this directory to return to later
     const auto fileName{files[0]};
 
-    config()->set("GUI/lastDirectory", fileName.left(fileName.lastIndexOf("/")));
+    config()->set(Config::GUI_lastDirectory, fileName.left(fileName.lastIndexOf("/")));
     for (const QString &file : files) // add files to the model
     {
         addFilePathToModel(file);
@@ -329,7 +322,7 @@ void MainWindow::addFiles()
 void MainWindow::addFolder()
 {
     // Open a file dialog to get files
-    const auto directory = QFileDialog::getExistingDirectory(this, tr("Add Folder"), config()->get("GUI/lastDirectory").toByteArray());
+    const auto directory = QFileDialog::getExistingDirectory(this, tr("Add Folder"), config()->get(Config::GUI_lastDirectory).toByteArray());
     addFilePathToModel(directory);
 }
 
@@ -455,17 +448,17 @@ void MainWindow::loadPreferences()
         QMessageBox::warning(this, tr("Could not load configuration"), warn_text);
     }
     if (isVisible()) {
-        config()->set("GUI/MainWindowGeometry", saveGeometry());
-        config()->set("GUI/MainWindowState", saveState());
+        config()->set(Config::GUI_MainWindowGeometry, saveGeometry());
+        config()->set(Config::GUI_MainWindowState, saveState());
     }
-    loadLanguage(config()->get("GUI/Language").toString());
-    m_ui->CheckDeleteFiles->setChecked(config()->get("GUI/deleteFinished").toBool());
-    switchTab(config()->get("GUI/currentIndexTab").toInt());
-    m_ui->tabWidget->setCurrentIndex(config()->get("GUI/currentIndexTab").toInt());
+    loadLanguage(config()->get(Config::GUI_Language).toString());
+    m_ui->CheckDeleteFiles->setChecked(config()->get(Config::GUI_deleteFinished).toBool());
+    switchTab(config()->get(Config::GUI_currentIndexTab).toInt());
+    m_ui->tabWidget->setCurrentIndex(config()->get(Config::GUI_currentIndexTab).toInt());
 
-    restoreGeometry(config()->get("GUI/MainWindowGeometry").toByteArray());
-    restoreState(config()->get("GUI/MainWindowState").toByteArray());
-    if (config()->get("GUI/darkTheme").toBool()) {
+    restoreGeometry(config()->get(Config::GUI_MainWindowGeometry).toByteArray());
+    restoreState(config()->get(Config::GUI_MainWindowState).toByteArray());
+    if (config()->get(Config::GUI_darkTheme).toBool()) {
         m_ui->menuDarkTheme->setChecked(true);
         m_skin->setSkin("dark");
     }
@@ -473,7 +466,7 @@ void MainWindow::loadPreferences()
         m_ui->menuDarkTheme->setChecked(false);
         m_skin->setSkin("notheme");
     }
-    if (config()->get("GUI/showToolbar").toBool()) {
+    if (config()->get(Config::GUI_showToolbar).toBool()) {
         m_ui->menuViewToolbar->setChecked(true);
         m_ui->toolBar->setVisible(true);
     }
@@ -481,7 +474,7 @@ void MainWindow::loadPreferences()
         m_ui->menuViewToolbar->setChecked(false);
         m_ui->toolBar->setVisible(false);
     }
-    if (config()->get("GUI/showPassword").toBool()) {
+    if (config()->get(Config::GUI_showPassword).toBool()) {
         m_ui->checkViewpass->setChecked(true);
         m_ui->password_0->setEchoMode(QLineEdit::Normal);
         m_ui->password_1->setEchoMode(QLineEdit::Normal);
@@ -497,15 +490,15 @@ void MainWindow::savePreferences()
 {
     // clang-format off
     if (isVisible()) {
-        config()->set("GUI/MainWindowGeometry", saveGeometry());
-        config()->set("GUI/MainWindowState",    saveState());
+        config()->set(Config::GUI_MainWindowGeometry, saveGeometry());
+        config()->set(Config::GUI_MainWindowState,    saveState());
     }
-    config()->set("GUI/darkTheme",       m_ui->menuDarkTheme->isChecked());
-    config()->set("GUI/showPassword",    m_ui->checkViewpass->isChecked());
-    config()->set("GUI/Language",        m_currLang);
-    config()->set("GUI/showToolbar",     m_ui->menuViewToolbar->isChecked());
-    config()->set("GUI/currentIndexTab", m_ui->tabWidget->currentIndex());
-    config()->set("GUI/deleteFinished",  m_ui->CheckDeleteFiles->isChecked());
+    config()->set(Config::GUI_darkTheme,       m_ui->menuDarkTheme->isChecked());
+    config()->set(Config::GUI_showPassword,    m_ui->checkViewpass->isChecked());
+    config()->set(Config::GUI_Language,        m_currLang);
+    config()->set(Config::GUI_showToolbar,     m_ui->menuViewToolbar->isChecked());
+    config()->set(Config::GUI_currentIndexTab, m_ui->tabWidget->currentIndex());
+    config()->set(Config::GUI_deleteFinished,  m_ui->CheckDeleteFiles->isChecked());
     // clang-format on
 }
 
@@ -609,7 +602,7 @@ void MainWindow::createLanguageMenu(void)
         m_ui->menuLanguage->addAction(action);
         m_langGroup->addAction(action);
         // set default translators and language checked
-        if (config()->get("GUI/Language").toString() == locale) {
+        if (config()->get(Config::GUI_Language).toString() == locale) {
             action->setChecked(true);
         }
     }

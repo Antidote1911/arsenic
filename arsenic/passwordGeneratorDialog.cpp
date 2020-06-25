@@ -74,60 +74,60 @@ void PasswordGeneratorDialog::showEvent(QShowEvent *event)
 void PasswordGeneratorDialog::loadSettings()
 {
     // Password config
-    m_ui->checkBoxLower->setChecked(config()->get("generator/LowerCase", PasswordGenerator::DefaultLower).toBool());
-    m_ui->checkBoxLowerAdv->setChecked(config()->get("generator/LowerCase", PasswordGenerator::DefaultLower).toBool());
-    m_ui->checkBoxUpper->setChecked(config()->get("generator/UpperCase", PasswordGenerator::DefaultUpper).toBool());
-    m_ui->checkBoxUpperAdv->setChecked(config()->get("generator/UpperCase", PasswordGenerator::DefaultUpper).toBool());
-    m_ui->checkBoxNumbers->setChecked(config()->get("generator/Numbers", PasswordGenerator::DefaultNumbers).toBool());
-    m_ui->checkBoxSpecialChars->setChecked(config()->get("generator/SpecialChars", PasswordGenerator::DefaultSpecial).toBool());
-    m_ui->checkBoxNumbersAdv->setChecked(config()->get("generator/Numbers", PasswordGenerator::DefaultNumbers).toBool());
-    m_ui->advancedBar->setVisible(config()->get("generator/AdvancedMode", PasswordGenerator::DefaultAdvancedMode).toBool());
-    m_ui->excludedChars->setVisible(config()->get("generator/AdvancedMode", PasswordGenerator::DefaultAdvancedMode).toBool());
-    m_ui->checkBoxExcludeAlike->setVisible(config()->get("generator/AdvancedMode", PasswordGenerator::DefaultAdvancedMode).toBool());
-    m_ui->checkBoxEnsureEvery->setVisible(config()->get("generator/AdvancedMode", PasswordGenerator::DefaultAdvancedMode).toBool());
-    m_ui->editExcludedChars->setText(config()->get("generator/ExcludedChars", PasswordGenerator::DefaultExcludedChars).toString());
+    m_ui->checkBoxLower->setChecked(config()->get(Config::PasswordGenerator_LowerCase).toBool());
+    m_ui->checkBoxLowerAdv->setChecked(config()->get(Config::PasswordGenerator_LowerCase).toBool());
+    m_ui->checkBoxUpper->setChecked(config()->get(Config::PasswordGenerator_UpperCase).toBool());
+    m_ui->checkBoxUpperAdv->setChecked(config()->get(Config::PasswordGenerator_UpperCase).toBool());
+    m_ui->checkBoxNumbers->setChecked(config()->get(Config::PasswordGenerator_Numbers).toBool());
+    m_ui->checkBoxSpecialChars->setChecked(config()->get(Config::PasswordGenerator_SpecialChars).toBool());
+    m_ui->checkBoxNumbersAdv->setChecked(config()->get(Config::PasswordGenerator_Numbers).toBool());
+    m_ui->advancedBar->setVisible(config()->get(Config::PasswordGenerator_AdvancedMode).toBool());
+    m_ui->excludedChars->setVisible(config()->get(Config::PasswordGenerator_AdvancedMode).toBool());
+    m_ui->checkBoxExcludeAlike->setVisible(config()->get(Config::PasswordGenerator_ExcludeAlike).toBool());
+    m_ui->checkBoxEnsureEvery->setVisible(config()->get(Config::PasswordGenerator_EnsureEvery).toBool());
+    m_ui->editExcludedChars->setText(config()->get(Config::PasswordGenerator_ExcludedChars).toString());
 
-    m_ui->simpleBar->setVisible(!(config()->get("generator/AdvancedMode", PasswordGenerator::DefaultAdvancedMode).toBool()));
-    m_ui->checkBoxBraces->setChecked(config()->get("generator/Braces", PasswordGenerator::DefaultBraces).toBool());
-    m_ui->checkBoxQuotes->setChecked(config()->get("generator/Quotes", PasswordGenerator::DefaultQuotes).toBool());
-    m_ui->checkBoxPunctuation->setChecked(config()->get("generator/Punctuation", PasswordGenerator::DefaultPunctuation).toBool());
-    m_ui->checkBoxDashes->setChecked(config()->get("generator/Dashes", PasswordGenerator::DefaultDashes).toBool());
-    m_ui->checkBoxMath->setChecked(config()->get("generator/Math", PasswordGenerator::DefaultMath).toBool());
-    m_ui->checkBoxLogograms->setChecked(config()->get("generator/Logograms", PasswordGenerator::DefaultLogograms).toBool());
-    m_ui->checkBoxExtASCII->setChecked(config()->get("generator/EASCII", PasswordGenerator::DefaultEASCII).toBool());
-    m_ui->checkBoxExtASCIIAdv->setChecked(config()->get("generator/EASCII", PasswordGenerator::DefaultEASCII).toBool());
-    m_ui->checkBoxExcludeAlike->setChecked(config()->get("generator/ExcludeAlike", PasswordGenerator::DefaultLookAlike).toBool());
-    m_ui->checkBoxEnsureEvery->setChecked(config()->get("generator/EnsureEvery", PasswordGenerator::DefaultFromEveryGroup).toBool());
-    m_ui->spinBoxLength->setValue(config()->get("generator/Length", PasswordGenerator::DefaultLength).toInt());
+    m_ui->simpleBar->setVisible(!(config()->get(Config::PasswordGenerator_AdvancedMode).toBool()));
+    m_ui->checkBoxBraces->setChecked(config()->get(Config::PasswordGenerator_Braces).toBool());
+    m_ui->checkBoxQuotes->setChecked(config()->get(Config::PasswordGenerator_Quotes).toBool());
+    m_ui->checkBoxPunctuation->setChecked(config()->get(Config::PasswordGenerator_Punctuation).toBool());
+    m_ui->checkBoxDashes->setChecked(config()->get(Config::PasswordGenerator_Dashes).toBool());
+    m_ui->checkBoxMath->setChecked(config()->get(Config::PasswordGenerator_Math).toBool());
+    m_ui->checkBoxLogograms->setChecked(config()->get(Config::PasswordGenerator_Logograms).toBool());
+    m_ui->checkBoxExtASCII->setChecked(config()->get(Config::PasswordGenerator_EASCII).toBool());
+    m_ui->checkBoxExtASCIIAdv->setChecked(config()->get(Config::PasswordGenerator_EASCII).toBool());
+    m_ui->checkBoxExcludeAlike->setChecked(config()->get(Config::PasswordGenerator_ExcludeAlike).toBool());
+    m_ui->checkBoxEnsureEvery->setChecked(config()->get(Config::PasswordGenerator_EnsureEvery).toBool());
+    m_ui->spinBoxLength->setValue(config()->get(Config::PasswordGenerator_Length).toInt());
 }
 
 void PasswordGeneratorDialog::saveSettings()
 {
     // Password config
     if (m_ui->simpleBar->isVisible()) {
-        config()->set("generator/LowerCase", m_ui->checkBoxLower->isChecked());
-        config()->set("generator/UpperCase", m_ui->checkBoxUpper->isChecked());
-        config()->set("generator/Numbers", m_ui->checkBoxNumbers->isChecked());
-        config()->set("generator/EASCII", m_ui->checkBoxExtASCII->isChecked());
+        config()->set(Config::PasswordGenerator_LowerCase, m_ui->checkBoxLower->isChecked());
+        config()->set(Config::PasswordGenerator_UpperCase, m_ui->checkBoxUpper->isChecked());
+        config()->set(Config::PasswordGenerator_Numbers, m_ui->checkBoxNumbers->isChecked());
+        config()->set(Config::PasswordGenerator_EASCII, m_ui->checkBoxExtASCII->isChecked());
     }
     else {
-        config()->set("generator/LowerCase", m_ui->checkBoxLowerAdv->isChecked());
-        config()->set("generator/UpperCase", m_ui->checkBoxUpperAdv->isChecked());
-        config()->set("generator/Numbers", m_ui->checkBoxNumbersAdv->isChecked());
-        config()->set("generator/EASCII", m_ui->checkBoxExtASCIIAdv->isChecked());
+        config()->set(Config::PasswordGenerator_LowerCase, m_ui->checkBoxLowerAdv->isChecked());
+        config()->set(Config::PasswordGenerator_UpperCase, m_ui->checkBoxUpperAdv->isChecked());
+        config()->set(Config::PasswordGenerator_Numbers, m_ui->checkBoxNumbersAdv->isChecked());
+        config()->set(Config::PasswordGenerator_EASCII, m_ui->checkBoxExtASCIIAdv->isChecked());
     }
-    config()->set("generator/AdvancedMode", m_ui->advancedBar->isVisible());
-    config()->set("generator/SpecialChars", m_ui->checkBoxSpecialChars->isChecked());
-    config()->set("generator/Braces", m_ui->checkBoxBraces->isChecked());
-    config()->set("generator/Punctuation", m_ui->checkBoxPunctuation->isChecked());
-    config()->set("generator/Quotes", m_ui->checkBoxQuotes->isChecked());
-    config()->set("generator/Dashes", m_ui->checkBoxDashes->isChecked());
-    config()->set("generator/Math", m_ui->checkBoxMath->isChecked());
-    config()->set("generator/Logograms", m_ui->checkBoxLogograms->isChecked());
-    config()->set("generator/ExcludedChars", m_ui->editExcludedChars->text());
-    config()->set("generator/ExcludeAlike", m_ui->checkBoxExcludeAlike->isChecked());
-    config()->set("generator/EnsureEvery", m_ui->checkBoxEnsureEvery->isChecked());
-    config()->set("generator/Length", m_ui->spinBoxLength->value());
+    config()->set(Config::PasswordGenerator_AdvancedMode, m_ui->advancedBar->isVisible());
+    config()->set(Config::PasswordGenerator_SpecialChars, m_ui->checkBoxSpecialChars->isChecked());
+    config()->set(Config::PasswordGenerator_Braces, m_ui->checkBoxBraces->isChecked());
+    config()->set(Config::PasswordGenerator_Punctuation, m_ui->checkBoxPunctuation->isChecked());
+    config()->set(Config::PasswordGenerator_Quotes, m_ui->checkBoxQuotes->isChecked());
+    config()->set(Config::PasswordGenerator_Dashes, m_ui->checkBoxDashes->isChecked());
+    config()->set(Config::PasswordGenerator_Math, m_ui->checkBoxMath->isChecked());
+    config()->set(Config::PasswordGenerator_Logograms, m_ui->checkBoxLogograms->isChecked());
+    config()->set(Config::PasswordGenerator_ExcludedChars, m_ui->editExcludedChars->text());
+    config()->set(Config::PasswordGenerator_ExcludeAlike, m_ui->checkBoxExcludeAlike->isChecked());
+    config()->set(Config::PasswordGenerator_EnsureEvery, m_ui->checkBoxEnsureEvery->isChecked());
+    config()->set(Config::PasswordGenerator_Length, m_ui->spinBoxLength->value());
 }
 
 void PasswordGeneratorDialog::reset(int length)
@@ -136,10 +136,10 @@ void PasswordGeneratorDialog::reset(int length)
     if (length > 0)
         m_ui->spinBoxLength->setValue(length);
     else
-        m_ui->spinBoxLength->setValue(config()->get("generator/Length", PasswordGenerator::DefaultLength).toInt());
+        m_ui->spinBoxLength->setValue(config()->get(Config::PasswordGenerator_Length).toInt());
 
     setStandaloneMode(false);
-    setPasswordVisible(config()->get("security/passwordscleartext").toBool());
+    setPasswordVisible(config()->get(Config::GUI_showPassword).toBool());
     updateGenerator();
 }
 

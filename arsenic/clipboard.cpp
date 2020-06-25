@@ -64,8 +64,8 @@ void Clipboard::setText(const QString &text)
     }
 #endif
 
-    if (config()->get("SECURITY/clearclipboard").toBool()) {
-        int timeout = config()->get("SECURITY/clearclipboardtimeout").toInt();
+    if (config()->get(Config::SECURITY_clearclipboard).toBool()) {
+        int timeout = config()->get(Config::SECURITY_clearclipboardtimeout).toInt();
         if (timeout > 0) {
             m_lastCopied = text;
             m_timer->start(timeout * 1000);

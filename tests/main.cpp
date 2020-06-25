@@ -73,7 +73,7 @@ bool encryptFile()
     list.append("cleartxt.txt");
 
     Crypto_Thread Crypto;
-    Crypto.setParam(true, list, "mypassword", consts::DEFAULT_ARGON_MEM_LIMIT, consts::DEFAULT_ARGON_ITR_LIMIT, true);
+    Crypto.setParam(true, list, "mypassword", consts::MEMLIMIT_INTERACTIVE, consts::ITERATION_INTERACTIVE, true);
 
     Crypto.start();
     Crypto.wait();
@@ -84,7 +84,7 @@ bool encryptFile()
     QStringList list2;
     list2.append("cleartxt.txt.arsenic");
 
-    Crypto.setParam(false, list2, "mypassword", consts::DEFAULT_ARGON_MEM_LIMIT, consts::DEFAULT_ARGON_ITR_LIMIT, true);
+    Crypto.setParam(false, list2, "mypassword", consts::MEMLIMIT_INTERACTIVE, consts::ITERATION_INTERACTIVE, true);
 
     Crypto.start();
     Crypto.wait();

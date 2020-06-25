@@ -12,7 +12,6 @@ class consts : public QObject {
   public:
     explicit consts(QObject *parent = nullptr);
 
-    static inline QString const S = "Forty-Two";
     static inline QVersionNumber const APP_VERSION{3, 5, 2};
     static inline QString const APP_SHORT_NAME         = "Arsenic";
     static inline QString const APP_LONG_NAME          = "Arsenic " + APP_VERSION.toString();
@@ -23,24 +22,10 @@ class consts : public QObject {
     static inline quint32 const VERSION_CODE_LEN       = 4;
 
     // Default constants for Arsenic preferences
-    static inline QString const DEFAULT_EXTENSION     = ".arsenic";
-    static inline QString const DEFAULT_LANGUAGE      = "en";
-    static inline QString const DEFAULT_LASTDIRECTORY = "";
-    static inline quint32 const DEFAULT_INDEX_TAB     = 0;
-    static inline bool const DEFAULT_SHOW_PSW         = false;
-    static inline bool const DEFAULT_DELETE_FINSHED   = false;
+    static inline QString const DEFAULT_EXTENSION = ".arsenic";
 
-    static inline bool const DEFAULT_ADD_ENCRYPTED      = true;
-    static inline bool const DEFAULT_ADD_DECRYPTED      = true;
-    static inline quint32 const DEFAULT_ARGON_ITR_LIMIT = 0;
-    static inline quint32 const DEFAULT_ARGON_MEM_LIMIT = 0;
-
-    static inline bool const DEFAULT_DARK_THEME           = false;
-    static inline bool const DEFAULT_SHOW_TOOLBAR         = true;
-    static inline bool const DEFAULT_CLEAR_CLIPBOARD      = true;
-    static inline quint32 const DEFAULT_CLIPBOARD_TIMEOUT = 10;
-    static inline QString const BOTAN_VERSION             = QString::fromStdString(Botan::version_string());
-    static inline QString const ZLIB_Version              = ZLIB_VERSION;
+    static inline QString const BOTAN_VERSION = QString::fromStdString(Botan::version_string());
+    static inline QString const ZLIB_Version  = ZLIB_VERSION;
 
     static inline QString const DEFAULT_LIST_PATH = "session.qtlist";
     static inline int const MIN_PASS_LENGTH       = 8;
