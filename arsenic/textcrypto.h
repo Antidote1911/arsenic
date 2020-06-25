@@ -16,6 +16,7 @@ class textCrypto : public QObject {
 
   private:
     quint32 encryptString(QString &plaintext, const QString &password);
+
     quint32 decryptString(QString &ciphertext, const QString &password);
 
     QString m_password;

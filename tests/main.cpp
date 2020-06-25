@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QFile>
 #include "consts.h"
+#include "Config.h"
 #include "fileCrypto.h"
 #include "textcrypto.h"
 #include "utils.h"
@@ -73,7 +74,7 @@ bool encryptFile()
     list.append("cleartxt.txt");
 
     Crypto_Thread Crypto;
-    Crypto.setParam(true, list, "mypassword", consts::MEMLIMIT_INTERACTIVE, consts::ITERATION_INTERACTIVE, true);
+    Crypto.setParam(true, list, "mypassword", config()->get(Config::CRYPTO_argonMemory).toInt(), config()->get(Config::CRYPTO_argonItr).toInt(), true);
 
     Crypto.start();
     Crypto.wait();
@@ -84,7 +85,7 @@ bool encryptFile()
     QStringList list2;
     list2.append("cleartxt.txt.arsenic");
 
-    Crypto.setParam(false, list2, "mypassword", consts::MEMLIMIT_INTERACTIVE, consts::ITERATION_INTERACTIVE, true);
+    Crypto.setParam(false, list2, "mypassword", config()->get(Config::CRYPTO_argonMemory).toInt(), config()->get(Config::CRYPTO_argonItr).toInt(), true);
 
     Crypto.start();
     Crypto.wait();

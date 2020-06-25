@@ -29,6 +29,7 @@ SOURCES += \
     ../arsenic/messages.cpp \
     ../arsenic/textcrypto.cpp \
     ../arsenic/utils.cpp \
+    ../arsenic/Config.cpp \
     main.cpp
 
 HEADERS += \
@@ -37,4 +38,5 @@ HEADERS += \
     ../arsenic/tripleencryption.h \
     ../arsenic/messages.h \
     ../arsenic/utils.h \
+    ../arsenic/Config.h \
     ../arsenic/textcrypto.h
