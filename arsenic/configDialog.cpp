@@ -24,6 +24,7 @@ void ConfigDialog::loadSettings()
         QString warn_text = QString(tr("Access error for config file %1").arg(config()->getFileName()));
         QMessageBox::warning(this, tr("Could not load configuration"), warn_text);
     }
+    m_ui->spinBox_clip->setEnabled(config()->get(Config::SECURITY_clearclipboard).toBool());
     m_ui->comboMemory->setCurrentIndex(config()->get(Config::CRYPTO_argonMemory).toInt());
     m_ui->comboOps->setCurrentIndex(config()->get(Config::CRYPTO_argonItr).toInt());
     m_ui->spinBox_clip->setValue(config()->get(Config::SECURITY_clearclipboardtimeout).toInt());
