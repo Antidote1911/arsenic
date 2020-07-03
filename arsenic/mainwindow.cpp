@@ -23,14 +23,18 @@
 #include "argonTests.h"
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), m_ui(new Ui::MainWindow)
+    : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>()),
+      m_file_crypto(std::make_unique<Crypto_Thread>(this)),
+      m_text_crypto(std::make_unique<textCrypto>(this)),
+      m_log(std::make_unique<logHtml>(this)),
+      m_skin(std::make_unique<Skin>(this))
 {
     m_ui->setupUi(this);
 
-    m_file_crypto = std::make_unique<Crypto_Thread>();
-    m_text_crypto = std::make_unique<textCrypto>();
-    m_log         = std::make_unique<logHtml>();
-    m_skin        = std::make_unique<Skin>();
+    //m_file_crypto = std::make_unique<Crypto_Thread>();
+    //m_text_crypto = std::make_unique<textCrypto>();
+    //m_log         = std::make_unique<logHtml>();
+    //m_skin        = std::make_unique<Skin>();
 
     createLanguageMenu();
     loadPreferences();
@@ -447,10 +451,7 @@ void MainWindow::loadPreferences()
         auto warn_text = QString(tr("Access error for config file %1").arg(config()->getFileName()));
         QMessageBox::warning(this, tr("Could not load configuration"), warn_text);
     }
-    if (isVisible()) {
-        config()->set(Config::GUI_MainWindowGeometry, saveGeometry());
-        config()->set(Config::GUI_MainWindowState, saveState());
-    }
+
     loadLanguage(config()->get(Config::GUI_Language).toString());
     m_ui->CheckDeleteFiles->setChecked(config()->get(Config::GUI_deleteFinished).toBool());
     switchTab(config()->get(Config::GUI_currentIndexTab).toInt());

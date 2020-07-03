@@ -70,10 +70,11 @@ class MainWindow : public QMainWindow {
 
   private:
     const std::unique_ptr<Ui::MainWindow> m_ui;
-    std::unique_ptr<Skin> m_skin;
-    std::unique_ptr<logHtml> m_log;
-    std::unique_ptr<textCrypto> m_text_crypto;
     std::unique_ptr<Crypto_Thread> m_file_crypto;
+    std::unique_ptr<textCrypto> m_text_crypto;
+    std::unique_ptr<logHtml> m_log;
+    std::unique_ptr<Skin> m_skin;
+
     std::unique_ptr<QStandardItemModel> fileListModelCrypto;
     std::unique_ptr<Delegate> m_delegate;
     std::unique_ptr<QActionGroup> m_langGroup;

@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <QStringBuilder>
 #include <QThread>
+#include <QCoreApplication>
 
 #include "botan_all.h"
 #include "messages.h"
