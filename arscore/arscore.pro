@@ -32,6 +32,8 @@ DESTDIR = build
     INSTALLS += target
 
 
+DEFINES += QUAZIP_STATIC
+
 # Botan
 LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
 INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
