@@ -5,11 +5,13 @@ TEMPLATE = subdirs
 CONFIG  += ordered
 
 SUBDIRS += 3rdparty \
+           arscore \
            arsenic \
            tests
 
-arsenic.depends = 3rdparty
-tests.depends = 3rdparty
+arscore.depends = 3rdparty
+arsenic.depends = arscore
+tests.depends = arscore
 
 DISTFILES += .appveyor.yml \
              .travis.yml \

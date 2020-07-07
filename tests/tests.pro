@@ -25,7 +25,6 @@ win32-g++ {
 
 SOURCES += \
     ../arsenic/fileCrypto.cpp \
-    ../arsenic/tripleencryption.cpp \
     ../arsenic/messages.cpp \
     ../arsenic/textcrypto.cpp \
     ../arsenic/utils.cpp \
@@ -33,9 +32,7 @@ SOURCES += \
     main.cpp
 
 HEADERS += \
-    ../arsenic/constants.h \
     ../arsenic/fileCrypto.h \
-    ../arsenic/tripleencryption.h \
     ../arsenic/messages.h \
     ../arsenic/utils.h \
     ../arsenic/Config.h \

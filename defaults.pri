@@ -25,9 +25,12 @@ INCLUDEPATH += $$PWD/3rdparty/catch
 LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
 INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
 
-
+# arscore
+LIBS += -L$$OUT_PWD/../arscore/build/ -larscore
+INCLUDEPATH += $$OUT_PWD/arscore/build
 
 INCLUDEPATH += $$PWD/arsenic
+INCLUDEPATH += $$PWD/arscore
 
 # specific windows
 win32:LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
