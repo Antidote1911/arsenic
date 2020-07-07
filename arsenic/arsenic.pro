@@ -45,10 +45,7 @@ HEADERS += \
     progressbar.h \
     skin.h \
     fileCrypto.h \
-    passwordGenerator.h \
-    utils.h \
-    textcrypto.h \
-    messages.h
+    passwordGenerator.h
 
 SOURCES += \
     Config.cpp \
@@ -64,10 +61,7 @@ SOURCES += \
     passwordGeneratorDialog.cpp \
     skin.cpp \
     fileCrypto.cpp \
-    passwordGenerator.cpp \
-    utils.cpp \
-    textcrypto.cpp \
-    messages.cpp
+    passwordGenerator.cpp
 
 RESOURCES += \
     rsc.qrc

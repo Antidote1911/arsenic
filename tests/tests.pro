@@ -25,15 +25,9 @@ win32-g++ {
 
 SOURCES += \
     ../arsenic/fileCrypto.cpp \
-    ../arsenic/messages.cpp \
-    ../arsenic/textcrypto.cpp \
-    ../arsenic/utils.cpp \
     ../arsenic/Config.cpp \
     main.cpp
 
 HEADERS += \
     ../arsenic/fileCrypto.h \
-    ../arsenic/messages.h \
-    ../arsenic/utils.h \
-    ../arsenic/Config.h \
-    ../arsenic/textcrypto.h
+    ../arsenic/Config.h

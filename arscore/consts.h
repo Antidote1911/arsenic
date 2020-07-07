@@ -12,7 +12,7 @@ class consts : public QObject {
   public:
     explicit consts(QObject *parent = nullptr);
 
-    static inline QVersionNumber const APP_VERSION{3, 5, 2};
+    static inline QVersionNumber const APP_VERSION{3, 5, 3};
     static inline QString const APP_SHORT_NAME         = "Arsenic";
     static inline QString const APP_LONG_NAME          = "Arsenic " + APP_VERSION.toString();
     static inline QString const APP_DESCRIPTION        = "Strong encryption";

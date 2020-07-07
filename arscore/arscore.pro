@@ -9,10 +9,16 @@ QMAKE_CXXFLAGS += -std=c++17
 
 HEADERS += \
     tripleencryption.h \
+    utils.h \
+    textcrypto.h \
+    messages.h \
     consts.h
 
 SOURCES += \
     tripleencryption.cpp \
+    utils.cpp \
+    textcrypto.cpp \
+    messages.cpp \
     consts.cpp
 
 DESTDIR = build

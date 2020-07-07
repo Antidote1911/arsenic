@@ -120,7 +120,6 @@ void Crypto_Thread::run()
             emit statusMessage("");
             emit statusMessage(QDateTime::currentDateTime().toString("dddd dd MMMM yyyy (hh:mm:ss)") + " decryption of " + inputFileName);
             QString decrypt_name;
-            emit statusMessage("Deccrypting... Please wait.");
             quint32 result       = decrypt(inputFileName, &decrypt_name);
             QString decrypt_path = Utils::getTempPath() + "tmp.zip";
             QuaZip qz(decrypt_path);
