@@ -42,13 +42,13 @@ INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
 LIBS += -L$$OUT_PWD/../3rdparty/zxcvbn/build/ -lzxcvbn
 INCLUDEPATH += $$PWD/../3rdparty/zxcvbn
 
-# Zlib
-LIBS += -L$$OUT_PWD/../3rdparty/zlib//build/ -lzlib
-INCLUDEPATH += $$PWD/../3rdparty/zlib
-
 # Quazip
 LIBS += -L$$OUT_PWD/../3rdparty/quazip/build/ -lQt5Quazip
 INCLUDEPATH += $$PWD/../3rdparty/quazip
+
+# Zlib
+LIBS += -L$$OUT_PWD/../3rdparty/zlib//build/ -lzlib
+INCLUDEPATH += $$PWD/../3rdparty/zlib
 
 # specific windows
 win32:LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
