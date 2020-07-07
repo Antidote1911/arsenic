@@ -22,6 +22,7 @@ build_script:
 
 after_build:
     - cd %APPVEYOR_BUILD_FOLDER%\tests\release\
+    - dir
     - tests.exe
     - cd %APPVEYOR_BUILD_FOLDER%
     - mkdir arsenic_win_x64
