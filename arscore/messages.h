@@ -2,6 +2,7 @@
 #define MESSAGES_H
 
 #include <QString>
+#include "libexport.h"
 
 enum : quint32 {
     CRYPT_SUCCESS,
@@ -20,6 +21,6 @@ enum : quint32 {
     EMPTY_PASSWORD
 };
 
-QString errorCodeToString(quint32 error_code);
+QString LIB_EXPORT errorCodeToString(quint32 error_code);
 
 #endif // MESSAGES_H

@@ -2,12 +2,14 @@ QT       -= core
 
 TARGET = arscore
 TEMPLATE = lib
+DEFINES += EXPORT_LIB
 
 CONFIG += warn_off
 CONFIG += c++17
 QMAKE_CXXFLAGS += -std=c++17
 
 HEADERS += \
+    libexport.h \
     tripleencryption.h \
     utils.h \
     textcrypto.h \

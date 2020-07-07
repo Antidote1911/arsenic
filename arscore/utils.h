@@ -3,8 +3,9 @@
 
 #include <QDebug>
 #include <QObject>
+#include "libexport.h"
 
-class Utils : public QObject {
+class LIB_EXPORT Utils : public QObject {
     Q_OBJECT
   public:
     explicit Utils(QObject *parent = nullptr);

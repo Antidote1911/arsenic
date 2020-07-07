@@ -5,6 +5,7 @@
 #include <QThread>
 
 #include "consts.h"
+#include "libexport.h"
 
 #ifdef FILECRYPTO_EXPORT
 #define FILECRYPTO_API Q_DECL_EXPORT
@@ -12,7 +13,7 @@
 #define FILECRYPTO_API Q_DECL_IMPORT
 #endif
 
-class Crypto_Thread : public QThread {
+class LIB_EXPORT Crypto_Thread : public QThread {
     Q_OBJECT
 
   public:
