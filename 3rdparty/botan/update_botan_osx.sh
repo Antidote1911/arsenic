@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 set -x
-curl -OL https://github.com/randombit/botan/archive/2.14.0.tar.gz
+curl -OL https://github.com/randombit/botan/archive/2.15.0.tar.gz
 
 script_dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )
-botan_archive=2.14.0.tar.gz
-botan_extracted_dir_name=botan-2.14.0
+botan_archive=2.15.0.tar.gz
+botan_extracted_dir_name=botan-2.15.0
 botan_parent_dir=$script_dir/
 
 cd $botan_parent_dir
