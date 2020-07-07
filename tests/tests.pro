@@ -24,10 +24,8 @@ win32-g++ {
 
 
 SOURCES += \
-    ../arsenic/fileCrypto.cpp \
     ../arsenic/Config.cpp \
     main.cpp
 
 HEADERS += \
-    ../arsenic/fileCrypto.h \
     ../arsenic/Config.h

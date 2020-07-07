@@ -12,6 +12,8 @@ HEADERS += \
     utils.h \
     textcrypto.h \
     messages.h \
+    passwordGenerator.h \
+    fileCrypto.h \
     consts.h
 
 SOURCES += \
@@ -19,6 +21,8 @@ SOURCES += \
     utils.cpp \
     textcrypto.cpp \
     messages.cpp \
+    passwordGenerator.cpp \
+    fileCrypto.cpp \
     consts.cpp
 
 DESTDIR = build
@@ -34,4 +38,16 @@ INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
 
 # Zlib
 LIBS += -L$$OUT_PWD/../3rdparty/zlib//build/ -lzlib
+INCLUDEPATH += $$PWD/3rdparty/zlib
+
+# zxcvbn
+LIBS += -L$$OUT_PWD/../3rdparty/zxcvbn/build/ -lzxcvbn
+INCLUDEPATH += $$PWD/../3rdparty/zxcvbn
+
+# Zlib
+LIBS += -L$$OUT_PWD/../3rdparty/zlib//build/ -lzlib
 INCLUDEPATH += $$PWD/../3rdparty/zlib
+
+# Quazip
+LIBS += -L$$OUT_PWD/../3rdparty/quazip/build/ -lQt5Quazip
+INCLUDEPATH += $$PWD/../3rdparty/quazip
