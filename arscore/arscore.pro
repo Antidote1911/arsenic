@@ -38,10 +38,6 @@ DEFINES += QUAZIP_STATIC
 LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
 INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
 
-# Zlib
-LIBS += -L$$OUT_PWD/../3rdparty/zlib//build/ -lzlib
-INCLUDEPATH += $$PWD/3rdparty/zlib
-
 # zxcvbn
 LIBS += -L$$OUT_PWD/../3rdparty/zxcvbn/build/ -lzxcvbn
 INCLUDEPATH += $$PWD/../3rdparty/zxcvbn
@@ -53,3 +49,6 @@ INCLUDEPATH += $$PWD/../3rdparty/zlib
 # Quazip
 LIBS += -L$$OUT_PWD/../3rdparty/quazip/build/ -lQt5Quazip
 INCLUDEPATH += $$PWD/../3rdparty/quazip
+
+# specific windows
+win32:LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
