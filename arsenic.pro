@@ -9,6 +9,7 @@ SUBDIRS += 3rdparty \
            arsenic \
            tests
 
+
 arscore.depends = 3rdparty
 arsenic.depends = arscore
 tests.depends = arscore

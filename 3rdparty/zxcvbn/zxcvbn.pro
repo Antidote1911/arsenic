@@ -1,5 +1,3 @@
-QT       -= core
-
 TARGET = zxcvbn
 TEMPLATE = lib
 

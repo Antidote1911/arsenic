@@ -9,7 +9,7 @@
 #include "fileCrypto.h"
 #include "textcrypto.h"
 #include "utils.h"
-#include "catch.hpp"
+#include "catch/catch.hpp"
 #include "botan_all.h"
 #include "messages.h"
 #include "tripleencryption.h"

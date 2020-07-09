@@ -29,6 +29,7 @@ SOURCES += \
     main.cpp
 
 HEADERS += \
+    catch/catch.hpp \
     ../arsenic/Config.h
 
 
