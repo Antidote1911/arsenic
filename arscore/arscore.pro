@@ -17,6 +17,7 @@ HEADERS += \
     passwordGenerator.h \
     fileCrypto.h \
     zxcvbn.h \
+    dict-src.h \
     consts.h
 
 SOURCES += \
