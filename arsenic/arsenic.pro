@@ -3,6 +3,7 @@ include(../defaults.pri)
 QT       += core gui
 TEMPLATE = app
 
+
 CONFIG(release, debug|release): TARGET = arsenic
 CONFIG(debug, debug | release): TARGET = arsenicD
 
@@ -22,6 +23,7 @@ win32:RC_ICONS += pixmaps/app.ico
 win32-g++ {
     QMAKE_CXXFLAGS += -Wa,-mbig-obj
 }
+
 
 FORMS += \
     aboutDialog.ui \
