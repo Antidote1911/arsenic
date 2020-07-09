@@ -33,5 +33,3 @@ SOURCES += $$PWD/qioapi.cpp \
            $$PWD/unzip.c \
            $$PWD/zip.c
 
-
-INCLUDEPATH += $$PWD/../3rdparty/zlib

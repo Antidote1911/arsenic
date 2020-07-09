@@ -49,7 +49,7 @@ LIBS += -L$$OUT_PWD/../3rdparty/quazip/build/ -lQt5Quazip
 INCLUDEPATH += $$PWD/../3rdparty/quazip
 
 # Zlib
-#LIBS += -L$$OUT_PWD/../3rdparty/zlib//build/ -lzlib
+LIBS += -L$$OUT_PWD/../3rdparty/zlib//build/ -lzlib
 INCLUDEPATH += $$PWD/../3rdparty/zlib
 
 # specific windows
