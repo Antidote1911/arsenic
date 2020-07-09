@@ -2,13 +2,11 @@ OTHER_FILES += \
     defaults.pri
 
 TEMPLATE = subdirs
-CONFIG  += ordered
 
 SUBDIRS += 3rdparty \
            arscore \
            arsenic \
            tests
-
 
 arscore.depends = 3rdparty
 arsenic.depends = arscore

@@ -1,4 +1,4 @@
 TEMPLATE = subdirs
 
-SUBDIRS = botan quazip zlib zxcvbn
+SUBDIRS = botan quazip zlib
 

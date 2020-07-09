@@ -3,9 +3,6 @@ SRC_DIR = $$PWD
 CONFIG += c++17
 QMAKE_CXXFLAGS += -std=c++17
 
-# zxcvbn
-LIBS += -L$$OUT_PWD/../3rdparty/zxcvbn/build/ -lzxcvbn
-INCLUDEPATH += $$PWD/3rdparty/zxcvbn
 
 # Botan
 LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2

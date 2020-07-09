@@ -16,6 +16,7 @@ HEADERS += \
     messages.h \
     passwordGenerator.h \
     fileCrypto.h \
+    zxcvbn.h \
     consts.h
 
 SOURCES += \
@@ -25,7 +26,8 @@ SOURCES += \
     messages.cpp \
     passwordGenerator.cpp \
     fileCrypto.cpp \
-    consts.cpp
+    consts.cpp \
+    zxcvbn.c
 
 DESTDIR = build
 
@@ -39,18 +41,17 @@ DEFINES += QUAZIP_STATIC
 # Botan
 LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
 INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
-
-# zxcvbn
-LIBS += -L$$OUT_PWD/../3rdparty/zxcvbn/build/ -lzxcvbn
-INCLUDEPATH += $$PWD/../3rdparty/zxcvbn
+DEPENDPATH += $$OUT_PWD/../3rdparty/botan/build
 
 # Quazip
 LIBS += -L$$OUT_PWD/../3rdparty/quazip/build/ -lQt5Quazip
 INCLUDEPATH += $$PWD/../3rdparty/quazip
+DEPENDPATH += $$PWD/../3rdparty/quazip
 
 # Zlib
 LIBS += -L$$OUT_PWD/../3rdparty/zlib//build/ -lzlib
 INCLUDEPATH += $$PWD/../3rdparty/zlib
+DEPENDPATH += $$PWD/../3rdparty/zlib
 
 # specific windows
 win32:LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
