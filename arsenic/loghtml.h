@@ -12,12 +12,12 @@ class logHtml : public QObject {
     QString load();
     void append(QString text);
     void clear();
+    QString getPath();
 
     static logHtml* instance();
 
   private:
     explicit logHtml(QObject* parent = nullptr);
-    QString getPath();
 
     static QPointer<logHtml> m_instance;
 

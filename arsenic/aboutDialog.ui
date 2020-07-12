@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>611</width>
-    <height>507</height>
+    <height>549</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -188,6 +188,13 @@
         </spacer>
        </item>
        <item>
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Thanks to the KeepassXC project for some portion of code like password generator :&lt;br/&gt;&lt;a href=&quot;https://github.com/keepassxreboot/keepassxc&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;https://github.com/keepassxreboot/keepassxc&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLabel" name="label_8">
          <property name="text">
           <string notr="true">Project Maintainers:</string>
@@ -247,7 +254,7 @@
             <x>0</x>
             <y>0</y>
             <width>569</width>
-            <height>268</height>
+            <height>310</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">

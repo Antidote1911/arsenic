@@ -17,39 +17,18 @@ QString Utils::getBotanVersion()
 
 QString Utils::getTempPath()
 {
-    QString userPath;
-    QString homePath = QDir::homePath();
+    QString configPath;
 
-#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
-    // we can't use QStandardPaths on X11 as it uses XDG_DATA_HOME instead of XDG_CONFIG_HOME
-    QByteArray env = qgetenv("XDG_CONFIG_HOME");
-
-    if (env.isEmpty()) {
-        userPath = homePath;
-        userPath += "/.config";
-    }
-    else if (env[0] == '/') {
-        userPath = QFile::decodeName(env);
-    }
-    else {
-        userPath = homePath;
-        userPath += '/';
-        userPath += QFile::decodeName(env);
-    }
-
-    userPath += "/arsenic/";
+#if defined(Q_OS_WIN)
+    configPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+#elif defined(Q_OS_MACOS)
+    configPath = QDir::fromNativeSeparators(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
 #else
-    userPath = QDir::fromNativeSeparators(QStandardPaths::writableLocation(QStandardPaths::DataLocation));
-    // storageLocation() appends the application name ("/arsenic") to the end
-    userPath += "/";
+    configPath = QDir::fromNativeSeparators(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
 #endif
 
-#ifdef QT_DEBUG
-    userPath += "temp/";
-#else
-    userPath += "temp/";
-#endif
-    return (userPath);
+    configPath += "/temp/";
+    return (configPath);
 }
 
 void Utils::clearDir(const QString &dir_path)

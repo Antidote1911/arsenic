@@ -23,7 +23,9 @@ int main(int argc, char *argv[])
 {
 
     QApplication app(argc, argv);
-    app.setOrganizationName(consts::APP_LONG_NAME);
+    // don't set organizationName as that changes the return value of
+    // QStandardPaths::writableLocation(QDesktopServices::DataLocation)
+
     app.setOrganizationDomain(consts::APP_URL);
     app.setApplicationName(consts::APP_SHORT_NAME);
     app.setApplicationVersion(consts::APP_VERSION.toString());

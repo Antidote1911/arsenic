@@ -18,6 +18,8 @@
 
 #include "aboutDialog.h"
 #include "utils.h"
+#include "Config.h"
+#include "loghtml.h"
 #include "ui_aboutDialog.h"
 
 #include <QClipboard>
@@ -72,6 +74,8 @@ AboutDialog::AboutDialog(QWidget *parent)
     debugInfo.append(m_const->BOTAN_VERSION).append("\n");
     debugInfo.append("Zlib version: " + m_const->ZLIB_Version).append("\n");
     debugInfo.append("Tmp folder: " + Utils::getTempPath()).append("\n");
+    debugInfo.append("Config file: " + config()->getFileName()).append("\n");
+    debugInfo.append("Log file: " + loghtml()->getPath()).append("\n");
 
     m_ui->iconLabel->setPixmap(qApp->windowIcon().pixmap(48));
 

@@ -49,39 +49,24 @@ void logHtml::append(QString text)
 
 QString logHtml::getPath()
 {
-    QString userPath;
-    QString homePath = QDir::homePath();
+    QString configPath;
 
-#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
-    // we can't use QStandardPaths on X11 as it uses XDG_DATA_HOME instead of XDG_CONFIG_HOME
-    QByteArray env = qgetenv("XDG_CONFIG_HOME");
-
-    if (env.isEmpty()) {
-        userPath = homePath;
-        userPath += "/.config";
-    }
-    else if (env[0] == '/') {
-        userPath = QFile::decodeName(env);
-    }
-    else {
-        userPath = homePath;
-        userPath += '/';
-        userPath += QFile::decodeName(env);
-    }
-
-    userPath += "/arsenic/";
+#if defined(Q_OS_WIN)
+    configPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+#elif defined(Q_OS_MACOS)
+    configPath = QDir::fromNativeSeparators(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
 #else
-    userPath = QDir::fromNativeSeparators(QStandardPaths::writableLocation(QStandardPaths::DataLocation));
-    // storageLocation() appends the application name ("/arsenic") to the end
-    userPath += "/";
+    configPath = QDir::fromNativeSeparators(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
 #endif
+
+    configPath += "/arsenic_log";
 
 #ifdef QT_DEBUG
-    userPath += "arsenic_log_debug.html";
-#else
-    userPath += "arsenic_log.html";
+    configPath += "_debug";
 #endif
-    return (userPath);
+
+    configPath += ".html";
+    return (configPath);
 }
 
 logHtml* logHtml::instance()
