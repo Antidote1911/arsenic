@@ -1,5 +1,4 @@
-#ifndef ARGONTESTS_H
-#define ARGONTESTS_H
+#pragma once
 
 #include <QDialog>
 #include <memory>
@@ -18,5 +17,3 @@ class ArgonTests : public QDialog {
   private:
     const std::unique_ptr<Ui::ArgonTests> m_ui;
 };
-
-#endif // ARGONTESTS_H

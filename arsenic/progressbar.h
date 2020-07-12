@@ -12,6 +12,8 @@
     Copyright (c) 2019 Leon Latsch
 */
 
+#pragma once
+
 #include <chrono>
 #include <cstdio>
 #include <thread>

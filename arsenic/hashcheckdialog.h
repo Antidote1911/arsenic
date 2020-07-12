@@ -1,5 +1,4 @@
-﻿#ifndef HASHCHECKDIALOG_H
-#define HASHCHECKDIALOG_H
+﻿#pragma once
 
 #include <QDialog>
 #include <QMessageBox>
@@ -34,5 +33,3 @@ class HashCheckDialog : public QDialog {
     bool cancel_calculation;
     bool isCalculating;
 };
-
-#endif // HASHCHECKDIALOG_H

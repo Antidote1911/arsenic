@@ -3,13 +3,21 @@
 #include <QIODevice>
 #include <QStandardPaths>
 #include <QTextStream>
+#include <QCoreApplication>
+#include <QDebug>
 
 #include "loghtml.h"
 
-logHtml::logHtml(QObject *parent)
+logHtml::logHtml(QObject* parent)
     : QObject(parent)
 {
 }
+
+logHtml::~logHtml()
+{
+}
+
+QPointer<logHtml> logHtml::m_instance(nullptr);
 
 void logHtml::clear()
 {
@@ -20,7 +28,12 @@ void logHtml::clear()
 QString logHtml::load()
 {
     QFile logfile(getPath());
-    logfile.open(QIODevice::ReadOnly | QIODevice::Text);
+
+    if (!logfile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "No log file in :" << getPath();
+        return "";
+    }
+
     QString out = logfile.readAll();
     return (out);
 }
@@ -69,4 +82,13 @@ QString logHtml::getPath()
     userPath += "arsenic_log.html";
 #endif
     return (userPath);
+}
+
+logHtml* logHtml::instance()
+{
+    if (!m_instance) {
+        m_instance = new logHtml(qApp);
+    }
+
+    return m_instance;
 }

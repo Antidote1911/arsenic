@@ -14,6 +14,7 @@
 
 #include "aboutDialog.h"
 #include "Config.h"
+#include "loghtml.h"
 #include "Delegate.h"
 #include "configDialog.h"
 #include "messages.h"
@@ -26,7 +27,6 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>()),
       m_file_crypto(std::make_unique<Crypto_Thread>(this)),
       m_text_crypto(std::make_unique<textCrypto>(this)),
-      m_log(std::make_unique<logHtml>(this)),
       m_skin(std::make_unique<Skin>(this))
 {
     m_ui->setupUi(this);
@@ -128,7 +128,7 @@ void MainWindow::AddEncryptedFile(QString filepath)
 
 void MainWindow::loadLogFile()
 {
-    m_ui->textLogs->setText(m_log->load());
+    m_ui->textLogs->setText(loghtml()->load());
 }
 
 void MainWindow::abortJob()
@@ -146,13 +146,13 @@ void MainWindow::onMessageChanged(QString message)
     c.movePosition(QTextCursor::End);
     m_ui->textLogs->setTextCursor(c);
     m_ui->textLogs->append(message);
-    m_log->append(m_ui->textLogs->toHtml());
+    loghtml()->append(m_ui->textLogs->toHtml());
 }
 
 void MainWindow::clearLog()
 {
     m_ui->textLogs->clear();
-    m_log->clear();
+    loghtml()->clear();
 }
 
 void MainWindow::encryptFiles()

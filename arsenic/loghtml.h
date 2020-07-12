@@ -1,21 +1,30 @@
-#ifndef LOGHTML_H
-#define LOGHTML_H
+#pragma once
 
 #include <QObject>
+#include <QPointer>
 
-class logHtml : public QObject
-{
+class logHtml : public QObject {
     Q_OBJECT
-public:
-    explicit logHtml(QObject *parent = nullptr);
+
+  public:
+    Q_DISABLE_COPY(logHtml)
+    ~logHtml() override;
     QString load();
     void append(QString text);
     void clear();
 
-private:
+    static logHtml* instance();
+
+  private:
+    explicit logHtml(QObject* parent = nullptr);
     QString getPath();
 
-signals:
+    static QPointer<logHtml> m_instance;
+
+  signals:
 };
 
-#endif // LOGHTML_H
+inline logHtml* loghtml()
+{
+    return logHtml::instance();
+}

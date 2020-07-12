@@ -16,8 +16,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef KEEPASSX_PASSWORDGENERATORDIALOG_H
-#define KEEPASSX_PASSWORDGENERATORDIALOG_H
+#pragma once
 
 #include <QComboBox>
 #include <QDialog>
@@ -82,5 +81,3 @@ class PasswordGeneratorDialog : public QDialog {
   protected:
     void keyPressEvent(QKeyEvent *e) override;
 };
-
-#endif // KEEPASSX_PASSWORDGENERATORDIALOG_H

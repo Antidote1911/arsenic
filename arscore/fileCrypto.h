@@ -1,5 +1,4 @@
-#ifndef FILECRYPTO_H
-#define FILECRYPTO_H
+#pragma once
 
 #include <QObject>
 #include <QThread>
@@ -49,5 +48,3 @@ class LIB_EXPORT Crypto_Thread : public QThread {
 
     const std::unique_ptr<consts> m_const;
 };
-
-#endif // FILECRYPTO_H

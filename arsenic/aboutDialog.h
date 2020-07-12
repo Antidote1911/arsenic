@@ -1,5 +1,4 @@
-#ifndef ABOUTDIALOG_H
-#define ABOUTDIALOG_H
+#pragma once
 
 #include <QDialog>
 #include <memory>
@@ -24,5 +23,3 @@ class AboutDialog : public QDialog {
     const std::unique_ptr<Ui::AboutDialog> m_ui;
     const std::unique_ptr<consts> m_const;
 };
-
-#endif // ABOUTDIALOG_H

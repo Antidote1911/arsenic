@@ -1,5 +1,4 @@
-#ifndef DELEGATE_H
-#define DELEGATE_H
+#pragma once
 
 #include <QtCore/QSize>
 #include <QtWidgets/QStyledItemDelegate>
@@ -10,7 +9,7 @@
 class Delegate : public QStyledItemDelegate {
     Q_OBJECT
 
-public:
+  public:
     /*!
  * \brief Delegate The ProgressDelegate displays a progress bar in a
  * model view.
@@ -18,10 +17,10 @@ public:
  */
     explicit Delegate(QObject* parent = nullptr);
 
-signals:
+  signals:
     void removeRow(const QModelIndex& index);
 
-public:
+  public:
     /*!
  * \brief setFocusBorderEnabled Enables/disables the focus dotted line border
  * that appears on click.
@@ -30,7 +29,7 @@ public:
  */
     void setFocusBorderEnabled(bool enabled);
 
-protected:
+  protected:
     /*!
  * \brief initStyleOption Initializes the style option for this delegate. Used
  * to remove the focus
@@ -38,7 +37,7 @@ protected:
  * \param index The index of the current cell in the model.
  */
     virtual void initStyleOption(QStyleOptionViewItem* option,
-        const QModelIndex& index) const;
+                                 const QModelIndex& index) const;
 
     /*!
  * \brief paint Paints the progress bar and the close button.
@@ -47,7 +46,7 @@ protected:
  * \param index The index of the current cell in the model to paint.
  */
     virtual void paint(QPainter* painter, const QStyleOptionViewItem& option,
-        const QModelIndex& index) const;
+                       const QModelIndex& index) const;
 
     /*!
  * \brief editorEvent Event to handle mouse clicks on the remove button.
@@ -58,9 +57,9 @@ protected:
  * \return
  */
     bool editorEvent(QEvent* event,
-        QAbstractItemModel* model,
-        const QStyleOptionViewItem& option,
-        const QModelIndex& index);
+                     QAbstractItemModel* model,
+                     const QStyleOptionViewItem& option,
+                     const QModelIndex& index);
 
     /*!
  * \brief sizeHint Returns the size of this delegate.
@@ -69,10 +68,8 @@ protected:
  * \return
  */
     virtual QSize sizeHint(const QStyleOptionViewItem& option,
-        const QModelIndex& index) const;
+                           const QModelIndex& index) const;
 
-protected:
+  protected:
     bool focusBorderEnabled;
 };
-
-#endif // DELEGATE_H

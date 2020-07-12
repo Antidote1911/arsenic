@@ -1,5 +1,4 @@
-#ifndef CONFIGDIALOG_H
-#define CONFIGDIALOG_H
+#pragma once
 
 #include <QDialog>
 #include <QSettings>
@@ -24,5 +23,3 @@ class ConfigDialog : public QDialog {
   private:
     const std::unique_ptr<Ui::ConfigDialog> m_ui;
 };
-
-#endif // CONFIGDIALOG_H

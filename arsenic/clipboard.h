@@ -16,8 +16,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CLIPBOARD_H
-#define CLIPBOARD_H
+#pragma once
 
 #include <QObject>
 #ifdef Q_OS_MACOS
@@ -30,18 +29,18 @@ class QTimer;
 class Clipboard : public QObject {
     Q_OBJECT
 
-public:
+  public:
     void setText(const QString& text);
 
     static Clipboard* instance();
 
-public slots:
+  public slots:
     void clearCopiedText();
 
-private slots:
+  private slots:
     void clearClipboard();
 
-private:
+  private:
     explicit Clipboard(QObject* parent = nullptr);
 
     static Clipboard* m_instance;
@@ -56,6 +55,7 @@ private:
     QString m_lastCopied;
 };
 
-inline Clipboard* clipboard() { return Clipboard::instance(); }
-
-#endif // CLIPBOARD_H
+inline Clipboard* clipboard()
+{
+    return Clipboard::instance();
+}

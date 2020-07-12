@@ -1,18 +1,14 @@
-#ifndef SKIN_H
-#define SKIN_H
+#pragma once
 
 #include <QObject>
 
-class Skin : public QObject
-{
+class Skin : public QObject {
     Q_OBJECT
 
-public:
+  public:
     Skin(QObject *parent = 0);
 
     void setSkin(const QString &key);
 
-private:
+  private:
 };
-
-#endif // SKIN_H

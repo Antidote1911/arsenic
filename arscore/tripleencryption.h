@@ -1,5 +1,4 @@
-#ifndef TRIPLEENCRYPTION_H
-#define TRIPLEENCRYPTION_H
+#pragma once
 
 #include "botan_all.h"
 #include "consts.h"
@@ -34,5 +33,3 @@ class TripleEncryption : public QObject {
 
   signals:
 };
-
-#endif // TRIPLEENCRYPTION_H

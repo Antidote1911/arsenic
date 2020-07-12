@@ -16,11 +16,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef KEEPASSX_CONFIG_H
-#define KEEPASSX_CONFIG_H
+#pragma once
 
 #include <QPointer>
-#include <QScopedPointer>
+#include <memory>
 #include <QVariant>
 
 class QSettings;
@@ -87,22 +86,19 @@ class Config : public QObject {
     void resetToDefaults();
 
     static Config* instance();
-    static void createConfigFromFile(const QString& file);
-    static void createTempFileInstance();
 
   signals:
     void changed(ConfigKey key);
 
   private:
-    Config(const QString& fileName, QObject* parent = nullptr);
     explicit Config(QObject* parent);
     void init(const QString& configFileName, const QString& localConfigFileName = "");
     void migrate();
 
     static QPointer<Config> m_instance;
 
-    QScopedPointer<QSettings> m_settings;
-    QScopedPointer<QSettings> m_localSettings;
+    std::unique_ptr<QSettings> m_settings;
+    std::unique_ptr<QSettings> m_localSettings;
     QHash<QString, QVariant> m_defaults;
 };
 
@@ -110,5 +106,3 @@ inline Config* config()
 {
     return Config::instance();
 }
-
-#endif // KEEPASSX_CONFIG_H

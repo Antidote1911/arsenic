@@ -1,5 +1,4 @@
-#ifndef TEXTCRYPTO_H
-#define TEXTCRYPTO_H
+#pragma once
 
 #include <QObject>
 #include <memory>
@@ -27,5 +26,3 @@ class LIB_EXPORT textCrypto : public QObject {
 
   signals:
 };
-
-#endif // TEXTCRYPTO_H

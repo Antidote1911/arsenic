@@ -1,5 +1,4 @@
-﻿#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+﻿#pragma once
 
 #include <QMainWindow>
 #include <QStandardItemModel>
@@ -72,7 +71,6 @@ class MainWindow : public QMainWindow {
     const std::unique_ptr<Ui::MainWindow> m_ui;
     std::unique_ptr<Crypto_Thread> m_file_crypto;
     std::unique_ptr<textCrypto> m_text_crypto;
-    std::unique_ptr<logHtml> m_log;
     std::unique_ptr<Skin> m_skin;
 
     std::unique_ptr<QStandardItemModel> fileListModelCrypto;
@@ -115,5 +113,3 @@ class MainWindow : public QMainWindow {
     void displayEmptyJob();
     void displayEmptyEditor();
 };
-
-#endif // MAINWINDOW_H

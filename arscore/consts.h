@@ -1,5 +1,4 @@
-#ifndef CONSTS_H
-#define CONSTS_H
+#pragma once
 
 #include <QObject>
 #include <QVersionNumber>
@@ -50,5 +49,3 @@ class consts : public QObject {
 
   signals:
 };
-
-#endif // CONSTS_H

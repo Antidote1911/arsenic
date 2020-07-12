@@ -1,5 +1,4 @@
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
 #include <QDebug>
 #include <QObject>
@@ -40,4 +39,3 @@ void Utils::debugMessage(T test)
         qDebug() << test;
     }
 }
-#endif // UTILS_H

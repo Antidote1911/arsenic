@@ -242,12 +242,6 @@ void Config::migrate()
     sync();
 }
 
-Config::Config(const QString& fileName, QObject* parent)
-    : QObject(parent)
-{
-    init(fileName);
-}
-
 Config::Config(QObject* parent)
     : QObject(parent)
 {
@@ -318,27 +312,6 @@ Config* Config::instance()
     }
 
     return m_instance;
-}
-
-void Config::createConfigFromFile(const QString& file)
-{
-    if (m_instance) {
-        delete m_instance;
-    }
-    m_instance = new Config(file, qApp);
-}
-
-void Config::createTempFileInstance()
-{
-    if (m_instance) {
-        delete m_instance;
-    }
-    auto* tmpFile   = new QTemporaryFile();
-    bool openResult = tmpFile->open();
-    Q_ASSERT(openResult);
-    Q_UNUSED(openResult);
-    m_instance = new Config(tmpFile->fileName(), qApp);
-    tmpFile->setParent(m_instance);
 }
 
 #undef QS

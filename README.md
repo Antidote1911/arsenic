@@ -2,7 +2,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/eid3dqq4c28u7sf4?svg=true)](https://ci.appveyor.com/project/Antidote1911/arsenic)
 
 # Arsenic
-**A simple tool to encrypt files and text with strong algorithms.**<br>
+**A simple tool to encrypt files, folders and text with strong algorithms.**<br>
 Tested with Windows 10 and all major Linux distributions. Arsenic is developed on Archlinux.
 
 <img src='screenshots/main_dark.png'/>
@@ -68,19 +68,15 @@ This example encrypt a file named "test.mkv" with the secret passphrase "badpass
 ```
 
 ## Developers: ##
-The application was primarily built around the Qt 5.14 framework.
-To update Botan, you must regenerate the amalgamation build from source:
+The application was primarily built around the Qt 5 framework.
+Botan 2.15 is automatically downloaded by qmake, and an amalgamation build is generated (botan_all.cpp and botan_all.h).
+If you want to update botan, simply delete the folder 3rdparty/botan/botan, and modify the version you want in the three script:
 
-```bash
-    # for linux clang
-    ./configure.py --cc=clang --amalgamation --disable-shared --disable-modules=pkcs11
-    # for linux gcc
-    ./configure.py --cc=gcc --amalgamation --disable-shared --disable-modules=pkcs11
-    # for Windows MinGW x86
-    python configure.py --cpu=x86_64 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11
-    # for Windows MinGW x32
-    python configure.py --cpu=x86_32 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11
-```
+- for Windows : 3rdparty/botan/update-botan.bat
+- for unix : 3rdparty/botan/update-botan.sh
+- for mac : 3rdparty//botan/update_botan_osx.sh
+
+Run Qmake and the new version was downloaded and amalgamation was generated.
 
 To build the program from source, the appropriate Qt version should be installed and configured.<br>
 For Archlinux Arsenic is in AUR.
@@ -97,12 +93,17 @@ Thanks to :
 - [Jack Lloyd from randombit.net](https://botan.randombit.net) for the powerful Botan C++ cryptographic library. You can find the Github [here](https://github.com/randombit/botan).<br>
 It is released under the permissive Simplified [BSD license](https://botan.randombit.net/license.txt)
 
+- [KeepassXC](https://github.com/keepassxreboot/keepassxc) for some big portions of code. Including password generator (modified for use Botan Random Number Generator) and the QSettings wrapper class.
+
 ## CAUTION: ##
 A simple tool to encrypt file is not magic. If You use an insecure system, Arsenic (and all encryption tools) are useless. Arsenic do not protect you from key-logger, disk analyze, virus, vignetting cache etc...
 
 ## More Screenshots: ##
-
+<img src='screenshots/main_dark.png'/>
 <img src='screenshots/pass_gen.png'/>
+
+*The password generator by the KeepassXC project. modified to use Botan RNG.*
+
 <img src='screenshots/hash.png'/>
 <img src='screenshots/cryptopad_light.png'/>
 
