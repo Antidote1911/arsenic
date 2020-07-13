@@ -33,7 +33,8 @@ int main(int argc, char *argv[])
     app.setApplicationName(consts::APP_SHORT_NAME);
     app.setApplicationVersion(consts::APP_VERSION.toString());
     app.setWindowIcon(QIcon(":/pixmaps/app.png"));
-    app.setStyle("Fusion");
+    app.setStyle(QStyleFactory::create("Fusion"));
+    qDebug() << QStyleFactory::keys();
     Translator::installTranslators();
 
     MainWindow w;
