@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.1" language="fr_FR">
+<TS version="2.1" language="en_US">
 <context>
     <name>AboutDialog</name>
     <message>
@@ -237,7 +237,7 @@
     <message>
         <location filename="../mainwindow.ui" line="208"/>
         <source>Generator</source>
-        <translation>french</translation>
+        <translation>english</translation>
     </message>
     <message>
         <location filename="../mainwindow.ui" line="219"/>

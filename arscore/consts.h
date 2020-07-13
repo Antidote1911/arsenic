@@ -11,6 +11,7 @@ class consts : public QObject {
   public:
     explicit consts(QObject *parent = nullptr);
 
+    static inline int const EXIT_CODE_REBOOT = -123456789;
     static inline QVersionNumber const APP_VERSION{3, 5, 3};
     static inline QString const APP_SHORT_NAME         = "Arsenic";
     static inline QString const APP_LONG_NAME          = "Arsenic " + APP_VERSION.toString();

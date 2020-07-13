@@ -258,15 +258,18 @@
     <property name="title">
      <string>Config</string>
     </property>
-    <widget class="QMenu" name="menuLanguage">
+    <widget class="QMenu" name="menuTheme">
      <property name="title">
-      <string>Language</string>
+      <string>Theme</string>
      </property>
+     <addaction name="actionThemeAuto"/>
+     <addaction name="actionThemeLight"/>
+     <addaction name="actionThemeDark"/>
+     <addaction name="actionThemeClassic"/>
     </widget>
     <addaction name="menuConfiguration"/>
     <addaction name="menuViewToolbar"/>
-    <addaction name="menuDarkTheme"/>
-    <addaction name="menuLanguage"/>
+    <addaction name="menuTheme"/>
    </widget>
    <widget class="QMenu" name="menuPassword_Generator">
     <property name="title">
@@ -410,14 +413,6 @@
     <string>Argon2 tests</string>
    </property>
   </action>
-  <action name="menuDarkTheme">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Dark Theme</string>
-   </property>
-  </action>
   <action name="menuViewToolbar">
    <property name="checkable">
     <bool>true</bool>
@@ -510,6 +505,41 @@
   <action name="menuAddFolder">
    <property name="text">
     <string>Add Folder</string>
+   </property>
+  </action>
+  <action name="actionThemeAuto">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Automatic</string>
+   </property>
+  </action>
+  <action name="actionThemeLight">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Light</string>
+   </property>
+  </action>
+  <action name="actionThemeDark">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Dark</string>
+   </property>
+  </action>
+  <action name="actionThemeClassic">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Classic (Platform-native)</string>
    </property>
   </action>
  </widget>

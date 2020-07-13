@@ -22,12 +22,14 @@
 #include "hashcheckdialog.h"
 #include "utils.h"
 #include "argonTests.h"
+#include "styles/dark/DarkStyle.h"
+#include "styles/light/LightStyle.h"
+#include "MessageBox.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>()),
       m_file_crypto(std::make_unique<Crypto_Thread>(this)),
-      m_text_crypto(std::make_unique<textCrypto>(this)),
-      m_skin(std::make_unique<Skin>(this))
+      m_text_crypto(std::make_unique<textCrypto>(this))
 {
     m_ui->setupUi(this);
 
@@ -36,9 +38,10 @@ MainWindow::MainWindow(QWidget *parent)
     //m_log         = std::make_unique<logHtml>();
     //m_skin        = std::make_unique<Skin>();
 
-    createLanguageMenu();
     loadPreferences();
     loadLogFile();
+    initViewMenu();
+    applyTheme();
 
     setWindowTitle(m_const->APP_LONG_NAME);
     cryptoFileView();
@@ -56,7 +59,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_ui->menuQuit3, &QAction::triggered, this,          [=] { quit(); });
     connect(m_ui->menuConfiguration, &QAction::triggered, this,  [=] { configuration(); });
     connect(m_ui->menuArgon2Tests, &QAction::triggered, this,    [=] { Argon2_tests(); });
-    connect(m_ui->menuDarkTheme, &QAction::triggered, this,      [=](const bool &checked) { dark_theme(checked); });
     connect(m_ui->menuViewToolbar, &QAction::triggered, this,    [=](const bool &checked) { m_ui->toolBar->setVisible(checked); });
     connect(m_ui->toolBar, &QToolBar::visibilityChanged, this,   [=](const bool &checked) { m_ui->menuViewToolbar->setChecked(checked); });
     connect(m_ui->tabWidget, &QTabWidget::currentChanged, this,  [=](const quint32 &index) { switchTab(index); });
@@ -101,10 +103,75 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() {}
 
-void MainWindow::session()
+void MainWindow::initViewMenu()
 {
-    // show the main window and load from the default item list
-    show();
+    m_ui->actionThemeAuto->setData("auto");
+    m_ui->actionThemeLight->setData("light");
+    m_ui->actionThemeDark->setData("dark");
+    m_ui->actionThemeClassic->setData("classic");
+
+    auto themeActions = new QActionGroup(this);
+    themeActions->addAction(m_ui->actionThemeAuto);
+    themeActions->addAction(m_ui->actionThemeLight);
+    themeActions->addAction(m_ui->actionThemeDark);
+    themeActions->addAction(m_ui->actionThemeClassic);
+
+    auto theme = config()->get(Config::GUI_ApplicationTheme).toString();
+    for (auto action : themeActions->actions()) {
+        if (action->data() == theme) {
+            action->setChecked(true);
+            break;
+        }
+    }
+
+    connect(themeActions, &QActionGroup::triggered, this, [this](QAction *action) {
+        if (action->data() != config()->get(Config::GUI_ApplicationTheme)) {
+            config()->set(Config::GUI_ApplicationTheme, action->data());
+            restartApp(tr("You must restart the application to apply this setting. Would you like to restart now?"));
+        }
+    });
+}
+
+void MainWindow::restartApp(const QString &message)
+{
+    auto ans = MessageBox::question(
+        this, tr("Restart Application?"), message, MessageBox::Yes | MessageBox::No, MessageBox::Yes);
+    if (ans == MessageBox::Yes) {
+        close();
+        reboot();
+    }
+    else {
+    }
+}
+
+void MainWindow::applyTheme()
+{
+    QString appTheme = config()->get(Config::GUI_ApplicationTheme).toString();
+    if (appTheme == "auto") {
+        if (m_darkTheme) {
+            setStyle(new LightStyle);
+            m_darkTheme = true;
+        }
+        else {
+            setStyle(new LightStyle);
+        }
+    }
+    else if (appTheme == "light") {
+        setStyle(new LightStyle);
+    }
+    else if (appTheme == "dark") {
+        setStyle(new DarkStyle);
+        m_darkTheme = true;
+    }
+    else {
+        // Classic mode, don't check for dark theme on Windows
+        // because Qt 5.x does not support it
+#ifndef Q_OS_WIN
+        //m_darkTheme = osUtils->isDarkMode();
+#endif
+    }
+
+    setPalette(style()->standardPalette());
 }
 
 void MainWindow::removeDeletedFile(QString filepath)
@@ -452,21 +519,13 @@ void MainWindow::loadPreferences()
         QMessageBox::warning(this, tr("Could not load configuration"), warn_text);
     }
 
-    loadLanguage(config()->get(Config::GUI_Language).toString());
     m_ui->CheckDeleteFiles->setChecked(config()->get(Config::GUI_deleteFinished).toBool());
     switchTab(config()->get(Config::GUI_currentIndexTab).toInt());
     m_ui->tabWidget->setCurrentIndex(config()->get(Config::GUI_currentIndexTab).toInt());
 
     restoreGeometry(config()->get(Config::GUI_MainWindowGeometry).toByteArray());
     restoreState(config()->get(Config::GUI_MainWindowState).toByteArray());
-    if (config()->get(Config::GUI_darkTheme).toBool()) {
-        m_ui->menuDarkTheme->setChecked(true);
-        m_skin->setSkin("dark");
-    }
-    else {
-        m_ui->menuDarkTheme->setChecked(false);
-        m_skin->setSkin("notheme");
-    }
+
     if (config()->get(Config::GUI_showToolbar).toBool()) {
         m_ui->menuViewToolbar->setChecked(true);
         m_ui->toolBar->setVisible(true);
@@ -494,9 +553,7 @@ void MainWindow::savePreferences()
         config()->set(Config::GUI_MainWindowGeometry, saveGeometry());
         config()->set(Config::GUI_MainWindowState,    saveState());
     }
-    config()->set(Config::GUI_darkTheme,       m_ui->menuDarkTheme->isChecked());
     config()->set(Config::GUI_showPassword,    m_ui->checkViewpass->isChecked());
-    config()->set(Config::GUI_Language,        m_currLang);
     config()->set(Config::GUI_showToolbar,     m_ui->menuViewToolbar->isChecked());
     config()->set(Config::GUI_currentIndexTab, m_ui->tabWidget->currentIndex());
     config()->set(Config::GUI_deleteFinished,  m_ui->CheckDeleteFiles->isChecked());
@@ -514,6 +571,13 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::quit()
 {
     close();
+}
+
+void MainWindow::reboot()
+{
+    qDebug() << "Performing application reboot...";
+    qApp->exit(m_const->EXIT_CODE_REBOOT);
+    m_restartRequested = true;
 }
 
 void MainWindow::configuration()
@@ -551,127 +615,6 @@ void MainWindow::Argon2_tests()
 
     auto *argon2_tests_Dialog = new ArgonTests(this);
     argon2_tests_Dialog->exec();
-}
-
-void MainWindow::dark_theme(bool checked)
-{
-    if (checked) {
-        m_skin->setSkin("dark");
-    }
-    else {
-        m_skin->setSkin("notheme");
-    }
-}
-
-// we create the menu entries dynamically, dependent on the existing
-// translations.
-void MainWindow::createLanguageMenu(void)
-{
-    m_langGroup = std::make_unique<QActionGroup>(m_ui->menuLanguage);
-    m_langGroup->setExclusive(true);
-
-    connect(m_langGroup.get(), SIGNAL(triggered(QAction *)), this, SLOT(slotLanguageChanged(QAction *)));
-
-    // format systems language
-    auto defaultLocale = QLocale::system().name(); // e.g. "de_DE"
-
-    defaultLocale.truncate(defaultLocale.lastIndexOf('_')); // e.g. "de"
-
-#ifdef Q_OS_WIN
-    m_langPath = QApplication::applicationDirPath();
-    m_langPath.append("/languages");
-#endif
-#ifdef Q_OS_UNIX
-    m_langPath = "/usr/share/arsenic/languages/";
-#endif
-    QDir dir(m_langPath);
-    QStringList fileNames = dir.entryList(QStringList("arsenic_*.qm"));
-    for (int i = 0; i < fileNames.size(); ++i) {
-        // get locale extracted by filename
-        QString locale;
-        locale = fileNames[i];                     // "TranslationExample_de.qm"
-        locale.truncate(locale.lastIndexOf('.'));  // "TranslationExample_de"
-        locale.remove(0, locale.indexOf('_') + 1); // "de"
-
-        QString lang = QLocale::languageToString(QLocale(locale).language());
-        QIcon ico(QString("%1/%2.svg").arg(m_langPath).arg(locale));
-
-        QAction *action = new QAction(ico, lang, this);
-        action->setCheckable(true);
-        action->setData(locale);
-
-        m_ui->menuLanguage->addAction(action);
-        m_langGroup->addAction(action);
-        // set default translators and language checked
-        if (config()->get(Config::GUI_Language).toString() == locale) {
-            action->setChecked(true);
-        }
-    }
-}
-
-// Called every time, when a menu entry of the language menu is called
-void MainWindow::slotLanguageChanged(QAction *action)
-{
-    if (0 != action) {
-        // load the language dependant on the action content
-        loadLanguage(action->data().toString());
-        // setWindowIcon(action->icon());
-    }
-}
-
-void MainWindow::loadLanguage(const QString &rLanguage)
-{
-    if (m_currLang != rLanguage) {
-        m_currLang = rLanguage;
-        auto locale{QLocale(m_currLang)};
-        QLocale::setDefault(locale);
-        auto languageName = QLocale::languageToString(locale.language());
-        switchTranslator(m_translator, QString("arsenic_%1.qm").arg(rLanguage));
-        switchTranslator(m_translatorQt, QString("qt_%1.qm").arg(rLanguage));
-        // ui->statusBar->showMessage(tr("Current Language changed to
-        // %1").arg(languageName));
-    }
-}
-
-void MainWindow::switchTranslator(QTranslator &translator, const QString &filename)
-{
-    // remove the old translator
-    qApp->removeTranslator(&translator);
-#ifdef Q_OS_WIN
-    // load the new translator
-    auto path{QApplication::applicationDirPath()};
-    path.append("/languages/");
-#endif
-#ifdef Q_OS_UNIX
-    auto path = "/usr/share/arsenic/languages/";
-#endif
-    if (translator.load(path + filename)) // Here Path and Filename has to be entered because
-    {
-        qApp->installTranslator(&translator); // the system didn't find the QM Files else
-    }
-}
-
-void MainWindow::changeEvent(QEvent *event)
-{
-    if (0 != event) {
-        switch (event->type()) {
-            // this event is send if a translator is loaded
-            case QEvent::LanguageChange:
-                m_ui->retranslateUi(this);
-
-            default:
-                break;
-                break;
-
-            // this event is send, if the system, language changes
-            case QEvent::LocaleChange: {
-                auto locale{QLocale::system().name()};
-                locale.truncate(locale.lastIndexOf('_'));
-                loadLanguage(locale);
-            } break;
-        }
-    }
-    QMainWindow::changeEvent(event);
 }
 
 void MainWindow::openTxtFile()

@@ -26,6 +26,7 @@
 #include "Config.h"
 #include "clipboard.h"
 #include "passwordGenerator.h"
+#include "styles/StateColorPalette.h"
 
 PasswordGeneratorDialog::PasswordGeneratorDialog(QDialog *parent)
     : QDialog(parent), m_updatingSpinBox(false), m_passwordGenerator(new PasswordGenerator()), m_ui(new Ui::PasswordGeneratorDialog())

@@ -33,12 +33,12 @@ class Config : public QObject {
     enum ConfigKey {
         GUI_showPassword,
         GUI_deleteFinished,
-        GUI_darkTheme,
         GUI_Language,
         GUI_showToolbar,
         GUI_lastDirectory,
         GUI_currentIndexTab,
         GUI_AddEncrypted,
+        GUI_ApplicationTheme,
 
         GUI_MainWindowGeometry,
         GUI_MainWindowState,

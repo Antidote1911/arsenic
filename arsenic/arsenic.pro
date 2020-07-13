@@ -45,7 +45,13 @@ HEADERS += \
     mainwindow.h \
     passwordGeneratorDialog.h \
     progressbar.h \
-    skin.h
+    MessageBox.h \
+    Translator.h \
+    styles/StateColorPalette.h \
+    styles/base/phantomcolor.h \
+    styles/base/BaseStyle.h \
+    styles/dark/DarkStyle.h \
+    styles/light/LightStyle.h
 
 SOURCES += \
     Config.cpp \
@@ -59,19 +65,25 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     passwordGeneratorDialog.cpp \
-    skin.cpp
+    MessageBox.cpp \
+    Translator.cpp \
+    styles/StateColorPalette.cpp \
+    styles/base/phantomcolor.cpp \
+    styles/base/BaseStyle.cpp \
+    styles/dark/DarkStyle.cpp \
+    styles/light/LightStyle.cpp
 
 RESOURCES += \
-    rsc.qrc
+    rsc.qrc \
+    styles/styles.qrc
 
 
-TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_en.ts
+TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_es.ts languages/arsenic_en_US.ts
 
 DISTFILES += \
-    languages/en.svg \
-    languages/fr.svg \
-    languages/arsenic_en.qm \
-    languages/arsenic_fr.qm \
+    languages/arsenic_es.qm \
+    languages/arsenic_en_US.ts \
+    languages/arsenic_fr.qm
 
 #INSTALL Linux
     target.path = /usr/bin/
@@ -89,7 +101,4 @@ DISTFILES += \
     i18n.files = $$replace(TRANSLATIONS, .ts, .qm)
     i18n.path = /usr/share/arsenic/languages/
     INSTALLS += i18n
-    flags.files = languages/*.svg
-    flags.path = /usr/share/arsenic/languages/
-    INSTALLS += flags
 

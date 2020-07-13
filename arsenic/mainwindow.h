@@ -7,7 +7,6 @@
 
 #include "fileCrypto.h"
 #include "textcrypto.h"
-#include "skin.h"
 #include "loghtml.h"
 #include "consts.h"
 #include "Delegate.h"
@@ -24,13 +23,12 @@ class MainWindow : public QMainWindow {
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
-    void session();
-
   public slots:
     void onPercentProgress(const QString &path, quint32 percent);
     void onMessageChanged(const QString message);
     void AddEncryptedFile(QString filepath);
     void removeDeletedFile(QString filepath);
+    void restartApp(const QString &message);
 
   private slots:
     void quit();
@@ -40,7 +38,6 @@ class MainWindow : public QMainWindow {
     void hashCalculator();
     void aboutArsenic();
     void Argon2_tests();
-    void dark_theme(bool checked);
     void openTxtFile();
     bool saveTxtFile();
     bool saveTxtFileAs();
@@ -55,23 +52,18 @@ class MainWindow : public QMainWindow {
     void abortJob();
     void clearListFiles();
     void clearLog();
+    void reboot();
 
   protected slots:
-    // this slot is called by the language menu actions
-    void slotLanguageChanged(QAction *m1_action);
     void setPassword(QString);
 
   protected:
     void closeEvent(QCloseEvent *event) Q_DECL_OVERRIDE;
 
-    // this event is called, when a new translator is loaded or the system language is changed
-    void changeEvent(QEvent *event) Q_DECL_OVERRIDE;
-
   private:
     const std::unique_ptr<Ui::MainWindow> m_ui;
     std::unique_ptr<Crypto_Thread> m_file_crypto;
     std::unique_ptr<textCrypto> m_text_crypto;
-    std::unique_ptr<Skin> m_skin;
 
     std::unique_ptr<QStandardItemModel> fileListModelCrypto;
     std::unique_ptr<Delegate> m_delegate;
@@ -79,16 +71,12 @@ class MainWindow : public QMainWindow {
 
     const std::unique_ptr<consts> m_const;
 
+    void applyTheme();
+    void initViewMenu();
     void loadPreferences();
-    void savePreferences();
-    void createLanguageMenu(void);               // creates the language menu dynamically from the content of m_langPath
-    QString m_langPath;                          // Path of language files. This is always fixed to /languages.
-    void loadLanguage(const QString &rLanguage); // loads a language by the given language shortcur (e.g. de, en)
+    void savePreferences(); // creates the language menu dynamically from the content of m_langPath
 
-    QString m_currLang;         // contains the currently loaded language
-    QTranslator m_translator;   // contains the translations for this application
-    QTranslator m_translatorQt; // contains the translations for qt
-    void switchTranslator(QTranslator &translator, const QString &filename);
+    bool m_darkTheme = true;
     bool maybeSave();
     void setCurrentFile(const QString &fileName);
 
@@ -112,4 +100,8 @@ class MainWindow : public QMainWindow {
     void displayEmptyPassword();
     void displayEmptyJob();
     void displayEmptyEditor();
+
+    bool m_appExitCalled    = false;
+    bool m_appExiting       = false;
+    bool m_restartRequested = false;
 };
