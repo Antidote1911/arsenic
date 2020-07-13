@@ -22,14 +22,13 @@
 #include "hashcheckdialog.h"
 #include "utils.h"
 #include "argonTests.h"
-#include "styles/dark/DarkStyle.h"
-#include "styles/light/LightStyle.h"
 #include "MessageBox.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>()),
       m_file_crypto(std::make_unique<Crypto_Thread>(this)),
-      m_text_crypto(std::make_unique<textCrypto>(this))
+      m_text_crypto(std::make_unique<textCrypto>(this)),
+      m_skin(std::make_unique<Skin>(this))
 {
     m_ui->setupUi(this);
 
@@ -148,30 +147,18 @@ void MainWindow::applyTheme()
 {
     QString appTheme = config()->get(Config::GUI_ApplicationTheme).toString();
     if (appTheme == "auto") {
-        if (m_darkTheme) {
-            setStyle(new LightStyle);
-            m_darkTheme = true;
-        }
-        else {
-            setStyle(new LightStyle);
-        }
+        m_skin->setSkin("notheme");
     }
     else if (appTheme == "light") {
-        setStyle(new LightStyle);
+        m_skin->setSkin("light");
     }
     else if (appTheme == "dark") {
-        setStyle(new DarkStyle);
-        m_darkTheme = true;
+        m_skin->setSkin("dark");
     }
     else {
-        // Classic mode, don't check for dark theme on Windows
-        // because Qt 5.x does not support it
-#ifndef Q_OS_WIN
-        //m_darkTheme = osUtils->isDarkMode();
-#endif
     }
 
-    setPalette(style()->standardPalette());
+    //setPalette(style()->standardPalette());
 }
 
 void MainWindow::removeDeletedFile(QString filepath)

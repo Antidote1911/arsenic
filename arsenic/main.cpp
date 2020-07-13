@@ -11,6 +11,7 @@
 #include <QtGlobal>
 #include <QProcess>
 #include <iostream>
+#include <QWidget>
 
 #include "consts.h"
 
@@ -32,7 +33,6 @@ int main(int argc, char *argv[])
     app.setApplicationName(consts::APP_SHORT_NAME);
     app.setApplicationVersion(consts::APP_VERSION.toString());
     app.setWindowIcon(QIcon(":/pixmaps/app.png"));
-
     Translator::installTranslators();
 
     MainWindow w;

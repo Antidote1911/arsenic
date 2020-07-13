@@ -47,11 +47,7 @@ HEADERS += \
     progressbar.h \
     MessageBox.h \
     Translator.h \
-    styles/StateColorPalette.h \
-    styles/base/phantomcolor.h \
-    styles/base/BaseStyle.h \
-    styles/dark/DarkStyle.h \
-    styles/light/LightStyle.h
+    skin/skin.h
 
 SOURCES += \
     Config.cpp \
@@ -67,15 +63,10 @@ SOURCES += \
     passwordGeneratorDialog.cpp \
     MessageBox.cpp \
     Translator.cpp \
-    styles/StateColorPalette.cpp \
-    styles/base/phantomcolor.cpp \
-    styles/base/BaseStyle.cpp \
-    styles/dark/DarkStyle.cpp \
-    styles/light/LightStyle.cpp
+    skin/skin.cpp
 
 RESOURCES += \
-    rsc.qrc \
-    styles/styles.qrc
+    rsc.qrc
 
 
 TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_es.ts languages/arsenic_en_US.ts

@@ -26,13 +26,11 @@
 #include "Config.h"
 #include "clipboard.h"
 #include "passwordGenerator.h"
-#include "styles/StateColorPalette.h"
 
 PasswordGeneratorDialog::PasswordGeneratorDialog(QDialog *parent)
     : QDialog(parent), m_updatingSpinBox(false), m_passwordGenerator(new PasswordGenerator()), m_ui(new Ui::PasswordGeneratorDialog())
 {
     m_ui->setupUi(this);
-
     // m_ui->togglePasswordButton->setIcon(filePath()->onOffIcon("actions", "password-show"));
 
     connect(m_ui->editNewPassword, SIGNAL(textChanged(QString)), SLOT(updateButtonsEnabled(QString)));
