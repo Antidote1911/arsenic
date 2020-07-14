@@ -262,8 +262,6 @@
      <property name="title">
       <string>Theme</string>
      </property>
-     <addaction name="actionThemeAuto"/>
-     <addaction name="actionThemeLight"/>
      <addaction name="actionThemeDark"/>
      <addaction name="actionThemeClassic"/>
     </widget>
@@ -507,25 +505,6 @@
     <string>Add Folder</string>
    </property>
   </action>
-  <action name="actionThemeAuto">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Automatic</string>
-   </property>
-  </action>
-  <action name="actionThemeLight">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Light</string>
-   </property>
-  </action>
   <action name="actionThemeDark">
    <property name="checkable">
     <bool>true</bool>
@@ -536,6 +515,9 @@
   </action>
   <action name="actionThemeClassic">
    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
     <bool>true</bool>
    </property>
    <property name="text">

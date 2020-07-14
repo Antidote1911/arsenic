@@ -55,7 +55,7 @@ static const QHash<Config::ConfigKey, ConfigDirective> configStrings = {
     {Config::GUI_lastDirectory, {QS("GUI/lastDirectory"), Roaming, QDir::homePath()}},
     {Config::GUI_currentIndexTab, {QS("GUI/currentIndexTab"), Roaming, 0}},
     {Config::GUI_AddEncrypted, {QS("GUI/AddEncrypted"), Roaming, true}},
-    {Config::GUI_ApplicationTheme, {QS("GUI/ApplicationTheme"), Roaming, QS("auto")}},
+    {Config::GUI_ApplicationTheme, {QS("GUI/ApplicationTheme"), Roaming, QS("classic")}},
 
     {Config::GUI_MainWindowGeometry, {QS("GUI/MainWindowGeometry"), Local, {}}},
     {Config::GUI_MainWindowState, {QS("GUI/MainWindowState"), Local, {}}},

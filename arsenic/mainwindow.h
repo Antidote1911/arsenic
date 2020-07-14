@@ -102,8 +102,4 @@ class MainWindow : public QMainWindow {
     void displayEmptyPassword();
     void displayEmptyJob();
     void displayEmptyEditor();
-
-    bool m_appExitCalled    = false;
-    bool m_appExiting       = false;
-    bool m_restartRequested = false;
 };

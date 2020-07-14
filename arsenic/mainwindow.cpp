@@ -104,14 +104,10 @@ MainWindow::~MainWindow() {}
 
 void MainWindow::initViewMenu()
 {
-    m_ui->actionThemeAuto->setData("auto");
-    m_ui->actionThemeLight->setData("light");
     m_ui->actionThemeDark->setData("dark");
     m_ui->actionThemeClassic->setData("classic");
 
     auto themeActions = new QActionGroup(this);
-    themeActions->addAction(m_ui->actionThemeAuto);
-    themeActions->addAction(m_ui->actionThemeLight);
     themeActions->addAction(m_ui->actionThemeDark);
     themeActions->addAction(m_ui->actionThemeClassic);
 
@@ -564,7 +560,6 @@ void MainWindow::reboot()
 {
     qDebug() << "Performing application reboot...";
     qApp->exit(m_const->EXIT_CODE_REBOOT);
-    m_restartRequested = true;
 }
 
 void MainWindow::configuration()
