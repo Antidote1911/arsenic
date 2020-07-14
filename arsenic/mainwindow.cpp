@@ -22,13 +22,12 @@
 #include "hashcheckdialog.h"
 #include "utils.h"
 #include "argonTests.h"
-#include "MessageBox.h"
+#include "skin/skin.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>()),
       m_file_crypto(std::make_unique<Crypto_Thread>(this)),
-      m_text_crypto(std::make_unique<textCrypto>(this)),
-      m_skin(std::make_unique<Skin>(this))
+      m_text_crypto(std::make_unique<textCrypto>(this))
 {
     m_ui->setupUi(this);
 
@@ -59,7 +58,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_ui->menuConfiguration, &QAction::triggered, this,  [=] { configuration(); });
     connect(m_ui->menuArgon2Tests, &QAction::triggered, this,    [=] { Argon2_tests(); });
     connect(m_ui->menuViewToolbar, &QAction::triggered, this,    [=](const bool &checked) { m_ui->toolBar->setVisible(checked); });
-    connect(m_ui->toolBar, &QToolBar::visibilityChanged, this,   [=](const bool &checked) { m_ui->menuViewToolbar->setChecked(checked); });
     connect(m_ui->tabWidget, &QTabWidget::currentChanged, this,  [=](const quint32 &index) { switchTab(index); });
     connect(m_ui->checkViewpass, &QCheckBox::stateChanged, this, [=](const quint32 &index) { viewPassStateChanged(index); });
 
@@ -104,6 +102,8 @@ MainWindow::~MainWindow() {}
 
 void MainWindow::initViewMenu()
 {
+    setContextMenuPolicy(Qt::NoContextMenu);
+
     m_ui->actionThemeDark->setData("dark");
     m_ui->actionThemeClassic->setData("classic");
 
@@ -122,34 +122,33 @@ void MainWindow::initViewMenu()
     connect(themeActions, &QActionGroup::triggered, this, [this](QAction *action) {
         if (action->data() != config()->get(Config::GUI_ApplicationTheme)) {
             config()->set(Config::GUI_ApplicationTheme, action->data());
-            restartApp(tr("You must restart the application to apply this setting. Would you like to restart now?"));
+            restartApp();
         }
     });
 }
 
-void MainWindow::restartApp(const QString &message)
+void MainWindow::restartApp()
 {
-    auto ans = MessageBox::question(
-        this, tr("Restart Application?"), message, MessageBox::Yes | MessageBox::No, MessageBox::Yes);
-    if (ans == MessageBox::Yes) {
+    int ret = QMessageBox::question(this, tr("Restart Application ?"),
+                                    tr("To take effect, Arsenic need to be restarted.\n"
+                                       "Do you want to restart now ?"),
+                                    QMessageBox::No | QMessageBox::Yes,
+                                    QMessageBox::Yes);
+
+    if (ret == QMessageBox::Yes) {
         close();
         reboot();
-    }
-    else {
     }
 }
 
 void MainWindow::applyTheme()
 {
     QString appTheme = config()->get(Config::GUI_ApplicationTheme).toString();
-    if (appTheme == "auto") {
-        m_skin->setSkin("notheme");
-    }
-    else if (appTheme == "light") {
-        m_skin->setSkin("light");
+    if (appTheme == "classic") {
+        skin()->setSkin("classic");
     }
     else if (appTheme == "dark") {
-        m_skin->setSkin("dark");
+        skin()->setSkin("dark");
     }
     else {
     }
@@ -505,18 +504,10 @@ void MainWindow::loadPreferences()
     m_ui->CheckDeleteFiles->setChecked(config()->get(Config::GUI_deleteFinished).toBool());
     switchTab(config()->get(Config::GUI_currentIndexTab).toInt());
     m_ui->tabWidget->setCurrentIndex(config()->get(Config::GUI_currentIndexTab).toInt());
-
+    m_ui->menuViewToolbar->setChecked(config()->get(Config::GUI_showToolbar).toBool());
     restoreGeometry(config()->get(Config::GUI_MainWindowGeometry).toByteArray());
     restoreState(config()->get(Config::GUI_MainWindowState).toByteArray());
 
-    if (config()->get(Config::GUI_showToolbar).toBool()) {
-        m_ui->menuViewToolbar->setChecked(true);
-        m_ui->toolBar->setVisible(true);
-    }
-    else {
-        m_ui->menuViewToolbar->setChecked(false);
-        m_ui->toolBar->setVisible(false);
-    }
     if (config()->get(Config::GUI_showPassword).toBool()) {
         m_ui->checkViewpass->setChecked(true);
         m_ui->password_0->setEchoMode(QLineEdit::Normal);
@@ -536,8 +527,8 @@ void MainWindow::savePreferences()
         config()->set(Config::GUI_MainWindowGeometry, saveGeometry());
         config()->set(Config::GUI_MainWindowState,    saveState());
     }
+    config()->set(Config::GUI_showToolbar, m_ui->menuViewToolbar->isChecked());
     config()->set(Config::GUI_showPassword,    m_ui->checkViewpass->isChecked());
-    config()->set(Config::GUI_showToolbar,     m_ui->menuViewToolbar->isChecked());
     config()->set(Config::GUI_currentIndexTab, m_ui->tabWidget->currentIndex());
     config()->set(Config::GUI_deleteFinished,  m_ui->CheckDeleteFiles->isChecked());
     // clang-format on

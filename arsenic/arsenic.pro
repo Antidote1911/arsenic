@@ -45,7 +45,6 @@ HEADERS += \
     mainwindow.h \
     passwordGeneratorDialog.h \
     progressbar.h \
-    MessageBox.h \
     Translator.h \
     skin/skin.h
 
@@ -61,7 +60,6 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     passwordGeneratorDialog.cpp \
-    MessageBox.cpp \
     Translator.cpp \
     skin/skin.cpp
 

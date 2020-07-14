@@ -7,10 +7,8 @@
 
 #include "fileCrypto.h"
 #include "textcrypto.h"
-#include "loghtml.h"
 #include "consts.h"
 #include "Delegate.h"
-#include "skin.h"
 #include <memory>
 
 namespace Ui {
@@ -29,7 +27,7 @@ class MainWindow : public QMainWindow {
     void onMessageChanged(const QString message);
     void AddEncryptedFile(QString filepath);
     void removeDeletedFile(QString filepath);
-    void restartApp(const QString &message);
+    void restartApp();
 
   private slots:
     void quit();
@@ -65,7 +63,6 @@ class MainWindow : public QMainWindow {
     const std::unique_ptr<Ui::MainWindow> m_ui;
     std::unique_ptr<Crypto_Thread> m_file_crypto;
     std::unique_ptr<textCrypto> m_text_crypto;
-    std::unique_ptr<Skin> m_skin;
 
     std::unique_ptr<QStandardItemModel> fileListModelCrypto;
     std::unique_ptr<Delegate> m_delegate;

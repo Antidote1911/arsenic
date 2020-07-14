@@ -2,6 +2,7 @@
 #include <QStyle>
 #include <QApplication>
 #include <QStyleFactory>
+#include <QPointer>
 
 /*******************************************************************************
 
@@ -12,17 +13,15 @@ Skin::Skin(QObject *parent)
 {
 }
 
-/*******************************************************************************
+Skin::~Skin()
+{
+}
 
-*******************************************************************************/
+QPointer<Skin> Skin::m_instance(nullptr);
 
 QString Skin::getSkin(const QString &key)
 {
 }
-
-/*******************************************************************************
-
-*******************************************************************************/
 
 void Skin::setSkin(const QString &key)
 {
@@ -55,11 +54,16 @@ void Skin::setSkin(const QString &key)
         qApp->setPalette(darkPalette);
         qApp->setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
     }
-    else if (key == "light") {
+    else if (key == "classic") {
         qApp->setPalette(qApp->style()->standardPalette());
     }
 }
 
-/*******************************************************************************
+Skin *Skin::instance()
+{
+    if (!m_instance) {
+        m_instance = new Skin(qApp);
+    }
 
-*******************************************************************************/
+    return m_instance;
+}

@@ -1,22 +1,24 @@
-#ifndef SKIN_H
-#define SKIN_H
+#pragma once
 
 #include <QObject>
+#include <QPointer>
 
-class Skin : public QObject
-{
+class Skin : public QObject {
     Q_OBJECT
 
-public:
-    Skin(QObject *parent = 0);
-
+  public:
+    Q_DISABLE_COPY(Skin)
+    ~Skin() override;
     QString getSkin(const QString &key);
     void setSkin(const QString &key);
+    static Skin *instance();
 
-private:
-
-
-
+  private:
+    explicit Skin(QObject *parent = nullptr);
+    static QPointer<Skin> m_instance;
 };
 
-#endif // SKIN_H
+inline Skin *skin()
+{
+    return Skin::instance();
+}
