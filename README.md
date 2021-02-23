@@ -53,19 +53,6 @@ the output is :
 **Hash calculator**<br>
 Supported algorithms: SHA-3, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512-256, Skein-512, Keccak-1600, Whirlpool, Blake2b, SHAKE-128, SHAKE-256, GOST-34.11, SM3, Tiger, Streebog-256, Streebog-512, RIPEMD-160, Adler32, MD4, MD5, CRC24, CRC32
 
-## Command line mode: ##
-**The command line interface doesn't support space in the arguments.**
-This example encrypt a file named "test.mkv" with the secret passphrase "badpassphrase". Encryption produce the encrypted file "test.mkv.arsenic" but it can be renamed because the original file name is encrypted in the file.
-
-```bash
-    ./arsenic -e -p badpassphrase -n test.mkv
-    # For decrypt this file :
-    ./arsenic -d -p badpassphrase test.mkv.arsenic
-    # View help :
-    ./arsenic -h
-    # View Arsenic version :
-    ./arsenic -v
-```
 
 ## Developers: ##
 The application was primarily built around the Qt 5 framework.

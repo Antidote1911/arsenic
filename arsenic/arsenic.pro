@@ -67,10 +67,9 @@ RESOURCES += \
     rsc.qrc
 
 
-TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_es.ts languages/arsenic_en_US.ts
+TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_en_US.ts
 
 DISTFILES += \
-    languages/arsenic_es.qm \
     languages/arsenic_en_US.ts \
     languages/arsenic_fr.qm
 
