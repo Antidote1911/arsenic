@@ -4,6 +4,7 @@ QT       -= core
 
 TARGET = arscore
 TEMPLATE = lib
+DEFINES += EXPORT_LIB
 
 HEADERS += \
     CryptoThread.h \
