@@ -26,11 +26,12 @@ after_build:
     - cd arsenic_win_x64
     - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\tests\release\tests.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+    - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\release\arsenic_gui.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\arscore\build\arscore.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
     - dir
     - tests.exe
-    - windeployqt arsenic.exe
+    - windeployqt arsenic_gui.exe
 
 artifacts:
     - path: arsenic_win_x64

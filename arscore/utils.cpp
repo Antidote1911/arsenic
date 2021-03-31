@@ -3,16 +3,12 @@
 #include <vector>
 #include <QDir>
 #include <QStandardPaths>
+#include <QStringBuilder>
 #include "botan_all.h"
 
 Utils::Utils(QObject *parent)
     : QObject(parent)
 {
-}
-
-QString Utils::getBotanVersion()
-{
-    return QString::fromStdString(Botan::version_string());
 }
 
 QString Utils::getTempPath()
@@ -103,4 +99,29 @@ QString Utils::getFileSize(qint64 size)
     else {
         return ("");
     }
+}
+
+QString Utils::uniqueFileName(const QString &fileName)
+{
+    QFileInfo originalFile(fileName);
+    auto uniqueFileName      = fileName;
+    auto foundUniqueFileName = false;
+    auto i                   = 0;
+    while (!foundUniqueFileName && i < 100000) {
+        QFileInfo uniqueFile(uniqueFileName);
+        if (uniqueFile.exists() && uniqueFile.isFile()) // Write number of copies before file extension
+        {
+            uniqueFileName = originalFile.absolutePath() % QDir::separator() % originalFile.baseName() % QString{" (%1)"}.arg(i + 2);
+
+            if (!originalFile.completeSuffix().isEmpty()) // Add the file extension if there is one
+            {
+                uniqueFileName += QStringLiteral(".") % originalFile.completeSuffix();
+            }
+            ++i;
+        }
+        else {
+            foundUniqueFileName = true;
+        }
+    }
+    return (uniqueFileName);
 }

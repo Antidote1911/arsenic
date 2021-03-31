@@ -1,92 +1,29 @@
 include(../defaults.pri)
 
-QT       += core gui
-TEMPLATE = app
+QT -= gui
 
+CONFIG += console
+CONFIG -= app_bundle
 
-CONFIG(release, debug|release): TARGET = arsenic
-CONFIG(debug, debug | release): TARGET = arsenicD
-
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
-
-# The following define makes your compiler emit warnings if you use
-# any feature of Qt which as been marked as deprecated (the exact warnings
-# depend on your compiler). Please consult the documentation of the
-# deprecated API in order to know how to port your code away from it.
-DEFINES += QT_DEPRECATED_WARNINGS
-
-# no qDebug in release mode
-CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
-
-win32:RC_ICONS += pixmaps/app.ico
-
-win32-g++ {
-    QMAKE_CXXFLAGS += -Wa,-mbig-obj
-}
-
-
-FORMS += \
-    aboutDialog.ui \
-    argonTests.ui \
-    configDialog.ui \
-    hashcheckdialog.ui \
-    mainwindow.ui \
-    passwordGeneratorDialog.ui
-
-HEADERS += \
-    Config.h \
-    Delegate.h \
-    aboutDialog.h \
-    argonTests.h \
-    clipboard.h \
-    configDialog.h \
-    hashcheckdialog.h \
-    loghtml.h \
-    mainwindow.h \
-    passwordGeneratorDialog.h \
-    progressbar.h \
-    Translator.h \
-    skin/skin.h
+# You can make your code fail to compile if it uses deprecated APIs.
+# In order to do so, uncomment the following line.
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    Config.cpp \
-    Delegate.cpp \
-    aboutDialog.cpp \
-    argonTests.cpp \
-    clipboard.cpp \
-    configDialog.cpp \
-    hashcheckdialog.cpp \
-    loghtml.cpp \
-    main.cpp \
-    mainwindow.cpp \
-    passwordGeneratorDialog.cpp \
-    Translator.cpp \
-    skin/skin.cpp
+        main.cpp \
+        mainclass.cpp
 
-RESOURCES += \
-    rsc.qrc
+HEADERS += \
+    mainclass.h \
+    tqdm.h
 
+# core
+LIBS += -L$$OUT_PWD/../arscore/build/ -larscore
+INCLUDEPATH += $$PWD/../arscore
+DEPENDPATH += $$OUT_PWD/../arscore
 
-TRANSLATIONS = languages/arsenic_fr.ts languages/arsenic_en_US.ts
+# INSTALL Linux
+target.path = /usr/bin/
+INSTALLS += target
 
-DISTFILES += \
-    languages/arsenic_en_US.ts \
-    languages/arsenic_fr.qm
-
-#INSTALL Linux
-    target.path = /usr/bin/
-    INSTALLS += target
-
-#INSTALL Linux desktop launcher
-    launcher.files = desktop/arsenic.desktop
-    launcher.path = /usr/share/applications/
-    INSTALLS += launcher
-    icon.files = pixmaps/app.png
-    icon.path = /usr/share/arsenic/
-    INSTALLS += icon
-
-#INSTALL Linux translations
-    i18n.files = $$replace(TRANSLATIONS, .ts, .qm)
-    i18n.path = /usr/share/arsenic/languages/
-    INSTALLS += i18n
 

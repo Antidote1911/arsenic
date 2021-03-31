@@ -22,15 +22,16 @@ win32-g++ {
     QMAKE_CXXFLAGS += -Wa,-mbig-obj
 }
 
-
+# core
+LIBS += -L$$OUT_PWD/../arscore/build/ -larscore
+INCLUDEPATH += $$PWD/../arscore
+DEPENDPATH += $$OUT_PWD/../arscore
 
 SOURCES += \
-    ../arsenic/Config.cpp \
     main.cpp
 
 HEADERS += \
-    catch/catch.hpp \
-    ../arsenic/Config.h
+    catch/catch.hpp
 
 
 

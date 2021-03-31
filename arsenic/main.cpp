@@ -1,48 +1,21 @@
-#include "Config.h"
-#include "fileCrypto.h"
-#include "mainwindow.h"
-#include "Translator.h"
-#include <QApplication>
-#include <QCommandLineParser>
-#include <QDebug>
-#include <QStyleFactory>
-#include <QTranslator>
-#include <QUnhandledException>
-#include <QtGlobal>
-#include <QProcess>
-#include <iostream>
-#include <QWidget>
-
-#include "consts.h"
-
-using namespace std;
-
-void handler(QString val)
-{
-    std::cout << val.toStdString() << std::endl;
-}
+#include <QCoreApplication>
+#include <QTimer>
+#include "mainclass.h"
 
 int main(int argc, char *argv[])
 {
+    QCoreApplication app(argc, argv);
 
-    QApplication app(argc, argv);
-    // don't set organizationName as that changes the return value of
-    // QStandardPaths::writableLocation(QDesktopServices::DataLocation)
+    // create the main class
+    MainClass myMain;
 
-    app.setOrganizationDomain(consts::APP_URL);
-    app.setApplicationName(consts::APP_SHORT_NAME);
-    app.setApplicationVersion(consts::APP_VERSION.toString());
-    app.setWindowIcon(QIcon(":/pixmaps/app.png"));
-    app.setStyle(QStyleFactory::create("Fusion"));
-    qDebug() << QStyleFactory::keys();
-    Translator::installTranslators();
+    // connect up the signals
+    QObject::connect(&myMain, SIGNAL(finished()), &app, SLOT(quit()));
+    QObject::connect(&app, SIGNAL(aboutToQuit()), &myMain, SLOT(aboutToQuitApp()));
 
-    MainWindow w;
-    w.show();
-    int currentExitCode = app.exec();
-    if (currentExitCode == consts::EXIT_CODE_REBOOT) {
-        QProcess::startDetached(qApp->applicationFilePath(), QStringList());
-        return 0;
-    }
-    return currentExitCode;
+    // This code will start the messaging engine in QT and in
+    // 10ms it will start the execution in the MainClass.run routine;
+    QTimer::singleShot(10, &myMain, SLOT(run()));
+
+    return app.exec();
 }

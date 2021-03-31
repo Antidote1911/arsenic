@@ -25,7 +25,6 @@ script:
   - qmake -qt=qt5 arsenic.pro -spec linux-$CC
   - make
   - sudo make install
-  # - arsenic -e -p mysuperbadpassphrase screenshots/main_dark.png
-  # - arsenic -d -p mysuperbadpassphrase screenshots/main_dark.png.arsenic
+  - arsenic -d ENCRYPT -p 123456789 screenshots/main_dark.png
+  - arsenic -d DECRYPT -p 123456789 screenshots/main_dark.png.arsn
   - ./tests/tests
-

@@ -1,7 +1,7 @@
 #include "textcrypto.h"
 #include "botan_all.h"
 #include "messages.h"
-#include "tripleencryption.h"
+#include "cryptoengine.h"
 #include <QString>
 #include <QTextStream>
 #include <stdexcept>
@@ -38,10 +38,10 @@ quint32 textCrypto::encryptString(QString &plaintext, QString const &password)
     const auto argonSalt   = rng.random_vec(m_const->ARGON_SALT_LEN);
     const auto tripleNonce = rng.random_vec(m_const->CIPHER_IV_LEN * 3);
 
-    TripleEncryption encrypt(true);
+    CryptoEngine encrypt(true);
     encrypt.setSalt(argonSalt);
     encrypt.derivePassword(password, m_const->MEMLIMIT_INTERACTIVE, m_const->ITERATION_INTERACTIVE);
-    encrypt.setTripleNonce(tripleNonce);
+    encrypt.setNonce(tripleNonce);
     encrypt.finish(pt);
 
     SecureVector<quint8> final(VERSION_CODE_LEN);
@@ -84,10 +84,10 @@ quint32 textCrypto::decryptString(QString &cipher, QString const &password)
     ciphertext.erase(ciphertext.begin(), ciphertext.begin() + CRYPTOBOX_HEADER_LEN);
 
     // Now we can do the triple decryption
-    TripleEncryption decrypt(false);
+    CryptoEngine decrypt(false);
     decrypt.setSalt(salt);
     decrypt.derivePassword(password, m_const->MEMLIMIT_INTERACTIVE, m_const->ITERATION_INTERACTIVE);
-    decrypt.setTripleNonce(tripleNonce.bits_of());
+    decrypt.setNonce(tripleNonce.bits_of());
     try {
         decrypt.finish(ciphertext);
     }

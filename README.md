@@ -2,7 +2,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/eid3dqq4c28u7sf4?svg=true)](https://ci.appveyor.com/project/Antidote1911/arsenic)
 
 # Arsenic
-**A simple tool to encrypt files, folders and text with strong algorithms.**<br>
+**A simple tool to encrypt files and text with strong algorithms.**<br>
 Tested with Windows 10 and all major Linux distributions. Arsenic is developed on Archlinux.
 
 <img src='screenshots/main_dark.png'/>
@@ -56,8 +56,8 @@ Supported algorithms: SHA-3, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512-
 
 ## Developers: ##
 The application was primarily built around the Qt 5 framework.
-Botan 2.15 is automatically downloaded by qmake, and an amalgamation build is generated (botan_all.cpp and botan_all.h).
-If you want to update botan, simply delete the folder 3rdparty/botan/botan, and modify the version you want in the three script:
+Botan 2.17.3 is automatically downloaded by qmake, and an amalgamation build is generated (botan_all.cpp and botan_all.h).
+If you want to update botan, simply delete the folder 3rdparty/botan/botan, and modify the version you want in the three scripts:
 
 - for Windows : 3rdparty/botan/update-botan.bat
 - for unix : 3rdparty/botan/update-botan.sh

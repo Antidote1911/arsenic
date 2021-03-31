@@ -3,8 +3,7 @@
 #include <QObject>
 #include <QVersionNumber>
 
-#include "botan_all.h"
-#include "zlib.h"
+#include "../3rdparty/botan/build/botan_all.h"
 
 class consts : public QObject {
     Q_OBJECT
@@ -12,20 +11,19 @@ class consts : public QObject {
     explicit consts(QObject *parent = nullptr);
 
     static inline int const EXIT_CODE_REBOOT = -123456789;
-    static inline QVersionNumber const APP_VERSION{3, 5, 4};
+    static inline QVersionNumber const APP_VERSION{4, 0, 0};
     static inline QString const APP_SHORT_NAME         = "Arsenic";
     static inline QString const APP_LONG_NAME          = "Arsenic " + APP_VERSION.toString();
-    static inline QString const APP_DESCRIPTION        = "Strong encryption";
+    static inline QString const APP_DESCRIPTION        = "Arsenic - Strong encryption";
     static inline QString const APP_URL                = "https://github.com/Antidote1911";
     static inline quint32 const MAGIC_NUMBER           = 0x41525345;
     static inline quint32 const CRYPTOBOX_VERSION_CODE = 0x2EC4993A;
     static inline quint32 const VERSION_CODE_LEN       = 4;
 
     // Default constants for Arsenic preferences
-    static inline QString const DEFAULT_EXTENSION = ".arsenic";
+    static inline QString const DEFAULT_EXTENSION = ".arsn";
 
     static inline QString const BOTAN_VERSION = QString::fromStdString(Botan::version_string());
-    static inline QString const ZLIB_Version  = ZLIB_VERSION;
 
     static inline QString const DEFAULT_LIST_PATH = "session.qtlist";
     static inline int const MIN_PASS_LENGTH       = 8;

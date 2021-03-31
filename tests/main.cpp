@@ -4,15 +4,12 @@
 #include <QDataStream>
 #include <QDir>
 #include <QFile>
-#include "consts.h"
-#include "Config.h"
-#include "fileCrypto.h"
-#include "textcrypto.h"
-#include "utils.h"
+#include "../arscore/consts.h"
+#include "../arscore/CryptoThread.h"
+#include "../arscore/textcrypto.h"
+#include "../arscore/utils.h"
 #include "catch/catch.hpp"
-#include "botan_all.h"
-#include "messages.h"
-#include "tripleencryption.h"
+#include "../3rdparty/botan/build/botan_all.h"
 
 int main(int argc, char* argv[])
 {
@@ -49,7 +46,7 @@ bool encryptFile()
 
     main_buffer = rng.random_vec(100000);
     QFile::remove(QDir::cleanPath("cleartxt.txt")); // clear previous file
-    QFile::remove(QDir::cleanPath("cleartxt.txt.arsenic"));
+    QFile::remove(QDir::cleanPath("cleartxt.txt.arsn"));
 
     QFile src_file(QDir::cleanPath("cleartxt.txt"));
     src_file.open(QIODevice::WriteOnly);
@@ -69,12 +66,12 @@ bool encryptFile()
     QString result1 = QString::fromStdString(Botan::hex_encode(hash1->final()));
 
     // Now, try to encrypt it. The original is deleted, and the output is
-    // cleartxt.txt.arsenic
+    // cleartxt.txt.arsn
     QStringList list;
     list.append("cleartxt.txt");
 
     Crypto_Thread Crypto;
-    Crypto.setParam(true, list, "mypassword", config()->get(Config::CRYPTO_argonMemory).toInt(), config()->get(Config::CRYPTO_argonItr).toInt(), true);
+    Crypto.setParam(true, list, "mypassword", 0, 0, true);
 
     Crypto.start();
     Crypto.wait();
@@ -83,9 +80,9 @@ bool encryptFile()
     // the decryption to cleartxt.txt
 
     QStringList list2;
-    list2.append("cleartxt.txt.arsenic");
+    list2.append("cleartxt.txt.arsn");
 
-    Crypto.setParam(false, list2, "mypassword", config()->get(Config::CRYPTO_argonMemory).toInt(), config()->get(Config::CRYPTO_argonItr).toInt(), true);
+    Crypto.setParam(false, list2, "mypassword", 0, 0, true);
 
     Crypto.start();
     Crypto.wait();

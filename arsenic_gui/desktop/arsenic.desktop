@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Name=Arsenic_gui
+GenericName=Arsenic
+Exec=arsenic_gui
+Comment=Strong triple encryption
+Terminal=false
+Type=Application
+Categories=Utility;
+Icon=/usr/share/arsenic/app.png
+GenericName[en_US]=Arsenic_gui
