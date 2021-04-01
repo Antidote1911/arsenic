@@ -30,7 +30,6 @@ after_build:
     - xcopy %APPVEYOR_BUILD_FOLDER%\arscore\build\arscore.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
     - dir
-    - tests.exe
     - cd %APPVEYOR_BUILD_FOLDER%
     - dir
     - mkdir arsenic_x64
