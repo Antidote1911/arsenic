@@ -25,7 +25,7 @@ win32-g++ {
 # core
 LIBS += -L$$OUT_PWD/../arscore/build/ -larscore
 INCLUDEPATH += $$PWD/../arscore
-DEPENDPATH += $$OUT_PWD/../arscore
+DEPENDPATH += $$PWD/../arscore
 
 # Botan
 LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
