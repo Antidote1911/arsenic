@@ -19,6 +19,10 @@ SOURCES += \
 HEADERS += \
     mainclass.h \
     tqdm.h
+    
+win32-g++ {
+    QMAKE_CXXFLAGS += -Wa,-mbig-obj
+}
 
 # core
 LIBS += -L$$OUT_PWD/../arscore/build/ -larscore

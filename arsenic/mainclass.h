@@ -5,6 +5,7 @@
 #include <QCommandLineParser>
 #include <memory>
 #include "CryptoThread.h"
+#include "consts.h"
 #include "tqdm.h"
 
 class MainClass : public QObject {
