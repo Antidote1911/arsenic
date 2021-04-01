@@ -4,8 +4,8 @@
 #include <QCoreApplication>
 #include <QCommandLineParser>
 #include <memory>
-#include "../arscore/consts.h"
-#include "../arscore/CryptoThread.h"
+#include "consts.h"
+#include "CryptoThread.h"
 #include "tqdm.h"
 
 class MainClass : public QObject {

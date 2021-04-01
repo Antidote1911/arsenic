@@ -1,5 +1,4 @@
 #include "Config.h"
-#include "../arscore/CryptoThread.h"
 #include "mainwindow.h"
 #include "Translator.h"
 #include <QApplication>

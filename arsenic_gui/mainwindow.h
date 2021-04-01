@@ -5,9 +5,9 @@
 #include <QTranslator>
 #include <QActionGroup>
 
-#include "../arscore/CryptoThread.h"
-#include "../arscore/textcrypto.h"
-#include "../arscore/consts.h"
+#include "CryptoThread.h"
+#include "textcrypto.h"
+#include "consts.h"
 #include "Delegate.h"
 #include <memory>
 

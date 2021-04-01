@@ -11,5 +11,5 @@ SUBDIRS += 3rdparty \
 
 arscore.depends = 3rdparty
 arsenic.depends = arscore
-arsenic_gui.depends = arscore
+arsenic_gui.depends = 3rdparty arscore
 tests.depends = 3rdparty arscore 

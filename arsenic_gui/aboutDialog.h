@@ -3,7 +3,7 @@
 #include <QDialog>
 #include <memory>
 
-#include "../arscore/consts.h"
+#include "consts.h"
 
 namespace Ui {
 class AboutDialog;

@@ -4,12 +4,12 @@
 #include <QDataStream>
 #include <QDir>
 #include <QFile>
-#include "../arscore/consts.h"
-#include "../arscore/CryptoThread.h"
-#include "../arscore/textcrypto.h"
-#include "../arscore/utils.h"
+#include "consts.h"
+#include "CryptoThread.h"
+#include "textcrypto.h"
+#include "utils.h"
 #include "catch/catch.hpp"
-#include "../3rdparty/botan/build/botan_all.h"
+#include "botan_all.h"
 
 int main(int argc, char* argv[])
 {

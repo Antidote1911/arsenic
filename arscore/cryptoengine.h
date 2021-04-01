@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../3rdparty/botan/build/botan_all.h"
+#include "botan_all.h"
 #include "consts.h"
 
 #include <QObject>

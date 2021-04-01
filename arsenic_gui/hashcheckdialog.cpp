@@ -1,5 +1,5 @@
 ﻿#include "hashcheckdialog.h"
-#include "../3rdparty/botan/build/botan_all.h"
+#include "botan_all.h"
 #include "ui_hashcheckdialog.h"
 #include <QClipboard>
 #include <QCloseEvent>

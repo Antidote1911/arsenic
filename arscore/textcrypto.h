@@ -3,7 +3,7 @@
 #include <QObject>
 #include <memory>
 
-#include "../arscore/consts.h"
+#include "consts.h"
 #include "libexport.h"
 
 class LIB_EXPORT textCrypto : public QObject {

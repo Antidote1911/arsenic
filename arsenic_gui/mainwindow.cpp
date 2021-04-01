@@ -20,7 +20,7 @@
 #include "messages.h"
 #include "passwordGeneratorDialog.h"
 #include "hashcheckdialog.h"
-#include "../arscore/utils.h"
+#include "utils.h"
 #include "argonTests.h"
 #include "skin/skin.h"
 

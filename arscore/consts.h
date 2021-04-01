@@ -3,7 +3,7 @@
 #include <QObject>
 #include <QVersionNumber>
 
-#include "../3rdparty/botan/build/botan_all.h"
+#include "botan_all.h"
 
 class consts : public QObject {
     Q_OBJECT
