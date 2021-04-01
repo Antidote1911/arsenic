@@ -31,7 +31,7 @@ after_build:
     - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
     - dir
     - tests.exe
-    - windeployqt arsenic
+    - windeployqt arsenic_win_x64
 
 artifacts:
     - path: arsenic_win_x64
