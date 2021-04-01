@@ -32,7 +32,8 @@ after_build:
     - dir
     - tests.exe
     - cd %APPVEYOR_BUILD_FOLDER%
-    - windeployqt arsenic_win_x64
+    - mkdir arsenic_x64
+    - windeployqt --dir arsenic_x64 arsenic_win_x64
     
 
 artifacts:
