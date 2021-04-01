@@ -4,7 +4,6 @@
 #include <QCoreApplication>
 #include <QCommandLineParser>
 #include <memory>
-#include "consts.h"
 #include "CryptoThread.h"
 #include "tqdm.h"
 
