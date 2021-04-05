@@ -1,6 +1,7 @@
 [![Build Status](https://travis-ci.org/Antidote1911/arsenic.svg?branch=master)](https://travis-ci.org/Antidote1911/arsenic)
 [![Build status](https://ci.appveyor.com/api/projects/status/eid3dqq4c28u7sf4?svg=true)](https://ci.appveyor.com/project/Antidote1911/arsenic)
 
+
 # Arsenic
 **A simple tool to encrypt files and text with strong algorithms.**<br>
 Tested with Windows 10 and all major Linux distributions. Arsenic is developed on Archlinux.
@@ -8,6 +9,11 @@ Tested with Windows 10 and all major Linux distributions. Arsenic is developed o
 <img src='screenshots/main_dark.png'/>
 
 *More screenshots at the and of this readme.*
+
+### Thanks to JetBrains for open source support
+
+<a href="https://www.jetbrains.com/"><img src="./screenshots/jetbrains.png" alt="jetbrains" width="150"></a>
+<img src='https://www.gnu.org/graphics/gplv3-with-text-136x68.png'/>
 
 ## Simple Description: ##
 Arsenic was intended as a lightweight, portable application, that would encode a list of local files using a pass-phrase. A simple text editor named "CryptoPad" can be useful for send encrypted text by email. CryptoPad and file encryption always use cascade triple encryption with this algorithms:
@@ -77,6 +83,9 @@ Arsenic work well but it need some code simplifications, code comments, orthogra
 
 
 Thanks to :
+- [JetBrains](https://www.jetbrains.com/) for supporting open source.<br>
+Arsenic use JetBrains [Clion](https://www.jetbrains.com/clion/) C/C++ EDI.
+
 - [Jack Lloyd from randombit.net](https://botan.randombit.net) for the powerful Botan C++ cryptographic library. You can find the Github [here](https://github.com/randombit/botan).<br>
 It is released under the permissive Simplified [BSD license](https://botan.randombit.net/license.txt)
 
@@ -107,5 +116,3 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-<img src='https://www.gnu.org/graphics/gplv3-with-text-136x68.png'/>
