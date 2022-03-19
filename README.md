@@ -1,6 +1,7 @@
 [![License: GPL3](https://img.shields.io/badge/License-GPL3-green.svg)](https://opensource.org/licenses/GPL-3.0)
 [![Build Status](https://app.travis-ci.com/Antidote1911/arsenic.svg?branch=master)](https://app.travis-ci.com/Antidote1911/arsenic)
 [![Build status](https://ci.appveyor.com/api/projects/status/eid3dqq4c28u7sf4?svg=true)](https://ci.appveyor.com/project/Antidote1911/arsenic)
+[![GitHub release](https://img.shields.io/github/release/Antidote1911/arsenic)](https://github.com/Antidote1911/arsenic/releases/)
 
 
 # Arsenic
