@@ -31,7 +31,6 @@ PasswordGeneratorDialog::PasswordGeneratorDialog(QDialog *parent)
     : QDialog(parent), m_updatingSpinBox(false), m_passwordGenerator(new PasswordGenerator()), m_ui(new Ui::PasswordGeneratorDialog())
 {
     m_ui->setupUi(this);
-    // m_ui->togglePasswordButton->setIcon(filePath()->onOffIcon("actions", "password-show"));
 
     connect(m_ui->editNewPassword, SIGNAL(textChanged(QString)), SLOT(updateButtonsEnabled(QString)));
     connect(m_ui->editNewPassword, SIGNAL(textChanged(QString)), SLOT(updatePasswordStrength(QString)));
@@ -233,11 +232,11 @@ void PasswordGeneratorDialog::passwordSpinBoxChanged()
 void PasswordGeneratorDialog::setPasswordVisible(bool visible)
 {
     if (visible) {
-        m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-off.svg"));
+        m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-on.svg"));
         m_ui->editNewPassword->setEchoMode(QLineEdit::Normal);
     }
     else {
-        m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-on.svg"));
+        m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-off.svg"));
         m_ui->editNewPassword->setEchoMode(QLineEdit::Password);
     }
 }

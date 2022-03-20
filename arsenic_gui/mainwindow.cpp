@@ -476,10 +476,9 @@ void MainWindow::generator()
 {
     auto pwGenerator = new PasswordGeneratorDialog;
 
-    pwGenerator->setStandaloneMode(true);
+    pwGenerator->setStandaloneMode(false);
     connect(pwGenerator, SIGNAL(appliedPassword(QString)), SLOT(setPassword(QString)));
     connect(pwGenerator, SIGNAL(dialogTerminated()), pwGenerator, SLOT(close()));
-    pwGenerator->setStandaloneMode(true);
     pwGenerator->exec();
 }
 
