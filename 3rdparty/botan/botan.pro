@@ -64,7 +64,7 @@ win32-g++ {
     OTHER_FLAGS += --without-stack-protector
 }
 win32-msvc {
-    BOTAN_OS_SWITCH = "--os=msvc"
+    BOTAN_OS_SWITCH = "--os=windows"
     OTHER_FLAGS += --without-stack-protector
 }
 
