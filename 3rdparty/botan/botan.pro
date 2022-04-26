@@ -110,6 +110,7 @@ configure.commands = cd $$BOTAN_BUILD_DIR_FOR_SHELL && \
                         --includedir=$$INSTALL_HEADERS \
                         --docdir=$$INSTALL_PREFIX/doc/botan-2 \
                         --cc=$$BOTAN_CC_TYPE \
+                        --disable-modules=pkcs11
                         --cc-bin=$$shell_quote($$QMAKE_CXX) \
                         --without-documentation --without-sphinx --without-pdf --without-rst2man --without-doxygen \
                         $$BOTAN_ARCH_SWITCH $$BOTAN_OS_SWITCH $$OTHER_FLAGS
