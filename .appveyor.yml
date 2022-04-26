@@ -10,20 +10,15 @@ image: Visual Studio 2019
 
 configuration: Release
 
-environment:
-  matrix:
-    # Qt5.15 / VisualStudio 2017 64bit
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      INIT_BAT: C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat
-      QT_PATH:  C:\Qt\5.15.2\msvc2019_64
-
-    # Qt6.2 / VisualStudio 2019 64bit
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      INIT_BAT: C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat
-      QT_PATH:  C:\Qt\6.2.2\msvc2019_64
+install:
+    - set QTDIR=C:\Qt\5.14.2\mingw73_64
+    - set PATH=%QTDIR%\bin;C:\Qt\Tools\mingw730_64\bin;%PATH%;
 
 before_build:
     - qmake arsenic.pro
+
+build_script:
+    - mingw32-make
 
 after_build:   
     - cd %APPVEYOR_BUILD_FOLDER%
