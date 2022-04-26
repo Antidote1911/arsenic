@@ -8,6 +8,9 @@ exists($$PWD/botan/configure.py){
     win32-g++{
         system( $$PWD/update-botan.bat )
     }
+    win32-msvc{
+        system( $$PWD/update-botan.bat )
+    }
     linux {
         system( ./update-botan.sh )
     }
@@ -58,6 +61,10 @@ OTHER_FLAGS = --amalgamation --minimized-build  --disable-shared --build-targets
               --enable-modules=$$join(BOTAN_MODULES,",",,)
 win32-g++ {
     BOTAN_OS_SWITCH = "--os=mingw"
+    OTHER_FLAGS += --without-stack-protector
+}
+win32-msvc {
+    BOTAN_OS_SWITCH = "--os=msvc"
     OTHER_FLAGS += --without-stack-protector
 }
 
