@@ -6,13 +6,11 @@ exists($$PWD/botan/configure.py){
         message ( trying now )
     }
     win32{
-        message ( win32 g++ )
+        message ( win32 )
         system( $$PWD/update-botan.bat )
-        BOTAN_CC_TYPE = msvc
     }
     linux {
         system( ./update-botan.sh )
-        BOTAN_CC_TYPE = gcc
     }
     osx{
         system( ./update_botan_osx.sh )
@@ -56,6 +54,11 @@ BOTAN_MODULES = aes aead gcm eax chacha20poly1305 serpent sha3 sha3_bmi2 skein k
 
 OTHER_FLAGS = --amalgamation --minimized-build  --disable-shared --build-targets="static" \
               --enable-modules=$$join(BOTAN_MODULES,",",,)
+              
+win32-msvc: BOTAN_CC_TYPE = msvc
+clang: BOTAN_CC_TYPE = clang
+else: BOTAN_CC_TYPE = gcc
+              
 win32-g++ {
     message ( win32-g++ )
     BOTAN_OS_SWITCH = "--os=mingw"
@@ -63,7 +66,7 @@ win32-g++ {
 }
 win32-msvc {
     message ( win32-msvc )
-    BOTAN_OS_SWITCH = "--os=mingw"
+    BOTAN_OS_SWITCH = "--os=windows"
     OTHER_FLAGS += --without-stack-protector
 }
 
