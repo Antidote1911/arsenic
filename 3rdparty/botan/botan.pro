@@ -68,7 +68,7 @@ win32-g++ {
 }
 win32-msvc {
     message ( win32-msvc )
-    BOTAN_OS_SWITCH = "--os=windows"
+    BOTAN_OS_SWITCH = "--os=mingw"
     OTHER_FLAGS += --without-stack-protector
 }
 
