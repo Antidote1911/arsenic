@@ -11,8 +11,8 @@ image: Visual Studio 2019
 configuration: Release
 
 install:
-    - set QTDIR=C:\Qt\6.3.0
-    - set PATH=%PATH%;%QTDIR%\bin;C:\Qt\6.3.0\mingw_64\bin
+    - set QTDIR=C:\Qt\6.3.0\mingw_64
+    - set PATH=%PATH%;%QTDIR%\bin;C:\Qt\6.3.0\mingw_64
     - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 
 before_build:
