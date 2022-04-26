@@ -5,7 +5,7 @@ exists($$PWD/botan/configure.py){
         message ( You need up update your libbotan $$QT_ARCH_TARGET )
         message ( trying now )
     }
-    win32{
+    win32-g++{
         system( $$PWD/update-botan.bat )
     }
     linux {
