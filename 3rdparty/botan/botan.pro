@@ -55,9 +55,9 @@ BOTAN_MODULES = aes aead gcm eax chacha20poly1305 serpent sha3 sha3_bmi2 skein k
 OTHER_FLAGS = --amalgamation --minimized-build  --disable-shared --build-targets="static" \
               --enable-modules=$$join(BOTAN_MODULES,",",,)
               
-win32-msvc: BOTAN_CC_TYPE = msvc
-clang: BOTAN_CC_TYPE = clang
-else: BOTAN_CC_TYPE = msvc
+msvc: BOTAN_CC_TYPE = msvc
+else: clang: BOTAN_CC_TYPE = clang
+else: BOTAN_CC_TYPE = gcc
               
 win32-g++ {
     message ( win32-g++ )
@@ -78,17 +78,6 @@ macos: BOTAN_CXX_FLAGS += -mmacosx-version-min=$$QMAKE_MACOSX_DEPLOYMENT_TARGET 
 unix | win32-g++: BOTAN_CXX_FLAGS += -fPIC
 win32: OTHER_FLAGS += --link-method=hardlink
 
-CONFIG(debug, debug|release) {
-    OTHER_FLAGS += --debug-mode
-} else {
-    win32{
-        !win32-g++: BOTAN_CXX_FLAGS += /O2
-    } else {
-        BOTAN_CXX_FLAGS += -O3
-    }
-}
-!isEmpty(BOTAN_CXX_FLAGS): OTHER_FLAGS += --cxxflags=$$shell_quote($$BOTAN_CXX_FLAGS)
-CONFIGURE_FILE_PATH_FOR_SHELL = $$shell_quote($$shell_path($$BOTAN_SOURCE_DIR/configure.py))
 
 configure_inputs = $$BOTAN_SOURCE_DIR/configure.py
 
