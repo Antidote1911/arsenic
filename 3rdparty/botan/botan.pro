@@ -5,12 +5,8 @@ exists($$PWD/botan/configure.py){
         message ( You need up update your libbotan $$QT_ARCH_TARGET )
         message ( trying now )
     }
-    win32-g++{
-        message ( win32-g++ )
-        system( $$PWD/update-botan.bat )
-    }
-    win32-msvc{
-        message ( win32-msvc )
+    win32{
+        message ( win32 )
         system( $$PWD/update-botan.bat )
     }
     linux {
@@ -80,15 +76,7 @@ macos: BOTAN_CXX_FLAGS += -mmacosx-version-min=$$QMAKE_MACOSX_DEPLOYMENT_TARGET 
 unix | win32-g++: BOTAN_CXX_FLAGS += -fPIC
 win32: OTHER_FLAGS += --link-method=hardlink
 
-CONFIG(debug, debug|release) {
-    OTHER_FLAGS += --debug-mode
-} else {
-    win32{
-        !win32-g++: BOTAN_CXX_FLAGS += /O2
-    } else {
-        BOTAN_CXX_FLAGS += -O3
-    }
-}
+
 !isEmpty(BOTAN_CXX_FLAGS): OTHER_FLAGS += --cxxflags=$$shell_quote($$BOTAN_CXX_FLAGS)
 CONFIGURE_FILE_PATH_FOR_SHELL = $$shell_quote($$shell_path($$BOTAN_SOURCE_DIR/configure.py))
 
