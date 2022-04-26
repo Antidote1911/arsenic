@@ -6,9 +6,11 @@ exists($$PWD/botan/configure.py){
         message ( trying now )
     }
     win32-g++{
+        message ( win32-g++ )
         system( $$PWD/update-botan.bat )
     }
     win32-msvc{
+        message ( win32-msvc )
         system( $$PWD/update-botan.bat )
     }
     linux {
@@ -60,11 +62,14 @@ BOTAN_MODULES = aes aead gcm eax chacha20poly1305 serpent sha3 sha3_bmi2 skein k
 OTHER_FLAGS = --amalgamation --minimized-build  --disable-shared --build-targets="static" \
               --enable-modules=$$join(BOTAN_MODULES,",",,)
 win32-g++ {
+    message ( win32-g++ )
     BOTAN_OS_SWITCH = "--os=mingw"
     OTHER_FLAGS += --without-stack-protector
 }
 win32-msvc {
-    BOTAN_OS_SWITCH = "--os=windows"
+    message ( win32-msvc )
+    BOTAN_OS_SWITCH = "--os=Windows"
+    OTHER_FLAGS += --without-stack-protector
 }
 
 BOTAN_CXX_FLAGS = $$QMAKE_CXXFLAGS
