@@ -57,7 +57,7 @@ OTHER_FLAGS = --amalgamation --minimized-build  --disable-shared --build-targets
               
 win32-msvc: BOTAN_CC_TYPE = msvc
 clang: BOTAN_CC_TYPE = clang
-else: BOTAN_CC_TYPE = gcc
+else: BOTAN_CC_TYPE = msvc
               
 win32-g++ {
     message ( win32-g++ )
