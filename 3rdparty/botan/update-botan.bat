@@ -1,7 +1,7 @@
 REM Download and setup botan to compile.
 REM I had to also install 7zip
 set PATH=%PATH%;C:\Program Files\7-Zip;
-set PATH=%PATH%;C:\Qt\Qt5.11\Tools\mingw530_32\bin;
+set PATH=%PATH%;C:\Qt\6.3.0\msvc2019_64\bin;
 if exist %CD%\libBotan cd %CD%\libBotan
 if exist %CD%\botan RMDIR /S /Q %CD%\botan
 curl -L -o 2.19.1.zip https://github.com/randombit/botan/archive/2.19.1.zip
