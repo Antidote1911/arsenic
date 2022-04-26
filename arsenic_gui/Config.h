@@ -93,7 +93,6 @@ class Config : public QObject {
   private:
     explicit Config(QObject* parent);
     void init(const QString& configFileName, const QString& localConfigFileName = "");
-    void migrate();
 
     static QPointer<Config> m_instance;
 

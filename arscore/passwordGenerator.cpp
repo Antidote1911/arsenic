@@ -143,7 +143,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
                 continue;
             }
 
-            group.append(i);
+            group.append( static_cast < char >(i));
         }
 
         passwordGroups.append(group);
@@ -157,7 +157,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
                 continue;
             }
 
-            group.append(i);
+            group.append( static_cast < char >(i));
         }
 
         passwordGroups.append(group);
@@ -171,7 +171,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
                 continue;
             }
 
-            group.append(i);
+            group.append( static_cast < char >(i));
         }
 
         passwordGroups.append(group);
@@ -181,12 +181,12 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         PasswordGroup group;
 
         // ()[]{}
-        group.append(40);
-        group.append(41);
-        group.append(91);
-        group.append(93);
-        group.append(123);
-        group.append(125);
+        group.append(static_cast < char >(40));
+        group.append(static_cast < char >(41));
+        group.append(static_cast < char >(91));
+        group.append(static_cast < char >(93));
+        group.append(static_cast < char >(123));
+        group.append(static_cast < char >(125));
 
         passwordGroups.append(group);
     }
@@ -195,10 +195,10 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         PasswordGroup group;
 
         // .,:;
-        group.append(44);
-        group.append(46);
-        group.append(58);
-        group.append(59);
+        group.append(static_cast < char >(44));
+        group.append(static_cast < char >(46));
+        group.append(static_cast < char >(58));
+        group.append(static_cast < char >(59));
 
         passwordGroups.append(group);
     }
@@ -207,8 +207,8 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         PasswordGroup group;
 
         // "'
-        group.append(34);
-        group.append(39);
+        group.append(static_cast < char >(34));
+        group.append(static_cast < char >(39));
 
         passwordGroups.append(group);
     }
@@ -217,13 +217,13 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         PasswordGroup group;
 
         // -/\_|
-        group.append(45);
-        group.append(47);
-        group.append(92);
-        group.append(95);
+        group.append(static_cast < char >(45));
+        group.append(static_cast < char >(47));
+        group.append(static_cast < char >(92));
+        group.append(static_cast < char >(95));
 
         if (!(m_flags & ExcludeLookAlike)) {
-            group.append(124); // "|"
+            group.append(static_cast < char >(124)); // "|"
         }
 
         passwordGroups.append(group);
@@ -233,13 +233,13 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         PasswordGroup group;
 
         // !*+-<=>?
-        group.append(33);
-        group.append(42);
-        group.append(43);
-        group.append(60);
-        group.append(61);
-        group.append(62);
-        group.append(63);
+        group.append(static_cast < char >(33));
+        group.append(static_cast < char >(42));
+        group.append(static_cast < char >(43));
+        group.append(static_cast < char >(60));
+        group.append(static_cast < char >(61));
+        group.append(static_cast < char >(62));
+        group.append(static_cast < char >(63));
 
         passwordGroups.append(group);
     }
@@ -249,13 +249,13 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
 
         // #$%&
         for (int i = 35; i <= 38; i++) {
-            group.append(i);
+            group.append(static_cast < char >(i));
         }
         // @^`~
-        group.append(64);
-        group.append(94);
-        group.append(96);
-        group.append(126);
+        group.append(static_cast < char >(64));
+        group.append(static_cast < char >(94));
+        group.append(static_cast < char >(96));
+        group.append(static_cast < char >(126));
 
         passwordGroups.append(group);
     }
@@ -266,7 +266,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
         // [U+0080, U+009F] are C1 control characters,
         // U+00A0 is non-breaking space
         for (int i = 161; i <= 172; i++) {
-            group.append(i);
+            group.append(static_cast < char >(i));
         }
         // U+00AD is soft hyphen (format character)
         for (int i = 174; i <= 255; i++) {
@@ -274,7 +274,7 @@ QVector<PasswordGroup> PasswordGenerator::passwordGroups() const
                 continue;
             }
 
-            group.append(i);
+            group.append(static_cast < char >(i));
         }
 
         passwordGroups.append(group);

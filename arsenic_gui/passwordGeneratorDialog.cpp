@@ -22,6 +22,8 @@
 #include <QDir>
 #include <QKeyEvent>
 #include <QLineEdit>
+#include <QAbstractButton>
+#include <QButtonGroup>
 
 #include "Config.h"
 #include "clipboard.h"
@@ -46,7 +48,7 @@ PasswordGeneratorDialog::PasswordGeneratorDialog(QDialog *parent)
     connect(m_ui->sliderLength, SIGNAL(valueChanged(int)), SLOT(passwordSliderMoved()));
     connect(m_ui->spinBoxLength, SIGNAL(valueChanged(int)), SLOT(passwordSpinBoxChanged()));
 
-    connect(m_ui->optionButtons, SIGNAL(buttonClicked(int)), SLOT(updateGenerator()));
+    connect(m_ui->optionButtons, SIGNAL(idClicked(int)), SLOT(updateGenerator()));
 
     // set font size of password quality and entropy labels dynamically to 80% of
     // the default font size, but make it no smaller than 8pt

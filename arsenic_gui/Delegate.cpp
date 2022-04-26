@@ -22,6 +22,7 @@
 #include <QtCore/QEvent>
 #include <QtGui/QMouseEvent>
 #include <QtWidgets/QApplication>
+#include <QFontMetricsF>
 
 Delegate::Delegate(QObject *parent)
     : QStyledItemDelegate{parent}
@@ -46,10 +47,9 @@ void Delegate::paint(QPainter *painter, const QStyleOptionViewItem &option, cons
     switch (column) {
     case 0: {
         QStyleOptionButton buttonOption;
+        auto font = QApplication::font();
         buttonOption.state = QStyle::State_Enabled;
-        buttonOption.direction = QApplication::layoutDirection();
-        buttonOption.rect = QRect(option.rect.x(), option.rect.y(), option.rect.width(), option.rect.height());
-        buttonOption.fontMetrics = QApplication::fontMetrics();
+        buttonOption.rect = option.rect;
         buttonOption.features = QStyleOptionButton::Flat;
         const QIcon closeIcon("://pixmaps/closeFileIcon.svg");
         buttonOption.icon = closeIcon;
@@ -74,23 +74,16 @@ void Delegate::paint(QPainter *painter, const QStyleOptionViewItem &option, cons
     case 4: {
         // Set up a QStyleOptionProgressBar to mimic the environment of a progress
         // bar.
-        QStyleOptionProgressBar progressBarOption;
-        progressBarOption.state = QStyle::State_Enabled;
-        progressBarOption.direction = QApplication::layoutDirection();
-        progressBarOption.rect = QRect(option.rect.x(), option.rect.y() + 1, option.rect.width(), option.rect.height() - 1);
-        progressBarOption.fontMetrics = QApplication::fontMetrics();
-        progressBarOption.minimum = 0;
-        progressBarOption.maximum = 100;
-        progressBarOption.textAlignment = Qt::AlignCenter;
-        progressBarOption.textVisible = true;
+        QStyleOptionProgressBar bar ;
 
-        // Set the progress and text values of the style option.
-        int value = index.model()->data(index).toInt();
-        progressBarOption.progress = value;
-        progressBarOption.text = tr("%1%").arg(progressBarOption.progress);
+                bar.rect = option.rect;
 
-        // Draw the progress bar onto the view.
-        QApplication::style()->drawControl(QStyle::CE_ProgressBar, &progressBarOption, painter);
+                bar.progress = index.data().toInt();
+                bar.maximum = 100;
+                bar.minimum = 0;
+                bar.text = QString::number(bar.progress)+"%";
+                bar.textVisible = true;
+                QApplication::style()->drawControl(QStyle::CE_ProgressBar,&bar,painter);
 
         break;
     }

@@ -425,17 +425,17 @@ void MainWindow::addFilePathToModel(const QString &filePath)
         const auto sizeVariant{QVariant::fromValue(fileSize)};
         sizeItem->setData(sizeVariant);
 
-        const auto progressItem{new QStandardItem{}};
-        progressItem->setDragEnabled(false);
-        progressItem->setDropEnabled(false);
-        progressItem->setEditable(false);
-        progressItem->setSelectable(false);
-
         const auto closeFileItem{new QStandardItem{}};
         closeFileItem->setDragEnabled(false);
         closeFileItem->setDropEnabled(false);
         closeFileItem->setEditable(false);
         closeFileItem->setSelectable(false);
+
+        const auto progressItem{new QStandardItem{}};
+        progressItem->setDragEnabled(false);
+        progressItem->setDropEnabled(false);
+        progressItem->setEditable(false);
+        progressItem->setSelectable(false);
 
         const QList<QStandardItem *> items = {closeFileItem, fileItem, pathItem, sizeItem, progressItem};
 

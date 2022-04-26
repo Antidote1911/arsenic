@@ -23,6 +23,7 @@
 #include "ui_aboutDialog.h"
 
 #include <QClipboard>
+#include <QFile>
 
 static const QString aboutMaintainers = R"(
 <p><ul>

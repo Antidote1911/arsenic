@@ -167,80 +167,7 @@ void Config::resetToDefaults()
     }
 }
 
-/**
- * Map of configuration file settings that are either deprecated, or have
- * had their name changed to their new config enum values.
- *
- * Set a value to Deleted to remove the setting.
- */
-static const QHash<QString, Config::ConfigKey> deprecationMap = {
 
-    {QS("generator/LowerCase"), Config::PasswordGenerator_LowerCase},
-    {QS("generator/UpperCase"), Config::PasswordGenerator_UpperCase},
-    {QS("generator/Numbers"), Config::PasswordGenerator_Numbers},
-    {QS("generator/EASCII"), Config::PasswordGenerator_EASCII},
-    {QS("generator/AdvancedMode"), Config::PasswordGenerator_AdvancedMode},
-    {QS("generator/SpecialChars"), Config::PasswordGenerator_SpecialChars},
-    {QS("generator/AdditionalChars"), Config::PasswordGenerator_AdditionalChars},
-    {QS("generator/Braces"), Config::PasswordGenerator_Braces},
-    {QS("generator/Punctuation"), Config::PasswordGenerator_Punctuation},
-    {QS("generator/Quotes"), Config::PasswordGenerator_Quotes},
-    {QS("generator/Dashes"), Config::PasswordGenerator_Dashes},
-    {QS("generator/Math"), Config::PasswordGenerator_Math},
-    {QS("generator/Logograms"), Config::PasswordGenerator_Logograms},
-    {QS("generator/ExcludedChars"), Config::PasswordGenerator_ExcludedChars},
-    {QS("generator/ExcludeAlike"), Config::PasswordGenerator_ExcludeAlike},
-    {QS("generator/EnsureEvery"), Config::PasswordGenerator_EnsureEvery},
-    {QS("generator/Length"), Config::PasswordGenerator_Length},
-    {QS("generator/WordCount"), Config::PasswordGenerator_WordCount},
-    {QS("generator/WordSeparator"), Config::PasswordGenerator_WordSeparator},
-    {QS("generator/WordList"), Config::PasswordGenerator_WordList},
-    {QS("generator/WordCase"), Config::PasswordGenerator_WordCase},
-    {QS("generator/Type"), Config::PasswordGenerator_Type},
-    {QS("GUI/HidePasswords"), Config::Deleted},
-    {QS("GUI/DarkTrayIcon"), Config::Deleted}};
-
-/**
- * Migrate settings from previous versions.
- */
-void Config::migrate()
-{
-    int previousVersion = m_settings->value("ConfigVersion").toInt();
-    if (CONFIG_VERSION <= previousVersion) {
-        return;
-    }
-
-    // Update renamed keys and drop obsolete keys
-    for (const auto& setting : deprecationMap.keys()) {
-        QVariant value;
-        if (m_settings->contains(setting)) {
-            if (setting == QS("IgnoreGroupExpansion") || setting == QS("security/passwordsrepeat") || setting == QS("security/passwordscleartext") || setting == QS("security/passwordemptynodots")) {
-                // Keep user's original setting for boolean settings whose meanings were reversed
-                value = !m_settings->value(setting).toBool();
-            }
-            else {
-                value = m_settings->value(setting);
-            }
-            m_settings->remove(setting);
-        }
-        else if (m_localSettings && m_localSettings->contains(setting)) {
-            value = m_localSettings->value(setting);
-            m_localSettings->remove(setting);
-        }
-        else {
-            continue;
-        }
-
-        if (deprecationMap[setting] == Config::Deleted) {
-            continue;
-        }
-
-        set(deprecationMap[setting], value);
-    }
-
-    m_settings->setValue("ConfigVersion", CONFIG_VERSION);
-    sync();
-}
 
 Config::Config(QObject* parent)
     : QObject(parent)
@@ -301,7 +228,6 @@ void Config::init(const QString& configFileName, const QString& localConfigFileN
         m_localSettings.reset(new QSettings(localConfigFileName, QSettings::IniFormat));
     }
 
-    migrate();
     connect(qApp, &QCoreApplication::aboutToQuit, this, &Config::sync);
 }
 
