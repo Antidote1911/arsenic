@@ -65,7 +65,6 @@ win32-g++ {
 }
 win32-msvc {
     BOTAN_OS_SWITCH = "--os=windows"
-    OTHER_FLAGS += --without-stack-protector
 }
 
 BOTAN_CXX_FLAGS = $$QMAKE_CXXFLAGS
