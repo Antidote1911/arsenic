@@ -19,6 +19,7 @@ before_build:
     - qmake arsenic.pro
     
 build_script:
+  - cd %APPVEYOR_BUILD_FOLDER%
   - nmake    
 
 after_build:
