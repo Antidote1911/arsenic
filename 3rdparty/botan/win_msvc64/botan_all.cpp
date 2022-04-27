@@ -7,9 +7,11 @@
 
 #include "botan_all.h"
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <type_traits>
@@ -902,6 +904,318 @@ inline uint64_t combine_lower(const uint128_t a, size_t s1,
 namespace Botan {
 
 /**
+* An element of the field \\Z/(2^255-19)
+*/
+class FE_25519
+   {
+   public:
+      ~FE_25519() { secure_scrub_memory(m_fe, sizeof(m_fe)); }
+
+      /**
+      * Zero element
+      */
+      FE_25519(int init = 0)
+         {
+         if(init != 0 && init != 1)
+            throw Invalid_Argument("Invalid FE_25519 initial value");
+         clear_mem(m_fe, 10);
+         m_fe[0] = init;
+         }
+
+      FE_25519(std::initializer_list<int32_t> x)
+         {
+         if(x.size() != 10)
+            throw Invalid_Argument("Invalid FE_25519 initializer list");
+         copy_mem(m_fe, x.begin(), 10);
+         }
+
+      FE_25519(int64_t h0, int64_t h1, int64_t h2, int64_t h3, int64_t h4,
+               int64_t h5, int64_t h6, int64_t h7, int64_t h8, int64_t h9)
+         {
+         m_fe[0] = static_cast<int32_t>(h0);
+         m_fe[1] = static_cast<int32_t>(h1);
+         m_fe[2] = static_cast<int32_t>(h2);
+         m_fe[3] = static_cast<int32_t>(h3);
+         m_fe[4] = static_cast<int32_t>(h4);
+         m_fe[5] = static_cast<int32_t>(h5);
+         m_fe[6] = static_cast<int32_t>(h6);
+         m_fe[7] = static_cast<int32_t>(h7);
+         m_fe[8] = static_cast<int32_t>(h8);
+         m_fe[9] = static_cast<int32_t>(h9);
+         }
+
+      FE_25519(const FE_25519& other) = default;
+      FE_25519& operator=(const FE_25519& other) = default;
+
+      FE_25519(FE_25519&& other) = default;
+      FE_25519& operator=(FE_25519&& other) = default;
+
+      void from_bytes(const uint8_t b[32]);
+      void to_bytes(uint8_t b[32]) const;
+
+      bool is_zero() const
+         {
+         uint8_t s[32];
+         to_bytes(s);
+
+         uint8_t sum = 0;
+         for(size_t i = 0; i != 32; ++i)
+            { sum |= s[i]; }
+
+         // TODO avoid ternary here
+         return (sum == 0) ? 1 : 0;
+         }
+
+      /*
+      return 1 if f is in {1,3,5,...,q-2}
+      return 0 if f is in {0,2,4,...,q-1}
+      */
+      bool is_negative() const
+         {
+         // TODO could avoid most of the to_bytes computation here
+         uint8_t s[32];
+         to_bytes(s);
+         return s[0] & 1;
+         }
+
+      static FE_25519 add(const FE_25519& a, const FE_25519& b)
+         {
+         FE_25519 z;
+         for(size_t i = 0; i != 10; ++i)
+            { z[i] = a[i] + b[i]; }
+         return z;
+         }
+
+      static FE_25519 sub(const FE_25519& a, const FE_25519& b)
+         {
+         FE_25519 z;
+         for(size_t i = 0; i != 10; ++i)
+            { z[i] = a[i] - b[i]; }
+         return z;
+         }
+
+      static FE_25519 negate(const FE_25519& a)
+         {
+         FE_25519 z;
+         for(size_t i = 0; i != 10; ++i)
+            { z[i] = -a[i]; }
+         return z;
+         }
+
+      static FE_25519 mul(const FE_25519& a, const FE_25519& b);
+      static FE_25519 sqr_iter(const FE_25519& a, size_t iter);
+      static FE_25519 sqr(const FE_25519& a) { return sqr_iter(a, 1); }
+      static FE_25519 sqr2(const FE_25519& a);
+      static FE_25519 pow_22523(const FE_25519& a);
+      static FE_25519 invert(const FE_25519& a);
+
+      // TODO remove
+      int32_t operator[](size_t i) const { return m_fe[i]; }
+      int32_t& operator[](size_t i) { return m_fe[i]; }
+
+   private:
+
+      int32_t m_fe[10];
+   };
+
+typedef FE_25519 fe;
+
+/*
+fe means field element.
+Here the field is
+An element t, entries t[0]...t[9], represents the integer
+t[0]+2^26 t[1]+2^51 t[2]+2^77 t[3]+2^102 t[4]+...+2^230 t[9].
+Bounds on each t[i] vary depending on context.
+*/
+
+inline void fe_frombytes(fe& x, const uint8_t* b)
+   {
+   x.from_bytes(b);
+   }
+
+inline void fe_tobytes(uint8_t* b, const fe& x)
+   {
+   x.to_bytes(b);
+   }
+
+inline void fe_copy(fe& a, const fe& b)
+   {
+   a = b;
+   }
+
+inline int fe_isnonzero(const fe& x)
+   {
+   return x.is_zero() ? 0 : 1;
+   }
+
+inline int fe_isnegative(const fe& x)
+   {
+   return x.is_negative();
+   }
+
+
+inline void fe_0(fe& x)
+   {
+   x = FE_25519();
+   }
+
+inline void fe_1(fe& x)
+   {
+   x = FE_25519(1);
+   }
+
+inline void fe_add(fe& x, const fe& a, const fe& b)
+   {
+   x = FE_25519::add(a, b);
+   }
+
+inline void fe_sub(fe& x, const fe& a, const fe& b)
+   {
+   x = FE_25519::sub(a, b);
+   }
+
+inline void fe_neg(fe& x, const fe& z)
+   {
+   x = FE_25519::negate(z);
+   }
+
+inline void fe_mul(fe& x, const fe& a, const fe& b)
+   {
+   x = FE_25519::mul(a, b);
+   }
+
+inline void fe_sq(fe& x, const fe& z)
+   {
+   x = FE_25519::sqr(z);
+   }
+
+inline void fe_sq_iter(fe& x, const fe& z, size_t iter)
+   {
+   x = FE_25519::sqr_iter(z, iter);
+   }
+
+inline void fe_sq2(fe& x, const fe& z)
+   {
+   x = FE_25519::sqr2(z);
+   }
+
+inline void fe_invert(fe& x, const fe& z)
+   {
+   x = FE_25519::invert(z);
+   }
+
+inline void fe_pow22523(fe& x, const fe& y)
+   {
+   x = FE_25519::pow_22523(y);
+   }
+
+}
+
+namespace Botan {
+
+inline uint64_t load_3(const uint8_t in[3])
+   {
+   return static_cast<uint64_t>(in[0]) |
+      (static_cast<uint64_t>(in[1]) << 8) |
+      (static_cast<uint64_t>(in[2]) << 16);
+   }
+
+inline uint64_t load_4(const uint8_t* in)
+   {
+   return load_le<uint32_t>(in, 0);
+   }
+
+template<size_t S, int64_t MUL=1>
+inline void carry(int64_t& h0, int64_t& h1)
+   {
+   static_assert(S > 0 && S < 64, "Shift in range");
+
+   const int64_t X1 = (static_cast<int64_t>(1) << S);
+   const int64_t X2 = (static_cast<int64_t>(1) << (S - 1));
+   int64_t c = (h0 + X2)  >> S;
+   h1 += c * MUL;
+   h0 -= c * X1;
+   }
+
+template<size_t S>
+inline void carry0(int64_t& h0, int64_t& h1)
+   {
+   static_assert(S > 0 && S < 64, "Shift in range");
+
+   const int64_t X1 = (static_cast<int64_t>(1) << S);
+   int64_t c = h0 >> S;
+   h1 += c;
+   h0 -= c * X1;
+   }
+
+template<size_t S>
+inline void carry0(int32_t& h0, int32_t& h1)
+   {
+   static_assert(S > 0 && S < 32, "Shift in range");
+
+   const int32_t X1 = (static_cast<int64_t>(1) << S);
+   int32_t c = h0 >> S;
+   h1 += c;
+   h0 -= c * X1;
+   }
+
+inline void redc_mul(int64_t& s1,
+                     int64_t& s2,
+                     int64_t& s3,
+                     int64_t& s4,
+                     int64_t& s5,
+                     int64_t& s6,
+                     int64_t& X)
+   {
+   s1 += X * 666643;
+   s2 += X * 470296;
+   s3 += X * 654183;
+   s4 -= X * 997805;
+   s5 += X * 136657;
+   s6 -= X * 683901;
+   X = 0;
+   }
+
+/*
+ge means group element.
+
+Here the group is the set of pairs (x,y) of field elements (see fe.h)
+satisfying -x^2 + y^2 = 1 + d x^2y^2
+where d = -121665/121666.
+
+Representations:
+  ge_p3 (extended): (X:Y:Z:T) satisfying x=X/Z, y=Y/Z, XY=ZT
+*/
+
+typedef struct
+   {
+   fe X;
+   fe Y;
+   fe Z;
+   fe T;
+   } ge_p3;
+
+int ge_frombytes_negate_vartime(ge_p3*, const uint8_t*);
+void ge_scalarmult_base(uint8_t out[32], const uint8_t in[32]);
+
+void ge_double_scalarmult_vartime(uint8_t out[32],
+                                  const uint8_t a[],
+                                  const ge_p3* A,
+                                  const uint8_t b[]);
+
+/*
+The set of scalars is \Z/l
+where l = 2^252 + 27742317777372353535851937790883648493.
+*/
+
+void sc_reduce(uint8_t*);
+void sc_muladd(uint8_t*, const uint8_t*, const uint8_t*, const uint8_t*);
+
+}
+
+namespace Botan {
+
+/**
 * No_Filesystem_Access Exception
 */
 class BOTAN_PUBLIC_API(2,0) No_Filesystem_Access final : public Exception
@@ -914,6 +1228,1594 @@ class BOTAN_PUBLIC_API(2,0) No_Filesystem_Access final : public Exception
 BOTAN_TEST_API bool has_filesystem_impl();
 
 BOTAN_TEST_API std::vector<std::string> get_files_recursive(const std::string& dir);
+
+}
+
+namespace Botan {
+
+class BigInt;
+class Modular_Reducer;
+
+class Montgomery_Params;
+
+class Montgomery_Exponentation_State;
+
+/*
+* Precompute for calculating values g^x mod p
+*/
+std::shared_ptr<const Montgomery_Exponentation_State>
+monty_precompute(std::shared_ptr<const Montgomery_Params> params_p,
+                 const BigInt& g,
+                 size_t window_bits,
+                 bool const_time = true);
+
+/*
+* Return g^k mod p
+*/
+BigInt monty_execute(const Montgomery_Exponentation_State& precomputed_state,
+                     const BigInt& k, size_t max_k_bits);
+
+/*
+* Return g^k mod p taking variable time depending on k
+* @warning only use this if k is public
+*/
+BigInt monty_execute_vartime(const Montgomery_Exponentation_State& precomputed_state,
+                             const BigInt& k);
+
+/**
+* Return (x^z1 * y^z2) % p
+*/
+BigInt monty_multi_exp(std::shared_ptr<const Montgomery_Params> params_p,
+                       const BigInt& x,
+                       const BigInt& z1,
+                       const BigInt& y,
+                       const BigInt& z2);
+
+}
+
+namespace Botan {
+
+#if (BOTAN_MP_WORD_BITS == 32)
+  typedef uint64_t dword;
+  #define BOTAN_HAS_MP_DWORD
+
+#elif (BOTAN_MP_WORD_BITS == 64)
+  #if defined(BOTAN_TARGET_HAS_NATIVE_UINT128)
+    typedef uint128_t dword;
+    #define BOTAN_HAS_MP_DWORD
+  #else
+    // No native 128 bit integer type; use mul64x64_128 instead
+  #endif
+
+#else
+  #error BOTAN_MP_WORD_BITS must be 32 or 64
+#endif
+
+#if defined(BOTAN_USE_GCC_INLINE_ASM)
+
+  #if defined(BOTAN_TARGET_ARCH_IS_X86_32) && (BOTAN_MP_WORD_BITS == 32)
+    #define BOTAN_MP_USE_X86_32_ASM
+  #elif defined(BOTAN_TARGET_ARCH_IS_X86_64) && (BOTAN_MP_WORD_BITS == 64)
+    #define BOTAN_MP_USE_X86_64_ASM
+  #endif
+
+#endif
+
+/*
+* Word Multiply/Add
+*/
+inline word word_madd2(word a, word b, word* c)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(R"(
+      mull %[b]
+      addl %[c],%[a]
+      adcl $0,%[carry]
+      )"
+      : [a]"=a"(a), [b]"=rm"(b), [carry]"=&d"(*c)
+      : "0"(a), "1"(b), [c]"g"(*c) : "cc");
+
+   return a;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+      asm(R"(
+         mulq %[b]
+         addq %[c],%[a]
+         adcq $0,%[carry]
+      )"
+      : [a]"=a"(a), [b]"=rm"(b), [carry]"=&d"(*c)
+      : "0"(a), "1"(b), [c]"g"(*c) : "cc");
+
+   return a;
+
+#elif defined(BOTAN_HAS_MP_DWORD)
+   const dword s = static_cast<dword>(a) * b + *c;
+   *c = static_cast<word>(s >> BOTAN_MP_WORD_BITS);
+   return static_cast<word>(s);
+#else
+   static_assert(BOTAN_MP_WORD_BITS == 64, "Unexpected word size");
+
+   word hi = 0, lo = 0;
+
+   mul64x64_128(a, b, &lo, &hi);
+
+   lo += *c;
+   hi += (lo < *c); // carry?
+
+   *c = hi;
+   return lo;
+#endif
+   }
+
+/*
+* Word Multiply/Add
+*/
+inline word word_madd3(word a, word b, word c, word* d)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(R"(
+      mull %[b]
+
+      addl %[c],%[a]
+      adcl $0,%[carry]
+
+      addl %[d],%[a]
+      adcl $0,%[carry]
+      )"
+      : [a]"=a"(a), [b]"=rm"(b), [carry]"=&d"(*d)
+      : "0"(a), "1"(b), [c]"g"(c), [d]"g"(*d) : "cc");
+
+   return a;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+   asm(R"(
+      mulq %[b]
+      addq %[c],%[a]
+      adcq $0,%[carry]
+      addq %[d],%[a]
+      adcq $0,%[carry]
+      )"
+      : [a]"=a"(a), [b]"=rm"(b), [carry]"=&d"(*d)
+      : "0"(a), "1"(b), [c]"g"(c), [d]"g"(*d) : "cc");
+
+   return a;
+
+#elif defined(BOTAN_HAS_MP_DWORD)
+   const dword s = static_cast<dword>(a) * b + c + *d;
+   *d = static_cast<word>(s >> BOTAN_MP_WORD_BITS);
+   return static_cast<word>(s);
+#else
+   static_assert(BOTAN_MP_WORD_BITS == 64, "Unexpected word size");
+
+   word hi = 0, lo = 0;
+
+   mul64x64_128(a, b, &lo, &hi);
+
+   lo += c;
+   hi += (lo < c); // carry?
+
+   lo += *d;
+   hi += (lo < *d); // carry?
+
+   *d = hi;
+   return lo;
+#endif
+   }
+
+}
+
+namespace Botan {
+
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+
+#define ADDSUB2_OP(OPERATION, INDEX)                     \
+        ASM("movl 4*" #INDEX "(%[y]), %[carry]")         \
+        ASM(OPERATION " %[carry], 4*" #INDEX "(%[x])")   \
+
+#define ADDSUB3_OP(OPERATION, INDEX)                     \
+        ASM("movl 4*" #INDEX "(%[x]), %[carry]")         \
+        ASM(OPERATION " 4*" #INDEX "(%[y]), %[carry]")   \
+        ASM("movl %[carry], 4*" #INDEX "(%[z])")         \
+
+#define LINMUL_OP(WRITE_TO, INDEX)                       \
+        ASM("movl 4*" #INDEX "(%[x]),%%eax")             \
+        ASM("mull %[y]")                                 \
+        ASM("addl %[carry],%%eax")                       \
+        ASM("adcl $0,%%edx")                             \
+        ASM("movl %%edx,%[carry]")                       \
+        ASM("movl %%eax, 4*" #INDEX "(%[" WRITE_TO "])")
+
+#define MULADD_OP(IGNORED, INDEX)                        \
+        ASM("movl 4*" #INDEX "(%[x]),%%eax")             \
+        ASM("mull %[y]")                                 \
+        ASM("addl %[carry],%%eax")                       \
+        ASM("adcl $0,%%edx")                             \
+        ASM("addl 4*" #INDEX "(%[z]),%%eax")             \
+        ASM("adcl $0,%%edx")                             \
+        ASM("movl %%edx,%[carry]")                       \
+        ASM("movl %%eax, 4*" #INDEX " (%[z])")
+
+#define ADD_OR_SUBTRACT(CORE_CODE)     \
+        ASM("rorl %[carry]")           \
+        CORE_CODE                      \
+        ASM("sbbl %[carry],%[carry]")  \
+        ASM("negl %[carry]")
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+#define ADDSUB2_OP(OPERATION, INDEX)                     \
+        ASM("movq 8*" #INDEX "(%[y]), %[carry]")         \
+        ASM(OPERATION " %[carry], 8*" #INDEX "(%[x])")   \
+
+#define ADDSUB3_OP(OPERATION, INDEX)                     \
+        ASM("movq 8*" #INDEX "(%[x]), %[carry]")         \
+        ASM(OPERATION " 8*" #INDEX "(%[y]), %[carry]")   \
+        ASM("movq %[carry], 8*" #INDEX "(%[z])")         \
+
+#define LINMUL_OP(WRITE_TO, INDEX)                       \
+        ASM("movq 8*" #INDEX "(%[x]),%%rax")             \
+        ASM("mulq %[y]")                                 \
+        ASM("addq %[carry],%%rax")                       \
+        ASM("adcq $0,%%rdx")                             \
+        ASM("movq %%rdx,%[carry]")                       \
+        ASM("movq %%rax, 8*" #INDEX "(%[" WRITE_TO "])")
+
+#define MULADD_OP(IGNORED, INDEX)                        \
+        ASM("movq 8*" #INDEX "(%[x]),%%rax")             \
+        ASM("mulq %[y]")                                 \
+        ASM("addq %[carry],%%rax")                       \
+        ASM("adcq $0,%%rdx")                             \
+        ASM("addq 8*" #INDEX "(%[z]),%%rax")             \
+        ASM("adcq $0,%%rdx")                             \
+        ASM("movq %%rdx,%[carry]")                       \
+        ASM("movq %%rax, 8*" #INDEX " (%[z])")
+
+#define ADD_OR_SUBTRACT(CORE_CODE)     \
+        ASM("rorq %[carry]")           \
+        CORE_CODE                      \
+        ASM("sbbq %[carry],%[carry]")  \
+        ASM("negq %[carry]")
+
+#endif
+
+#if defined(ADD_OR_SUBTRACT)
+
+#define ASM(x) x "\n\t"
+
+#define DO_8_TIMES(MACRO, ARG) \
+        MACRO(ARG, 0) \
+        MACRO(ARG, 1) \
+        MACRO(ARG, 2) \
+        MACRO(ARG, 3) \
+        MACRO(ARG, 4) \
+        MACRO(ARG, 5) \
+        MACRO(ARG, 6) \
+        MACRO(ARG, 7)
+
+#endif
+
+/*
+* Word Addition
+*/
+inline word word_add(word x, word y, word* carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      ADD_OR_SUBTRACT(ASM("adcl %[y],%[x]"))
+      : [x]"=r"(x), [carry]"=r"(*carry)
+      : "0"(x), [y]"rm"(y), "1"(*carry)
+      : "cc");
+   return x;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(
+      ADD_OR_SUBTRACT(ASM("adcq %[y],%[x]"))
+      : [x]"=r"(x), [carry]"=r"(*carry)
+      : "0"(x), [y]"rm"(y), "1"(*carry)
+      : "cc");
+   return x;
+
+#else
+   word z = x + y;
+   word c1 = (z < x);
+   z += *carry;
+   *carry = c1 | (z < *carry);
+   return z;
+#endif
+   }
+
+/*
+* Eight Word Block Addition, Two Argument
+*/
+inline word word8_add2(word x[8], const word y[8], word carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB2_OP, "adcl"))
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"r"(y), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB2_OP, "adcq"))
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"r"(y), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#else
+   x[0] = word_add(x[0], y[0], &carry);
+   x[1] = word_add(x[1], y[1], &carry);
+   x[2] = word_add(x[2], y[2], &carry);
+   x[3] = word_add(x[3], y[3], &carry);
+   x[4] = word_add(x[4], y[4], &carry);
+   x[5] = word_add(x[5], y[5], &carry);
+   x[6] = word_add(x[6], y[6], &carry);
+   x[7] = word_add(x[7], y[7], &carry);
+   return carry;
+#endif
+   }
+
+/*
+* Eight Word Block Addition, Three Argument
+*/
+inline word word8_add3(word z[8], const word x[8],
+                       const word y[8], word carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB3_OP, "adcl"))
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"r"(y), [z]"r"(z), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB3_OP, "adcq"))
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"r"(y), [z]"r"(z), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#else
+   z[0] = word_add(x[0], y[0], &carry);
+   z[1] = word_add(x[1], y[1], &carry);
+   z[2] = word_add(x[2], y[2], &carry);
+   z[3] = word_add(x[3], y[3], &carry);
+   z[4] = word_add(x[4], y[4], &carry);
+   z[5] = word_add(x[5], y[5], &carry);
+   z[6] = word_add(x[6], y[6], &carry);
+   z[7] = word_add(x[7], y[7], &carry);
+   return carry;
+#endif
+   }
+
+/*
+* Word Subtraction
+*/
+inline word word_sub(word x, word y, word* carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      ADD_OR_SUBTRACT(ASM("sbbl %[y],%[x]"))
+      : [x]"=r"(x), [carry]"=r"(*carry)
+      : "0"(x), [y]"rm"(y), "1"(*carry)
+      : "cc");
+   return x;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(
+      ADD_OR_SUBTRACT(ASM("sbbq %[y],%[x]"))
+      : [x]"=r"(x), [carry]"=r"(*carry)
+      : "0"(x), [y]"rm"(y), "1"(*carry)
+      : "cc");
+   return x;
+
+#else
+   word t0 = x - y;
+   word c1 = (t0 > x);
+   word z = t0 - *carry;
+   *carry = c1 | (z > t0);
+   return z;
+#endif
+   }
+
+/*
+* Eight Word Block Subtraction, Two Argument
+*/
+inline word word8_sub2(word x[8], const word y[8], word carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB2_OP, "sbbl"))
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"r"(y), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB2_OP, "sbbq"))
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"r"(y), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#else
+   x[0] = word_sub(x[0], y[0], &carry);
+   x[1] = word_sub(x[1], y[1], &carry);
+   x[2] = word_sub(x[2], y[2], &carry);
+   x[3] = word_sub(x[3], y[3], &carry);
+   x[4] = word_sub(x[4], y[4], &carry);
+   x[5] = word_sub(x[5], y[5], &carry);
+   x[6] = word_sub(x[6], y[6], &carry);
+   x[7] = word_sub(x[7], y[7], &carry);
+   return carry;
+#endif
+   }
+
+/*
+* Eight Word Block Subtraction, Two Argument
+*/
+inline word word8_sub2_rev(word x[8], const word y[8], word carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB3_OP, "sbbl"))
+      : [carry]"=r"(carry)
+      : [x]"r"(y), [y]"r"(x), [z]"r"(x), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB3_OP, "sbbq"))
+      : [carry]"=r"(carry)
+      : [x]"r"(y), [y]"r"(x), [z]"r"(x), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#else
+   x[0] = word_sub(y[0], x[0], &carry);
+   x[1] = word_sub(y[1], x[1], &carry);
+   x[2] = word_sub(y[2], x[2], &carry);
+   x[3] = word_sub(y[3], x[3], &carry);
+   x[4] = word_sub(y[4], x[4], &carry);
+   x[5] = word_sub(y[5], x[5], &carry);
+   x[6] = word_sub(y[6], x[6], &carry);
+   x[7] = word_sub(y[7], x[7], &carry);
+   return carry;
+#endif
+   }
+
+/*
+* Eight Word Block Subtraction, Three Argument
+*/
+inline word word8_sub3(word z[8], const word x[8],
+                       const word y[8], word carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB3_OP, "sbbl"))
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"r"(y), [z]"r"(z), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(
+      ADD_OR_SUBTRACT(DO_8_TIMES(ADDSUB3_OP, "sbbq"))
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"r"(y), [z]"r"(z), "0"(carry)
+      : "cc", "memory");
+   return carry;
+
+#else
+   z[0] = word_sub(x[0], y[0], &carry);
+   z[1] = word_sub(x[1], y[1], &carry);
+   z[2] = word_sub(x[2], y[2], &carry);
+   z[3] = word_sub(x[3], y[3], &carry);
+   z[4] = word_sub(x[4], y[4], &carry);
+   z[5] = word_sub(x[5], y[5], &carry);
+   z[6] = word_sub(x[6], y[6], &carry);
+   z[7] = word_sub(x[7], y[7], &carry);
+   return carry;
+#endif
+   }
+
+/*
+* Eight Word Block Linear Multiplication
+*/
+inline word word8_linmul2(word x[8], word y, word carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      DO_8_TIMES(LINMUL_OP, "x")
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"rm"(y), "0"(carry)
+      : "cc", "%eax", "%edx");
+   return carry;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(
+      DO_8_TIMES(LINMUL_OP, "x")
+      : [carry]"=r"(carry)
+      : [x]"r"(x), [y]"rm"(y), "0"(carry)
+      : "cc", "%rax", "%rdx");
+   return carry;
+
+#else
+   x[0] = word_madd2(x[0], y, &carry);
+   x[1] = word_madd2(x[1], y, &carry);
+   x[2] = word_madd2(x[2], y, &carry);
+   x[3] = word_madd2(x[3], y, &carry);
+   x[4] = word_madd2(x[4], y, &carry);
+   x[5] = word_madd2(x[5], y, &carry);
+   x[6] = word_madd2(x[6], y, &carry);
+   x[7] = word_madd2(x[7], y, &carry);
+   return carry;
+#endif
+   }
+
+/*
+* Eight Word Block Linear Multiplication
+*/
+inline word word8_linmul3(word z[8], const word x[8], word y, word carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      DO_8_TIMES(LINMUL_OP, "z")
+      : [carry]"=r"(carry)
+      : [z]"r"(z), [x]"r"(x), [y]"rm"(y), "0"(carry)
+      : "cc", "%eax", "%edx");
+   return carry;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+   asm(
+      DO_8_TIMES(LINMUL_OP, "z")
+      : [carry]"=r"(carry)
+      : [z]"r"(z), [x]"r"(x), [y]"rm"(y), "0"(carry)
+      : "cc", "%rax", "%rdx");
+   return carry;
+
+#else
+   z[0] = word_madd2(x[0], y, &carry);
+   z[1] = word_madd2(x[1], y, &carry);
+   z[2] = word_madd2(x[2], y, &carry);
+   z[3] = word_madd2(x[3], y, &carry);
+   z[4] = word_madd2(x[4], y, &carry);
+   z[5] = word_madd2(x[5], y, &carry);
+   z[6] = word_madd2(x[6], y, &carry);
+   z[7] = word_madd2(x[7], y, &carry);
+   return carry;
+#endif
+   }
+
+/*
+* Eight Word Block Multiply/Add
+*/
+inline word word8_madd3(word z[8], const word x[8], word y, word carry)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(
+      DO_8_TIMES(MULADD_OP, "")
+      : [carry]"=r"(carry)
+      : [z]"r"(z), [x]"r"(x), [y]"rm"(y), "0"(carry)
+      : "cc", "%eax", "%edx");
+   return carry;
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(
+      DO_8_TIMES(MULADD_OP, "")
+      : [carry]"=r"(carry)
+      : [z]"r"(z), [x]"r"(x), [y]"rm"(y), "0"(carry)
+      : "cc", "%rax", "%rdx");
+   return carry;
+
+#else
+   z[0] = word_madd3(x[0], y, z[0], &carry);
+   z[1] = word_madd3(x[1], y, z[1], &carry);
+   z[2] = word_madd3(x[2], y, z[2], &carry);
+   z[3] = word_madd3(x[3], y, z[3], &carry);
+   z[4] = word_madd3(x[4], y, z[4], &carry);
+   z[5] = word_madd3(x[5], y, z[5], &carry);
+   z[6] = word_madd3(x[6], y, z[6], &carry);
+   z[7] = word_madd3(x[7], y, z[7], &carry);
+   return carry;
+#endif
+   }
+
+/*
+* Multiply-Add Accumulator
+* (w2,w1,w0) += x * y
+*/
+inline void word3_muladd(word* w2, word* w1, word* w0, word x, word y)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   word z0 = 0, z1 = 0;
+
+   asm("mull %[y]"
+        : "=a"(z0),"=d"(z1)
+        : "a"(x), [y]"rm"(y)
+        : "cc");
+
+   asm(R"(
+       addl %[z0],%[w0]
+       adcl %[z1],%[w1]
+       adcl $0,%[w2]
+       )"
+       : [w0]"=r"(*w0), [w1]"=r"(*w1), [w2]"=r"(*w2)
+       : [z0]"r"(z0), [z1]"r"(z1), "0"(*w0), "1"(*w1), "2"(*w2)
+       : "cc");
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   word z0 = 0, z1 = 0;
+
+   asm("mulq %[y]"
+        : "=a"(z0),"=d"(z1)
+        : "a"(x), [y]"rm"(y)
+        : "cc");
+
+   asm(R"(
+       addq %[z0],%[w0]
+       adcq %[z1],%[w1]
+       adcq $0,%[w2]
+       )"
+       : [w0]"=r"(*w0), [w1]"=r"(*w1), [w2]"=r"(*w2)
+       : [z0]"r"(z0), [z1]"r"(z1), "0"(*w0), "1"(*w1), "2"(*w2)
+       : "cc");
+
+#else
+   word carry = *w0;
+   *w0 = word_madd2(x, y, &carry);
+   *w1 += carry;
+   *w2 += (*w1 < carry);
+#endif
+   }
+
+/*
+* 3-word addition
+* (w2,w1,w0) += x
+*/
+inline void word3_add(word* w2, word* w1, word* w0, word x)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+   asm(R"(
+      addl %[x],%[w0]
+      adcl $0,%[w1]
+      adcl $0,%[w2]
+      )"
+      : [w0]"=r"(*w0), [w1]"=r"(*w1), [w2]"=r"(*w2)
+      : [x]"r"(x), "0"(*w0), "1"(*w1), "2"(*w2)
+      : "cc");
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   asm(R"(
+      addq %[x],%[w0]
+      adcq $0,%[w1]
+      adcq $0,%[w2]
+      )"
+      : [w0]"=r"(*w0), [w1]"=r"(*w1), [w2]"=r"(*w2)
+      : [x]"r"(x), "0"(*w0), "1"(*w1), "2"(*w2)
+      : "cc");
+
+#else
+   *w0 += x;
+   word c1 = (*w0 < x);
+   *w1 += c1;
+   word c2 = (*w1 < c1);
+   *w2 += c2;
+#endif
+   }
+
+/*
+* Multiply-Add Accumulator
+* (w2,w1,w0) += 2 * x * y
+*/
+inline void word3_muladd_2(word* w2, word* w1, word* w0, word x, word y)
+   {
+#if defined(BOTAN_MP_USE_X86_32_ASM)
+
+   word z0 = 0, z1 = 0;
+
+   asm("mull %[y]"
+        : "=a"(z0),"=d"(z1)
+        : "a"(x), [y]"rm"(y)
+        : "cc");
+
+   asm(R"(
+      addl %[z0],%[w0]
+      adcl %[z1],%[w1]
+      adcl $0,%[w2]
+
+      addl %[z0],%[w0]
+      adcl %[z1],%[w1]
+      adcl $0,%[w2]
+      )"
+      : [w0]"=r"(*w0), [w1]"=r"(*w1), [w2]"=r"(*w2)
+      : [z0]"r"(z0), [z1]"r"(z1), "0"(*w0), "1"(*w1), "2"(*w2)
+      : "cc");
+
+#elif defined(BOTAN_MP_USE_X86_64_ASM)
+
+   word z0 = 0, z1 = 0;
+
+   asm("mulq %[y]"
+        : "=a"(z0),"=d"(z1)
+        : "a"(x), [y]"rm"(y)
+        : "cc");
+
+   asm(R"(
+      addq %[z0],%[w0]
+      adcq %[z1],%[w1]
+      adcq $0,%[w2]
+
+      addq %[z0],%[w0]
+      adcq %[z1],%[w1]
+      adcq $0,%[w2]
+      )"
+      : [w0]"=r"(*w0), [w1]"=r"(*w1), [w2]"=r"(*w2)
+      : [z0]"r"(z0), [z1]"r"(z1), "0"(*w0), "1"(*w1), "2"(*w2)
+      : "cc");
+
+#else
+   word carry = 0;
+   x = word_madd2(x, y, &carry);
+   y = carry;
+
+   word top = (y >> (BOTAN_MP_WORD_BITS-1));
+   y <<= 1;
+   y |= (x >> (BOTAN_MP_WORD_BITS-1));
+   x <<= 1;
+
+   carry = 0;
+   *w0 = word_add(*w0, x, &carry);
+   *w1 = word_add(*w1, y, &carry);
+   *w2 = word_add(*w2, top, &carry);
+#endif
+   }
+
+#if defined(ASM)
+  #undef ASM
+  #undef DO_8_TIMES
+  #undef ADD_OR_SUBTRACT
+  #undef ADDSUB2_OP
+  #undef ADDSUB3_OP
+  #undef LINMUL_OP
+  #undef MULADD_OP
+#endif
+
+}
+
+namespace Botan {
+
+const word MP_WORD_MAX = ~static_cast<word>(0);
+
+/*
+* If cond == 0, does nothing.
+* If cond > 0, swaps x[0:size] with y[0:size]
+* Runs in constant time
+*/
+inline void bigint_cnd_swap(word cnd, word x[], word y[], size_t size)
+   {
+   const auto mask = CT::Mask<word>::expand(cnd);
+
+   for(size_t i = 0; i != size; ++i)
+      {
+      const word a = x[i];
+      const word b = y[i];
+      x[i] = mask.select(b, a);
+      y[i] = mask.select(a, b);
+      }
+   }
+
+inline word bigint_cnd_add(word cnd, word x[], word x_size,
+                           const word y[], size_t y_size)
+   {
+   BOTAN_ASSERT(x_size >= y_size, "Expected sizes");
+
+   const auto mask = CT::Mask<word>::expand(cnd);
+
+   word carry = 0;
+
+   const size_t blocks = y_size - (y_size % 8);
+   word z[8] = { 0 };
+
+   for(size_t i = 0; i != blocks; i += 8)
+      {
+      carry = word8_add3(z, x + i, y + i, carry);
+      mask.select_n(x + i, z, x + i, 8);
+      }
+
+   for(size_t i = blocks; i != y_size; ++i)
+      {
+      z[0] = word_add(x[i], y[i], &carry);
+      x[i] = mask.select(z[0], x[i]);
+      }
+
+   for(size_t i = y_size; i != x_size; ++i)
+      {
+      z[0] = word_add(x[i], 0, &carry);
+      x[i] = mask.select(z[0], x[i]);
+      }
+
+   return mask.if_set_return(carry);
+   }
+
+/*
+* If cond > 0 adds x[0:size] and y[0:size] and returns carry
+* Runs in constant time
+*/
+inline word bigint_cnd_add(word cnd, word x[], const word y[], size_t size)
+   {
+   return bigint_cnd_add(cnd, x, size, y, size);
+   }
+
+/*
+* If cond > 0 subtracts x[0:size] and y[0:size] and returns borrow
+* Runs in constant time
+*/
+inline word bigint_cnd_sub(word cnd,
+                           word x[], size_t x_size,
+                           const word y[], size_t y_size)
+   {
+   BOTAN_ASSERT(x_size >= y_size, "Expected sizes");
+
+   const auto mask = CT::Mask<word>::expand(cnd);
+
+   word carry = 0;
+
+   const size_t blocks = y_size - (y_size % 8);
+   word z[8] = { 0 };
+
+   for(size_t i = 0; i != blocks; i += 8)
+      {
+      carry = word8_sub3(z, x + i, y + i, carry);
+      mask.select_n(x + i, z, x + i, 8);
+      }
+
+   for(size_t i = blocks; i != y_size; ++i)
+      {
+      z[0] = word_sub(x[i], y[i], &carry);
+      x[i] = mask.select(z[0], x[i]);
+      }
+
+   for(size_t i = y_size; i != x_size; ++i)
+      {
+      z[0] = word_sub(x[i], 0, &carry);
+      x[i] = mask.select(z[0], x[i]);
+      }
+
+   return mask.if_set_return(carry);
+   }
+
+/*
+* If cond > 0 adds x[0:size] and y[0:size] and returns carry
+* Runs in constant time
+*/
+inline word bigint_cnd_sub(word cnd, word x[], const word y[], size_t size)
+   {
+   return bigint_cnd_sub(cnd, x, size, y, size);
+   }
+
+
+/*
+* Equivalent to
+*   bigint_cnd_add( mask, x, y, size);
+*   bigint_cnd_sub(~mask, x, y, size);
+*
+* Mask must be either 0 or all 1 bits
+*/
+inline void bigint_cnd_add_or_sub(CT::Mask<word> mask, word x[], const word y[], size_t size)
+   {
+   const size_t blocks = size - (size % 8);
+
+   word carry = 0;
+   word borrow = 0;
+
+   word t0[8] = { 0 };
+   word t1[8] = { 0 };
+
+   for(size_t i = 0; i != blocks; i += 8)
+      {
+      carry = word8_add3(t0, x + i, y + i, carry);
+      borrow = word8_sub3(t1, x + i, y + i, borrow);
+
+      for(size_t j = 0; j != 8; ++j)
+         x[i+j] = mask.select(t0[j], t1[j]);
+      }
+
+   for(size_t i = blocks; i != size; ++i)
+      {
+      const word a = word_add(x[i], y[i], &carry);
+      const word s = word_sub(x[i], y[i], &borrow);
+
+      x[i] = mask.select(a, s);
+      }
+   }
+
+/*
+* Equivalent to
+*   bigint_cnd_add( mask, x, size, y, size);
+*   bigint_cnd_sub(~mask, x, size, z, size);
+*
+* Mask must be either 0 or all 1 bits
+*
+* Returns the carry or borrow resp
+*/
+inline word bigint_cnd_addsub(CT::Mask<word> mask, word x[],
+                              const word y[], const word z[],
+                              size_t size)
+   {
+   const size_t blocks = size - (size % 8);
+
+   word carry = 0;
+   word borrow = 0;
+
+   word t0[8] = { 0 };
+   word t1[8] = { 0 };
+
+   for(size_t i = 0; i != blocks; i += 8)
+      {
+      carry = word8_add3(t0, x + i, y + i, carry);
+      borrow = word8_sub3(t1, x + i, z + i, borrow);
+
+      for(size_t j = 0; j != 8; ++j)
+         x[i+j] = mask.select(t0[j], t1[j]);
+      }
+
+   for(size_t i = blocks; i != size; ++i)
+      {
+      t0[0] = word_add(x[i], y[i], &carry);
+      t1[0] = word_sub(x[i], z[i], &borrow);
+      x[i] = mask.select(t0[0], t1[0]);
+      }
+
+   return mask.select(carry, borrow);
+   }
+
+/*
+* 2s complement absolute value
+* If cond > 0 sets x to ~x + 1
+* Runs in constant time
+*/
+inline void bigint_cnd_abs(word cnd, word x[], size_t size)
+   {
+   const auto mask = CT::Mask<word>::expand(cnd);
+
+   word carry = mask.if_set_return(1);
+   for(size_t i = 0; i != size; ++i)
+      {
+      const word z = word_add(~x[i], 0, &carry);
+      x[i] = mask.select(z, x[i]);
+      }
+   }
+
+/**
+* Two operand addition with carry out
+*/
+inline word bigint_add2_nc(word x[], size_t x_size, const word y[], size_t y_size)
+   {
+   word carry = 0;
+
+   BOTAN_ASSERT(x_size >= y_size, "Expected sizes");
+
+   const size_t blocks = y_size - (y_size % 8);
+
+   for(size_t i = 0; i != blocks; i += 8)
+      carry = word8_add2(x + i, y + i, carry);
+
+   for(size_t i = blocks; i != y_size; ++i)
+      x[i] = word_add(x[i], y[i], &carry);
+
+   for(size_t i = y_size; i != x_size; ++i)
+      x[i] = word_add(x[i], 0, &carry);
+
+   return carry;
+   }
+
+/**
+* Three operand addition with carry out
+*/
+inline word bigint_add3_nc(word z[],
+                           const word x[], size_t x_size,
+                           const word y[], size_t y_size)
+   {
+   if(x_size < y_size)
+      { return bigint_add3_nc(z, y, y_size, x, x_size); }
+
+   word carry = 0;
+
+   const size_t blocks = y_size - (y_size % 8);
+
+   for(size_t i = 0; i != blocks; i += 8)
+      carry = word8_add3(z + i, x + i, y + i, carry);
+
+   for(size_t i = blocks; i != y_size; ++i)
+      z[i] = word_add(x[i], y[i], &carry);
+
+   for(size_t i = y_size; i != x_size; ++i)
+      z[i] = word_add(x[i], 0, &carry);
+
+   return carry;
+   }
+
+/**
+* Two operand addition
+* @param x the first operand (and output)
+* @param x_size size of x
+* @param y the second operand
+* @param y_size size of y (must be >= x_size)
+*/
+inline void bigint_add2(word x[], size_t x_size,
+                        const word y[], size_t y_size)
+   {
+   x[x_size] += bigint_add2_nc(x, x_size, y, y_size);
+   }
+
+/**
+* Three operand addition
+*/
+inline void bigint_add3(word z[],
+                        const word x[], size_t x_size,
+                        const word y[], size_t y_size)
+   {
+   z[x_size > y_size ? x_size : y_size] +=
+      bigint_add3_nc(z, x, x_size, y, y_size);
+   }
+
+/**
+* Two operand subtraction
+*/
+inline word bigint_sub2(word x[], size_t x_size,
+                        const word y[], size_t y_size)
+   {
+   word borrow = 0;
+
+   BOTAN_ASSERT(x_size >= y_size, "Expected sizes");
+
+   const size_t blocks = y_size - (y_size % 8);
+
+   for(size_t i = 0; i != blocks; i += 8)
+      borrow = word8_sub2(x + i, y + i, borrow);
+
+   for(size_t i = blocks; i != y_size; ++i)
+      x[i] = word_sub(x[i], y[i], &borrow);
+
+   for(size_t i = y_size; i != x_size; ++i)
+      x[i] = word_sub(x[i], 0, &borrow);
+
+   return borrow;
+   }
+
+/**
+* Two operand subtraction, x = y - x; assumes y >= x
+*/
+inline void bigint_sub2_rev(word x[], const word y[], size_t y_size)
+   {
+   word borrow = 0;
+
+   const size_t blocks = y_size - (y_size % 8);
+
+   for(size_t i = 0; i != blocks; i += 8)
+      borrow = word8_sub2_rev(x + i, y + i, borrow);
+
+   for(size_t i = blocks; i != y_size; ++i)
+      x[i] = word_sub(y[i], x[i], &borrow);
+
+   BOTAN_ASSERT(borrow == 0, "y must be greater than x");
+   }
+
+/**
+* Three operand subtraction
+*/
+inline word bigint_sub3(word z[],
+                        const word x[], size_t x_size,
+                        const word y[], size_t y_size)
+   {
+   word borrow = 0;
+
+   BOTAN_ASSERT(x_size >= y_size, "Expected sizes");
+
+   const size_t blocks = y_size - (y_size % 8);
+
+   for(size_t i = 0; i != blocks; i += 8)
+      borrow = word8_sub3(z + i, x + i, y + i, borrow);
+
+   for(size_t i = blocks; i != y_size; ++i)
+      z[i] = word_sub(x[i], y[i], &borrow);
+
+   for(size_t i = y_size; i != x_size; ++i)
+      z[i] = word_sub(x[i], 0, &borrow);
+
+   return borrow;
+   }
+
+/**
+* Return abs(x-y), ie if x >= y, then compute z = x - y
+* Otherwise compute z = y - x
+* No borrow is possible since the result is always >= 0
+*
+* Returns ~0 if x >= y or 0 if x < y
+* @param z output array of at least N words
+* @param x input array of N words
+* @param y input array of N words
+* @param N length of x and y
+* @param ws array of at least 2*N words
+*/
+inline CT::Mask<word>
+bigint_sub_abs(word z[],
+               const word x[], const word y[], size_t N,
+               word ws[])
+   {
+   // Subtract in both direction then conditional copy out the result
+
+   word* ws0 = ws;
+   word* ws1 = ws + N;
+
+   word borrow0 = 0;
+   word borrow1 = 0;
+
+   const size_t blocks = N - (N % 8);
+
+   for(size_t i = 0; i != blocks; i += 8)
+      {
+      borrow0 = word8_sub3(ws0 + i, x + i, y + i, borrow0);
+      borrow1 = word8_sub3(ws1 + i, y + i, x + i, borrow1);
+      }
+
+   for(size_t i = blocks; i != N; ++i)
+      {
+      ws0[i] = word_sub(x[i], y[i], &borrow0);
+      ws1[i] = word_sub(y[i], x[i], &borrow1);
+      }
+
+   return CT::conditional_copy_mem(borrow0, z, ws1, ws0, N);
+   }
+
+/*
+* Shift Operations
+*/
+inline void bigint_shl1(word x[], size_t x_size, size_t x_words,
+                        size_t word_shift, size_t bit_shift)
+   {
+   copy_mem(x + word_shift, x, x_words);
+   clear_mem(x, word_shift);
+
+   const auto carry_mask = CT::Mask<word>::expand(bit_shift);
+   const size_t carry_shift = carry_mask.if_set_return(BOTAN_MP_WORD_BITS - bit_shift);
+
+   word carry = 0;
+   for(size_t i = word_shift; i != x_size; ++i)
+      {
+      const word w = x[i];
+      x[i] = (w << bit_shift) | carry;
+      carry = carry_mask.if_set_return(w >> carry_shift);
+      }
+   }
+
+inline void bigint_shr1(word x[], size_t x_size,
+                        size_t word_shift, size_t bit_shift)
+   {
+   const size_t top = x_size >= word_shift ? (x_size - word_shift) : 0;
+
+   if(top > 0)
+      copy_mem(x, x + word_shift, top);
+   clear_mem(x + top, std::min(word_shift, x_size));
+
+   const auto carry_mask = CT::Mask<word>::expand(bit_shift);
+   const size_t carry_shift = carry_mask.if_set_return(BOTAN_MP_WORD_BITS - bit_shift);
+
+   word carry = 0;
+
+   for(size_t i = 0; i != top; ++i)
+      {
+      const word w = x[top - i - 1];
+      x[top-i-1] = (w >> bit_shift) | carry;
+      carry = carry_mask.if_set_return(w << carry_shift);
+      }
+   }
+
+inline void bigint_shl2(word y[], const word x[], size_t x_size,
+                        size_t word_shift, size_t bit_shift)
+   {
+   copy_mem(y + word_shift, x, x_size);
+
+   const auto carry_mask = CT::Mask<word>::expand(bit_shift);
+   const size_t carry_shift = carry_mask.if_set_return(BOTAN_MP_WORD_BITS - bit_shift);
+
+   word carry = 0;
+   for(size_t i = word_shift; i != x_size + word_shift + 1; ++i)
+      {
+      const word w = y[i];
+      y[i] = (w << bit_shift) | carry;
+      carry = carry_mask.if_set_return(w >> carry_shift);
+      }
+   }
+
+inline void bigint_shr2(word y[], const word x[], size_t x_size,
+                        size_t word_shift, size_t bit_shift)
+   {
+   const size_t new_size = x_size < word_shift ? 0 : (x_size - word_shift);
+
+   if(new_size > 0)
+      copy_mem(y, x + word_shift, new_size);
+
+   const auto carry_mask = CT::Mask<word>::expand(bit_shift);
+   const size_t carry_shift = carry_mask.if_set_return(BOTAN_MP_WORD_BITS - bit_shift);
+
+   word carry = 0;
+   for(size_t i = new_size; i > 0; --i)
+      {
+      word w = y[i-1];
+      y[i-1] = (w >> bit_shift) | carry;
+      carry = carry_mask.if_set_return(w << carry_shift);
+      }
+   }
+
+/*
+* Linear Multiply - returns the carry
+*/
+inline word BOTAN_WARN_UNUSED_RESULT bigint_linmul2(word x[], size_t x_size, word y)
+   {
+   const size_t blocks = x_size - (x_size % 8);
+
+   word carry = 0;
+
+   for(size_t i = 0; i != blocks; i += 8)
+      carry = word8_linmul2(x + i, y, carry);
+
+   for(size_t i = blocks; i != x_size; ++i)
+      x[i] = word_madd2(x[i], y, &carry);
+
+   return carry;
+   }
+
+inline void bigint_linmul3(word z[], const word x[], size_t x_size, word y)
+   {
+   const size_t blocks = x_size - (x_size % 8);
+
+   word carry = 0;
+
+   for(size_t i = 0; i != blocks; i += 8)
+      carry = word8_linmul3(z + i, x + i, y, carry);
+
+   for(size_t i = blocks; i != x_size; ++i)
+      z[i] = word_madd2(x[i], y, &carry);
+
+   z[x_size] = carry;
+   }
+
+/**
+* Compare x and y
+* Return -1 if x < y
+* Return 0 if x == y
+* Return 1 if x > y
+*/
+inline int32_t bigint_cmp(const word x[], size_t x_size,
+                          const word y[], size_t y_size)
+   {
+   static_assert(sizeof(word) >= sizeof(uint32_t), "Size assumption");
+
+   const word LT = static_cast<word>(-1);
+   const word EQ = 0;
+   const word GT = 1;
+
+   const size_t common_elems = std::min(x_size, y_size);
+
+   word result = EQ; // until found otherwise
+
+   for(size_t i = 0; i != common_elems; i++)
+      {
+      const auto is_eq = CT::Mask<word>::is_equal(x[i], y[i]);
+      const auto is_lt = CT::Mask<word>::is_lt(x[i], y[i]);
+
+      result = is_eq.select(result, is_lt.select(LT, GT));
+      }
+
+   if(x_size < y_size)
+      {
+      word mask = 0;
+      for(size_t i = x_size; i != y_size; i++)
+         mask |= y[i];
+
+      // If any bits were set in high part of y, then x < y
+      result = CT::Mask<word>::is_zero(mask).select(result, LT);
+      }
+   else if(y_size < x_size)
+      {
+      word mask = 0;
+      for(size_t i = y_size; i != x_size; i++)
+         mask |= x[i];
+
+      // If any bits were set in high part of x, then x > y
+      result = CT::Mask<word>::is_zero(mask).select(result, GT);
+      }
+
+   CT::unpoison(result);
+   BOTAN_DEBUG_ASSERT(result == LT || result == GT || result == EQ);
+   return static_cast<int32_t>(result);
+   }
+
+/**
+* Compare x and y
+* Return ~0 if x[0:x_size] < y[0:y_size] or 0 otherwise
+* If lt_or_equal is true, returns ~0 also for x == y
+*/
+inline CT::Mask<word>
+bigint_ct_is_lt(const word x[], size_t x_size,
+                const word y[], size_t y_size,
+                bool lt_or_equal = false)
+   {
+   const size_t common_elems = std::min(x_size, y_size);
+
+   auto is_lt = CT::Mask<word>::expand(lt_or_equal);
+
+   for(size_t i = 0; i != common_elems; i++)
+      {
+      const auto eq = CT::Mask<word>::is_equal(x[i], y[i]);
+      const auto lt = CT::Mask<word>::is_lt(x[i], y[i]);
+      is_lt = eq.select_mask(is_lt, lt);
+      }
+
+   if(x_size < y_size)
+      {
+      word mask = 0;
+      for(size_t i = x_size; i != y_size; i++)
+         mask |= y[i];
+      // If any bits were set in high part of y, then is_lt should be forced true
+      is_lt |= CT::Mask<word>::expand(mask);
+      }
+   else if(y_size < x_size)
+      {
+      word mask = 0;
+      for(size_t i = y_size; i != x_size; i++)
+         mask |= x[i];
+
+      // If any bits were set in high part of x, then is_lt should be false
+      is_lt &= CT::Mask<word>::is_zero(mask);
+      }
+
+   return is_lt;
+   }
+
+inline CT::Mask<word>
+bigint_ct_is_eq(const word x[], size_t x_size,
+                const word y[], size_t y_size)
+   {
+   const size_t common_elems = std::min(x_size, y_size);
+
+   word diff = 0;
+
+   for(size_t i = 0; i != common_elems; i++)
+      {
+      diff |= (x[i] ^ y[i]);
+      }
+
+   // If any bits were set in high part of x/y, then they are not equal
+   if(x_size < y_size)
+      {
+      for(size_t i = x_size; i != y_size; i++)
+         diff |= y[i];
+      }
+   else if(y_size < x_size)
+      {
+      for(size_t i = y_size; i != x_size; i++)
+         diff |= x[i];
+      }
+
+   return CT::Mask<word>::is_zero(diff);
+   }
+
+/**
+* Set z to abs(x-y), ie if x >= y, then compute z = x - y
+* Otherwise compute z = y - x
+* No borrow is possible since the result is always >= 0
+*
+* Return the relative size of x vs y (-1, 0, 1)
+*
+* @param z output array of max(x_size,y_size) words
+* @param x input param
+* @param x_size length of x
+* @param y input param
+* @param y_size length of y
+*/
+inline int32_t
+bigint_sub_abs(word z[],
+               const word x[], size_t x_size,
+               const word y[], size_t y_size)
+   {
+   const int32_t relative_size = bigint_cmp(x, x_size, y, y_size);
+
+   // Swap if relative_size == -1
+   const bool need_swap = relative_size < 0;
+   CT::conditional_swap_ptr(need_swap, x, y);
+   CT::conditional_swap(need_swap, x_size, y_size);
+
+   /*
+   * We know at this point that x >= y so if y_size is larger than
+   * x_size, we are guaranteed they are just leading zeros which can
+   * be ignored
+   */
+   y_size = std::min(x_size, y_size);
+
+   bigint_sub3(z, x, x_size, y, y_size);
+
+   return relative_size;
+   }
+
+/**
+* Set t to t-s modulo mod
+*
+* @param t first integer
+* @param s second integer
+* @param mod the modulus
+* @param mod_sw size of t, s, and mod
+* @param ws workspace of size mod_sw
+*/
+inline void
+bigint_mod_sub(word t[], const word s[], const word mod[], size_t mod_sw, word ws[])
+   {
+   // is t < s or not?
+   const auto is_lt = bigint_ct_is_lt(t, mod_sw, s, mod_sw);
+
+   // ws = p - s
+   const word borrow = bigint_sub3(ws, mod, mod_sw, s, mod_sw);
+
+   // Compute either (t - s) or (t + (p - s)) depending on mask
+   const word carry = bigint_cnd_addsub(is_lt, t, ws, s, mod_sw);
+
+   BOTAN_DEBUG_ASSERT(borrow == 0 && carry == 0);
+   BOTAN_UNUSED(carry, borrow);
+   }
+
+template<size_t N>
+inline void bigint_mod_sub_n(word t[], const word s[], const word mod[], word ws[])
+   {
+   // is t < s or not?
+   const auto is_lt = bigint_ct_is_lt(t, N, s, N);
+
+   // ws = p - s
+   const word borrow = bigint_sub3(ws, mod, N, s, N);
+
+   // Compute either (t - s) or (t + (p - s)) depending on mask
+   const word carry = bigint_cnd_addsub(is_lt, t, ws, s, N);
+
+   BOTAN_DEBUG_ASSERT(borrow == 0 && carry == 0);
+   BOTAN_UNUSED(carry, borrow);
+   }
+
+/**
+* Compute ((n1<<bits) + n0) / d
+*/
+inline word bigint_divop(word n1, word n0, word d)
+   {
+   if(d == 0)
+      throw Invalid_Argument("bigint_divop divide by zero");
+
+#if defined(BOTAN_HAS_MP_DWORD)
+   return ((static_cast<dword>(n1) << BOTAN_MP_WORD_BITS) | n0) / d;
+#else
+
+   word high = n1 % d;
+   word quotient = 0;
+
+   for(size_t i = 0; i != BOTAN_MP_WORD_BITS; ++i)
+      {
+      const word high_top_bit = high >> (BOTAN_MP_WORD_BITS-1);
+
+      high <<= 1;
+      high |= (n0 >> (BOTAN_MP_WORD_BITS-1-i)) & 1;
+      quotient <<= 1;
+
+      if(high_top_bit || high >= d)
+         {
+         high -= d;
+         quotient |= 1;
+         }
+      }
+
+   return quotient;
+#endif
+   }
+
+/**
+* Compute ((n1<<bits) + n0) % d
+*/
+inline word bigint_modop(word n1, word n0, word d)
+   {
+   if(d == 0)
+      throw Invalid_Argument("bigint_modop divide by zero");
+
+#if defined(BOTAN_HAS_MP_DWORD)
+   return ((static_cast<dword>(n1) << BOTAN_MP_WORD_BITS) | n0) % d;
+#else
+   word z = bigint_divop(n1, n0, d);
+   word dummy = 0;
+   z = word_madd2(z, d, &dummy);
+   return (n0-z);
+#endif
+   }
+
+/*
+* Comba Multiplication / Squaring
+*/
+void bigint_comba_mul4(word z[8], const word x[4], const word y[4]);
+void bigint_comba_mul6(word z[12], const word x[6], const word y[6]);
+void bigint_comba_mul8(word z[16], const word x[8], const word y[8]);
+void bigint_comba_mul9(word z[18], const word x[9], const word y[9]);
+void bigint_comba_mul16(word z[32], const word x[16], const word y[16]);
+void bigint_comba_mul24(word z[48], const word x[24], const word y[24]);
+
+void bigint_comba_sqr4(word out[8], const word in[4]);
+void bigint_comba_sqr6(word out[12], const word in[6]);
+void bigint_comba_sqr8(word out[16], const word in[8]);
+void bigint_comba_sqr9(word out[18], const word in[9]);
+void bigint_comba_sqr16(word out[32], const word in[16]);
+void bigint_comba_sqr24(word out[48], const word in[24]);
+
+/**
+* Montgomery Reduction
+* @param z integer to reduce, of size exactly 2*(p_size+1).
+           Output is in the first p_size+1 words, higher
+           words are set to zero.
+* @param p modulus
+* @param p_size size of p
+* @param p_dash Montgomery value
+* @param workspace array of at least 2*(p_size+1) words
+* @param ws_size size of workspace in words
+*/
+void bigint_monty_redc(word z[],
+                       const word p[], size_t p_size,
+                       word p_dash,
+                       word workspace[],
+                       size_t ws_size);
+
+/*
+* High Level Multiplication/Squaring Interfaces
+*/
+
+void bigint_mul(word z[], size_t z_size,
+                const word x[], size_t x_size, size_t x_sw,
+                const word y[], size_t y_size, size_t y_sw,
+                word workspace[], size_t ws_size);
+
+void bigint_sqr(word z[], size_t z_size,
+                const word x[], size_t x_size, size_t x_sw,
+                word workspace[], size_t ws_size);
+
+}
+
+namespace Botan {
+
+/*
+* Each of these functions makes the following assumptions:
+*
+* z_size >= 2*(p_size + 1)
+* ws_size >= z_size
+*/
+
+void bigint_monty_redc_4(word z[], const word p[], word p_dash, word ws[]);
+void bigint_monty_redc_6(word z[], const word p[], word p_dash, word ws[]);
+void bigint_monty_redc_8(word z[], const word p[], word p_dash, word ws[]);
+void bigint_monty_redc_16(word z[], const word p[], word p_dash, word ws[]);
+void bigint_monty_redc_24(word z[], const word p[], word p_dash, word ws[]);
+void bigint_monty_redc_32(word z[], const word p[], word p_dash, word ws[]);
+
 
 }
 
@@ -1104,6 +3006,243 @@ std::unique_ptr<Echo_Suppression> BOTAN_UNSTABLE_API suppress_echo_on_terminal()
 namespace Botan {
 
 /**
+* Returns the allowed padding schemes when using the given
+* algorithm (key type) for creating digital signatures.
+*
+* @param algo the algorithm for which to look up supported padding schemes
+* @return a vector of supported padding schemes
+*/
+BOTAN_TEST_API const std::vector<std::string> get_sig_paddings(const std::string algo);
+
+/**
+* Returns true iff the given padding scheme is valid for the given
+* signature algorithm (key type).
+*
+* @param algo the signature algorithm to be used
+* @param padding the padding scheme to be used
+*/
+bool sig_algo_and_pad_ok(const std::string algo, const std::string padding);
+
+}
+
+namespace Botan {
+
+namespace PK_Ops {
+
+class Encryption_with_EME : public Encryption
+   {
+   public:
+      size_t max_input_bits() const override;
+
+      secure_vector<uint8_t> encrypt(const uint8_t msg[], size_t msg_len,
+                                  RandomNumberGenerator& rng) override;
+
+      ~Encryption_with_EME() = default;
+   protected:
+      explicit Encryption_with_EME(const std::string& eme);
+   private:
+      virtual size_t max_raw_input_bits() const = 0;
+
+      virtual secure_vector<uint8_t> raw_encrypt(const uint8_t msg[], size_t len,
+                                              RandomNumberGenerator& rng) = 0;
+      std::unique_ptr<EME> m_eme;
+   };
+
+class Decryption_with_EME : public Decryption
+   {
+   public:
+      secure_vector<uint8_t> decrypt(uint8_t& valid_mask,
+                                  const uint8_t msg[], size_t msg_len) override;
+
+      ~Decryption_with_EME() = default;
+   protected:
+      explicit Decryption_with_EME(const std::string& eme);
+   private:
+      virtual secure_vector<uint8_t> raw_decrypt(const uint8_t msg[], size_t len) = 0;
+      std::unique_ptr<EME> m_eme;
+   };
+
+class Verification_with_EMSA : public Verification
+   {
+   public:
+      ~Verification_with_EMSA() = default;
+
+      void update(const uint8_t msg[], size_t msg_len) override;
+      bool is_valid_signature(const uint8_t sig[], size_t sig_len) override;
+
+      bool do_check(const secure_vector<uint8_t>& msg,
+                    const uint8_t sig[], size_t sig_len);
+
+      std::string hash_for_signature() { return m_hash; }
+
+   protected:
+      explicit Verification_with_EMSA(const std::string& emsa);
+
+      /**
+      * Get the maximum message size in bits supported by this public key.
+      * @return maximum message in bits
+      */
+      virtual size_t max_input_bits() const = 0;
+
+      /**
+      * @return boolean specifying if this signature scheme uses
+      * a message prefix returned by message_prefix()
+      */
+      virtual bool has_prefix() { return false; }
+
+      /**
+      * @return the message prefix if this signature scheme uses
+      * a message prefix, signaled via has_prefix()
+      */
+      virtual secure_vector<uint8_t> message_prefix() const { throw Invalid_State("No prefix"); }
+
+      /**
+      * @return boolean specifying if this key type supports message
+      * recovery and thus if you need to call verify() or verify_mr()
+      */
+      virtual bool with_recovery() const = 0;
+
+      /*
+      * Perform a signature check operation
+      * @param msg the message
+      * @param msg_len the length of msg in bytes
+      * @param sig the signature
+      * @param sig_len the length of sig in bytes
+      * @returns if signature is a valid one for message
+      */
+      virtual bool verify(const uint8_t[], size_t,
+                          const uint8_t[], size_t)
+         {
+         throw Invalid_State("Message recovery required");
+         }
+
+      /*
+      * Perform a signature operation (with message recovery)
+      * Only call this if with_recovery() returns true
+      * @param msg the message
+      * @param msg_len the length of msg in bytes
+      * @returns recovered message
+      */
+      virtual secure_vector<uint8_t> verify_mr(const uint8_t[], size_t)
+         {
+         throw Invalid_State("Message recovery not supported");
+         }
+
+      std::unique_ptr<EMSA> clone_emsa() const { return std::unique_ptr<EMSA>(m_emsa->clone()); }
+
+   private:
+      std::unique_ptr<EMSA> m_emsa;
+      const std::string m_hash;
+      bool m_prefix_used;
+   };
+
+class Signature_with_EMSA : public Signature
+   {
+   public:
+      void update(const uint8_t msg[], size_t msg_len) override;
+
+      secure_vector<uint8_t> sign(RandomNumberGenerator& rng) override;
+   protected:
+      explicit Signature_with_EMSA(const std::string& emsa);
+      ~Signature_with_EMSA() = default;
+
+      std::string hash_for_signature() { return m_hash; }
+
+      /**
+      * @return boolean specifying if this signature scheme uses
+      * a message prefix returned by message_prefix()
+      */
+      virtual bool has_prefix() { return false; }
+
+      /**
+      * @return the message prefix if this signature scheme uses
+      * a message prefix, signaled via has_prefix()
+      */
+      virtual secure_vector<uint8_t> message_prefix() const { throw Invalid_State("No prefix"); }
+
+      std::unique_ptr<EMSA> clone_emsa() const { return std::unique_ptr<EMSA>(m_emsa->clone()); }
+
+   private:
+
+      /**
+      * Get the maximum message size in bits supported by this public key.
+      * @return maximum message in bits
+      */
+      virtual size_t max_input_bits() const = 0;
+
+      bool self_test_signature(const std::vector<uint8_t>& msg,
+                               const std::vector<uint8_t>& sig) const;
+
+      virtual secure_vector<uint8_t> raw_sign(const uint8_t msg[], size_t msg_len,
+                                           RandomNumberGenerator& rng) = 0;
+
+      std::unique_ptr<EMSA> m_emsa;
+      const std::string m_hash;
+      bool m_prefix_used;
+   };
+
+class Key_Agreement_with_KDF : public Key_Agreement
+   {
+   public:
+      secure_vector<uint8_t> agree(size_t key_len,
+                                const uint8_t other_key[], size_t other_key_len,
+                                const uint8_t salt[], size_t salt_len) override;
+
+   protected:
+      explicit Key_Agreement_with_KDF(const std::string& kdf);
+      ~Key_Agreement_with_KDF() = default;
+   private:
+      virtual secure_vector<uint8_t> raw_agree(const uint8_t w[], size_t w_len) = 0;
+      std::unique_ptr<KDF> m_kdf;
+   };
+
+class KEM_Encryption_with_KDF : public KEM_Encryption
+   {
+   public:
+      void kem_encrypt(secure_vector<uint8_t>& out_encapsulated_key,
+                       secure_vector<uint8_t>& out_shared_key,
+                       size_t desired_shared_key_len,
+                       Botan::RandomNumberGenerator& rng,
+                       const uint8_t salt[],
+                       size_t salt_len) override;
+
+   protected:
+      virtual void raw_kem_encrypt(secure_vector<uint8_t>& out_encapsulated_key,
+                                   secure_vector<uint8_t>& raw_shared_key,
+                                   Botan::RandomNumberGenerator& rng) = 0;
+
+      explicit KEM_Encryption_with_KDF(const std::string& kdf);
+      ~KEM_Encryption_with_KDF() = default;
+   private:
+      std::unique_ptr<KDF> m_kdf;
+   };
+
+class KEM_Decryption_with_KDF : public KEM_Decryption
+   {
+   public:
+      secure_vector<uint8_t> kem_decrypt(const uint8_t encap_key[],
+                                      size_t len,
+                                      size_t desired_shared_key_len,
+                                      const uint8_t salt[],
+                                      size_t salt_len) override;
+
+   protected:
+      virtual secure_vector<uint8_t>
+      raw_kem_decrypt(const uint8_t encap_key[], size_t len) = 0;
+
+      explicit KEM_Decryption_with_KDF(const std::string& kdf);
+      ~KEM_Decryption_with_KDF() = default;
+   private:
+      std::unique_ptr<KDF> m_kdf;
+   };
+
+}
+
+}
+
+namespace Botan {
+
+/**
 * Polynomial doubling in GF(2^n)
 */
 void BOTAN_TEST_API poly_double_n(uint8_t out[], const uint8_t in[], size_t n);
@@ -1151,6 +3290,93 @@ inline void prefetch_readwrite(const T* addr, size_t length)
       __builtin_prefetch(addr + i, 1);
 #endif
    }
+
+}
+
+namespace Botan {
+
+class BigInt;
+class Modular_Reducer;
+class Montgomery_Params;
+class RandomNumberGenerator;
+
+/**
+* Perform Lucas primality test
+* @see FIPS 186-4 C.3.3
+*
+* @warning it is possible to construct composite integers which pass
+* this test alone.
+*
+* @param n the positive integer to test
+* @param mod_n a pre-created Modular_Reducer for n
+* @return true if n seems probably prime, false if n is composite
+*/
+bool BOTAN_TEST_API is_lucas_probable_prime(const BigInt& n, const Modular_Reducer& mod_n);
+
+/**
+* Perform Bailie-PSW primality test
+*
+* This is a combination of Miller-Rabin with base 2 and a Lucas test. No known
+* composite integer passes both tests, though it is conjectured that infinitely
+* many composite counterexamples exist.
+*
+* @param n the positive integer to test
+* @param mod_n a pre-created Modular_Reducer for n
+* @return true if n seems probably prime, false if n is composite
+*/
+bool BOTAN_TEST_API is_bailie_psw_probable_prime(const BigInt& n, const Modular_Reducer& mod_n);
+
+/**
+* Perform Bailie-PSW primality test
+*
+* This is a combination of Miller-Rabin with base 2 and a Lucas test. No known
+* composite integer passes both tests, though it is conjectured that infinitely
+* many composite counterexamples exist.
+*
+* @param n the positive integer to test
+* @return true if n seems probably prime, false if n is composite
+*/
+bool is_bailie_psw_probable_prime(const BigInt& n);
+
+/**
+* Return required number of Miller-Rabin tests in order to
+* reach the specified probability of error.
+*
+* @param n_bits the bit-length of the integer being tested
+* @param prob chance of false positive is bounded by 1/2**prob
+* @param random is set if (and only if) the integer was randomly generated by us
+*        and thus cannot have been maliciously constructed.
+*/
+size_t miller_rabin_test_iterations(size_t n_bits, size_t prob, bool random);
+
+/**
+* Perform a single Miller-Rabin test with specified base
+*
+* @param n the positive integer to test
+* @param mod_n a pre-created Modular_Reducer for n
+* @param monty_n Montgomery parameters for n
+* @param a the base to check
+* @return result of primality test
+*/
+bool passes_miller_rabin_test(const BigInt& n,
+                              const Modular_Reducer& mod_n,
+                              const std::shared_ptr<Montgomery_Params>& monty_n,
+                              const BigInt& a);
+
+/**
+* Perform t iterations of a Miller-Rabin primality test with random bases
+*
+* @param n the positive integer to test
+* @param mod_n a pre-created Modular_Reducer for n
+* @param rng a random number generator
+* @param t number of tests to perform
+*
+* @return result of primality test
+*/
+bool BOTAN_TEST_API is_miller_rabin_probable_prime(const BigInt& n,
+                                                   const Modular_Reducer& mod_n,
+                                                   RandomNumberGenerator& rng,
+                                                   size_t t);
 
 }
 
@@ -5672,6 +7898,2888 @@ std::unique_ptr<PasswordHash> Argon2_Family::from_params(size_t M, size_t t, siz
 
 }
 /*
+* Algorithm Identifier
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+* Create an AlgorithmIdentifier
+*/
+AlgorithmIdentifier::AlgorithmIdentifier(const OID& alg_id,
+                                         const std::vector<uint8_t>& param) :
+   oid(alg_id),
+   parameters(param)
+   {}
+
+/*
+* Create an AlgorithmIdentifier
+*/
+AlgorithmIdentifier::AlgorithmIdentifier(const std::string& alg_id,
+                                         const std::vector<uint8_t>& param) :
+   AlgorithmIdentifier(OID::from_string(alg_id), param)
+   {}
+
+/*
+* Create an AlgorithmIdentifier
+*/
+AlgorithmIdentifier::AlgorithmIdentifier(const OID& alg_id,
+                                         Encoding_Option option) :
+   oid(alg_id),
+   parameters()
+   {
+   const uint8_t DER_NULL[] = { 0x05, 0x00 };
+
+   if(option == USE_NULL_PARAM)
+      parameters.assign(DER_NULL, DER_NULL + 2);
+   }
+
+/*
+* Create an AlgorithmIdentifier
+*/
+AlgorithmIdentifier::AlgorithmIdentifier(const std::string& alg_id,
+                                         Encoding_Option option) :
+   oid(OID::from_string(alg_id)),
+   parameters()
+   {
+   const uint8_t DER_NULL[] = { 0x05, 0x00 };
+
+   if(option == USE_NULL_PARAM)
+      parameters.assign(DER_NULL, DER_NULL + 2);
+   }
+
+bool AlgorithmIdentifier::parameters_are_null() const
+   {
+   return (parameters.size() == 2 && (parameters[0] == 0x05) && (parameters[1] == 0x00));
+   }
+
+bool operator==(const AlgorithmIdentifier& a1, const AlgorithmIdentifier& a2)
+   {
+   if(a1.get_oid() != a2.get_oid())
+      return false;
+
+   /*
+   * Treat NULL and empty as equivalent
+   */
+   if(a1.parameters_are_null_or_empty() &&
+      a2.parameters_are_null_or_empty())
+      {
+      return true;
+      }
+
+   return (a1.get_parameters() == a2.get_parameters());
+   }
+
+bool operator!=(const AlgorithmIdentifier& a1, const AlgorithmIdentifier& a2)
+   {
+   return !(a1 == a2);
+   }
+
+/*
+* DER encode an AlgorithmIdentifier
+*/
+void AlgorithmIdentifier::encode_into(DER_Encoder& codec) const
+   {
+   codec.start_cons(SEQUENCE)
+      .encode(get_oid())
+      .raw_bytes(get_parameters())
+   .end_cons();
+   }
+
+/*
+* Decode a BER encoded AlgorithmIdentifier
+*/
+void AlgorithmIdentifier::decode_from(BER_Decoder& codec)
+   {
+   codec.start_cons(SEQUENCE)
+      .decode(oid)
+      .raw_bytes(parameters)
+   .end_cons();
+   }
+
+}
+/*
+* ASN.1 Internals
+* (C) 1999-2007,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+std::vector<uint8_t> ASN1_Object::BER_encode() const
+   {
+   std::vector<uint8_t> output;
+   DER_Encoder der(output);
+   this->encode_into(der);
+   return output;
+   }
+
+/*
+* Check a type invariant on BER data
+*/
+void BER_Object::assert_is_a(ASN1_Tag type_tag_, ASN1_Tag class_tag_,
+                             const std::string& descr) const
+   {
+   if(this->is_a(type_tag_, class_tag_) == false)
+      {
+      std::stringstream msg;
+
+      msg << "Tag mismatch when decoding " << descr << " got ";
+
+      if(class_tag == NO_OBJECT && type_tag == NO_OBJECT)
+         {
+         msg << "EOF";
+         }
+      else
+         {
+         if(class_tag == UNIVERSAL || class_tag == CONSTRUCTED)
+            {
+            msg << asn1_tag_to_string(type_tag);
+            }
+         else
+            {
+            msg << std::to_string(type_tag);
+            }
+
+         msg << "/" << asn1_class_to_string(class_tag);
+         }
+
+      msg << " expected ";
+
+      if(class_tag_ == UNIVERSAL || class_tag_ == CONSTRUCTED)
+         {
+         msg << asn1_tag_to_string(type_tag_);
+         }
+      else
+         {
+         msg << std::to_string(type_tag_);
+         }
+
+      msg << "/" << asn1_class_to_string(class_tag_);
+
+      throw BER_Decoding_Error(msg.str());
+      }
+   }
+
+bool BER_Object::is_a(ASN1_Tag type_tag_, ASN1_Tag class_tag_) const
+   {
+   return (type_tag == type_tag_ && class_tag == class_tag_);
+   }
+
+bool BER_Object::is_a(int type_tag_, ASN1_Tag class_tag_) const
+   {
+   return is_a(ASN1_Tag(type_tag_), class_tag_);
+   }
+
+void BER_Object::set_tagging(ASN1_Tag t, ASN1_Tag c)
+   {
+   type_tag = t;
+   class_tag = c;
+   }
+
+std::string asn1_class_to_string(ASN1_Tag type)
+   {
+   switch(type)
+      {
+      case UNIVERSAL:
+         return "UNIVERSAL";
+      case CONSTRUCTED:
+         return "CONSTRUCTED";
+      case CONTEXT_SPECIFIC:
+         return "CONTEXT_SPECIFIC";
+      case APPLICATION:
+         return "APPLICATION";
+      case CONSTRUCTED | CONTEXT_SPECIFIC:
+         return "PRIVATE";
+      case Botan::NO_OBJECT:
+         return "NO_OBJECT";
+      default:
+         return "CLASS(" + std::to_string(static_cast<size_t>(type)) + ")";
+      }
+   }
+
+std::string asn1_tag_to_string(ASN1_Tag type)
+   {
+   switch(type)
+      {
+      case Botan::SEQUENCE:
+         return "SEQUENCE";
+
+      case Botan::SET:
+         return "SET";
+
+      case Botan::PRINTABLE_STRING:
+         return "PRINTABLE STRING";
+
+      case Botan::NUMERIC_STRING:
+         return "NUMERIC STRING";
+
+      case Botan::IA5_STRING:
+         return "IA5 STRING";
+
+      case Botan::T61_STRING:
+         return "T61 STRING";
+
+      case Botan::UTF8_STRING:
+         return "UTF8 STRING";
+
+      case Botan::VISIBLE_STRING:
+         return "VISIBLE STRING";
+
+      case Botan::BMP_STRING:
+         return "BMP STRING";
+
+      case Botan::UNIVERSAL_STRING:
+         return "UNIVERSAL STRING";
+
+      case Botan::UTC_TIME:
+         return "UTC TIME";
+
+      case Botan::GENERALIZED_TIME:
+         return "GENERALIZED TIME";
+
+      case Botan::OCTET_STRING:
+         return "OCTET STRING";
+
+      case Botan::BIT_STRING:
+         return "BIT STRING";
+
+      case Botan::ENUMERATED:
+         return "ENUMERATED";
+
+      case Botan::INTEGER:
+         return "INTEGER";
+
+      case Botan::NULL_TAG:
+         return "NULL";
+
+      case Botan::OBJECT_ID:
+         return "OBJECT";
+
+      case Botan::BOOLEAN:
+         return "BOOLEAN";
+
+      case Botan::NO_OBJECT:
+         return "NO_OBJECT";
+
+      default:
+         return "TAG(" + std::to_string(static_cast<size_t>(type)) + ")";
+      }
+   }
+
+/*
+* BER Decoding Exceptions
+*/
+BER_Decoding_Error::BER_Decoding_Error(const std::string& str) :
+   Decoding_Error("BER: " + str) {}
+
+BER_Bad_Tag::BER_Bad_Tag(const std::string& str, ASN1_Tag tag) :
+      BER_Decoding_Error(str + ": " + std::to_string(tag)) {}
+
+BER_Bad_Tag::BER_Bad_Tag(const std::string& str,
+                         ASN1_Tag tag1, ASN1_Tag tag2) :
+   BER_Decoding_Error(str + ": " + std::to_string(tag1) + "/" + std::to_string(tag2)) {}
+
+namespace ASN1 {
+
+/*
+* Put some arbitrary bytes into a SEQUENCE
+*/
+std::vector<uint8_t> put_in_sequence(const std::vector<uint8_t>& contents)
+   {
+   return ASN1::put_in_sequence(contents.data(), contents.size());
+   }
+
+std::vector<uint8_t> put_in_sequence(const uint8_t bits[], size_t len)
+   {
+   std::vector<uint8_t> output;
+   DER_Encoder(output)
+      .start_cons(SEQUENCE)
+         .raw_bytes(bits, len)
+      .end_cons();
+   return output;
+   }
+
+/*
+* Convert a BER object into a string object
+*/
+std::string to_string(const BER_Object& obj)
+   {
+   return std::string(cast_uint8_ptr_to_char(obj.bits()),
+                      obj.length());
+   }
+
+/*
+* Do heuristic tests for BER data
+*/
+bool maybe_BER(DataSource& source)
+   {
+   uint8_t first_u8;
+   if(!source.peek_byte(first_u8))
+      {
+      BOTAN_ASSERT_EQUAL(source.read_byte(first_u8), 0, "Expected EOF");
+      throw Stream_IO_Error("ASN1::maybe_BER: Source was empty");
+      }
+
+   if(first_u8 == (SEQUENCE | CONSTRUCTED))
+      return true;
+   return false;
+   }
+
+}
+
+}
+/*
+* ASN.1 OID
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+// returns empty on invalid
+std::vector<uint32_t> parse_oid_str(const std::string& oid)
+   {
+   try
+      {
+      std::string elem;
+      std::vector<uint32_t> oid_elems;
+
+      for(char c : oid)
+         {
+         if(c == '.')
+            {
+            if(elem.empty())
+               return std::vector<uint32_t>();
+            oid_elems.push_back(to_u32bit(elem));
+            elem.clear();
+            }
+         else
+            {
+            elem += c;
+            }
+         }
+
+      if(elem.empty())
+         return std::vector<uint32_t>();
+      oid_elems.push_back(to_u32bit(elem));
+
+      if(oid_elems.size() < 2)
+         return std::vector<uint32_t>();
+
+      return oid_elems;
+      }
+   catch(Invalid_Argument&) // thrown by to_u32bit
+      {
+      return std::vector<uint32_t>();
+      }
+   }
+
+}
+
+//static
+OID OID::from_string(const std::string& str)
+   {
+   if(str.empty())
+      throw Invalid_Argument("OID::from_string argument must be non-empty");
+
+   const OID o = OIDS::str2oid_or_empty(str);
+   if(o.has_value())
+      return o;
+
+   std::vector<uint32_t> raw = parse_oid_str(str);
+
+   if(raw.size() > 0)
+      return OID(std::move(raw));
+
+   throw Lookup_Error("No OID associated with name " + str);
+   }
+
+/*
+* ASN.1 OID Constructor
+*/
+OID::OID(const std::string& oid_str)
+   {
+   if(!oid_str.empty())
+      {
+      m_id = parse_oid_str(oid_str);
+
+      if(m_id.size() < 2 || m_id[0] > 2)
+         throw Invalid_OID(oid_str);
+      if((m_id[0] == 0 || m_id[0] == 1) && m_id[1] > 39)
+         throw Invalid_OID(oid_str);
+      }
+   }
+
+/*
+* Return this OID as a string
+*/
+std::string OID::to_string() const
+   {
+   std::ostringstream oss;
+   oss.imbue(std::locale("C"));
+   for(size_t i = 0; i != m_id.size(); ++i)
+      {
+      oss << m_id[i];
+      if(i != m_id.size() - 1)
+         oss << ".";
+      }
+   return oss.str();
+   }
+
+std::string OID::to_formatted_string() const
+   {
+   const std::string s = OIDS::oid2str_or_empty(*this);
+   if(!s.empty())
+      return s;
+   return this->to_string();
+   }
+
+/*
+* Append another component to the OID
+*/
+OID operator+(const OID& oid, uint32_t new_component)
+   {
+   std::vector<uint32_t> val = oid.get_components();
+   val.push_back(new_component);
+   return OID(std::move(val));
+   }
+
+/*
+* Compare two OIDs
+*/
+bool operator<(const OID& a, const OID& b)
+   {
+   const std::vector<uint32_t>& oid1 = a.get_components();
+   const std::vector<uint32_t>& oid2 = b.get_components();
+
+   return std::lexicographical_compare(oid1.begin(), oid1.end(),
+                                       oid2.begin(), oid2.end());
+   }
+
+/*
+* DER encode an OBJECT IDENTIFIER
+*/
+void OID::encode_into(DER_Encoder& der) const
+   {
+   if(m_id.size() < 2)
+      throw Invalid_Argument("OID::encode_into: OID is invalid");
+
+   std::vector<uint8_t> encoding;
+
+   if(m_id[0] > 2 || m_id[1] >= 40)
+      throw Encoding_Error("Invalid OID prefix, cannot encode");
+
+   encoding.push_back(static_cast<uint8_t>(40 * m_id[0] + m_id[1]));
+
+   for(size_t i = 2; i != m_id.size(); ++i)
+      {
+      if(m_id[i] == 0)
+         encoding.push_back(0);
+      else
+         {
+         size_t blocks = high_bit(m_id[i]) + 6;
+         blocks = (blocks - (blocks % 7)) / 7;
+
+         BOTAN_ASSERT(blocks > 0, "Math works");
+
+         for(size_t j = 0; j != blocks - 1; ++j)
+            encoding.push_back(0x80 | ((m_id[i] >> 7*(blocks-j-1)) & 0x7F));
+         encoding.push_back(m_id[i] & 0x7F);
+         }
+      }
+   der.add_object(OBJECT_ID, UNIVERSAL, encoding);
+   }
+
+/*
+* Decode a BER encoded OBJECT IDENTIFIER
+*/
+void OID::decode_from(BER_Decoder& decoder)
+   {
+   BER_Object obj = decoder.get_next_object();
+   if(obj.tagging() != OBJECT_ID)
+      throw BER_Bad_Tag("Error decoding OID, unknown tag", obj.tagging());
+
+   const size_t length = obj.length();
+   const uint8_t* bits = obj.bits();
+
+   if(length < 2 && !(length == 1 && bits[0] == 0))
+      {
+      throw BER_Decoding_Error("OID encoding is too short");
+      }
+
+   m_id.clear();
+   m_id.push_back(bits[0] / 40);
+   m_id.push_back(bits[0] % 40);
+
+   size_t i = 0;
+   while(i != length - 1)
+      {
+      uint32_t component = 0;
+      while(i != length - 1)
+         {
+         ++i;
+
+         if(component >> (32-7))
+            throw Decoding_Error("OID component overflow");
+
+         component = (component << 7) + (bits[i] & 0x7F);
+
+         if(!(bits[i] & 0x80))
+            break;
+         }
+      m_id.push_back(component);
+      }
+   }
+
+}
+/*
+* (C) 2014,2015,2017 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+#include <iomanip>
+#include <cctype>
+
+namespace Botan {
+
+namespace {
+
+bool all_printable_chars(const uint8_t bits[], size_t bits_len)
+   {
+   for(size_t i = 0; i != bits_len; ++i)
+      {
+      int c = bits[i];
+      if(c > 127)
+         return false;
+
+      if((std::isalnum(c) || c == '.' || c == ':' || c == '/' || c == '-') == false)
+         return false;
+      }
+   return true;
+   }
+
+/*
+* Special hack to handle GeneralName [2] and [6] (DNS name and URI)
+*/
+bool possibly_a_general_name(const uint8_t bits[], size_t bits_len)
+   {
+   if(bits_len <= 2)
+      return false;
+
+   if(bits[0] != 0x82 && bits[0] != 0x86)
+      return false;
+
+   if(bits[1] != bits_len - 2)
+      return false;
+
+   if(all_printable_chars(bits + 2, bits_len - 2) == false)
+      return false;
+
+   return true;
+   }
+
+}
+
+std::string ASN1_Formatter::print(const uint8_t in[], size_t len) const
+   {
+   std::ostringstream output;
+   print_to_stream(output, in, len);
+   return output.str();
+   }
+
+void ASN1_Formatter::print_to_stream(std::ostream& output,
+                                     const uint8_t in[],
+                                     size_t len) const
+   {
+   BER_Decoder dec(in, len);
+   decode(output, dec, 0);
+   }
+
+void ASN1_Formatter::decode(std::ostream& output,
+                            BER_Decoder& decoder,
+                            size_t level) const
+   {
+   BER_Object obj = decoder.get_next_object();
+
+   const bool recurse_deeper = (m_max_depth == 0 || level < m_max_depth);
+
+   while(obj.is_set())
+      {
+      const ASN1_Tag type_tag = obj.type();
+      const ASN1_Tag class_tag = obj.get_class();
+      const size_t length = obj.length();
+
+      /* hack to insert the tag+length back in front of the stuff now
+         that we've gotten the type info */
+      std::vector<uint8_t> bits;
+      DER_Encoder(bits).add_object(type_tag, class_tag, obj.bits(), obj.length());
+
+      BER_Decoder data(bits);
+
+      if(class_tag & CONSTRUCTED)
+         {
+         BER_Decoder cons_info(obj.bits(), obj.length());
+
+         if(recurse_deeper)
+            {
+            output << format(type_tag, class_tag, level, length, "");
+            decode(output, cons_info, level + 1); // recurse
+            }
+         else
+            {
+            output << format(type_tag, class_tag, level, length,
+                             format_bin(type_tag, class_tag, bits));
+            }
+         }
+      else if((class_tag & APPLICATION) || (class_tag & CONTEXT_SPECIFIC))
+         {
+         bool success_parsing_cs = false;
+
+         if(m_print_context_specific)
+            {
+            try
+               {
+               if(possibly_a_general_name(bits.data(), bits.size()))
+                  {
+                  output << format(type_tag, class_tag, level, level,
+                                   std::string(cast_uint8_ptr_to_char(&bits[2]), bits.size() - 2));
+                  success_parsing_cs = true;
+                  }
+               else if(recurse_deeper)
+                  {
+                  std::vector<uint8_t> inner_bits;
+                  data.decode(inner_bits, type_tag);
+
+                  BER_Decoder inner(inner_bits);
+                  std::ostringstream inner_data;
+                  decode(inner_data, inner, level + 1); // recurse
+                  output << inner_data.str();
+                  success_parsing_cs = true;
+                  }
+               }
+            catch(...)
+               {
+               }
+            }
+
+         if(success_parsing_cs == false)
+            {
+            output << format(type_tag, class_tag, level, length,
+                             format_bin(type_tag, class_tag, bits));
+            }
+         }
+      else if(type_tag == OBJECT_ID)
+         {
+         OID oid;
+         data.decode(oid);
+
+         std::string out = OIDS::oid2str_or_empty(oid);
+         if(out.empty())
+            {
+            out = oid.to_string();
+            }
+         else
+            {
+            out += " [" + oid.to_string() + "]";
+            }
+
+         output << format(type_tag, class_tag, level, length, out);
+         }
+      else if(type_tag == INTEGER || type_tag == ENUMERATED)
+         {
+         BigInt number;
+
+         if(type_tag == INTEGER)
+            {
+            data.decode(number);
+            }
+         else if(type_tag == ENUMERATED)
+            {
+            data.decode(number, ENUMERATED, class_tag);
+            }
+
+         std::vector<uint8_t> rep = BigInt::encode(number);
+         if(rep.empty()) // if zero
+            rep.resize(1);
+
+         output << format(type_tag, class_tag, level, length, hex_encode(rep));
+         }
+      else if(type_tag == BOOLEAN)
+         {
+         bool boolean;
+         data.decode(boolean);
+         output << format(type_tag, class_tag, level, length, (boolean ? "true" : "false"));
+         }
+      else if(type_tag == NULL_TAG)
+         {
+         output << format(type_tag, class_tag, level, length, "");
+         }
+      else if(type_tag == OCTET_STRING || type_tag == BIT_STRING)
+         {
+         std::vector<uint8_t> decoded_bits;
+         data.decode(decoded_bits, type_tag);
+         bool printing_octet_string_worked = false;
+
+         if(recurse_deeper)
+            {
+            try
+               {
+               BER_Decoder inner(decoded_bits);
+
+               std::ostringstream inner_data;
+               decode(inner_data, inner, level + 1); // recurse
+
+               output << format(type_tag, class_tag, level, length, "");
+               output << inner_data.str();
+               printing_octet_string_worked = true;
+               }
+            catch(...)
+               {
+               }
+            }
+
+         if(!printing_octet_string_worked)
+            {
+            output << format(type_tag, class_tag, level, length,
+                             format_bin(type_tag, class_tag, decoded_bits));
+            }
+         }
+      else if(ASN1_String::is_string_type(type_tag))
+         {
+         ASN1_String str;
+         data.decode(str);
+         output << format(type_tag, class_tag, level, length, str.value());
+         }
+      else if(type_tag == UTC_TIME || type_tag == GENERALIZED_TIME)
+         {
+         ASN1_Time time;
+         data.decode(time);
+         output << format(type_tag, class_tag, level, length, time.readable_string());
+         }
+      else
+         {
+         output << "Unknown ASN.1 tag class=" << static_cast<int>(class_tag)
+                << " type=" << static_cast<int>(type_tag) << "\n";
+         }
+
+      obj = decoder.get_next_object();
+      }
+   }
+
+namespace {
+
+std::string format_type(ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   if(class_tag == UNIVERSAL)
+      return asn1_tag_to_string(type_tag);
+
+   if(class_tag == CONSTRUCTED && (type_tag == SEQUENCE || type_tag == SET))
+      return asn1_tag_to_string(type_tag);
+
+   std::string name;
+
+   if(class_tag & CONSTRUCTED)
+      name += "cons ";
+
+   name += "[" + std::to_string(type_tag) + "]";
+
+   if(class_tag & APPLICATION)
+      {
+      name += " appl";
+      }
+   if(class_tag & CONTEXT_SPECIFIC)
+      {
+      name += " context";
+      }
+
+   return name;
+   }
+
+}
+
+std::string ASN1_Pretty_Printer::format(ASN1_Tag type_tag,
+                                        ASN1_Tag class_tag,
+                                        size_t level,
+                                        size_t length,
+                                        const std::string& value) const
+   {
+   bool should_skip = false;
+
+   if(value.length() > m_print_limit)
+      {
+      should_skip = true;
+      }
+
+   if((type_tag == OCTET_STRING || type_tag == BIT_STRING) &&
+      value.length() > m_print_binary_limit)
+      {
+      should_skip = true;
+      }
+
+   level += m_initial_level;
+
+   std::ostringstream oss;
+
+   oss << "  d=" << std::setw(2) << level
+       << ", l=" << std::setw(4) << length << ":"
+       << std::string(level + 1, ' ') << format_type(type_tag, class_tag);
+
+   if(value != "" && !should_skip)
+      {
+      const size_t current_pos = static_cast<size_t>(oss.tellp());
+      const size_t spaces_to_align =
+         (current_pos >= m_value_column) ? 1 : (m_value_column - current_pos);
+
+      oss << std::string(spaces_to_align, ' ') << value;
+      }
+
+   oss << "\n";
+
+   return oss.str();
+   }
+
+std::string ASN1_Pretty_Printer::format_bin(ASN1_Tag /*type_tag*/,
+                                            ASN1_Tag /*class_tag*/,
+                                            const std::vector<uint8_t>& vec) const
+   {
+   if(all_printable_chars(vec.data(), vec.size()))
+      {
+      return std::string(cast_uint8_ptr_to_char(vec.data()), vec.size());
+      }
+   else
+      return hex_encode(vec);
+   }
+
+}
+/*
+* Simple ASN.1 String Types
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+/*
+* Choose an encoding for the string
+*/
+ASN1_Tag choose_encoding(const std::string& str)
+   {
+   static const uint8_t IS_PRINTABLE[256] = {
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01,
+      0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00,
+      0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+      0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+      0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+      0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+      0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00 };
+
+   for(size_t i = 0; i != str.size(); ++i)
+      {
+      if(!IS_PRINTABLE[static_cast<uint8_t>(str[i])])
+         {
+         return UTF8_STRING;
+         }
+      }
+   return PRINTABLE_STRING;
+   }
+
+void assert_is_string_type(ASN1_Tag tag)
+   {
+   if(!ASN1_String::is_string_type(tag))
+      {
+      throw Invalid_Argument("ASN1_String: Unknown string type " +
+                             std::to_string(tag));
+      }
+   }
+
+}
+
+//static
+bool ASN1_String::is_string_type(ASN1_Tag tag)
+   {
+   return (tag == NUMERIC_STRING ||
+           tag == PRINTABLE_STRING ||
+           tag == VISIBLE_STRING ||
+           tag == T61_STRING ||
+           tag == IA5_STRING ||
+           tag == UTF8_STRING ||
+           tag == BMP_STRING ||
+           tag == UNIVERSAL_STRING);
+   }
+
+
+/*
+* Create an ASN1_String
+*/
+ASN1_String::ASN1_String(const std::string& str, ASN1_Tag t) : m_utf8_str(str), m_tag(t)
+   {
+   if(m_tag == DIRECTORY_STRING)
+      {
+      m_tag = choose_encoding(m_utf8_str);
+      }
+
+   assert_is_string_type(m_tag);
+   }
+
+/*
+* Create an ASN1_String
+*/
+ASN1_String::ASN1_String(const std::string& str) :
+   m_utf8_str(str),
+   m_tag(choose_encoding(m_utf8_str))
+   {}
+
+/*
+* Return this string in ISO 8859-1 encoding
+*/
+std::string ASN1_String::iso_8859() const
+   {
+   return utf8_to_latin1(m_utf8_str);
+   }
+
+/*
+* DER encode an ASN1_String
+*/
+void ASN1_String::encode_into(DER_Encoder& encoder) const
+   {
+   if(m_data.empty())
+      {
+      encoder.add_object(tagging(), UNIVERSAL, m_utf8_str);
+      }
+   else
+      {
+      // If this string was decoded, reserialize using original encoding
+      encoder.add_object(tagging(), UNIVERSAL, m_data.data(), m_data.size());
+      }
+   }
+
+/*
+* Decode a BER encoded ASN1_String
+*/
+void ASN1_String::decode_from(BER_Decoder& source)
+   {
+   BER_Object obj = source.get_next_object();
+
+   assert_is_string_type(obj.type());
+
+   m_tag = obj.type();
+   m_data.assign(obj.bits(), obj.bits() + obj.length());
+
+   if(m_tag == BMP_STRING)
+      {
+      m_utf8_str = ucs2_to_utf8(m_data.data(), m_data.size());
+      }
+   else if(m_tag == UNIVERSAL_STRING)
+      {
+      m_utf8_str = ucs4_to_utf8(m_data.data(), m_data.size());
+      }
+   else
+      {
+      // All other supported string types are UTF-8 or some subset thereof
+      m_utf8_str = ASN1::to_string(obj);
+      }
+   }
+
+}
+/*
+* X.509 Time Types
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+ASN1_Time::ASN1_Time(const std::chrono::system_clock::time_point& time)
+   {
+   calendar_point cal = calendar_value(time);
+
+   m_year   = cal.get_year();
+   m_month  = cal.get_month();
+   m_day    = cal.get_day();
+   m_hour   = cal.get_hour();
+   m_minute = cal.get_minutes();
+   m_second = cal.get_seconds();
+
+   m_tag = (m_year >= 2050) ? GENERALIZED_TIME : UTC_TIME;
+   }
+
+ASN1_Time::ASN1_Time(const std::string& t_spec, ASN1_Tag tag)
+   {
+   set_to(t_spec, tag);
+   }
+
+void ASN1_Time::encode_into(DER_Encoder& der) const
+   {
+   BOTAN_ARG_CHECK(m_tag == UTC_TIME || m_tag == GENERALIZED_TIME,
+                   "ASN1_Time: Bad encoding tag");
+
+   der.add_object(m_tag, UNIVERSAL, to_string());
+   }
+
+void ASN1_Time::decode_from(BER_Decoder& source)
+   {
+   BER_Object ber_time = source.get_next_object();
+
+   set_to(ASN1::to_string(ber_time), ber_time.type());
+   }
+
+std::string ASN1_Time::to_string() const
+   {
+   if(time_is_set() == false)
+      throw Invalid_State("ASN1_Time::to_string: No time set");
+
+   uint32_t full_year = m_year;
+
+   if(m_tag == UTC_TIME)
+      {
+      if(m_year < 1950 || m_year >= 2050)
+         throw Encoding_Error("ASN1_Time: The time " + readable_string() +
+                              " cannot be encoded as a UTCTime");
+
+      full_year = (m_year >= 2000) ? (m_year - 2000) : (m_year - 1900);
+      }
+
+   const uint64_t YEAR_FACTOR = 10000000000ULL;
+   const uint64_t MON_FACTOR  = 100000000;
+   const uint64_t DAY_FACTOR  = 1000000;
+   const uint64_t HOUR_FACTOR = 10000;
+   const uint64_t MIN_FACTOR  = 100;
+
+   const uint64_t int_repr =
+      YEAR_FACTOR * full_year +
+      MON_FACTOR * m_month +
+      DAY_FACTOR * m_day +
+      HOUR_FACTOR * m_hour +
+      MIN_FACTOR * m_minute +
+      m_second;
+
+   std::string repr = std::to_string(int_repr) + "Z";
+
+   uint32_t desired_size = (m_tag == UTC_TIME) ? 13 : 15;
+
+   while(repr.size() < desired_size)
+      repr = "0" + repr;
+
+   return repr;
+   }
+
+std::string ASN1_Time::readable_string() const
+   {
+   if(time_is_set() == false)
+      throw Invalid_State("ASN1_Time::readable_string: No time set");
+
+   // desired format: "%04d/%02d/%02d %02d:%02d:%02d UTC"
+   std::stringstream output;
+   output << std::setfill('0')
+          << std::setw(4) << m_year << "/"
+          << std::setw(2) << m_month << "/"
+          << std::setw(2) << m_day
+          << " "
+          << std::setw(2) << m_hour << ":"
+          << std::setw(2) << m_minute << ":"
+          << std::setw(2) << m_second
+          << " UTC";
+
+   return output.str();
+   }
+
+bool ASN1_Time::time_is_set() const
+   {
+   return (m_year != 0);
+   }
+
+int32_t ASN1_Time::cmp(const ASN1_Time& other) const
+   {
+   if(time_is_set() == false)
+      throw Invalid_State("ASN1_Time::cmp: No time set");
+
+   const int32_t EARLIER = -1, LATER = 1, SAME_TIME = 0;
+
+   if(m_year < other.m_year)     return EARLIER;
+   if(m_year > other.m_year)     return LATER;
+   if(m_month < other.m_month)   return EARLIER;
+   if(m_month > other.m_month)   return LATER;
+   if(m_day < other.m_day)       return EARLIER;
+   if(m_day > other.m_day)       return LATER;
+   if(m_hour < other.m_hour)     return EARLIER;
+   if(m_hour > other.m_hour)     return LATER;
+   if(m_minute < other.m_minute) return EARLIER;
+   if(m_minute > other.m_minute) return LATER;
+   if(m_second < other.m_second) return EARLIER;
+   if(m_second > other.m_second) return LATER;
+
+   return SAME_TIME;
+   }
+
+void ASN1_Time::set_to(const std::string& t_spec, ASN1_Tag spec_tag)
+   {
+   if(spec_tag == UTC_OR_GENERALIZED_TIME)
+      {
+      try
+         {
+         set_to(t_spec, GENERALIZED_TIME);
+         return;
+         }
+      catch(Invalid_Argument&) {} // Not a generalized time. Continue
+
+      try
+         {
+         set_to(t_spec, UTC_TIME);
+         return;
+         }
+      catch(Invalid_Argument&) {} // Not a UTC time. Continue
+
+      throw Invalid_Argument("Time string could not be parsed as GeneralizedTime or UTCTime.");
+      }
+
+   BOTAN_ASSERT(spec_tag == UTC_TIME || spec_tag == GENERALIZED_TIME, "Invalid tag.");
+
+   BOTAN_ARG_CHECK(t_spec.size() > 0, "Time string must not be empty.");
+
+   BOTAN_ARG_CHECK(t_spec.back() == 'Z', "Botan does not support times with timezones other than Z");
+
+   if(spec_tag == GENERALIZED_TIME)
+      {
+      BOTAN_ARG_CHECK(t_spec.size() == 15, "Invalid GeneralizedTime string");
+      }
+   else if(spec_tag == UTC_TIME)
+      {
+      BOTAN_ARG_CHECK(t_spec.size() == 13, "Invalid UTCTime string");
+      }
+
+   const size_t YEAR_SIZE = (spec_tag == UTC_TIME) ? 2 : 4;
+
+   std::vector<std::string> params;
+   std::string current;
+
+   for(size_t j = 0; j != YEAR_SIZE; ++j)
+      current += t_spec[j];
+   params.push_back(current);
+   current.clear();
+
+   for(size_t j = YEAR_SIZE; j != t_spec.size() - 1; ++j)
+      {
+      current += t_spec[j];
+      if(current.size() == 2)
+         {
+         params.push_back(current);
+         current.clear();
+         }
+      }
+
+   m_year   = to_u32bit(params[0]);
+   m_month  = to_u32bit(params[1]);
+   m_day    = to_u32bit(params[2]);
+   m_hour   = to_u32bit(params[3]);
+   m_minute = to_u32bit(params[4]);
+   m_second = (params.size() == 6) ? to_u32bit(params[5]) : 0;
+   m_tag    = spec_tag;
+
+   if(spec_tag == UTC_TIME)
+      {
+      if(m_year >= 50) m_year += 1900;
+      else             m_year += 2000;
+      }
+
+   if(!passes_sanity_check())
+      throw Invalid_Argument("Time " + t_spec + " does not seem to be valid");
+   }
+
+/*
+* Do a general sanity check on the time
+*/
+bool ASN1_Time::passes_sanity_check() const
+   {
+   // AppVeyor's trust store includes a cert with expiration date in 3016 ...
+   if(m_year < 1950 || m_year > 3100)
+      return false;
+   if(m_month == 0 || m_month > 12)
+      return false;
+
+   const uint32_t days_in_month[12] = { 31, 28+1, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+   if(m_day == 0 || m_day > days_in_month[m_month-1])
+      return false;
+
+   if(m_month == 2 && m_day == 29)
+      {
+      if(m_year % 4 != 0)
+         return false; // not a leap year
+
+      if(m_year % 100 == 0 && m_year % 400 != 0)
+         return false;
+      }
+
+   if(m_hour >= 24 || m_minute >= 60 || m_second > 60)
+      return false;
+
+   if (m_tag == UTC_TIME)
+      {
+      /*
+      UTCTime limits the value of components such that leap seconds
+      are not covered. See "UNIVERSAL 23" in "Information technology
+      Abstract Syntax Notation One (ASN.1): Specification of basic notation"
+
+      http://www.itu.int/ITU-T/studygroups/com17/languages/
+      */
+      if(m_second > 59)
+         {
+         return false;
+         }
+      }
+
+   return true;
+   }
+
+std::chrono::system_clock::time_point ASN1_Time::to_std_timepoint() const
+   {
+   return calendar_point(m_year, m_month, m_day, m_hour, m_minute, m_second).to_std_timepoint();
+   }
+
+uint64_t ASN1_Time::time_since_epoch() const
+   {
+   auto tp = this->to_std_timepoint();
+   return std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
+   }
+
+/*
+* Compare two ASN1_Times for in various ways
+*/
+bool operator==(const ASN1_Time& t1, const ASN1_Time& t2)
+   { return (t1.cmp(t2) == 0); }
+bool operator!=(const ASN1_Time& t1, const ASN1_Time& t2)
+   { return (t1.cmp(t2) != 0); }
+
+bool operator<=(const ASN1_Time& t1, const ASN1_Time& t2)
+   { return (t1.cmp(t2) <= 0); }
+bool operator>=(const ASN1_Time& t1, const ASN1_Time& t2)
+   { return (t1.cmp(t2) >= 0); }
+
+bool operator<(const ASN1_Time& t1, const ASN1_Time& t2)
+   { return (t1.cmp(t2) < 0); }
+bool operator>(const ASN1_Time& t1, const ASN1_Time& t2)
+   { return (t1.cmp(t2) > 0); }
+
+}
+/*
+* BER Decoder
+* (C) 1999-2008,2015,2017,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+/*
+* This value is somewhat arbitrary. OpenSSL allows up to 128 nested
+* indefinite length sequences. If you increase this, also increase the
+* limit in the test in test_asn1.cpp
+*/
+const size_t ALLOWED_EOC_NESTINGS = 16;
+
+/*
+* BER decode an ASN.1 type tag
+*/
+size_t decode_tag(DataSource* ber, ASN1_Tag& type_tag, ASN1_Tag& class_tag)
+   {
+   uint8_t b;
+   if(!ber->read_byte(b))
+      {
+      class_tag = type_tag = NO_OBJECT;
+      return 0;
+      }
+
+   if((b & 0x1F) != 0x1F)
+      {
+      type_tag = ASN1_Tag(b & 0x1F);
+      class_tag = ASN1_Tag(b & 0xE0);
+      return 1;
+      }
+
+   size_t tag_bytes = 1;
+   class_tag = ASN1_Tag(b & 0xE0);
+
+   size_t tag_buf = 0;
+   while(true)
+      {
+      if(!ber->read_byte(b))
+         throw BER_Decoding_Error("Long-form tag truncated");
+      if(tag_buf & 0xFF000000)
+         throw BER_Decoding_Error("Long-form tag overflowed 32 bits");
+      ++tag_bytes;
+      tag_buf = (tag_buf << 7) | (b & 0x7F);
+      if((b & 0x80) == 0) break;
+      }
+   type_tag = ASN1_Tag(tag_buf);
+   return tag_bytes;
+   }
+
+/*
+* Find the EOC marker
+*/
+size_t find_eoc(DataSource* src, size_t allow_indef);
+
+/*
+* BER decode an ASN.1 length field
+*/
+size_t decode_length(DataSource* ber, size_t& field_size, size_t allow_indef)
+   {
+   uint8_t b;
+   if(!ber->read_byte(b))
+      throw BER_Decoding_Error("Length field not found");
+   field_size = 1;
+   if((b & 0x80) == 0)
+      return b;
+
+   field_size += (b & 0x7F);
+   if(field_size > 5)
+      throw BER_Decoding_Error("Length field is too large");
+
+   if(field_size == 1)
+      {
+      if(allow_indef == 0)
+         {
+         throw BER_Decoding_Error("Nested EOC markers too deep, rejecting to avoid stack exhaustion");
+         }
+      else
+         {
+         return find_eoc(ber, allow_indef - 1);
+         }
+      }
+
+   size_t length = 0;
+
+   for(size_t i = 0; i != field_size - 1; ++i)
+      {
+      if(get_byte(0, length) != 0)
+         throw BER_Decoding_Error("Field length overflow");
+      if(!ber->read_byte(b))
+         throw BER_Decoding_Error("Corrupted length field");
+      length = (length << 8) | b;
+      }
+   return length;
+   }
+
+/*
+* Find the EOC marker
+*/
+size_t find_eoc(DataSource* ber, size_t allow_indef)
+   {
+   secure_vector<uint8_t> buffer(BOTAN_DEFAULT_BUFFER_SIZE), data;
+
+   while(true)
+      {
+      const size_t got = ber->peek(buffer.data(), buffer.size(), data.size());
+      if(got == 0)
+         break;
+
+      data += std::make_pair(buffer.data(), got);
+      }
+
+   DataSource_Memory source(data);
+   data.clear();
+
+   size_t length = 0;
+   while(true)
+      {
+      ASN1_Tag type_tag, class_tag;
+      size_t tag_size = decode_tag(&source, type_tag, class_tag);
+      if(type_tag == NO_OBJECT)
+         break;
+
+      size_t length_size = 0;
+      size_t item_size = decode_length(&source, length_size, allow_indef);
+      source.discard_next(item_size);
+
+      length = BOTAN_CHECKED_ADD(length, item_size);
+      length = BOTAN_CHECKED_ADD(length, tag_size);
+      length = BOTAN_CHECKED_ADD(length, length_size);
+
+      if(type_tag == EOC && class_tag == UNIVERSAL)
+         break;
+      }
+   return length;
+   }
+
+class DataSource_BERObject final : public DataSource
+   {
+   public:
+      size_t read(uint8_t out[], size_t length) override
+         {
+         BOTAN_ASSERT_NOMSG(m_offset <= m_obj.length());
+         const size_t got = std::min<size_t>(m_obj.length() - m_offset, length);
+         copy_mem(out, m_obj.bits() + m_offset, got);
+         m_offset += got;
+         return got;
+         }
+
+      size_t peek(uint8_t out[], size_t length, size_t peek_offset) const override
+         {
+         BOTAN_ASSERT_NOMSG(m_offset <= m_obj.length());
+         const size_t bytes_left = m_obj.length() - m_offset;
+
+         if(peek_offset >= bytes_left)
+            return 0;
+
+         const size_t got = std::min(bytes_left - peek_offset, length);
+         copy_mem(out, m_obj.bits() + peek_offset, got);
+         return got;
+         }
+
+      bool check_available(size_t n) override
+         {
+         BOTAN_ASSERT_NOMSG(m_offset <= m_obj.length());
+         return (n <= (m_obj.length() - m_offset));
+         }
+
+      bool end_of_data() const override
+         {
+         return get_bytes_read() == m_obj.length();
+         }
+
+      size_t get_bytes_read() const override { return m_offset; }
+
+      explicit DataSource_BERObject(BER_Object&& obj) : m_obj(std::move(obj)), m_offset(0) {}
+
+   private:
+      BER_Object m_obj;
+      size_t m_offset;
+   };
+
+}
+
+/*
+* Check if more objects are there
+*/
+bool BER_Decoder::more_items() const
+   {
+   if(m_source->end_of_data() && !m_pushed.is_set())
+      return false;
+   return true;
+   }
+
+/*
+* Verify that no bytes remain in the source
+*/
+BER_Decoder& BER_Decoder::verify_end()
+   {
+   return verify_end("BER_Decoder::verify_end called, but data remains");
+   }
+
+/*
+* Verify that no bytes remain in the source
+*/
+BER_Decoder& BER_Decoder::verify_end(const std::string& err)
+   {
+   if(!m_source->end_of_data() || m_pushed.is_set())
+      throw Decoding_Error(err);
+   return (*this);
+   }
+
+/*
+* Discard all the bytes remaining in the source
+*/
+BER_Decoder& BER_Decoder::discard_remaining()
+   {
+   uint8_t buf;
+   while(m_source->read_byte(buf))
+      {}
+   return (*this);
+   }
+
+/*
+* Return the BER encoding of the next object
+*/
+BER_Object BER_Decoder::get_next_object()
+   {
+   BER_Object next;
+
+   if(m_pushed.is_set())
+      {
+      std::swap(next, m_pushed);
+      return next;
+      }
+
+   for(;;)
+      {
+      ASN1_Tag type_tag, class_tag;
+      decode_tag(m_source, type_tag, class_tag);
+      next.set_tagging(type_tag, class_tag);
+      if(next.is_set() == false) // no more objects
+         return next;
+
+      size_t field_size;
+      const size_t length = decode_length(m_source, field_size, ALLOWED_EOC_NESTINGS);
+      if(!m_source->check_available(length))
+         throw BER_Decoding_Error("Value truncated");
+
+      uint8_t* out = next.mutable_bits(length);
+      if(m_source->read(out, length) != length)
+         throw BER_Decoding_Error("Value truncated");
+
+      if(next.tagging() == EOC)
+         continue;
+      else
+         break;
+      }
+
+   return next;
+   }
+
+/*
+* Push a object back into the stream
+*/
+void BER_Decoder::push_back(const BER_Object& obj)
+   {
+   if(m_pushed.is_set())
+      throw Invalid_State("BER_Decoder: Only one push back is allowed");
+   m_pushed = obj;
+   }
+
+void BER_Decoder::push_back(BER_Object&& obj)
+   {
+   if(m_pushed.is_set())
+      throw Invalid_State("BER_Decoder: Only one push back is allowed");
+   m_pushed = std::move(obj);
+   }
+
+BER_Decoder BER_Decoder::start_cons(ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   BER_Object obj = get_next_object();
+   obj.assert_is_a(type_tag, ASN1_Tag(class_tag | CONSTRUCTED));
+   return BER_Decoder(std::move(obj), this);
+   }
+
+/*
+* Finish decoding a CONSTRUCTED type
+*/
+BER_Decoder& BER_Decoder::end_cons()
+   {
+   if(!m_parent)
+      throw Invalid_State("BER_Decoder::end_cons called with null parent");
+   if(!m_source->end_of_data())
+      throw Decoding_Error("BER_Decoder::end_cons called with data left");
+   return (*m_parent);
+   }
+
+BER_Decoder::BER_Decoder(BER_Object&& obj, BER_Decoder* parent)
+   {
+   m_data_src.reset(new DataSource_BERObject(std::move(obj)));
+   m_source = m_data_src.get();
+   m_parent = parent;
+   }
+
+/*
+* BER_Decoder Constructor
+*/
+BER_Decoder::BER_Decoder(DataSource& src)
+   {
+   m_source = &src;
+   }
+
+/*
+* BER_Decoder Constructor
+ */
+BER_Decoder::BER_Decoder(const uint8_t data[], size_t length)
+   {
+   m_data_src.reset(new DataSource_Memory(data, length));
+   m_source = m_data_src.get();
+   }
+
+/*
+* BER_Decoder Constructor
+*/
+BER_Decoder::BER_Decoder(const secure_vector<uint8_t>& data)
+   {
+   m_data_src.reset(new DataSource_Memory(data));
+   m_source = m_data_src.get();
+   }
+
+/*
+* BER_Decoder Constructor
+*/
+BER_Decoder::BER_Decoder(const std::vector<uint8_t>& data)
+   {
+   m_data_src.reset(new DataSource_Memory(data.data(), data.size()));
+   m_source = m_data_src.get();
+   }
+
+/*
+* BER_Decoder Copy Constructor
+*/
+BER_Decoder::BER_Decoder(const BER_Decoder& other)
+   {
+   m_source = other.m_source;
+
+   // take ownership
+   std::swap(m_data_src, other.m_data_src);
+   m_parent = other.m_parent;
+   }
+
+/*
+* Request for an object to decode itself
+*/
+BER_Decoder& BER_Decoder::decode(ASN1_Object& obj,
+                                 ASN1_Tag, ASN1_Tag)
+   {
+   obj.decode_from(*this);
+   return (*this);
+   }
+
+/*
+* Decode a BER encoded NULL
+*/
+BER_Decoder& BER_Decoder::decode_null()
+   {
+   BER_Object obj = get_next_object();
+   obj.assert_is_a(NULL_TAG, UNIVERSAL);
+   if(obj.length() > 0)
+      throw BER_Decoding_Error("NULL object had nonzero size");
+   return (*this);
+   }
+
+BER_Decoder& BER_Decoder::decode_octet_string_bigint(BigInt& out)
+   {
+   secure_vector<uint8_t> out_vec;
+   decode(out_vec, OCTET_STRING);
+   out = BigInt::decode(out_vec.data(), out_vec.size());
+   return (*this);
+   }
+
+/*
+* Decode a BER encoded BOOLEAN
+*/
+BER_Decoder& BER_Decoder::decode(bool& out,
+                                 ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   BER_Object obj = get_next_object();
+   obj.assert_is_a(type_tag, class_tag);
+
+   if(obj.length() != 1)
+      throw BER_Decoding_Error("BER boolean value had invalid size");
+
+   out = (obj.bits()[0]) ? true : false;
+   return (*this);
+   }
+
+/*
+* Decode a small BER encoded INTEGER
+*/
+BER_Decoder& BER_Decoder::decode(size_t& out,
+                                 ASN1_Tag type_tag,
+                                 ASN1_Tag class_tag)
+   {
+   BigInt integer;
+   decode(integer, type_tag, class_tag);
+
+   if(integer.is_negative())
+      throw BER_Decoding_Error("Decoded small integer value was negative");
+
+   if(integer.bits() > 32)
+      throw BER_Decoding_Error("Decoded integer value larger than expected");
+
+   out = 0;
+   for(size_t i = 0; i != 4; ++i)
+      out = (out << 8) | integer.byte_at(3-i);
+
+   return (*this);
+   }
+
+/*
+* Decode a small BER encoded INTEGER
+*/
+uint64_t BER_Decoder::decode_constrained_integer(ASN1_Tag type_tag,
+                                                 ASN1_Tag class_tag,
+                                                 size_t T_bytes)
+   {
+   if(T_bytes > 8)
+      throw BER_Decoding_Error("Can't decode small integer over 8 bytes");
+
+   BigInt integer;
+   decode(integer, type_tag, class_tag);
+
+   if(integer.bits() > 8*T_bytes)
+      throw BER_Decoding_Error("Decoded integer value larger than expected");
+
+   uint64_t out = 0;
+   for(size_t i = 0; i != 8; ++i)
+      out = (out << 8) | integer.byte_at(7-i);
+
+   return out;
+   }
+
+/*
+* Decode a BER encoded INTEGER
+*/
+BER_Decoder& BER_Decoder::decode(BigInt& out,
+                                 ASN1_Tag type_tag,
+                                 ASN1_Tag class_tag)
+   {
+   BER_Object obj = get_next_object();
+   obj.assert_is_a(type_tag, class_tag);
+
+   if(obj.length() == 0)
+      {
+      out = 0;
+      }
+   else
+      {
+      const bool negative = (obj.bits()[0] & 0x80) ? true : false;
+
+      if(negative)
+         {
+         secure_vector<uint8_t> vec(obj.bits(), obj.bits() + obj.length());
+         for(size_t i = obj.length(); i > 0; --i)
+            if(vec[i-1]--)
+               break;
+         for(size_t i = 0; i != obj.length(); ++i)
+            vec[i] = ~vec[i];
+         out = BigInt(vec.data(), vec.size());
+         out.flip_sign();
+         }
+      else
+         {
+         out = BigInt(obj.bits(), obj.length());
+         }
+      }
+
+   return (*this);
+   }
+
+namespace {
+
+template<typename Alloc>
+void asn1_decode_binary_string(std::vector<uint8_t, Alloc>& buffer,
+                               const BER_Object& obj,
+                               ASN1_Tag real_type,
+                               ASN1_Tag type_tag,
+                               ASN1_Tag class_tag)
+   {
+   obj.assert_is_a(type_tag, class_tag);
+
+   if(real_type == OCTET_STRING)
+      {
+      buffer.assign(obj.bits(), obj.bits() + obj.length());
+      }
+   else
+      {
+      if(obj.length() == 0)
+         throw BER_Decoding_Error("Invalid BIT STRING");
+      if(obj.bits()[0] >= 8)
+         throw BER_Decoding_Error("Bad number of unused bits in BIT STRING");
+
+      buffer.resize(obj.length() - 1);
+
+      if(obj.length() > 1)
+         copy_mem(buffer.data(), obj.bits() + 1, obj.length() - 1);
+      }
+   }
+
+}
+
+/*
+* BER decode a BIT STRING or OCTET STRING
+*/
+BER_Decoder& BER_Decoder::decode(secure_vector<uint8_t>& buffer,
+                                 ASN1_Tag real_type,
+                                 ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   if(real_type != OCTET_STRING && real_type != BIT_STRING)
+      throw BER_Bad_Tag("Bad tag for {BIT,OCTET} STRING", real_type);
+
+   asn1_decode_binary_string(buffer, get_next_object(), real_type, type_tag, class_tag);
+   return (*this);
+   }
+
+BER_Decoder& BER_Decoder::decode(std::vector<uint8_t>& buffer,
+                                 ASN1_Tag real_type,
+                                 ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   if(real_type != OCTET_STRING && real_type != BIT_STRING)
+      throw BER_Bad_Tag("Bad tag for {BIT,OCTET} STRING", real_type);
+
+   asn1_decode_binary_string(buffer, get_next_object(), real_type, type_tag, class_tag);
+   return (*this);
+   }
+
+}
+/*
+* DER Encoder
+* (C) 1999-2007,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+/*
+* DER encode an ASN.1 type tag
+*/
+void encode_tag(std::vector<uint8_t>& encoded_tag,
+                ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   if((class_tag | 0xE0) != 0xE0)
+      throw Encoding_Error("DER_Encoder: Invalid class tag " +
+                           std::to_string(class_tag));
+
+   if(type_tag <= 30)
+      {
+      encoded_tag.push_back(static_cast<uint8_t>(type_tag | class_tag));
+      }
+   else
+      {
+      size_t blocks = high_bit(static_cast<uint32_t>(type_tag)) + 6;
+      blocks = (blocks - (blocks % 7)) / 7;
+
+      BOTAN_ASSERT_NOMSG(blocks > 0);
+
+      encoded_tag.push_back(static_cast<uint8_t>(class_tag | 0x1F));
+      for(size_t i = 0; i != blocks - 1; ++i)
+         encoded_tag.push_back(0x80 | ((type_tag >> 7*(blocks-i-1)) & 0x7F));
+      encoded_tag.push_back(type_tag & 0x7F);
+      }
+   }
+
+/*
+* DER encode an ASN.1 length field
+*/
+void encode_length(std::vector<uint8_t>& encoded_length, size_t length)
+   {
+   if(length <= 127)
+      {
+      encoded_length.push_back(static_cast<uint8_t>(length));
+      }
+   else
+      {
+      const size_t bytes_needed = significant_bytes(length);
+
+      encoded_length.push_back(static_cast<uint8_t>(0x80 | bytes_needed));
+
+      for(size_t i = sizeof(length) - bytes_needed; i < sizeof(length); ++i)
+         encoded_length.push_back(get_byte(i, length));
+      }
+   }
+
+}
+
+DER_Encoder::DER_Encoder(secure_vector<uint8_t>& vec)
+   {
+   m_append_output = [&vec](const uint8_t b[], size_t l)
+      {
+      vec.insert(vec.end(), b, b + l);
+      };
+   }
+
+DER_Encoder::DER_Encoder(std::vector<uint8_t>& vec)
+   {
+   m_append_output = [&vec](const uint8_t b[], size_t l)
+      {
+      vec.insert(vec.end(), b, b + l);
+      };
+   }
+
+/*
+* Push the encoded SEQUENCE/SET to the encoder stream
+*/
+void DER_Encoder::DER_Sequence::push_contents(DER_Encoder& der)
+   {
+   const ASN1_Tag real_class_tag = ASN1_Tag(m_class_tag | CONSTRUCTED);
+
+   if(m_type_tag == SET)
+      {
+      std::sort(m_set_contents.begin(), m_set_contents.end());
+      for(size_t i = 0; i != m_set_contents.size(); ++i)
+         m_contents += m_set_contents[i];
+      m_set_contents.clear();
+      }
+
+   der.add_object(m_type_tag, real_class_tag, m_contents.data(), m_contents.size());
+   m_contents.clear();
+   }
+
+/*
+* Add an encoded value to the SEQUENCE/SET
+*/
+void DER_Encoder::DER_Sequence::add_bytes(const uint8_t data[], size_t length)
+   {
+   if(m_type_tag == SET)
+      m_set_contents.push_back(secure_vector<uint8_t>(data, data + length));
+   else
+      m_contents += std::make_pair(data, length);
+   }
+
+void DER_Encoder::DER_Sequence::add_bytes(const uint8_t hdr[], size_t hdr_len,
+                                          const uint8_t val[], size_t val_len)
+   {
+   if(m_type_tag == SET)
+      {
+      secure_vector<uint8_t> m;
+      m.reserve(hdr_len + val_len);
+      m += std::make_pair(hdr, hdr_len);
+      m += std::make_pair(val, val_len);
+      m_set_contents.push_back(std::move(m));
+      }
+   else
+      {
+      m_contents += std::make_pair(hdr, hdr_len);
+      m_contents += std::make_pair(val, val_len);
+      }
+   }
+
+/*
+* Return the type and class taggings
+*/
+ASN1_Tag DER_Encoder::DER_Sequence::tag_of() const
+   {
+   return ASN1_Tag(m_type_tag | m_class_tag);
+   }
+
+/*
+* DER_Sequence Constructor
+*/
+DER_Encoder::DER_Sequence::DER_Sequence(ASN1_Tag t1, ASN1_Tag t2) :
+   m_type_tag(t1), m_class_tag(t2)
+   {
+   }
+
+/*
+* Return the encoded contents
+*/
+secure_vector<uint8_t> DER_Encoder::get_contents()
+   {
+   if(m_subsequences.size() != 0)
+      throw Invalid_State("DER_Encoder: Sequence hasn't been marked done");
+
+   if(m_append_output)
+      throw Invalid_State("DER_Encoder Cannot get contents when using output vector");
+
+   secure_vector<uint8_t> output;
+   std::swap(output, m_default_outbuf);
+   return output;
+   }
+
+std::vector<uint8_t> DER_Encoder::get_contents_unlocked()
+   {
+   if(m_subsequences.size() != 0)
+      throw Invalid_State("DER_Encoder: Sequence hasn't been marked done");
+
+   if(m_append_output)
+      throw Invalid_State("DER_Encoder Cannot get contents when using output vector");
+
+   std::vector<uint8_t> output(m_default_outbuf.begin(), m_default_outbuf.end());
+   m_default_outbuf.clear();
+   return output;
+   }
+
+/*
+* Start a new ASN.1 SEQUENCE/SET/EXPLICIT
+*/
+DER_Encoder& DER_Encoder::start_cons(ASN1_Tag type_tag,
+                                     ASN1_Tag class_tag)
+   {
+   m_subsequences.push_back(DER_Sequence(type_tag, class_tag));
+   return (*this);
+   }
+
+/*
+* Finish the current ASN.1 SEQUENCE/SET/EXPLICIT
+*/
+DER_Encoder& DER_Encoder::end_cons()
+   {
+   if(m_subsequences.empty())
+      throw Invalid_State("DER_Encoder::end_cons: No such sequence");
+
+   DER_Sequence last_seq = std::move(m_subsequences[m_subsequences.size()-1]);
+   m_subsequences.pop_back();
+   last_seq.push_contents(*this);
+
+   return (*this);
+   }
+
+/*
+* Start a new ASN.1 EXPLICIT encoding
+*/
+DER_Encoder& DER_Encoder::start_explicit(uint16_t type_no)
+   {
+   ASN1_Tag type_tag = static_cast<ASN1_Tag>(type_no);
+
+   // This would confuse DER_Sequence
+   if(type_tag == SET)
+      throw Internal_Error("DER_Encoder.start_explicit(SET) not supported");
+
+   return start_cons(type_tag, CONTEXT_SPECIFIC);
+   }
+
+/*
+* Finish the current ASN.1 EXPLICIT encoding
+*/
+DER_Encoder& DER_Encoder::end_explicit()
+   {
+   return end_cons();
+   }
+
+/*
+* Write raw bytes into the stream
+*/
+DER_Encoder& DER_Encoder::raw_bytes(const uint8_t bytes[], size_t length)
+   {
+   if(m_subsequences.size())
+      {
+      m_subsequences[m_subsequences.size()-1].add_bytes(bytes, length);
+      }
+   else if(m_append_output)
+      {
+      m_append_output(bytes, length);
+      }
+   else
+      {
+      m_default_outbuf += std::make_pair(bytes, length);
+      }
+
+   return (*this);
+   }
+
+/*
+* Write the encoding of the byte(s)
+*/
+DER_Encoder& DER_Encoder::add_object(ASN1_Tag type_tag, ASN1_Tag class_tag,
+                                     const uint8_t rep[], size_t length)
+   {
+   std::vector<uint8_t> hdr;
+   encode_tag(hdr, type_tag, class_tag);
+   encode_length(hdr, length);
+
+   if(m_subsequences.size())
+      {
+      m_subsequences[m_subsequences.size()-1].add_bytes(hdr.data(), hdr.size(), rep, length);
+      }
+   else if(m_append_output)
+      {
+      m_append_output(hdr.data(), hdr.size());
+      m_append_output(rep, length);
+      }
+   else
+      {
+      m_default_outbuf += hdr;
+      m_default_outbuf += std::make_pair(rep, length);
+      }
+
+   return (*this);
+   }
+
+/*
+* Encode a NULL object
+*/
+DER_Encoder& DER_Encoder::encode_null()
+   {
+   return add_object(NULL_TAG, UNIVERSAL, nullptr, 0);
+   }
+
+/*
+* DER encode a BOOLEAN
+*/
+DER_Encoder& DER_Encoder::encode(bool is_true)
+   {
+   return encode(is_true, BOOLEAN, UNIVERSAL);
+   }
+
+/*
+* DER encode a small INTEGER
+*/
+DER_Encoder& DER_Encoder::encode(size_t n)
+   {
+   return encode(BigInt(n), INTEGER, UNIVERSAL);
+   }
+
+/*
+* DER encode a small INTEGER
+*/
+DER_Encoder& DER_Encoder::encode(const BigInt& n)
+   {
+   return encode(n, INTEGER, UNIVERSAL);
+   }
+
+/*
+* Encode this object
+*/
+DER_Encoder& DER_Encoder::encode(const uint8_t bytes[], size_t length,
+                                 ASN1_Tag real_type)
+   {
+   return encode(bytes, length, real_type, real_type, UNIVERSAL);
+   }
+
+/*
+* DER encode a BOOLEAN
+*/
+DER_Encoder& DER_Encoder::encode(bool is_true,
+                                 ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   uint8_t val = is_true ? 0xFF : 0x00;
+   return add_object(type_tag, class_tag, &val, 1);
+   }
+
+/*
+* DER encode a small INTEGER
+*/
+DER_Encoder& DER_Encoder::encode(size_t n,
+                                 ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   return encode(BigInt(n), type_tag, class_tag);
+   }
+
+/*
+* DER encode an INTEGER
+*/
+DER_Encoder& DER_Encoder::encode(const BigInt& n,
+                                 ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   if(n == 0)
+      return add_object(type_tag, class_tag, 0);
+
+   const size_t extra_zero = (n.bits() % 8 == 0) ? 1 : 0;
+   secure_vector<uint8_t> contents(extra_zero + n.bytes());
+   n.binary_encode(&contents[extra_zero]);
+   if(n < 0)
+      {
+      for(size_t i = 0; i != contents.size(); ++i)
+         contents[i] = ~contents[i];
+      for(size_t i = contents.size(); i > 0; --i)
+         if(++contents[i-1])
+            break;
+      }
+
+   return add_object(type_tag, class_tag, contents);
+   }
+
+/*
+* DER encode an OCTET STRING or BIT STRING
+*/
+DER_Encoder& DER_Encoder::encode(const uint8_t bytes[], size_t length,
+                                 ASN1_Tag real_type,
+                                 ASN1_Tag type_tag, ASN1_Tag class_tag)
+   {
+   if(real_type != OCTET_STRING && real_type != BIT_STRING)
+      throw Invalid_Argument("DER_Encoder: Invalid tag for byte/bit string");
+
+   if(real_type == BIT_STRING)
+      {
+      secure_vector<uint8_t> encoded;
+      encoded.push_back(0);
+      encoded += std::make_pair(bytes, length);
+      return add_object(type_tag, class_tag, encoded);
+      }
+   else
+      return add_object(type_tag, class_tag, bytes, length);
+   }
+
+DER_Encoder& DER_Encoder::encode(const ASN1_Object& obj)
+   {
+   obj.encode_into(*this);
+   return (*this);
+   }
+
+/*
+* Write the encoding of the byte(s)
+*/
+DER_Encoder& DER_Encoder::add_object(ASN1_Tag type_tag, ASN1_Tag class_tag,
+                                     const std::string& rep_str)
+   {
+   const uint8_t* rep = cast_char_ptr_to_uint8(rep_str.data());
+   const size_t rep_len = rep_str.size();
+   return add_object(type_tag, class_tag, rep, rep_len);
+   }
+
+/*
+* Write the encoding of the byte
+*/
+DER_Encoder& DER_Encoder::add_object(ASN1_Tag type_tag,
+                                     ASN1_Tag class_tag, uint8_t rep)
+   {
+   return add_object(type_tag, class_tag, &rep, 1);
+   }
+
+}
+/*
+* OID maps
+*
+* This file was automatically generated by ./src/scripts/oids.py on 2019-10-21
+*
+* All manual edits to this file will be lost. Edit the script
+* then regenerate this source file.
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+#include <unordered_map>
+
+namespace Botan {
+
+std::unordered_map<std::string, std::string> OIDS::load_oid2str_map()
+   {
+   return std::unordered_map<std::string,std::string>{
+      { "0.3.4401.5.3.1.9.26", "Camellia-192/GCM" },
+      { "0.3.4401.5.3.1.9.46", "Camellia-256/GCM" },
+      { "0.3.4401.5.3.1.9.6", "Camellia-128/GCM" },
+      { "0.4.0.127.0.15.1.1.13.0", "XMSS" },
+      { "1.0.14888.3.0.5", "ECKCDSA" },
+      { "1.2.156.10197.1.104.100", "SM4/OCB" },
+      { "1.2.156.10197.1.104.2", "SM4/CBC" },
+      { "1.2.156.10197.1.104.8", "SM4/GCM" },
+      { "1.2.156.10197.1.301", "sm2p256v1" },
+      { "1.2.156.10197.1.301.1", "SM2" },
+      { "1.2.156.10197.1.301.2", "SM2_Kex" },
+      { "1.2.156.10197.1.301.3", "SM2_Enc" },
+      { "1.2.156.10197.1.401", "SM3" },
+      { "1.2.156.10197.1.501", "SM2_Sig/SM3" },
+      { "1.2.156.10197.1.504", "RSA/EMSA3(SM3)" },
+      { "1.2.250.1.223.101.256.1", "frp256v1" },
+      { "1.2.392.200011.61.1.1.1.2", "Camellia-128/CBC" },
+      { "1.2.392.200011.61.1.1.1.3", "Camellia-192/CBC" },
+      { "1.2.392.200011.61.1.1.1.4", "Camellia-256/CBC" },
+      { "1.2.410.200004.1.100.4.3", "ECKCDSA/EMSA1(SHA-1)" },
+      { "1.2.410.200004.1.100.4.4", "ECKCDSA/EMSA1(SHA-224)" },
+      { "1.2.410.200004.1.100.4.5", "ECKCDSA/EMSA1(SHA-256)" },
+      { "1.2.410.200004.1.4", "SEED/CBC" },
+      { "1.2.643.100.1", "GOST.OGRN" },
+      { "1.2.643.100.111", "GOST.SubjectSigningTool" },
+      { "1.2.643.100.112", "GOST.IssuerSigningTool" },
+      { "1.2.643.2.2.19", "GOST-34.10" },
+      { "1.2.643.2.2.3", "GOST-34.10/EMSA1(GOST-R-34.11-94)" },
+      { "1.2.643.2.2.35.1", "gost_256A" },
+      { "1.2.643.2.2.36.0", "gost_256A" },
+      { "1.2.643.3.131.1.1", "GOST.INN" },
+      { "1.2.643.7.1.1.1.1", "GOST-34.10-2012-256" },
+      { "1.2.643.7.1.1.1.2", "GOST-34.10-2012-512" },
+      { "1.2.643.7.1.1.2.2", "Streebog-256" },
+      { "1.2.643.7.1.1.2.3", "Streebog-512" },
+      { "1.2.643.7.1.1.3.2", "GOST-34.10-2012-256/EMSA1(Streebog-256)" },
+      { "1.2.643.7.1.1.3.3", "GOST-34.10-2012-512/EMSA1(Streebog-512)" },
+      { "1.2.643.7.1.2.1.1.1", "gost_256A" },
+      { "1.2.643.7.1.2.1.1.2", "gost_256B" },
+      { "1.2.643.7.1.2.1.2.1", "gost_512A" },
+      { "1.2.643.7.1.2.1.2.2", "gost_512B" },
+      { "1.2.840.10040.4.1", "DSA" },
+      { "1.2.840.10040.4.3", "DSA/EMSA1(SHA-160)" },
+      { "1.2.840.10045.2.1", "ECDSA" },
+      { "1.2.840.10045.3.1.1", "secp192r1" },
+      { "1.2.840.10045.3.1.2", "x962_p192v2" },
+      { "1.2.840.10045.3.1.3", "x962_p192v3" },
+      { "1.2.840.10045.3.1.4", "x962_p239v1" },
+      { "1.2.840.10045.3.1.5", "x962_p239v2" },
+      { "1.2.840.10045.3.1.6", "x962_p239v3" },
+      { "1.2.840.10045.3.1.7", "secp256r1" },
+      { "1.2.840.10045.4.1", "ECDSA/EMSA1(SHA-160)" },
+      { "1.2.840.10045.4.3.1", "ECDSA/EMSA1(SHA-224)" },
+      { "1.2.840.10045.4.3.2", "ECDSA/EMSA1(SHA-256)" },
+      { "1.2.840.10045.4.3.3", "ECDSA/EMSA1(SHA-384)" },
+      { "1.2.840.10045.4.3.4", "ECDSA/EMSA1(SHA-512)" },
+      { "1.2.840.10046.2.1", "DH" },
+      { "1.2.840.113533.7.66.10", "CAST-128/CBC" },
+      { "1.2.840.113533.7.66.15", "KeyWrap.CAST-128" },
+      { "1.2.840.113549.1.1.1", "RSA" },
+      { "1.2.840.113549.1.1.10", "RSA/EMSA4" },
+      { "1.2.840.113549.1.1.11", "RSA/EMSA3(SHA-256)" },
+      { "1.2.840.113549.1.1.12", "RSA/EMSA3(SHA-384)" },
+      { "1.2.840.113549.1.1.13", "RSA/EMSA3(SHA-512)" },
+      { "1.2.840.113549.1.1.14", "RSA/EMSA3(SHA-224)" },
+      { "1.2.840.113549.1.1.16", "RSA/EMSA3(SHA-512-256)" },
+      { "1.2.840.113549.1.1.4", "RSA/EMSA3(MD5)" },
+      { "1.2.840.113549.1.1.5", "RSA/EMSA3(SHA-160)" },
+      { "1.2.840.113549.1.1.7", "RSA/OAEP" },
+      { "1.2.840.113549.1.1.8", "MGF1" },
+      { "1.2.840.113549.1.5.12", "PKCS5.PBKDF2" },
+      { "1.2.840.113549.1.5.13", "PBE-PKCS5v20" },
+      { "1.2.840.113549.1.9.1", "PKCS9.EmailAddress" },
+      { "1.2.840.113549.1.9.14", "PKCS9.ExtensionRequest" },
+      { "1.2.840.113549.1.9.16.3.18", "ChaCha20Poly1305" },
+      { "1.2.840.113549.1.9.16.3.6", "KeyWrap.TripleDES" },
+      { "1.2.840.113549.1.9.16.3.8", "Compression.Zlib" },
+      { "1.2.840.113549.1.9.2", "PKCS9.UnstructuredName" },
+      { "1.2.840.113549.1.9.3", "PKCS9.ContentType" },
+      { "1.2.840.113549.1.9.4", "PKCS9.MessageDigest" },
+      { "1.2.840.113549.1.9.7", "PKCS9.ChallengePassword" },
+      { "1.2.840.113549.2.10", "HMAC(SHA-384)" },
+      { "1.2.840.113549.2.11", "HMAC(SHA-512)" },
+      { "1.2.840.113549.2.13", "HMAC(SHA-512-256)" },
+      { "1.2.840.113549.2.5", "MD5" },
+      { "1.2.840.113549.2.7", "HMAC(SHA-160)" },
+      { "1.2.840.113549.2.8", "HMAC(SHA-224)" },
+      { "1.2.840.113549.2.9", "HMAC(SHA-256)" },
+      { "1.2.840.113549.3.7", "TripleDES/CBC" },
+      { "1.3.101.110", "Curve25519" },
+      { "1.3.101.112", "Ed25519" },
+      { "1.3.132.0.10", "secp256k1" },
+      { "1.3.132.0.30", "secp160r2" },
+      { "1.3.132.0.31", "secp192k1" },
+      { "1.3.132.0.32", "secp224k1" },
+      { "1.3.132.0.33", "secp224r1" },
+      { "1.3.132.0.34", "secp384r1" },
+      { "1.3.132.0.35", "secp521r1" },
+      { "1.3.132.0.8", "secp160r1" },
+      { "1.3.132.0.9", "secp160k1" },
+      { "1.3.132.1.12", "ECDH" },
+      { "1.3.14.3.2.26", "SHA-160" },
+      { "1.3.14.3.2.7", "DES/CBC" },
+      { "1.3.36.3.2.1", "RIPEMD-160" },
+      { "1.3.36.3.3.1.2", "RSA/EMSA3(RIPEMD-160)" },
+      { "1.3.36.3.3.2.5.2.1", "ECGDSA" },
+      { "1.3.36.3.3.2.5.4.1", "ECGDSA/EMSA1(RIPEMD-160)" },
+      { "1.3.36.3.3.2.5.4.2", "ECGDSA/EMSA1(SHA-160)" },
+      { "1.3.36.3.3.2.5.4.3", "ECGDSA/EMSA1(SHA-224)" },
+      { "1.3.36.3.3.2.5.4.4", "ECGDSA/EMSA1(SHA-256)" },
+      { "1.3.36.3.3.2.5.4.5", "ECGDSA/EMSA1(SHA-384)" },
+      { "1.3.36.3.3.2.5.4.6", "ECGDSA/EMSA1(SHA-512)" },
+      { "1.3.36.3.3.2.8.1.1.1", "brainpool160r1" },
+      { "1.3.36.3.3.2.8.1.1.11", "brainpool384r1" },
+      { "1.3.36.3.3.2.8.1.1.13", "brainpool512r1" },
+      { "1.3.36.3.3.2.8.1.1.3", "brainpool192r1" },
+      { "1.3.36.3.3.2.8.1.1.5", "brainpool224r1" },
+      { "1.3.36.3.3.2.8.1.1.7", "brainpool256r1" },
+      { "1.3.36.3.3.2.8.1.1.9", "brainpool320r1" },
+      { "1.3.6.1.4.1.11591.12.2", "Tiger(24,3)" },
+      { "1.3.6.1.4.1.11591.15.1", "OpenPGP.Ed25519" },
+      { "1.3.6.1.4.1.11591.4.11", "Scrypt" },
+      { "1.3.6.1.4.1.25258.1.3", "McEliece" },
+      { "1.3.6.1.4.1.25258.1.5", "XMSS-draft6" },
+      { "1.3.6.1.4.1.25258.1.6.1", "GOST-34.10-2012-256/EMSA1(SHA-256)" },
+      { "1.3.6.1.4.1.25258.1.8", "XMSS-draft12" },
+      { "1.3.6.1.4.1.25258.3.1", "Serpent/CBC" },
+      { "1.3.6.1.4.1.25258.3.101", "Serpent/GCM" },
+      { "1.3.6.1.4.1.25258.3.102", "Twofish/GCM" },
+      { "1.3.6.1.4.1.25258.3.2", "Threefish-512/CBC" },
+      { "1.3.6.1.4.1.25258.3.2.1", "AES-128/OCB" },
+      { "1.3.6.1.4.1.25258.3.2.2", "AES-192/OCB" },
+      { "1.3.6.1.4.1.25258.3.2.3", "AES-256/OCB" },
+      { "1.3.6.1.4.1.25258.3.2.4", "Serpent/OCB" },
+      { "1.3.6.1.4.1.25258.3.2.5", "Twofish/OCB" },
+      { "1.3.6.1.4.1.25258.3.2.6", "Camellia-128/OCB" },
+      { "1.3.6.1.4.1.25258.3.2.7", "Camellia-192/OCB" },
+      { "1.3.6.1.4.1.25258.3.2.8", "Camellia-256/OCB" },
+      { "1.3.6.1.4.1.25258.3.3", "Twofish/CBC" },
+      { "1.3.6.1.4.1.25258.3.4.1", "AES-128/SIV" },
+      { "1.3.6.1.4.1.25258.3.4.2", "AES-192/SIV" },
+      { "1.3.6.1.4.1.25258.3.4.3", "AES-256/SIV" },
+      { "1.3.6.1.4.1.25258.3.4.4", "Serpent/SIV" },
+      { "1.3.6.1.4.1.25258.3.4.5", "Twofish/SIV" },
+      { "1.3.6.1.4.1.25258.3.4.6", "Camellia-128/SIV" },
+      { "1.3.6.1.4.1.25258.3.4.7", "Camellia-192/SIV" },
+      { "1.3.6.1.4.1.25258.3.4.8", "Camellia-256/SIV" },
+      { "1.3.6.1.4.1.25258.3.4.9", "SM4/SIV" },
+      { "1.3.6.1.4.1.3029.1.2.1", "ElGamal" },
+      { "1.3.6.1.4.1.3029.1.5.1", "OpenPGP.Curve25519" },
+      { "1.3.6.1.4.1.311.20.2.2", "Microsoft SmartcardLogon" },
+      { "1.3.6.1.4.1.311.20.2.3", "Microsoft UPN" },
+      { "1.3.6.1.4.1.8301.3.1.2.9.0.38", "secp521r1" },
+      { "1.3.6.1.5.5.7.1.1", "PKIX.AuthorityInformationAccess" },
+      { "1.3.6.1.5.5.7.3.1", "PKIX.ServerAuth" },
+      { "1.3.6.1.5.5.7.3.2", "PKIX.ClientAuth" },
+      { "1.3.6.1.5.5.7.3.3", "PKIX.CodeSigning" },
+      { "1.3.6.1.5.5.7.3.4", "PKIX.EmailProtection" },
+      { "1.3.6.1.5.5.7.3.5", "PKIX.IPsecEndSystem" },
+      { "1.3.6.1.5.5.7.3.6", "PKIX.IPsecTunnel" },
+      { "1.3.6.1.5.5.7.3.7", "PKIX.IPsecUser" },
+      { "1.3.6.1.5.5.7.3.8", "PKIX.TimeStamping" },
+      { "1.3.6.1.5.5.7.3.9", "PKIX.OCSPSigning" },
+      { "1.3.6.1.5.5.7.48.1", "PKIX.OCSP" },
+      { "1.3.6.1.5.5.7.48.1.1", "PKIX.OCSP.BasicResponse" },
+      { "1.3.6.1.5.5.7.48.2", "PKIX.CertificateAuthorityIssuers" },
+      { "1.3.6.1.5.5.7.8.5", "PKIX.XMPPAddr" },
+      { "2.16.840.1.101.3.4.1.2", "AES-128/CBC" },
+      { "2.16.840.1.101.3.4.1.22", "AES-192/CBC" },
+      { "2.16.840.1.101.3.4.1.25", "KeyWrap.AES-192" },
+      { "2.16.840.1.101.3.4.1.26", "AES-192/GCM" },
+      { "2.16.840.1.101.3.4.1.27", "AES-192/CCM" },
+      { "2.16.840.1.101.3.4.1.42", "AES-256/CBC" },
+      { "2.16.840.1.101.3.4.1.45", "KeyWrap.AES-256" },
+      { "2.16.840.1.101.3.4.1.46", "AES-256/GCM" },
+      { "2.16.840.1.101.3.4.1.47", "AES-256/CCM" },
+      { "2.16.840.1.101.3.4.1.5", "KeyWrap.AES-128" },
+      { "2.16.840.1.101.3.4.1.6", "AES-128/GCM" },
+      { "2.16.840.1.101.3.4.1.7", "AES-128/CCM" },
+      { "2.16.840.1.101.3.4.2.1", "SHA-256" },
+      { "2.16.840.1.101.3.4.2.10", "SHA-3(512)" },
+      { "2.16.840.1.101.3.4.2.11", "SHAKE-128" },
+      { "2.16.840.1.101.3.4.2.12", "SHAKE-256" },
+      { "2.16.840.1.101.3.4.2.2", "SHA-384" },
+      { "2.16.840.1.101.3.4.2.3", "SHA-512" },
+      { "2.16.840.1.101.3.4.2.4", "SHA-224" },
+      { "2.16.840.1.101.3.4.2.6", "SHA-512-256" },
+      { "2.16.840.1.101.3.4.2.7", "SHA-3(224)" },
+      { "2.16.840.1.101.3.4.2.8", "SHA-3(256)" },
+      { "2.16.840.1.101.3.4.2.9", "SHA-3(384)" },
+      { "2.16.840.1.101.3.4.3.1", "DSA/EMSA1(SHA-224)" },
+      { "2.16.840.1.101.3.4.3.10", "ECDSA/EMSA1(SHA-3(256))" },
+      { "2.16.840.1.101.3.4.3.11", "ECDSA/EMSA1(SHA-3(384))" },
+      { "2.16.840.1.101.3.4.3.12", "ECDSA/EMSA1(SHA-3(512))" },
+      { "2.16.840.1.101.3.4.3.13", "RSA/EMSA3(SHA-3(224))" },
+      { "2.16.840.1.101.3.4.3.14", "RSA/EMSA3(SHA-3(256))" },
+      { "2.16.840.1.101.3.4.3.15", "RSA/EMSA3(SHA-3(384))" },
+      { "2.16.840.1.101.3.4.3.16", "RSA/EMSA3(SHA-3(512))" },
+      { "2.16.840.1.101.3.4.3.2", "DSA/EMSA1(SHA-256)" },
+      { "2.16.840.1.101.3.4.3.3", "DSA/EMSA1(SHA-384)" },
+      { "2.16.840.1.101.3.4.3.4", "DSA/EMSA1(SHA-512)" },
+      { "2.16.840.1.101.3.4.3.5", "DSA/EMSA1(SHA-3(224))" },
+      { "2.16.840.1.101.3.4.3.6", "DSA/EMSA1(SHA-3(256))" },
+      { "2.16.840.1.101.3.4.3.7", "DSA/EMSA1(SHA-3(384))" },
+      { "2.16.840.1.101.3.4.3.8", "DSA/EMSA1(SHA-3(512))" },
+      { "2.16.840.1.101.3.4.3.9", "ECDSA/EMSA1(SHA-3(224))" },
+      { "2.16.840.1.113730.1.13", "Certificate Comment" },
+      { "2.5.29.14", "X509v3.SubjectKeyIdentifier" },
+      { "2.5.29.15", "X509v3.KeyUsage" },
+      { "2.5.29.16", "X509v3.PrivateKeyUsagePeriod" },
+      { "2.5.29.17", "X509v3.SubjectAlternativeName" },
+      { "2.5.29.18", "X509v3.IssuerAlternativeName" },
+      { "2.5.29.19", "X509v3.BasicConstraints" },
+      { "2.5.29.20", "X509v3.CRLNumber" },
+      { "2.5.29.21", "X509v3.ReasonCode" },
+      { "2.5.29.23", "X509v3.HoldInstructionCode" },
+      { "2.5.29.24", "X509v3.InvalidityDate" },
+      { "2.5.29.28", "X509v3.CRLIssuingDistributionPoint" },
+      { "2.5.29.30", "X509v3.NameConstraints" },
+      { "2.5.29.31", "X509v3.CRLDistributionPoints" },
+      { "2.5.29.32", "X509v3.CertificatePolicies" },
+      { "2.5.29.32.0", "X509v3.AnyPolicy" },
+      { "2.5.29.35", "X509v3.AuthorityKeyIdentifier" },
+      { "2.5.29.36", "X509v3.PolicyConstraints" },
+      { "2.5.29.37", "X509v3.ExtendedKeyUsage" },
+      { "2.5.4.10", "X520.Organization" },
+      { "2.5.4.11", "X520.OrganizationalUnit" },
+      { "2.5.4.12", "X520.Title" },
+      { "2.5.4.3", "X520.CommonName" },
+      { "2.5.4.4", "X520.Surname" },
+      { "2.5.4.42", "X520.GivenName" },
+      { "2.5.4.43", "X520.Initials" },
+      { "2.5.4.44", "X520.GenerationalQualifier" },
+      { "2.5.4.46", "X520.DNQualifier" },
+      { "2.5.4.5", "X520.SerialNumber" },
+      { "2.5.4.6", "X520.Country" },
+      { "2.5.4.65", "X520.Pseudonym" },
+      { "2.5.4.7", "X520.Locality" },
+      { "2.5.4.8", "X520.State" },
+      { "2.5.4.9", "X520.StreetAddress" },
+      { "2.5.8.1.1", "RSA" }
+      };
+   }
+
+std::unordered_map<std::string, OID> OIDS::load_str2oid_map()
+   {
+   return std::unordered_map<std::string,OID>{
+      { "AES-128/CBC", OID({2,16,840,1,101,3,4,1,2}) },
+      { "AES-128/CCM", OID({2,16,840,1,101,3,4,1,7}) },
+      { "AES-128/GCM", OID({2,16,840,1,101,3,4,1,6}) },
+      { "AES-128/OCB", OID({1,3,6,1,4,1,25258,3,2,1}) },
+      { "AES-128/SIV", OID({1,3,6,1,4,1,25258,3,4,1}) },
+      { "AES-192/CBC", OID({2,16,840,1,101,3,4,1,22}) },
+      { "AES-192/CCM", OID({2,16,840,1,101,3,4,1,27}) },
+      { "AES-192/GCM", OID({2,16,840,1,101,3,4,1,26}) },
+      { "AES-192/OCB", OID({1,3,6,1,4,1,25258,3,2,2}) },
+      { "AES-192/SIV", OID({1,3,6,1,4,1,25258,3,4,2}) },
+      { "AES-256/CBC", OID({2,16,840,1,101,3,4,1,42}) },
+      { "AES-256/CCM", OID({2,16,840,1,101,3,4,1,47}) },
+      { "AES-256/GCM", OID({2,16,840,1,101,3,4,1,46}) },
+      { "AES-256/OCB", OID({1,3,6,1,4,1,25258,3,2,3}) },
+      { "AES-256/SIV", OID({1,3,6,1,4,1,25258,3,4,3}) },
+      { "CAST-128/CBC", OID({1,2,840,113533,7,66,10}) },
+      { "Camellia-128/CBC", OID({1,2,392,200011,61,1,1,1,2}) },
+      { "Camellia-128/GCM", OID({0,3,4401,5,3,1,9,6}) },
+      { "Camellia-128/OCB", OID({1,3,6,1,4,1,25258,3,2,6}) },
+      { "Camellia-128/SIV", OID({1,3,6,1,4,1,25258,3,4,6}) },
+      { "Camellia-192/CBC", OID({1,2,392,200011,61,1,1,1,3}) },
+      { "Camellia-192/GCM", OID({0,3,4401,5,3,1,9,26}) },
+      { "Camellia-192/OCB", OID({1,3,6,1,4,1,25258,3,2,7}) },
+      { "Camellia-192/SIV", OID({1,3,6,1,4,1,25258,3,4,7}) },
+      { "Camellia-256/CBC", OID({1,2,392,200011,61,1,1,1,4}) },
+      { "Camellia-256/GCM", OID({0,3,4401,5,3,1,9,46}) },
+      { "Camellia-256/OCB", OID({1,3,6,1,4,1,25258,3,2,8}) },
+      { "Camellia-256/SIV", OID({1,3,6,1,4,1,25258,3,4,8}) },
+      { "Certificate Comment", OID({2,16,840,1,113730,1,13}) },
+      { "ChaCha20Poly1305", OID({1,2,840,113549,1,9,16,3,18}) },
+      { "Compression.Zlib", OID({1,2,840,113549,1,9,16,3,8}) },
+      { "Curve25519", OID({1,3,101,110}) },
+      { "DES/CBC", OID({1,3,14,3,2,7}) },
+      { "DH", OID({1,2,840,10046,2,1}) },
+      { "DSA", OID({1,2,840,10040,4,1}) },
+      { "DSA/EMSA1(SHA-160)", OID({1,2,840,10040,4,3}) },
+      { "DSA/EMSA1(SHA-224)", OID({2,16,840,1,101,3,4,3,1}) },
+      { "DSA/EMSA1(SHA-256)", OID({2,16,840,1,101,3,4,3,2}) },
+      { "DSA/EMSA1(SHA-3(224))", OID({2,16,840,1,101,3,4,3,5}) },
+      { "DSA/EMSA1(SHA-3(256))", OID({2,16,840,1,101,3,4,3,6}) },
+      { "DSA/EMSA1(SHA-3(384))", OID({2,16,840,1,101,3,4,3,7}) },
+      { "DSA/EMSA1(SHA-3(512))", OID({2,16,840,1,101,3,4,3,8}) },
+      { "DSA/EMSA1(SHA-384)", OID({2,16,840,1,101,3,4,3,3}) },
+      { "DSA/EMSA1(SHA-512)", OID({2,16,840,1,101,3,4,3,4}) },
+      { "ECDH", OID({1,3,132,1,12}) },
+      { "ECDSA", OID({1,2,840,10045,2,1}) },
+      { "ECDSA/EMSA1(SHA-160)", OID({1,2,840,10045,4,1}) },
+      { "ECDSA/EMSA1(SHA-224)", OID({1,2,840,10045,4,3,1}) },
+      { "ECDSA/EMSA1(SHA-256)", OID({1,2,840,10045,4,3,2}) },
+      { "ECDSA/EMSA1(SHA-3(224))", OID({2,16,840,1,101,3,4,3,9}) },
+      { "ECDSA/EMSA1(SHA-3(256))", OID({2,16,840,1,101,3,4,3,10}) },
+      { "ECDSA/EMSA1(SHA-3(384))", OID({2,16,840,1,101,3,4,3,11}) },
+      { "ECDSA/EMSA1(SHA-3(512))", OID({2,16,840,1,101,3,4,3,12}) },
+      { "ECDSA/EMSA1(SHA-384)", OID({1,2,840,10045,4,3,3}) },
+      { "ECDSA/EMSA1(SHA-512)", OID({1,2,840,10045,4,3,4}) },
+      { "ECGDSA", OID({1,3,36,3,3,2,5,2,1}) },
+      { "ECGDSA/EMSA1(RIPEMD-160)", OID({1,3,36,3,3,2,5,4,1}) },
+      { "ECGDSA/EMSA1(SHA-160)", OID({1,3,36,3,3,2,5,4,2}) },
+      { "ECGDSA/EMSA1(SHA-224)", OID({1,3,36,3,3,2,5,4,3}) },
+      { "ECGDSA/EMSA1(SHA-256)", OID({1,3,36,3,3,2,5,4,4}) },
+      { "ECGDSA/EMSA1(SHA-384)", OID({1,3,36,3,3,2,5,4,5}) },
+      { "ECGDSA/EMSA1(SHA-512)", OID({1,3,36,3,3,2,5,4,6}) },
+      { "ECKCDSA", OID({1,0,14888,3,0,5}) },
+      { "ECKCDSA/EMSA1(SHA-1)", OID({1,2,410,200004,1,100,4,3}) },
+      { "ECKCDSA/EMSA1(SHA-224)", OID({1,2,410,200004,1,100,4,4}) },
+      { "ECKCDSA/EMSA1(SHA-256)", OID({1,2,410,200004,1,100,4,5}) },
+      { "Ed25519", OID({1,3,101,112}) },
+      { "ElGamal", OID({1,3,6,1,4,1,3029,1,2,1}) },
+      { "GOST-34.10", OID({1,2,643,2,2,19}) },
+      { "GOST-34.10-2012-256", OID({1,2,643,7,1,1,1,1}) },
+      { "GOST-34.10-2012-256/EMSA1(SHA-256)", OID({1,3,6,1,4,1,25258,1,6,1}) },
+      { "GOST-34.10-2012-256/EMSA1(Streebog-256)", OID({1,2,643,7,1,1,3,2}) },
+      { "GOST-34.10-2012-512", OID({1,2,643,7,1,1,1,2}) },
+      { "GOST-34.10-2012-512/EMSA1(Streebog-512)", OID({1,2,643,7,1,1,3,3}) },
+      { "GOST-34.10/EMSA1(GOST-R-34.11-94)", OID({1,2,643,2,2,3}) },
+      { "GOST.INN", OID({1,2,643,3,131,1,1}) },
+      { "GOST.IssuerSigningTool", OID({1,2,643,100,112}) },
+      { "GOST.OGRN", OID({1,2,643,100,1}) },
+      { "GOST.SubjectSigningTool", OID({1,2,643,100,111}) },
+      { "HMAC(SHA-160)", OID({1,2,840,113549,2,7}) },
+      { "HMAC(SHA-224)", OID({1,2,840,113549,2,8}) },
+      { "HMAC(SHA-256)", OID({1,2,840,113549,2,9}) },
+      { "HMAC(SHA-384)", OID({1,2,840,113549,2,10}) },
+      { "HMAC(SHA-512)", OID({1,2,840,113549,2,11}) },
+      { "HMAC(SHA-512-256)", OID({1,2,840,113549,2,13}) },
+      { "KeyWrap.AES-128", OID({2,16,840,1,101,3,4,1,5}) },
+      { "KeyWrap.AES-192", OID({2,16,840,1,101,3,4,1,25}) },
+      { "KeyWrap.AES-256", OID({2,16,840,1,101,3,4,1,45}) },
+      { "KeyWrap.CAST-128", OID({1,2,840,113533,7,66,15}) },
+      { "KeyWrap.TripleDES", OID({1,2,840,113549,1,9,16,3,6}) },
+      { "MD5", OID({1,2,840,113549,2,5}) },
+      { "MGF1", OID({1,2,840,113549,1,1,8}) },
+      { "McEliece", OID({1,3,6,1,4,1,25258,1,3}) },
+      { "Microsoft SmartcardLogon", OID({1,3,6,1,4,1,311,20,2,2}) },
+      { "Microsoft UPN", OID({1,3,6,1,4,1,311,20,2,3}) },
+      { "OpenPGP.Curve25519", OID({1,3,6,1,4,1,3029,1,5,1}) },
+      { "OpenPGP.Ed25519", OID({1,3,6,1,4,1,11591,15,1}) },
+      { "PBE-PKCS5v20", OID({1,2,840,113549,1,5,13}) },
+      { "PBES2", OID({1,2,840,113549,1,5,13}) },
+      { "PKCS5.PBKDF2", OID({1,2,840,113549,1,5,12}) },
+      { "PKCS9.ChallengePassword", OID({1,2,840,113549,1,9,7}) },
+      { "PKCS9.ContentType", OID({1,2,840,113549,1,9,3}) },
+      { "PKCS9.EmailAddress", OID({1,2,840,113549,1,9,1}) },
+      { "PKCS9.ExtensionRequest", OID({1,2,840,113549,1,9,14}) },
+      { "PKCS9.MessageDigest", OID({1,2,840,113549,1,9,4}) },
+      { "PKCS9.UnstructuredName", OID({1,2,840,113549,1,9,2}) },
+      { "PKIX.AuthorityInformationAccess", OID({1,3,6,1,5,5,7,1,1}) },
+      { "PKIX.CertificateAuthorityIssuers", OID({1,3,6,1,5,5,7,48,2}) },
+      { "PKIX.ClientAuth", OID({1,3,6,1,5,5,7,3,2}) },
+      { "PKIX.CodeSigning", OID({1,3,6,1,5,5,7,3,3}) },
+      { "PKIX.EmailProtection", OID({1,3,6,1,5,5,7,3,4}) },
+      { "PKIX.IPsecEndSystem", OID({1,3,6,1,5,5,7,3,5}) },
+      { "PKIX.IPsecTunnel", OID({1,3,6,1,5,5,7,3,6}) },
+      { "PKIX.IPsecUser", OID({1,3,6,1,5,5,7,3,7}) },
+      { "PKIX.OCSP", OID({1,3,6,1,5,5,7,48,1}) },
+      { "PKIX.OCSP.BasicResponse", OID({1,3,6,1,5,5,7,48,1,1}) },
+      { "PKIX.OCSPSigning", OID({1,3,6,1,5,5,7,3,9}) },
+      { "PKIX.ServerAuth", OID({1,3,6,1,5,5,7,3,1}) },
+      { "PKIX.TimeStamping", OID({1,3,6,1,5,5,7,3,8}) },
+      { "PKIX.XMPPAddr", OID({1,3,6,1,5,5,7,8,5}) },
+      { "RIPEMD-160", OID({1,3,36,3,2,1}) },
+      { "RSA", OID({1,2,840,113549,1,1,1}) },
+      { "RSA/EMSA3(MD5)", OID({1,2,840,113549,1,1,4}) },
+      { "RSA/EMSA3(RIPEMD-160)", OID({1,3,36,3,3,1,2}) },
+      { "RSA/EMSA3(SHA-160)", OID({1,2,840,113549,1,1,5}) },
+      { "RSA/EMSA3(SHA-224)", OID({1,2,840,113549,1,1,14}) },
+      { "RSA/EMSA3(SHA-256)", OID({1,2,840,113549,1,1,11}) },
+      { "RSA/EMSA3(SHA-3(224))", OID({2,16,840,1,101,3,4,3,13}) },
+      { "RSA/EMSA3(SHA-3(256))", OID({2,16,840,1,101,3,4,3,14}) },
+      { "RSA/EMSA3(SHA-3(384))", OID({2,16,840,1,101,3,4,3,15}) },
+      { "RSA/EMSA3(SHA-3(512))", OID({2,16,840,1,101,3,4,3,16}) },
+      { "RSA/EMSA3(SHA-384)", OID({1,2,840,113549,1,1,12}) },
+      { "RSA/EMSA3(SHA-512)", OID({1,2,840,113549,1,1,13}) },
+      { "RSA/EMSA3(SHA-512-256)", OID({1,2,840,113549,1,1,16}) },
+      { "RSA/EMSA3(SM3)", OID({1,2,156,10197,1,504}) },
+      { "RSA/EMSA4", OID({1,2,840,113549,1,1,10}) },
+      { "RSA/OAEP", OID({1,2,840,113549,1,1,7}) },
+      { "SEED/CBC", OID({1,2,410,200004,1,4}) },
+      { "SHA-160", OID({1,3,14,3,2,26}) },
+      { "SHA-224", OID({2,16,840,1,101,3,4,2,4}) },
+      { "SHA-256", OID({2,16,840,1,101,3,4,2,1}) },
+      { "SHA-3(224)", OID({2,16,840,1,101,3,4,2,7}) },
+      { "SHA-3(256)", OID({2,16,840,1,101,3,4,2,8}) },
+      { "SHA-3(384)", OID({2,16,840,1,101,3,4,2,9}) },
+      { "SHA-3(512)", OID({2,16,840,1,101,3,4,2,10}) },
+      { "SHA-384", OID({2,16,840,1,101,3,4,2,2}) },
+      { "SHA-512", OID({2,16,840,1,101,3,4,2,3}) },
+      { "SHA-512-256", OID({2,16,840,1,101,3,4,2,6}) },
+      { "SHAKE-128", OID({2,16,840,1,101,3,4,2,11}) },
+      { "SHAKE-256", OID({2,16,840,1,101,3,4,2,12}) },
+      { "SM2", OID({1,2,156,10197,1,301,1}) },
+      { "SM2_Enc", OID({1,2,156,10197,1,301,3}) },
+      { "SM2_Kex", OID({1,2,156,10197,1,301,2}) },
+      { "SM2_Sig", OID({1,2,156,10197,1,301,1}) },
+      { "SM2_Sig/SM3", OID({1,2,156,10197,1,501}) },
+      { "SM3", OID({1,2,156,10197,1,401}) },
+      { "SM4/CBC", OID({1,2,156,10197,1,104,2}) },
+      { "SM4/GCM", OID({1,2,156,10197,1,104,8}) },
+      { "SM4/OCB", OID({1,2,156,10197,1,104,100}) },
+      { "SM4/SIV", OID({1,3,6,1,4,1,25258,3,4,9}) },
+      { "Scrypt", OID({1,3,6,1,4,1,11591,4,11}) },
+      { "Serpent/CBC", OID({1,3,6,1,4,1,25258,3,1}) },
+      { "Serpent/GCM", OID({1,3,6,1,4,1,25258,3,101}) },
+      { "Serpent/OCB", OID({1,3,6,1,4,1,25258,3,2,4}) },
+      { "Serpent/SIV", OID({1,3,6,1,4,1,25258,3,4,4}) },
+      { "Streebog-256", OID({1,2,643,7,1,1,2,2}) },
+      { "Streebog-512", OID({1,2,643,7,1,1,2,3}) },
+      { "Threefish-512/CBC", OID({1,3,6,1,4,1,25258,3,2}) },
+      { "Tiger(24,3)", OID({1,3,6,1,4,1,11591,12,2}) },
+      { "TripleDES/CBC", OID({1,2,840,113549,3,7}) },
+      { "Twofish/CBC", OID({1,3,6,1,4,1,25258,3,3}) },
+      { "Twofish/GCM", OID({1,3,6,1,4,1,25258,3,102}) },
+      { "Twofish/OCB", OID({1,3,6,1,4,1,25258,3,2,5}) },
+      { "Twofish/SIV", OID({1,3,6,1,4,1,25258,3,4,5}) },
+      { "X509v3.AnyPolicy", OID({2,5,29,32,0}) },
+      { "X509v3.AuthorityKeyIdentifier", OID({2,5,29,35}) },
+      { "X509v3.BasicConstraints", OID({2,5,29,19}) },
+      { "X509v3.CRLDistributionPoints", OID({2,5,29,31}) },
+      { "X509v3.CRLIssuingDistributionPoint", OID({2,5,29,28}) },
+      { "X509v3.CRLNumber", OID({2,5,29,20}) },
+      { "X509v3.CertificatePolicies", OID({2,5,29,32}) },
+      { "X509v3.ExtendedKeyUsage", OID({2,5,29,37}) },
+      { "X509v3.HoldInstructionCode", OID({2,5,29,23}) },
+      { "X509v3.InvalidityDate", OID({2,5,29,24}) },
+      { "X509v3.IssuerAlternativeName", OID({2,5,29,18}) },
+      { "X509v3.KeyUsage", OID({2,5,29,15}) },
+      { "X509v3.NameConstraints", OID({2,5,29,30}) },
+      { "X509v3.PolicyConstraints", OID({2,5,29,36}) },
+      { "X509v3.PrivateKeyUsagePeriod", OID({2,5,29,16}) },
+      { "X509v3.ReasonCode", OID({2,5,29,21}) },
+      { "X509v3.SubjectAlternativeName", OID({2,5,29,17}) },
+      { "X509v3.SubjectKeyIdentifier", OID({2,5,29,14}) },
+      { "X520.CommonName", OID({2,5,4,3}) },
+      { "X520.Country", OID({2,5,4,6}) },
+      { "X520.DNQualifier", OID({2,5,4,46}) },
+      { "X520.GenerationalQualifier", OID({2,5,4,44}) },
+      { "X520.GivenName", OID({2,5,4,42}) },
+      { "X520.Initials", OID({2,5,4,43}) },
+      { "X520.Locality", OID({2,5,4,7}) },
+      { "X520.Organization", OID({2,5,4,10}) },
+      { "X520.OrganizationalUnit", OID({2,5,4,11}) },
+      { "X520.Pseudonym", OID({2,5,4,65}) },
+      { "X520.SerialNumber", OID({2,5,4,5}) },
+      { "X520.State", OID({2,5,4,8}) },
+      { "X520.StreetAddress", OID({2,5,4,9}) },
+      { "X520.Surname", OID({2,5,4,4}) },
+      { "X520.Title", OID({2,5,4,12}) },
+      { "XMSS", OID({0,4,0,127,0,15,1,1,13,0}) },
+      { "XMSS-draft12", OID({1,3,6,1,4,1,25258,1,8}) },
+      { "XMSS-draft6", OID({1,3,6,1,4,1,25258,1,5}) },
+      { "brainpool160r1", OID({1,3,36,3,3,2,8,1,1,1}) },
+      { "brainpool192r1", OID({1,3,36,3,3,2,8,1,1,3}) },
+      { "brainpool224r1", OID({1,3,36,3,3,2,8,1,1,5}) },
+      { "brainpool256r1", OID({1,3,36,3,3,2,8,1,1,7}) },
+      { "brainpool320r1", OID({1,3,36,3,3,2,8,1,1,9}) },
+      { "brainpool384r1", OID({1,3,36,3,3,2,8,1,1,11}) },
+      { "brainpool512r1", OID({1,3,36,3,3,2,8,1,1,13}) },
+      { "frp256v1", OID({1,2,250,1,223,101,256,1}) },
+      { "gost_256A", OID({1,2,643,7,1,2,1,1,1}) },
+      { "gost_256B", OID({1,2,643,7,1,2,1,1,2}) },
+      { "gost_512A", OID({1,2,643,7,1,2,1,2,1}) },
+      { "gost_512B", OID({1,2,643,7,1,2,1,2,2}) },
+      { "secp160k1", OID({1,3,132,0,9}) },
+      { "secp160r1", OID({1,3,132,0,8}) },
+      { "secp160r2", OID({1,3,132,0,30}) },
+      { "secp192k1", OID({1,3,132,0,31}) },
+      { "secp192r1", OID({1,2,840,10045,3,1,1}) },
+      { "secp224k1", OID({1,3,132,0,32}) },
+      { "secp224r1", OID({1,3,132,0,33}) },
+      { "secp256k1", OID({1,3,132,0,10}) },
+      { "secp256r1", OID({1,2,840,10045,3,1,7}) },
+      { "secp384r1", OID({1,3,132,0,34}) },
+      { "secp521r1", OID({1,3,132,0,35}) },
+      { "sm2p256v1", OID({1,2,156,10197,1,301}) },
+      { "x962_p192v2", OID({1,2,840,10045,3,1,2}) },
+      { "x962_p192v3", OID({1,2,840,10045,3,1,3}) },
+      { "x962_p239v1", OID({1,2,840,10045,3,1,4}) },
+      { "x962_p239v2", OID({1,2,840,10045,3,1,5}) },
+      { "x962_p239v3", OID({1,2,840,10045,3,1,6}) }
+      };
+   }
+
+}
+
+/*
+* OID Registry
+* (C) 1999-2008,2013 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+class OID_Map final
+   {
+   public:
+      void add_oid(const OID& oid, const std::string& str)
+         {
+         add_str2oid(oid, str);
+         add_oid2str(oid, str);
+         }
+
+      void add_str2oid(const OID& oid, const std::string& str)
+         {
+         lock_guard_type<mutex_type> lock(m_mutex);
+         auto i = m_str2oid.find(str);
+         if(i == m_str2oid.end())
+            m_str2oid.insert(std::make_pair(str, oid));
+         }
+
+      void add_oid2str(const OID& oid, const std::string& str)
+         {
+         const std::string oid_str = oid.to_string();
+         lock_guard_type<mutex_type> lock(m_mutex);
+         auto i = m_oid2str.find(oid_str);
+         if(i == m_oid2str.end())
+            m_oid2str.insert(std::make_pair(oid_str, str));
+         }
+
+      std::string oid2str(const OID& oid)
+         {
+         const std::string oid_str = oid.to_string();
+
+         lock_guard_type<mutex_type> lock(m_mutex);
+
+         auto i = m_oid2str.find(oid_str);
+         if(i != m_oid2str.end())
+            return i->second;
+
+         return "";
+         }
+
+      OID str2oid(const std::string& str)
+         {
+         lock_guard_type<mutex_type> lock(m_mutex);
+         auto i = m_str2oid.find(str);
+         if(i != m_str2oid.end())
+            return i->second;
+
+         return OID();
+         }
+
+      bool have_oid(const std::string& str)
+         {
+         lock_guard_type<mutex_type> lock(m_mutex);
+         return m_str2oid.find(str) != m_str2oid.end();
+         }
+
+      static OID_Map& global_registry()
+         {
+         static OID_Map g_map;
+         return g_map;
+         }
+
+   private:
+
+      OID_Map()
+         {
+         m_str2oid = OIDS::load_str2oid_map();
+         m_oid2str = OIDS::load_oid2str_map();
+         }
+
+      mutex_type m_mutex;
+      std::unordered_map<std::string, OID> m_str2oid;
+      std::unordered_map<std::string, std::string> m_oid2str;
+   };
+
+}
+
+void OIDS::add_oid(const OID& oid, const std::string& name)
+   {
+   OID_Map::global_registry().add_oid(oid, name);
+   }
+
+void OIDS::add_oidstr(const char* oidstr, const char* name)
+   {
+   add_oid(OID(oidstr), name);
+   }
+
+void OIDS::add_oid2str(const OID& oid, const std::string& name)
+   {
+   OID_Map::global_registry().add_oid2str(oid, name);
+   }
+
+void OIDS::add_str2oid(const OID& oid, const std::string& name)
+   {
+   OID_Map::global_registry().add_str2oid(oid, name);
+   }
+
+std::string OIDS::oid2str_or_empty(const OID& oid)
+   {
+   return OID_Map::global_registry().oid2str(oid);
+   }
+
+OID OIDS::str2oid_or_empty(const std::string& name)
+   {
+   return OID_Map::global_registry().str2oid(name);
+   }
+
+std::string OIDS::oid2str_or_throw(const OID& oid)
+   {
+   const std::string s = OIDS::oid2str_or_empty(oid);
+   if(s.empty())
+      throw Lookup_Error("No name associated with OID " + oid.to_string());
+   return s;
+   }
+
+bool OIDS::have_oid(const std::string& name)
+   {
+   return OID_Map::global_registry().have_oid(name);
+   }
+
+}
+/*
 * (C) 2016 Jack Lloyd
 *
 * Botan is released under the Simplified BSD License (see license.txt)
@@ -6369,6 +11477,1619 @@ size_t base64_encode_max_output(size_t input_length)
 size_t base64_decode_max_output(size_t input_length)
    {
    return Base64::decode_max_output(input_length);
+   }
+
+}
+/*
+* BigInt Encoding/Decoding
+* (C) 1999-2010,2012,2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+std::string BigInt::to_dec_string() const
+   {
+   BigInt copy = *this;
+   copy.set_sign(Positive);
+
+   uint8_t remainder;
+   std::vector<uint8_t> digits;
+
+   while(copy > 0)
+      {
+      ct_divide_u8(copy, 10, copy, remainder);
+      digits.push_back(remainder);
+      }
+
+   std::string s;
+
+   for(auto i = digits.rbegin(); i != digits.rend(); ++i)
+      {
+      s.push_back(Charset::digit2char(*i));
+      }
+
+   if(s.empty())
+      s += "0";
+
+   return s;
+   }
+
+std::string BigInt::to_hex_string() const
+   {
+   const std::vector<uint8_t> bits = BigInt::encode(*this);
+   if(bits.empty())
+      return "00";
+   else
+      return hex_encode(bits);
+   }
+
+/*
+* Encode a BigInt
+*/
+void BigInt::encode(uint8_t output[], const BigInt& n, Base base)
+   {
+   secure_vector<uint8_t> enc = n.encode_locked(base);
+   copy_mem(output, enc.data(), enc.size());
+   }
+
+namespace {
+
+std::vector<uint8_t> str_to_vector(const std::string& s)
+   {
+   std::vector<uint8_t> v(s.size());
+   std::memcpy(v.data(), s.data(), s.size());
+   return v;
+   }
+
+secure_vector<uint8_t> str_to_lvector(const std::string& s)
+   {
+   secure_vector<uint8_t> v(s.size());
+   std::memcpy(v.data(), s.data(), s.size());
+   return v;
+   }
+
+}
+
+/*
+* Encode a BigInt
+*/
+std::vector<uint8_t> BigInt::encode(const BigInt& n, Base base)
+   {
+   if(base == Binary)
+      return BigInt::encode(n);
+   else if(base == Hexadecimal)
+      return str_to_vector(n.to_hex_string());
+   else if(base == Decimal)
+      return str_to_vector(n.to_dec_string());
+   else
+      throw Invalid_Argument("Unknown BigInt encoding base");
+   }
+
+/*
+* Encode a BigInt
+*/
+secure_vector<uint8_t> BigInt::encode_locked(const BigInt& n, Base base)
+   {
+   if(base == Binary)
+      return BigInt::encode_locked(n);
+   else if(base == Hexadecimal)
+      return str_to_lvector(n.to_hex_string());
+   else if(base == Decimal)
+      return str_to_lvector(n.to_dec_string());
+   else
+      throw Invalid_Argument("Unknown BigInt encoding base");
+   }
+
+/*
+* Encode a BigInt, with leading 0s if needed
+*/
+secure_vector<uint8_t> BigInt::encode_1363(const BigInt& n, size_t bytes)
+   {
+   if(n.bytes() > bytes)
+      throw Encoding_Error("encode_1363: n is too large to encode properly");
+
+   secure_vector<uint8_t> output(bytes);
+   n.binary_encode(output.data(), output.size());
+   return output;
+   }
+
+//static
+void BigInt::encode_1363(uint8_t output[], size_t bytes, const BigInt& n)
+   {
+   if(n.bytes() > bytes)
+      throw Encoding_Error("encode_1363: n is too large to encode properly");
+
+   n.binary_encode(output, bytes);
+   }
+
+/*
+* Encode two BigInt, with leading 0s if needed, and concatenate
+*/
+secure_vector<uint8_t> BigInt::encode_fixed_length_int_pair(const BigInt& n1, const BigInt& n2, size_t bytes)
+   {
+   if(n1.bytes() > bytes || n2.bytes() > bytes)
+      throw Encoding_Error("encode_fixed_length_int_pair: values too large to encode properly");
+   secure_vector<uint8_t> output(2 * bytes);
+   n1.binary_encode(output.data()        , bytes);
+   n2.binary_encode(output.data() + bytes, bytes);
+   return output;
+   }
+
+/*
+* Decode a BigInt
+*/
+BigInt BigInt::decode(const uint8_t buf[], size_t length, Base base)
+   {
+   BigInt r;
+   if(base == Binary)
+      {
+      r.binary_decode(buf, length);
+      }
+   else if(base == Hexadecimal)
+      {
+      secure_vector<uint8_t> binary;
+
+      if(length % 2)
+         {
+         // Handle lack of leading 0
+         const char buf0_with_leading_0[2] =
+            { '0', static_cast<char>(buf[0]) };
+
+         binary = hex_decode_locked(buf0_with_leading_0, 2);
+
+         binary += hex_decode_locked(cast_uint8_ptr_to_char(&buf[1]),
+                                     length - 1,
+                                     false);
+         }
+      else
+         binary = hex_decode_locked(cast_uint8_ptr_to_char(buf),
+                                    length, false);
+
+      r.binary_decode(binary.data(), binary.size());
+      }
+   else if(base == Decimal)
+      {
+      for(size_t i = 0; i != length; ++i)
+         {
+         if(Charset::is_space(buf[i]))
+            continue;
+
+         if(!Charset::is_digit(buf[i]))
+            throw Invalid_Argument("BigInt::decode: "
+                                   "Invalid character in decimal input");
+
+         const uint8_t x = Charset::char2digit(buf[i]);
+
+         if(x >= 10)
+            throw Invalid_Argument("BigInt: Invalid decimal string");
+
+         r *= 10;
+         r += x;
+         }
+      }
+   else
+      throw Invalid_Argument("Unknown BigInt decoding method");
+   return r;
+   }
+
+}
+/*
+* BigInt Input/Output
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+#include <istream>
+#include <ostream>
+
+namespace Botan {
+
+/*
+* Write the BigInt into a stream
+*/
+std::ostream& operator<<(std::ostream& stream, const BigInt& n)
+   {
+   size_t base = 10;
+   if(stream.flags() & std::ios::hex)
+      base = 16;
+   if(stream.flags() & std::ios::oct)
+      throw Invalid_Argument("Octal output of BigInt not supported");
+
+   if(n == 0)
+      stream.write("0", 1);
+   else
+      {
+      if(n < 0)
+         stream.write("-", 1);
+
+      std::string enc;
+
+      if(base == 10)
+         enc = n.to_dec_string();
+      else
+         enc = n.to_hex_string();
+
+      size_t skip = 0;
+      while(skip < enc.size() && enc[skip] == '0')
+         ++skip;
+      stream.write(&enc[skip], enc.size() - skip);
+      }
+   if(!stream.good())
+      throw Stream_IO_Error("BigInt output operator has failed");
+   return stream;
+   }
+
+/*
+* Read the BigInt from a stream
+*/
+std::istream& operator>>(std::istream& stream, BigInt& n)
+   {
+   std::string str;
+   std::getline(stream, str);
+   if(stream.bad() || (stream.fail() && !stream.eof()))
+      throw Stream_IO_Error("BigInt input operator has failed");
+   n = BigInt(str);
+   return stream;
+   }
+
+}
+/*
+* (C) 1999-2007,2018 Jack Lloyd
+*     2016 Matthias Gierlings
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+BigInt& BigInt::add(const word y[], size_t y_words, Sign y_sign)
+   {
+   const size_t x_sw = sig_words();
+
+   grow_to(std::max(x_sw, y_words) + 1);
+
+   if(sign() == y_sign)
+      {
+      bigint_add2(mutable_data(), size() - 1, y, y_words);
+      }
+   else
+      {
+      const int32_t relative_size = bigint_cmp(data(), x_sw, y, y_words);
+
+      if(relative_size >= 0)
+         {
+         // *this >= y
+         bigint_sub2(mutable_data(), x_sw, y, y_words);
+         }
+      else
+         {
+         // *this < y
+         bigint_sub2_rev(mutable_data(), y, y_words);
+         }
+
+      //this->sign_fixup(relative_size, y_sign);
+      if(relative_size < 0)
+         set_sign(y_sign);
+      else if(relative_size == 0)
+         set_sign(Positive);
+      }
+
+   return (*this);
+   }
+
+BigInt& BigInt::mod_add(const BigInt& s, const BigInt& mod, secure_vector<word>& ws)
+   {
+   if(this->is_negative() || s.is_negative() || mod.is_negative())
+      throw Invalid_Argument("BigInt::mod_add expects all arguments are positive");
+
+   BOTAN_DEBUG_ASSERT(*this < mod);
+   BOTAN_DEBUG_ASSERT(s < mod);
+
+   /*
+   t + s or t + s - p == t - (p - s)
+
+   So first compute ws = p - s
+
+   Then compute t + s and t - ws
+
+   If t - ws does not borrow, then that is the correct valued
+   */
+
+   const size_t mod_sw = mod.sig_words();
+   BOTAN_ARG_CHECK(mod_sw > 0, "BigInt::mod_add modulus must be positive");
+
+   this->grow_to(mod_sw);
+   s.grow_to(mod_sw);
+
+   // First mod_sw for p - s, 2*mod_sw for bigint_addsub workspace
+   if(ws.size() < 3*mod_sw)
+      ws.resize(3*mod_sw);
+
+   word borrow = bigint_sub3(&ws[0], mod.data(), mod_sw, s.data(), mod_sw);
+   BOTAN_DEBUG_ASSERT(borrow == 0);
+
+   // Compute t - ws
+   borrow = bigint_sub3(&ws[mod_sw], this->data(), mod_sw, &ws[0], mod_sw);
+
+   // Compute t + s
+   bigint_add3_nc(&ws[mod_sw*2], this->data(), mod_sw, s.data(), mod_sw);
+
+   CT::conditional_copy_mem(borrow, &ws[0], &ws[mod_sw*2], &ws[mod_sw], mod_sw);
+   set_words(&ws[0], mod_sw);
+
+   return (*this);
+   }
+
+BigInt& BigInt::mod_sub(const BigInt& s, const BigInt& mod, secure_vector<word>& ws)
+   {
+   if(this->is_negative() || s.is_negative() || mod.is_negative())
+      throw Invalid_Argument("BigInt::mod_sub expects all arguments are positive");
+
+   // We are assuming in this function that *this and s are no more than mod_sw words long
+   BOTAN_DEBUG_ASSERT(*this < mod);
+   BOTAN_DEBUG_ASSERT(s < mod);
+
+   const size_t mod_sw = mod.sig_words();
+
+   this->grow_to(mod_sw);
+   s.grow_to(mod_sw);
+
+   if(ws.size() < mod_sw)
+      ws.resize(mod_sw);
+
+   if(mod_sw == 4)
+      bigint_mod_sub_n<4>(mutable_data(), s.data(), mod.data(), ws.data());
+   else if(mod_sw == 6)
+      bigint_mod_sub_n<6>(mutable_data(), s.data(), mod.data(), ws.data());
+   else
+      bigint_mod_sub(mutable_data(), s.data(), mod.data(), mod_sw, ws.data());
+
+   return (*this);
+   }
+
+BigInt& BigInt::mod_mul(uint8_t y, const BigInt& mod, secure_vector<word>& ws)
+   {
+   BOTAN_ARG_CHECK(this->is_negative() == false, "*this must be positive");
+   BOTAN_ARG_CHECK(y < 16, "y too large");
+
+   BOTAN_DEBUG_ASSERT(*this < mod);
+
+   *this *= static_cast<word>(y);
+   this->reduce_below(mod, ws);
+   return (*this);
+   }
+
+BigInt& BigInt::rev_sub(const word y[], size_t y_sw, secure_vector<word>& ws)
+   {
+   if(this->sign() != BigInt::Positive)
+      throw Invalid_State("BigInt::sub_rev requires this is positive");
+
+   const size_t x_sw = this->sig_words();
+
+   ws.resize(std::max(x_sw, y_sw));
+   clear_mem(ws.data(), ws.size());
+
+   const int32_t relative_size = bigint_sub_abs(ws.data(), data(), x_sw, y, y_sw);
+
+   this->cond_flip_sign(relative_size > 0);
+   this->swap_reg(ws);
+
+   return (*this);
+   }
+
+/*
+* Multiplication Operator
+*/
+BigInt& BigInt::operator*=(const BigInt& y)
+   {
+   secure_vector<word> ws;
+   return this->mul(y, ws);
+   }
+
+BigInt& BigInt::mul(const BigInt& y, secure_vector<word>& ws)
+   {
+   const size_t x_sw = sig_words();
+   const size_t y_sw = y.sig_words();
+   set_sign((sign() == y.sign()) ? Positive : Negative);
+
+   if(x_sw == 0 || y_sw == 0)
+      {
+      clear();
+      set_sign(Positive);
+      }
+   else if(x_sw == 1 && y_sw)
+      {
+      grow_to(y_sw + 1);
+      bigint_linmul3(mutable_data(), y.data(), y_sw, word_at(0));
+      }
+   else if(y_sw == 1 && x_sw)
+      {
+      word carry = bigint_linmul2(mutable_data(), x_sw, y.word_at(0));
+      set_word_at(x_sw, carry);
+      }
+   else
+      {
+      const size_t new_size = x_sw + y_sw + 1;
+      ws.resize(new_size);
+      secure_vector<word> z_reg(new_size);
+
+      bigint_mul(z_reg.data(), z_reg.size(),
+                 data(), size(), x_sw,
+                 y.data(), y.size(), y_sw,
+                 ws.data(), ws.size());
+
+      this->swap_reg(z_reg);
+      }
+
+   return (*this);
+   }
+
+BigInt& BigInt::square(secure_vector<word>& ws)
+   {
+   const size_t sw = sig_words();
+
+   secure_vector<word> z(2*sw);
+   ws.resize(z.size());
+
+   bigint_sqr(z.data(), z.size(),
+              data(), size(), sw,
+              ws.data(), ws.size());
+
+   swap_reg(z);
+   set_sign(BigInt::Positive);
+
+   return (*this);
+   }
+
+BigInt& BigInt::operator*=(word y)
+   {
+   if(y == 0)
+      {
+      clear();
+      set_sign(Positive);
+      }
+
+   const word carry = bigint_linmul2(mutable_data(), size(), y);
+   set_word_at(size(), carry);
+
+   return (*this);
+   }
+
+/*
+* Division Operator
+*/
+BigInt& BigInt::operator/=(const BigInt& y)
+   {
+   if(y.sig_words() == 1 && is_power_of_2(y.word_at(0)))
+      (*this) >>= (y.bits() - 1);
+   else
+      (*this) = (*this) / y;
+   return (*this);
+   }
+
+/*
+* Modulo Operator
+*/
+BigInt& BigInt::operator%=(const BigInt& mod)
+   {
+   return (*this = (*this) % mod);
+   }
+
+/*
+* Modulo Operator
+*/
+word BigInt::operator%=(word mod)
+   {
+   if(mod == 0)
+      throw BigInt::DivideByZero();
+
+   word remainder = 0;
+
+   if(is_power_of_2(mod))
+       {
+       remainder = (word_at(0) & (mod - 1));
+       }
+   else
+      {
+      const size_t sw = sig_words();
+      for(size_t i = sw; i > 0; --i)
+         remainder = bigint_modop(remainder, word_at(i-1), mod);
+      }
+
+   if(remainder && sign() == BigInt::Negative)
+      remainder = mod - remainder;
+
+   m_data.set_to_zero();
+   m_data.set_word_at(0, remainder);
+   set_sign(BigInt::Positive);
+   return remainder;
+   }
+
+/*
+* Left Shift Operator
+*/
+BigInt& BigInt::operator<<=(size_t shift)
+   {
+   const size_t shift_words = shift / BOTAN_MP_WORD_BITS;
+   const size_t shift_bits  = shift % BOTAN_MP_WORD_BITS;
+   const size_t size = sig_words();
+
+   const size_t bits_free = top_bits_free();
+
+   const size_t new_size = size + shift_words + (bits_free < shift_bits);
+
+   m_data.grow_to(new_size);
+
+   bigint_shl1(m_data.mutable_data(), new_size, size, shift_words, shift_bits);
+
+   return (*this);
+   }
+
+/*
+* Right Shift Operator
+*/
+BigInt& BigInt::operator>>=(size_t shift)
+   {
+   const size_t shift_words = shift / BOTAN_MP_WORD_BITS;
+   const size_t shift_bits  = shift % BOTAN_MP_WORD_BITS;
+
+   bigint_shr1(m_data.mutable_data(), m_data.size(), shift_words, shift_bits);
+
+   if(is_negative() && is_zero())
+      set_sign(Positive);
+
+   return (*this);
+   }
+
+}
+/*
+* BigInt Binary Operators
+* (C) 1999-2007,2018 Jack Lloyd
+*     2016 Matthias Gierlings
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+//static
+BigInt BigInt::add2(const BigInt& x, const word y[], size_t y_words, BigInt::Sign y_sign)
+   {
+   const size_t x_sw = x.sig_words();
+
+   BigInt z(x.sign(), std::max(x_sw, y_words) + 1);
+
+   if(x.sign() == y_sign)
+      {
+      bigint_add3(z.mutable_data(), x.data(), x_sw, y, y_words);
+      }
+   else
+      {
+      const int32_t relative_size = bigint_sub_abs(z.mutable_data(), x.data(), x_sw, y, y_words);
+
+      //z.sign_fixup(relative_size, y_sign);
+      if(relative_size < 0)
+         z.set_sign(y_sign);
+      else if(relative_size == 0)
+         z.set_sign(BigInt::Positive);
+      }
+
+   return z;
+   }
+
+/*
+* Multiplication Operator
+*/
+BigInt operator*(const BigInt& x, const BigInt& y)
+   {
+   const size_t x_sw = x.sig_words();
+   const size_t y_sw = y.sig_words();
+
+   BigInt z(BigInt::Positive, x.size() + y.size());
+
+   if(x_sw == 1 && y_sw)
+      bigint_linmul3(z.mutable_data(), y.data(), y_sw, x.word_at(0));
+   else if(y_sw == 1 && x_sw)
+      bigint_linmul3(z.mutable_data(), x.data(), x_sw, y.word_at(0));
+   else if(x_sw && y_sw)
+      {
+      secure_vector<word> workspace(z.size());
+
+      bigint_mul(z.mutable_data(), z.size(),
+                 x.data(), x.size(), x_sw,
+                 y.data(), y.size(), y_sw,
+                 workspace.data(), workspace.size());
+      }
+
+   z.cond_flip_sign(x_sw > 0 && y_sw > 0 && x.sign() != y.sign());
+
+   return z;
+   }
+
+/*
+* Multiplication Operator
+*/
+BigInt operator*(const BigInt& x, word y)
+   {
+   const size_t x_sw = x.sig_words();
+
+   BigInt z(BigInt::Positive, x_sw + 1);
+
+   if(x_sw && y)
+      {
+      bigint_linmul3(z.mutable_data(), x.data(), x_sw, y);
+      z.set_sign(x.sign());
+      }
+
+   return z;
+   }
+
+/*
+* Division Operator
+*/
+BigInt operator/(const BigInt& x, const BigInt& y)
+   {
+   if(y.sig_words() == 1)
+      {
+      return x / y.word_at(0);
+      }
+
+   BigInt q, r;
+   vartime_divide(x, y, q, r);
+   return q;
+   }
+
+/*
+* Division Operator
+*/
+BigInt operator/(const BigInt& x, word y)
+   {
+   if(y == 0)
+      throw BigInt::DivideByZero();
+   else if(y == 1)
+      return x;
+   else if(y == 2)
+      return (x >> 1);
+   else if(y <= 255)
+      {
+      BigInt q;
+      uint8_t r;
+      ct_divide_u8(x, static_cast<uint8_t>(y), q, r);
+      return q;
+      }
+
+   BigInt q, r;
+   vartime_divide(x, y, q, r);
+   return q;
+   }
+
+/*
+* Modulo Operator
+*/
+BigInt operator%(const BigInt& n, const BigInt& mod)
+   {
+   if(mod.is_zero())
+      throw BigInt::DivideByZero();
+   if(mod.is_negative())
+      throw Invalid_Argument("BigInt::operator%: modulus must be > 0");
+   if(n.is_positive() && mod.is_positive() && n < mod)
+      return n;
+
+   if(mod.sig_words() == 1)
+      {
+      return n % mod.word_at(0);
+      }
+
+   BigInt q, r;
+   vartime_divide(n, mod, q, r);
+   return r;
+   }
+
+/*
+* Modulo Operator
+*/
+word operator%(const BigInt& n, word mod)
+   {
+   if(mod == 0)
+      throw BigInt::DivideByZero();
+
+   if(mod == 1)
+      return 0;
+
+   word remainder = 0;
+
+   if(is_power_of_2(mod))
+      {
+      remainder = (n.word_at(0) & (mod - 1));
+      }
+   else
+      {
+      const size_t sw = n.sig_words();
+      for(size_t i = sw; i > 0; --i)
+         {
+         remainder = bigint_modop(remainder, n.word_at(i-1), mod);
+         }
+      }
+
+   if(remainder && n.sign() == BigInt::Negative)
+      return mod - remainder;
+   return remainder;
+   }
+
+/*
+* Left Shift Operator
+*/
+BigInt operator<<(const BigInt& x, size_t shift)
+   {
+   const size_t shift_words = shift / BOTAN_MP_WORD_BITS,
+                shift_bits  = shift % BOTAN_MP_WORD_BITS;
+
+   const size_t x_sw = x.sig_words();
+
+   BigInt y(x.sign(), x_sw + shift_words + (shift_bits ? 1 : 0));
+   bigint_shl2(y.mutable_data(), x.data(), x_sw, shift_words, shift_bits);
+   return y;
+   }
+
+/*
+* Right Shift Operator
+*/
+BigInt operator>>(const BigInt& x, size_t shift)
+   {
+   const size_t shift_words = shift / BOTAN_MP_WORD_BITS;
+   const size_t shift_bits  = shift % BOTAN_MP_WORD_BITS;
+   const size_t x_sw = x.sig_words();
+
+   BigInt y(x.sign(), x_sw - shift_words);
+   bigint_shr2(y.mutable_data(), x.data(), x_sw, shift_words, shift_bits);
+
+   if(x.is_negative() && y.is_zero())
+      y.set_sign(BigInt::Positive);
+
+   return y;
+   }
+
+}
+/*
+* BigInt Random Generation
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+* Randomize this number
+*/
+void BigInt::randomize(RandomNumberGenerator& rng,
+                       size_t bitsize, bool set_high_bit)
+   {
+   set_sign(Positive);
+
+   if(bitsize == 0)
+      {
+      clear();
+      }
+   else
+      {
+      secure_vector<uint8_t> array = rng.random_vec(round_up(bitsize, 8) / 8);
+
+      // Always cut unwanted bits
+      if(bitsize % 8)
+         array[0] &= 0xFF >> (8 - (bitsize % 8));
+
+      // Set the highest bit if wanted
+      if (set_high_bit)
+         array[0] |= 0x80 >> ((bitsize % 8) ? (8 - bitsize % 8) : 0);
+
+      binary_decode(array);
+      }
+   }
+
+/*
+* Generate a random integer within given range
+*/
+BigInt BigInt::random_integer(RandomNumberGenerator& rng,
+                              const BigInt& min, const BigInt& max)
+   {
+   if(min.is_negative() || max.is_negative() || max <= min)
+      throw Invalid_Argument("BigInt::random_integer invalid range");
+
+   BigInt r;
+
+   const size_t bits = max.bits();
+
+   do
+      {
+      r.randomize(rng, bits, false);
+      }
+   while(r < min || r >= max);
+
+   return r;
+   }
+
+}
+/*
+* BigInt Base
+* (C) 1999-2011,2012,2014,2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+BigInt::BigInt(const word words[], size_t length)
+   {
+   m_data.set_words(words, length);
+   }
+
+/*
+* Construct a BigInt from a regular number
+*/
+BigInt::BigInt(uint64_t n)
+   {
+   if(n > 0)
+      {
+#if BOTAN_MP_WORD_BITS == 32
+      m_data.set_word_at(0, static_cast<word>(n));
+      m_data.set_word_at(1, static_cast<word>(n >> 32));
+#else
+      m_data.set_word_at(0, n);
+#endif
+      }
+
+   }
+
+/*
+* Construct a BigInt of the specified size
+*/
+BigInt::BigInt(Sign s, size_t size)
+   {
+   m_data.set_size(size);
+   m_signedness = s;
+   }
+
+/*
+* Construct a BigInt from a string
+*/
+BigInt::BigInt(const std::string& str)
+   {
+   Base base = Decimal;
+   size_t markers = 0;
+   bool negative = false;
+
+   if(str.length() > 0 && str[0] == '-')
+      {
+      markers += 1;
+      negative = true;
+      }
+
+   if(str.length() > markers + 2 && str[markers    ] == '0' &&
+                                    str[markers + 1] == 'x')
+      {
+      markers += 2;
+      base = Hexadecimal;
+      }
+
+   *this = decode(cast_char_ptr_to_uint8(str.data()) + markers,
+                  str.length() - markers, base);
+
+   if(negative) set_sign(Negative);
+   else         set_sign(Positive);
+   }
+
+BigInt::BigInt(const uint8_t input[], size_t length)
+   {
+   binary_decode(input, length);
+   }
+
+/*
+* Construct a BigInt from an encoded BigInt
+*/
+BigInt::BigInt(const uint8_t input[], size_t length, Base base)
+   {
+   *this = decode(input, length, base);
+   }
+
+BigInt::BigInt(const uint8_t buf[], size_t length, size_t max_bits)
+   {
+   if(8 * length > max_bits)
+      length = (max_bits + 7) / 8;
+
+   binary_decode(buf, length);
+
+   if(8 * length > max_bits)
+      *this >>= (8 - (max_bits % 8));
+   }
+
+/*
+* Construct a BigInt from an encoded BigInt
+*/
+BigInt::BigInt(RandomNumberGenerator& rng, size_t bits, bool set_high_bit)
+   {
+   randomize(rng, bits, set_high_bit);
+   }
+
+uint8_t BigInt::byte_at(size_t n) const
+   {
+   return get_byte(sizeof(word) - (n % sizeof(word)) - 1,
+                   word_at(n / sizeof(word)));
+   }
+
+int32_t BigInt::cmp_word(word other) const
+   {
+   if(is_negative())
+      return -1; // other is positive ...
+
+   const size_t sw = this->sig_words();
+   if(sw > 1)
+      return 1; // must be larger since other is just one word ...
+
+   return bigint_cmp(this->data(), sw, &other, 1);
+   }
+
+/*
+* Comparison Function
+*/
+int32_t BigInt::cmp(const BigInt& other, bool check_signs) const
+   {
+   if(check_signs)
+      {
+      if(other.is_positive() && this->is_negative())
+         return -1;
+
+      if(other.is_negative() && this->is_positive())
+         return 1;
+
+      if(other.is_negative() && this->is_negative())
+         return (-bigint_cmp(this->data(), this->size(),
+                             other.data(), other.size()));
+      }
+
+   return bigint_cmp(this->data(), this->size(),
+                     other.data(), other.size());
+   }
+
+bool BigInt::is_equal(const BigInt& other) const
+   {
+   if(this->sign() != other.sign())
+      return false;
+
+   return bigint_ct_is_eq(this->data(), this->sig_words(),
+                          other.data(), other.sig_words()).is_set();
+   }
+
+bool BigInt::is_less_than(const BigInt& other) const
+   {
+   if(this->is_negative() && other.is_positive())
+      return true;
+
+   if(this->is_positive() && other.is_negative())
+      return false;
+
+   if(other.is_negative() && this->is_negative())
+      {
+      return bigint_ct_is_lt(other.data(), other.sig_words(),
+                             this->data(), this->sig_words()).is_set();
+      }
+
+   return bigint_ct_is_lt(this->data(), this->sig_words(),
+                          other.data(), other.sig_words()).is_set();
+   }
+
+void BigInt::encode_words(word out[], size_t size) const
+   {
+   const size_t words = sig_words();
+
+   if(words > size)
+      throw Encoding_Error("BigInt::encode_words value too large to encode");
+
+   clear_mem(out, size);
+   copy_mem(out, data(), words);
+   }
+
+size_t BigInt::Data::calc_sig_words() const
+   {
+   const size_t sz = m_reg.size();
+   size_t sig = sz;
+
+   word sub = 1;
+
+   for(size_t i = 0; i != sz; ++i)
+      {
+      const word w = m_reg[sz - i - 1];
+      sub &= ct_is_zero(w);
+      sig -= sub;
+      }
+
+   /*
+   * This depends on the data so is poisoned, but unpoison it here as
+   * later conditionals are made on the size.
+   */
+   CT::unpoison(sig);
+
+   return sig;
+   }
+
+/*
+* Return bits {offset...offset+length}
+*/
+uint32_t BigInt::get_substring(size_t offset, size_t length) const
+   {
+   if(length == 0 || length > 32)
+      throw Invalid_Argument("BigInt::get_substring invalid substring length");
+
+   const uint32_t mask = 0xFFFFFFFF >> (32 - length);
+
+   const size_t word_offset = offset / BOTAN_MP_WORD_BITS;
+   const size_t wshift = (offset % BOTAN_MP_WORD_BITS);
+
+   /*
+   * The substring is contained within one or at most two words. The
+   * offset and length are not secret, so we can perform conditional
+   * operations on those values.
+   */
+   const word w0 = word_at(word_offset);
+
+   if(wshift == 0 || (offset + length) / BOTAN_MP_WORD_BITS == word_offset)
+      {
+      return static_cast<uint32_t>(w0 >> wshift) & mask;
+      }
+   else
+      {
+      const word w1 = word_at(word_offset + 1);
+      return static_cast<uint32_t>((w0 >> wshift) | (w1 << (BOTAN_MP_WORD_BITS - wshift))) & mask;
+      }
+   }
+
+/*
+* Convert this number to a uint32_t, if possible
+*/
+uint32_t BigInt::to_u32bit() const
+   {
+   if(is_negative())
+      throw Encoding_Error("BigInt::to_u32bit: Number is negative");
+   if(bits() > 32)
+      throw Encoding_Error("BigInt::to_u32bit: Number is too big to convert");
+
+   uint32_t out = 0;
+   for(size_t i = 0; i != 4; ++i)
+      out = (out << 8) | byte_at(3-i);
+   return out;
+   }
+
+/*
+* Set bit number n
+*/
+void BigInt::conditionally_set_bit(size_t n, bool set_it)
+   {
+   const size_t which = n / BOTAN_MP_WORD_BITS;
+   const word mask = static_cast<word>(set_it) << (n % BOTAN_MP_WORD_BITS);
+   m_data.set_word_at(which, word_at(which) | mask);
+   }
+
+/*
+* Clear bit number n
+*/
+void BigInt::clear_bit(size_t n)
+   {
+   const size_t which = n / BOTAN_MP_WORD_BITS;
+
+   if(which < size())
+      {
+      const word mask = ~(static_cast<word>(1) << (n % BOTAN_MP_WORD_BITS));
+      m_data.set_word_at(which, word_at(which) & mask);
+      }
+   }
+
+size_t BigInt::bytes() const
+   {
+   return round_up(bits(), 8) / 8;
+   }
+
+size_t BigInt::top_bits_free() const
+   {
+   const size_t words = sig_words();
+
+   const word top_word = word_at(words - 1);
+   const size_t bits_used = high_bit(top_word);
+   CT::unpoison(bits_used);
+   return BOTAN_MP_WORD_BITS - bits_used;
+   }
+
+size_t BigInt::bits() const
+   {
+   const size_t words = sig_words();
+
+   if(words == 0)
+      return 0;
+
+   const size_t full_words = (words - 1) * BOTAN_MP_WORD_BITS;
+   const size_t top_bits = BOTAN_MP_WORD_BITS - top_bits_free();
+
+   return full_words + top_bits;
+   }
+
+/*
+* Calcluate the size in a certain base
+*/
+size_t BigInt::encoded_size(Base base) const
+   {
+   static const double LOG_2_BASE_10 = 0.30102999566;
+
+   if(base == Binary)
+      return bytes();
+   else if(base == Hexadecimal)
+      return 2*bytes();
+   else if(base == Decimal)
+      return static_cast<size_t>((bits() * LOG_2_BASE_10) + 1);
+   else
+      throw Invalid_Argument("Unknown base for BigInt encoding");
+   }
+
+/*
+* Return the negation of this number
+*/
+BigInt BigInt::operator-() const
+   {
+   BigInt x = (*this);
+   x.flip_sign();
+   return x;
+   }
+
+size_t BigInt::reduce_below(const BigInt& p, secure_vector<word>& ws)
+   {
+   if(p.is_negative() || this->is_negative())
+      throw Invalid_Argument("BigInt::reduce_below both values must be positive");
+
+   const size_t p_words = p.sig_words();
+
+   if(size() < p_words + 1)
+      grow_to(p_words + 1);
+
+   if(ws.size() < p_words + 1)
+      ws.resize(p_words + 1);
+
+   clear_mem(ws.data(), ws.size());
+
+   size_t reductions = 0;
+
+   for(;;)
+      {
+      word borrow = bigint_sub3(ws.data(), data(), p_words + 1, p.data(), p_words);
+      if(borrow)
+         break;
+
+      ++reductions;
+      swap_reg(ws);
+      }
+
+   return reductions;
+   }
+
+void BigInt::ct_reduce_below(const BigInt& mod, secure_vector<word>& ws, size_t bound)
+   {
+   if(mod.is_negative() || this->is_negative())
+      throw Invalid_Argument("BigInt::ct_reduce_below both values must be positive");
+
+   const size_t mod_words = mod.sig_words();
+
+   grow_to(mod_words);
+
+   const size_t sz = size();
+
+   ws.resize(sz);
+
+   clear_mem(ws.data(), sz);
+
+   for(size_t i = 0; i != bound; ++i)
+      {
+      word borrow = bigint_sub3(ws.data(), data(), sz, mod.data(), mod_words);
+
+      CT::Mask<word>::is_zero(borrow).select_n(mutable_data(), ws.data(), data(), sz);
+      }
+   }
+
+/*
+* Return the absolute value of this number
+*/
+BigInt BigInt::abs() const
+   {
+   BigInt x = (*this);
+   x.set_sign(Positive);
+   return x;
+   }
+
+void BigInt::binary_encode(uint8_t buf[]) const
+   {
+   this->binary_encode(buf, bytes());
+   }
+
+/*
+* Encode this number into bytes
+*/
+void BigInt::binary_encode(uint8_t output[], size_t len) const
+   {
+   const size_t full_words = len / sizeof(word);
+   const size_t extra_bytes = len % sizeof(word);
+
+   for(size_t i = 0; i != full_words; ++i)
+      {
+      const word w = word_at(i);
+      store_be(w, output + (len - (i+1)*sizeof(word)));
+      }
+
+   if(extra_bytes > 0)
+      {
+      const word w = word_at(full_words);
+
+      for(size_t i = 0; i != extra_bytes; ++i)
+         {
+         output[extra_bytes - i - 1] = get_byte(sizeof(word) - i - 1, w);
+         }
+      }
+   }
+
+/*
+* Set this number to the value in buf
+*/
+void BigInt::binary_decode(const uint8_t buf[], size_t length)
+   {
+   clear();
+
+   const size_t full_words = length / sizeof(word);
+   const size_t extra_bytes = length % sizeof(word);
+
+   secure_vector<word> reg((round_up(full_words + (extra_bytes > 0 ? 1 : 0), 8)));
+
+   for(size_t i = 0; i != full_words; ++i)
+      {
+      reg[i] = load_be<word>(buf + length - sizeof(word)*(i+1), 0);
+      }
+
+   if(extra_bytes > 0)
+      {
+      for(size_t i = 0; i != extra_bytes; ++i)
+         reg[full_words] = (reg[full_words] << 8) | buf[i];
+      }
+
+   m_data.swap(reg);
+   }
+
+void BigInt::ct_cond_add(bool predicate, const BigInt& value)
+   {
+   if(this->is_negative() || value.is_negative())
+      throw Invalid_Argument("BigInt::ct_cond_add requires both values to be positive");
+   this->grow_to(1 + value.sig_words());
+
+   bigint_cnd_add(static_cast<word>(predicate),
+                  this->mutable_data(), this->size(),
+                  value.data(), value.sig_words());
+   }
+
+void BigInt::ct_cond_swap(bool predicate, BigInt& other)
+   {
+   const size_t max_words = std::max(size(), other.size());
+   grow_to(max_words);
+   other.grow_to(max_words);
+
+   bigint_cnd_swap(predicate, this->mutable_data(), other.mutable_data(), max_words);
+   }
+
+void BigInt::cond_flip_sign(bool predicate)
+   {
+   // This code is assuming Negative == 0, Positive == 1
+
+   const auto mask = CT::Mask<uint8_t>::expand(predicate);
+
+   const uint8_t current_sign = static_cast<uint8_t>(sign());
+
+   const uint8_t new_sign = mask.select(current_sign ^ 1, current_sign);
+
+   set_sign(static_cast<Sign>(new_sign));
+   }
+
+void BigInt::ct_cond_assign(bool predicate, const BigInt& other)
+   {
+   const size_t t_words = size();
+   const size_t o_words = other.size();
+
+   if(o_words < t_words)
+      grow_to(o_words);
+
+   const size_t r_words = std::max(t_words, o_words);
+
+   const auto mask = CT::Mask<word>::expand(predicate);
+
+   for(size_t i = 0; i != r_words; ++i)
+      {
+      const word o_word = other.word_at(i);
+      const word t_word = this->word_at(i);
+      this->set_word_at(i, mask.select(o_word, t_word));
+      }
+
+   const bool different_sign = sign() != other.sign();
+   cond_flip_sign(predicate && different_sign);
+   }
+
+#if defined(BOTAN_HAS_VALGRIND)
+void BigInt::const_time_poison() const
+   {
+   CT::poison(m_data.const_data(), m_data.size());
+   }
+
+void BigInt::const_time_unpoison() const
+   {
+   CT::unpoison(m_data.const_data(), m_data.size());
+   }
+#endif
+
+void BigInt::const_time_lookup(secure_vector<word>& output,
+                               const std::vector<BigInt>& vec,
+                               size_t idx)
+   {
+   const size_t words = output.size();
+
+   clear_mem(output.data(), output.size());
+
+   CT::poison(&idx, sizeof(idx));
+
+   for(size_t i = 0; i != vec.size(); ++i)
+      {
+      BOTAN_ASSERT(vec[i].size() >= words,
+                   "Word size as expected in const_time_lookup");
+
+      const auto mask = CT::Mask<word>::is_equal(i, idx);
+
+      for(size_t w = 0; w != words; ++w)
+         {
+         const word viw = vec[i].word_at(w);
+         output[w] = mask.if_set_return(viw);
+         }
+      }
+
+   CT::unpoison(idx);
+   CT::unpoison(output.data(), output.size());
+   }
+
+}
+/*
+* Division Algorithm
+* (C) 1999-2007,2012,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+/*
+* Handle signed operands, if necessary
+*/
+void sign_fixup(const BigInt& x, const BigInt& y, BigInt& q, BigInt& r)
+   {
+   q.cond_flip_sign(x.sign() != y.sign());
+
+   if(x.is_negative() && r.is_nonzero())
+      {
+      q -= 1;
+      r = y.abs() - r;
+      }
+   }
+
+inline bool division_check(word q, word y2, word y1,
+                           word x3, word x2, word x1)
+   {
+   /*
+   Compute (y3,y2,y1) = (y2,y1) * q
+   and return true if (y3,y2,y1) > (x3,x2,x1)
+   */
+
+   word y3 = 0;
+   y1 = word_madd2(q, y1, &y3);
+   y2 = word_madd2(q, y2, &y3);
+
+   const word x[3] = { x1, x2, x3 };
+   const word y[3] = { y1, y2, y3 };
+
+   return bigint_ct_is_lt(x, 3, y, 3).is_set();
+   }
+
+}
+
+void ct_divide(const BigInt& x, const BigInt& y, BigInt& q_out, BigInt& r_out)
+   {
+   const size_t x_words = x.sig_words();
+   const size_t y_words = y.sig_words();
+
+   const size_t x_bits = x.bits();
+
+   BigInt q(BigInt::Positive, x_words);
+   BigInt r(BigInt::Positive, y_words);
+   BigInt t(BigInt::Positive, y_words); // a temporary
+
+   for(size_t i = 0; i != x_bits; ++i)
+      {
+      const size_t b = x_bits - 1 - i;
+      const bool x_b = x.get_bit(b);
+
+      r *= 2;
+      r.conditionally_set_bit(0, x_b);
+
+      const bool r_gte_y = bigint_sub3(t.mutable_data(), r.data(), r.size(), y.data(), y_words) == 0;
+
+      q.conditionally_set_bit(b, r_gte_y);
+      r.ct_cond_swap(r_gte_y, t);
+      }
+
+   sign_fixup(x, y, q, r);
+   r_out = r;
+   q_out = q;
+   }
+
+void ct_divide_u8(const BigInt& x, uint8_t y, BigInt& q_out, uint8_t& r_out)
+   {
+   const size_t x_words = x.sig_words();
+   const size_t x_bits = x.bits();
+
+   BigInt q(BigInt::Positive, x_words);
+   uint32_t r = 0;
+
+   for(size_t i = 0; i != x_bits; ++i)
+      {
+      const size_t b = x_bits - 1 - i;
+      const bool x_b = x.get_bit(b);
+
+      r *= 2;
+      r += x_b;
+
+      const auto r_gte_y = CT::Mask<uint32_t>::is_gte(r, y);
+
+      q.conditionally_set_bit(b, r_gte_y.is_set());
+      r = r_gte_y.select(r - y, r);
+      }
+
+   if(x.is_negative())
+      {
+      q.flip_sign();
+      if(r != 0)
+         {
+         --q;
+         r = y - r;
+         }
+      }
+
+   r_out = static_cast<uint8_t>(r);
+   q_out = q;
+   }
+
+BigInt ct_modulo(const BigInt& x, const BigInt& y)
+   {
+   if(y.is_negative() || y.is_zero())
+      throw Invalid_Argument("ct_modulo requires y > 0");
+
+   const size_t y_words = y.sig_words();
+
+   const size_t x_bits = x.bits();
+
+   BigInt r(BigInt::Positive, y_words);
+   BigInt t(BigInt::Positive, y_words);
+
+   for(size_t i = 0; i != x_bits; ++i)
+      {
+      const size_t b = x_bits - 1 - i;
+      const bool x_b = x.get_bit(b);
+
+      r *= 2;
+      r.conditionally_set_bit(0, x_b);
+
+      const bool r_gte_y = bigint_sub3(t.mutable_data(), r.data(), r.size(), y.data(), y_words) == 0;
+
+      r.ct_cond_swap(r_gte_y, t);
+      }
+
+   if(x.is_negative())
+      {
+      if(r.is_nonzero())
+         {
+         r = y - r;
+         }
+      }
+
+   return r;
+   }
+
+/*
+* Solve x = q * y + r
+*
+* See Handbook of Applied Cryptography section 14.2.5
+*/
+void vartime_divide(const BigInt& x, const BigInt& y_arg, BigInt& q_out, BigInt& r_out)
+   {
+   if(y_arg.is_zero())
+      throw BigInt::DivideByZero();
+
+   const size_t y_words = y_arg.sig_words();
+
+   BOTAN_ASSERT_NOMSG(y_words > 0);
+
+   BigInt y = y_arg;
+
+   BigInt r = x;
+   BigInt q = 0;
+   secure_vector<word> ws;
+
+   r.set_sign(BigInt::Positive);
+   y.set_sign(BigInt::Positive);
+
+   // Calculate shifts needed to normalize y with high bit set
+   const size_t shifts = y.top_bits_free();
+
+   y <<= shifts;
+   r <<= shifts;
+
+   // we know y has not changed size, since we only shifted up to set high bit
+   const size_t t = y_words - 1;
+   const size_t n = std::max(y_words, r.sig_words()) - 1; // r may have changed size however
+
+   BOTAN_ASSERT_NOMSG(n >= t);
+
+   q.grow_to(n - t + 1);
+
+   word* q_words = q.mutable_data();
+
+   BigInt shifted_y = y << (BOTAN_MP_WORD_BITS * (n-t));
+
+   // Set q_{n-t} to number of times r > shifted_y
+   q_words[n-t] = r.reduce_below(shifted_y, ws);
+
+   const word y_t0  = y.word_at(t);
+   const word y_t1  = y.word_at(t-1);
+   BOTAN_DEBUG_ASSERT((y_t0 >> (BOTAN_MP_WORD_BITS-1)) == 1);
+
+   for(size_t j = n; j != t; --j)
+      {
+      const word x_j0  = r.word_at(j);
+      const word x_j1 = r.word_at(j-1);
+      const word x_j2 = r.word_at(j-2);
+
+      word qjt = bigint_divop(x_j0, x_j1, y_t0);
+
+      qjt = CT::Mask<word>::is_equal(x_j0, y_t0).select(MP_WORD_MAX, qjt);
+
+      // Per HAC 14.23, this operation is required at most twice
+      qjt -= division_check(qjt, y_t0, y_t1, x_j0, x_j1, x_j2);
+      qjt -= division_check(qjt, y_t0, y_t1, x_j0, x_j1, x_j2);
+      BOTAN_DEBUG_ASSERT(division_check(qjt, y_t0, y_t1, x_j0, x_j1, x_j2) == false);
+
+      shifted_y >>= BOTAN_MP_WORD_BITS;
+      // Now shifted_y == y << (BOTAN_MP_WORD_BITS * (j-t-1))
+
+      // TODO this sequence could be better
+      r -= qjt * shifted_y;
+      qjt -= r.is_negative();
+      r += static_cast<word>(r.is_negative()) * shifted_y;
+
+      q_words[j-t-1] = qjt;
+      }
+
+   r >>= shifts;
+
+   sign_fixup(x, y_arg, q, r);
+
+   r_out = r;
+   q_out = q;
    }
 
 }
@@ -8008,7 +14729,6 @@ CMAC::CMAC(BlockCipher* cipher) :
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <ostream>
 
 namespace Botan {
 
@@ -9421,6 +16141,683 @@ void CTR_BE::seek(uint64_t offset)
    }
 }
 /*
+* Curve25519
+* (C) 2014 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+void curve25519_basepoint(uint8_t mypublic[32], const uint8_t secret[32])
+   {
+   const uint8_t basepoint[32] = { 9 };
+   curve25519_donna(mypublic, secret, basepoint);
+   }
+
+namespace {
+
+void size_check(size_t size, const char* thing)
+   {
+   if(size != 32)
+      throw Decoding_Error("Invalid size " + std::to_string(size) + " for Curve25519 " + thing);
+   }
+
+secure_vector<uint8_t> curve25519(const secure_vector<uint8_t>& secret,
+                               const uint8_t pubval[32])
+   {
+   secure_vector<uint8_t> out(32);
+   curve25519_donna(out.data(), secret.data(), pubval);
+   return out;
+   }
+
+}
+
+AlgorithmIdentifier Curve25519_PublicKey::algorithm_identifier() const
+   {
+   return AlgorithmIdentifier(get_oid(), AlgorithmIdentifier::USE_EMPTY_PARAM);
+   }
+
+bool Curve25519_PublicKey::check_key(RandomNumberGenerator&, bool) const
+   {
+   return true; // no tests possible?
+   }
+
+Curve25519_PublicKey::Curve25519_PublicKey(const AlgorithmIdentifier&,
+                                           const std::vector<uint8_t>& key_bits)
+   {
+   m_public = key_bits;
+
+   size_check(m_public.size(), "public key");
+   }
+
+std::vector<uint8_t> Curve25519_PublicKey::public_key_bits() const
+   {
+   return m_public;
+   }
+
+Curve25519_PrivateKey::Curve25519_PrivateKey(const secure_vector<uint8_t>& secret_key)
+   {
+   if(secret_key.size() != 32)
+     throw Decoding_Error("Invalid size for Curve25519 private key");
+
+   m_public.resize(32);
+   m_private = secret_key;
+   curve25519_basepoint(m_public.data(), m_private.data());
+   }
+
+Curve25519_PrivateKey::Curve25519_PrivateKey(RandomNumberGenerator& rng)
+   {
+   m_private = rng.random_vec(32);
+   m_public.resize(32);
+   curve25519_basepoint(m_public.data(), m_private.data());
+   }
+
+Curve25519_PrivateKey::Curve25519_PrivateKey(const AlgorithmIdentifier&,
+                                             const secure_vector<uint8_t>& key_bits)
+   {
+   BER_Decoder(key_bits).decode(m_private, OCTET_STRING).discard_remaining();
+
+   size_check(m_private.size(), "private key");
+   m_public.resize(32);
+   curve25519_basepoint(m_public.data(), m_private.data());
+   }
+
+secure_vector<uint8_t> Curve25519_PrivateKey::private_key_bits() const
+   {
+   return DER_Encoder().encode(m_private, OCTET_STRING).get_contents();
+   }
+
+bool Curve25519_PrivateKey::check_key(RandomNumberGenerator&, bool) const
+   {
+   std::vector<uint8_t> public_point(32);
+   curve25519_basepoint(public_point.data(), m_private.data());
+   return public_point == m_public;
+   }
+
+secure_vector<uint8_t> Curve25519_PrivateKey::agree(const uint8_t w[], size_t w_len) const
+   {
+   size_check(w_len, "public value");
+   return curve25519(m_private, w);
+   }
+
+namespace {
+
+/**
+* Curve25519 operation
+*/
+class Curve25519_KA_Operation final : public PK_Ops::Key_Agreement_with_KDF
+   {
+   public:
+
+      Curve25519_KA_Operation(const Curve25519_PrivateKey& key, const std::string& kdf) :
+         PK_Ops::Key_Agreement_with_KDF(kdf),
+         m_key(key) {}
+
+      size_t agreed_value_size() const override { return 32; }
+
+      secure_vector<uint8_t> raw_agree(const uint8_t w[], size_t w_len) override
+         {
+         return m_key.agree(w, w_len);
+         }
+   private:
+      const Curve25519_PrivateKey& m_key;
+   };
+
+}
+
+std::unique_ptr<PK_Ops::Key_Agreement>
+Curve25519_PrivateKey::create_key_agreement_op(RandomNumberGenerator& /*rng*/,
+                                               const std::string& params,
+                                               const std::string& provider) const
+   {
+   if(provider == "base" || provider.empty())
+      return std::unique_ptr<PK_Ops::Key_Agreement>(new Curve25519_KA_Operation(*this, params));
+   throw Provider_Not_Found(algo_name(), provider);
+   }
+
+}
+/*
+* Based on curve25519-donna-c64.c from github.com/agl/curve25519-donna
+* revision 80ad9b9930c9baef5829dd2a235b6b7646d32a8e
+*
+* Further changes
+* (C) 2014,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+/* Copyright 2008, Google Inc.
+* All rights reserved.
+*
+* Code released into the public domain.
+*
+* curve25519-donna: Curve25519 elliptic curve, public key function
+*
+* https://code.google.com/p/curve25519-donna/
+*
+* Adam Langley <agl@imperialviolet.org>
+*
+* Derived from public domain C code by Daniel J. Bernstein <djb@cr.yp.to>
+*
+* More information about curve25519 can be found here
+*   https://cr.yp.to/ecdh.html
+*
+* djb's sample implementation of curve25519 is written in a special assembly
+* language called qhasm and uses the floating point registers.
+*
+* This is, almost, a clean room reimplementation from the curve25519 paper. It
+* uses many of the tricks described therein. Only the crecip function is taken
+* from the sample implementation.
+*/
+
+
+namespace Botan {
+
+namespace {
+
+#if !defined(BOTAN_TARGET_HAS_NATIVE_UINT128)
+typedef donna128 uint128_t;
+#endif
+
+/* Sum two numbers: output += in */
+inline void fsum(uint64_t out[5], const uint64_t in[5])
+   {
+   out[0] += in[0];
+   out[1] += in[1];
+   out[2] += in[2];
+   out[3] += in[3];
+   out[4] += in[4];
+   }
+
+/* Find the difference of two numbers: out = in - out
+* (note the order of the arguments!)
+*
+* Assumes that out[i] < 2**52
+* On return, out[i] < 2**55
+*/
+inline void fdifference_backwards(uint64_t out[5], const uint64_t in[5])
+   {
+   /* 152 is 19 << 3 */
+   const uint64_t two54m152 = (static_cast<uint64_t>(1) << 54) - 152;
+   const uint64_t two54m8   = (static_cast<uint64_t>(1) << 54) - 8;
+
+   out[0] = in[0] + two54m152 - out[0];
+   out[1] = in[1] + two54m8 - out[1];
+   out[2] = in[2] + two54m8 - out[2];
+   out[3] = in[3] + two54m8 - out[3];
+   out[4] = in[4] + two54m8 - out[4];
+   }
+
+inline void fadd_sub(uint64_t x[5],
+                     uint64_t y[5])
+   {
+   // TODO merge these and avoid the tmp array
+   uint64_t tmp[5];
+   copy_mem(tmp, y, 5);
+   fsum(y, x);
+   fdifference_backwards(x, tmp);  // does x - z
+   }
+
+/* Multiply a number by a scalar: out = in * scalar */
+inline void fscalar_product(uint64_t out[5], const uint64_t in[5], const uint64_t scalar)
+   {
+   uint128_t a = uint128_t(in[0]) * scalar;
+   out[0] = a & 0x7ffffffffffff;
+
+   a = uint128_t(in[1]) * scalar + carry_shift(a, 51);
+   out[1] = a & 0x7ffffffffffff;
+
+   a = uint128_t(in[2]) * scalar + carry_shift(a, 51);
+   out[2] = a & 0x7ffffffffffff;
+
+   a = uint128_t(in[3]) * scalar + carry_shift(a, 51);
+   out[3] = a & 0x7ffffffffffff;
+
+   a = uint128_t(in[4]) * scalar + carry_shift(a, 51);
+   out[4] = a & 0x7ffffffffffff;
+
+   out[0] += carry_shift(a, 51) * 19;
+   }
+
+/* Multiply two numbers: out = in2 * in
+*
+* out must be distinct to both inputs. The inputs are reduced coefficient
+* form, the output is not.
+*
+* Assumes that in[i] < 2**55 and likewise for in2.
+* On return, out[i] < 2**52
+*/
+inline void fmul(uint64_t out[5], const uint64_t in[5], const uint64_t in2[5])
+   {
+   const uint128_t s0 = in2[0];
+   const uint128_t s1 = in2[1];
+   const uint128_t s2 = in2[2];
+   const uint128_t s3 = in2[3];
+   const uint128_t s4 = in2[4];
+
+   uint64_t r0 = in[0];
+   uint64_t r1 = in[1];
+   uint64_t r2 = in[2];
+   uint64_t r3 = in[3];
+   uint64_t r4 = in[4];
+
+   uint128_t t0 = r0 * s0;
+   uint128_t t1 = r0 * s1 + r1 * s0;
+   uint128_t t2 = r0 * s2 + r2 * s0 + r1 * s1;
+   uint128_t t3 = r0 * s3 + r3 * s0 + r1 * s2 + r2 * s1;
+   uint128_t t4 = r0 * s4 + r4 * s0 + r3 * s1 + r1 * s3 + r2 * s2;
+
+   r4 *= 19;
+   r1 *= 19;
+   r2 *= 19;
+   r3 *= 19;
+
+   t0 += r4 * s1 + r1 * s4 + r2 * s3 + r3 * s2;
+   t1 += r4 * s2 + r2 * s4 + r3 * s3;
+   t2 += r4 * s3 + r3 * s4;
+   t3 += r4 * s4;
+
+   r0 = t0 & 0x7ffffffffffff; t1 += carry_shift(t0, 51);
+   r1 = t1 & 0x7ffffffffffff; t2 += carry_shift(t1, 51);
+   r2 = t2 & 0x7ffffffffffff; t3 += carry_shift(t2, 51);
+   r3 = t3 & 0x7ffffffffffff; t4 += carry_shift(t3, 51);
+   r4 = t4 & 0x7ffffffffffff; uint64_t c = carry_shift(t4, 51);
+
+   r0 += c * 19; c = r0 >> 51; r0 = r0 & 0x7ffffffffffff;
+   r1 += c;      c = r1 >> 51; r1 = r1 & 0x7ffffffffffff;
+   r2 += c;
+
+   out[0] = r0;
+   out[1] = r1;
+   out[2] = r2;
+   out[3] = r3;
+   out[4] = r4;
+   }
+
+inline void fsquare(uint64_t out[5], const uint64_t in[5], size_t count = 1)
+   {
+   uint64_t r0 = in[0];
+   uint64_t r1 = in[1];
+   uint64_t r2 = in[2];
+   uint64_t r3 = in[3];
+   uint64_t r4 = in[4];
+
+   for(size_t i = 0; i != count; ++i)
+      {
+      const uint64_t d0 = r0 * 2;
+      const uint64_t d1 = r1 * 2;
+      const uint64_t d2 = r2 * 2 * 19;
+      const uint64_t d419 = r4 * 19;
+      const uint64_t d4 = d419 * 2;
+
+      uint128_t t0 = uint128_t(r0) * r0 + uint128_t(d4) * r1 + uint128_t(d2) * (r3     );
+      uint128_t t1 = uint128_t(d0) * r1 + uint128_t(d4) * r2 + uint128_t(r3) * (r3 * 19);
+      uint128_t t2 = uint128_t(d0) * r2 + uint128_t(r1) * r1 + uint128_t(d4) * (r3     );
+      uint128_t t3 = uint128_t(d0) * r3 + uint128_t(d1) * r2 + uint128_t(r4) * (d419   );
+      uint128_t t4 = uint128_t(d0) * r4 + uint128_t(d1) * r3 + uint128_t(r2) * (r2     );
+
+      r0 = t0 & 0x7ffffffffffff; t1 += carry_shift(t0, 51);
+      r1 = t1 & 0x7ffffffffffff; t2 += carry_shift(t1, 51);
+      r2 = t2 & 0x7ffffffffffff; t3 += carry_shift(t2, 51);
+      r3 = t3 & 0x7ffffffffffff; t4 += carry_shift(t3, 51);
+      r4 = t4 & 0x7ffffffffffff; uint64_t c = carry_shift(t4, 51);
+
+      r0 += c * 19; c = r0 >> 51; r0 = r0 & 0x7ffffffffffff;
+      r1 += c;      c = r1 >> 51; r1 = r1 & 0x7ffffffffffff;
+      r2 += c;
+      }
+
+   out[0] = r0;
+   out[1] = r1;
+   out[2] = r2;
+   out[3] = r3;
+   out[4] = r4;
+   }
+
+/* Take a little-endian, 32-byte number and expand it into polynomial form */
+inline void fexpand(uint64_t *out, const uint8_t *in)
+   {
+   out[0] = load_le<uint64_t>(in, 0) & 0x7ffffffffffff;
+   out[1] = (load_le<uint64_t>(in+6, 0) >> 3) & 0x7ffffffffffff;
+   out[2] = (load_le<uint64_t>(in+12, 0) >> 6) & 0x7ffffffffffff;
+   out[3] = (load_le<uint64_t>(in+19, 0) >> 1) & 0x7ffffffffffff;
+   out[4] = (load_le<uint64_t>(in+24, 0) >> 12) & 0x7ffffffffffff;
+   }
+
+/* Take a fully reduced polynomial form number and contract it into a
+* little-endian, 32-byte array
+*/
+inline void fcontract(uint8_t *out, const uint64_t input[5])
+   {
+   uint128_t t0 = input[0];
+   uint128_t t1 = input[1];
+   uint128_t t2 = input[2];
+   uint128_t t3 = input[3];
+   uint128_t t4 = input[4];
+
+   for(size_t i = 0; i != 2; ++i)
+      {
+      t1 += t0 >> 51;        t0 &= 0x7ffffffffffff;
+      t2 += t1 >> 51;        t1 &= 0x7ffffffffffff;
+      t3 += t2 >> 51;        t2 &= 0x7ffffffffffff;
+      t4 += t3 >> 51;        t3 &= 0x7ffffffffffff;
+      t0 += (t4 >> 51) * 19; t4 &= 0x7ffffffffffff;
+      }
+
+   /* now t is between 0 and 2^255-1, properly carried. */
+   /* case 1: between 0 and 2^255-20. case 2: between 2^255-19 and 2^255-1. */
+
+   t0 += 19;
+
+   t1 += t0 >> 51; t0 &= 0x7ffffffffffff;
+   t2 += t1 >> 51; t1 &= 0x7ffffffffffff;
+   t3 += t2 >> 51; t2 &= 0x7ffffffffffff;
+   t4 += t3 >> 51; t3 &= 0x7ffffffffffff;
+   t0 += (t4 >> 51) * 19; t4 &= 0x7ffffffffffff;
+
+   /* now between 19 and 2^255-1 in both cases, and offset by 19. */
+
+   t0 += 0x8000000000000 - 19;
+   t1 += 0x8000000000000 - 1;
+   t2 += 0x8000000000000 - 1;
+   t3 += 0x8000000000000 - 1;
+   t4 += 0x8000000000000 - 1;
+
+   /* now between 2^255 and 2^256-20, and offset by 2^255. */
+
+   t1 += t0 >> 51; t0 &= 0x7ffffffffffff;
+   t2 += t1 >> 51; t1 &= 0x7ffffffffffff;
+   t3 += t2 >> 51; t2 &= 0x7ffffffffffff;
+   t4 += t3 >> 51; t3 &= 0x7ffffffffffff;
+   t4 &= 0x7ffffffffffff;
+
+   store_le(out,
+            combine_lower(t0,  0, t1, 51),
+            combine_lower(t1, 13, t2, 38),
+            combine_lower(t2, 26, t3, 25),
+            combine_lower(t3, 39, t4, 12));
+   }
+
+/* Input: Q, Q', Q-Q'
+* Out: 2Q, Q+Q'
+*
+*   result.two_q (2*Q): long form
+*   result.q_plus_q_dash (Q + Q): long form
+*   in_q: short form, destroyed
+*   in_q_dash: short form, destroyed
+*   in_q_minus_q_dash: short form, preserved
+*/
+void fmonty(uint64_t result_two_q_x[5],
+            uint64_t result_two_q_z[5],
+            uint64_t result_q_plus_q_dash_x[5],
+            uint64_t result_q_plus_q_dash_z[5],
+            uint64_t in_q_x[5],
+            uint64_t in_q_z[5],
+            uint64_t in_q_dash_x[5],
+            uint64_t in_q_dash_z[5],
+            const uint64_t q_minus_q_dash[5])
+   {
+   uint64_t zzz[5];
+   uint64_t xx[5];
+   uint64_t zz[5];
+   uint64_t xxprime[5];
+   uint64_t zzprime[5];
+   uint64_t zzzprime[5];
+
+   fadd_sub(in_q_z, in_q_x);
+   fadd_sub(in_q_dash_z, in_q_dash_x);
+
+   fmul(xxprime, in_q_dash_x, in_q_z);
+   fmul(zzprime, in_q_dash_z, in_q_x);
+
+   fadd_sub(zzprime, xxprime);
+
+   fsquare(result_q_plus_q_dash_x, xxprime);
+   fsquare(zzzprime, zzprime);
+   fmul(result_q_plus_q_dash_z, zzzprime, q_minus_q_dash);
+
+   fsquare(xx, in_q_x);
+   fsquare(zz, in_q_z);
+   fmul(result_two_q_x, xx, zz);
+
+   fdifference_backwards(zz, xx);  // does zz = xx - zz
+   fscalar_product(zzz, zz, 121665);
+   fsum(zzz, xx);
+
+   fmul(result_two_q_z, zz, zzz);
+   }
+
+/*
+* Maybe swap the contents of two uint64_t arrays (@a and @b),
+* Param @iswap is assumed to be either 0 or 1
+*
+* This function performs the swap without leaking any side-channel
+* information.
+*/
+inline void swap_conditional(uint64_t a[5], uint64_t b[5],
+                             uint64_t c[5], uint64_t d[5],
+                             uint64_t iswap)
+   {
+   const uint64_t swap = 0 - iswap;
+
+   for(size_t i = 0; i < 5; ++i)
+      {
+      const uint64_t x0 = swap & (a[i] ^ b[i]);
+      const uint64_t x1 = swap & (c[i] ^ d[i]);
+      a[i] ^= x0;
+      b[i] ^= x0;
+      c[i] ^= x1;
+      d[i] ^= x1;
+      }
+   }
+
+/* Calculates nQ where Q is the x-coordinate of a point on the curve
+*
+*   resultx/resultz: the x/z coordinate of the resulting curve point (short form)
+*   n: a little endian, 32-byte number
+*   q: a point of the curve (short form)
+*/
+void cmult(uint64_t resultx[5], uint64_t resultz[5], const uint8_t n[32], const uint64_t q[5])
+   {
+   uint64_t a[5] = {0}; // nqpqx
+   uint64_t b[5] = {1}; // npqpz
+   uint64_t c[5] = {1}; // nqx
+   uint64_t d[5] = {0}; // nqz
+   uint64_t e[5] = {0}; // npqqx2
+   uint64_t f[5] = {1}; // npqqz2
+   uint64_t g[5] = {0}; // nqx2
+   uint64_t h[5] = {1}; // nqz2
+
+   copy_mem(a, q, 5);
+
+   for(size_t i = 0; i < 32; ++i)
+      {
+      const uint64_t bit0 = (n[31 - i] >> 7) & 1;
+      const uint64_t bit1 = (n[31 - i] >> 6) & 1;
+      const uint64_t bit2 = (n[31 - i] >> 5) & 1;
+      const uint64_t bit3 = (n[31 - i] >> 4) & 1;
+      const uint64_t bit4 = (n[31 - i] >> 3) & 1;
+      const uint64_t bit5 = (n[31 - i] >> 2) & 1;
+      const uint64_t bit6 = (n[31 - i] >> 1) & 1;
+      const uint64_t bit7 = (n[31 - i] >> 0) & 1;
+
+      swap_conditional(c, a, d, b, bit0);
+      fmonty(g, h, e, f, c, d, a, b, q);
+
+      swap_conditional(g, e, h, f, bit0 ^ bit1);
+      fmonty(c, d, a, b, g, h, e, f, q);
+
+      swap_conditional(c, a, d, b, bit1 ^ bit2);
+      fmonty(g, h, e, f, c, d, a, b, q);
+
+      swap_conditional(g, e, h, f, bit2 ^ bit3);
+      fmonty(c, d, a, b, g, h, e, f, q);
+
+      swap_conditional(c, a, d, b, bit3 ^ bit4);
+      fmonty(g, h, e, f, c, d, a, b, q);
+
+      swap_conditional(g, e, h, f, bit4 ^ bit5);
+      fmonty(c, d, a, b, g, h, e, f, q);
+
+      swap_conditional(c, a, d, b, bit5 ^ bit6);
+      fmonty(g, h, e, f, c, d, a, b, q);
+
+      swap_conditional(g, e, h, f, bit6 ^ bit7);
+      fmonty(c, d, a, b, g, h, e, f, q);
+
+      swap_conditional(c, a, d, b, bit7);
+      }
+
+   copy_mem(resultx, c, 5);
+   copy_mem(resultz, d, 5);
+   }
+
+
+// -----------------------------------------------------------------------------
+// Shamelessly copied from djb's code, tightened a little
+// -----------------------------------------------------------------------------
+void crecip(uint64_t out[5], const uint64_t z[5])
+   {
+   uint64_t a[5];
+   uint64_t b[5];
+   uint64_t c[5];
+   uint64_t t0[5];
+
+   fsquare(a, z);       // 2
+   fsquare(t0, a, 2);   // 8
+   fmul(b, t0, z);      // 9
+   fmul(a, b, a);       // 11
+   fsquare(t0, a);      // 22
+   fmul(b, t0, b);      // 2^5 - 2^0 = 31
+   fsquare(t0, b, 5);   // 2^10 - 2^5
+   fmul(b, t0, b);      // 2^10 - 2^0
+   fsquare(t0, b, 10);  // 2^20 - 2^10
+   fmul(c, t0, b);      // 2^20 - 2^0
+   fsquare(t0, c, 20);  // 2^40 - 2^20
+   fmul(t0, t0, c);     // 2^40 - 2^0
+   fsquare(t0, t0, 10); // 2^50 - 2^10
+   fmul(b, t0, b);      // 2^50 - 2^0
+   fsquare(t0, b, 50);  // 2^100 - 2^50
+   fmul(c, t0, b);      // 2^100 - 2^0
+   fsquare(t0, c, 100); // 2^200 - 2^100
+   fmul(t0, t0, c);     // 2^200 - 2^0
+   fsquare(t0, t0, 50); // 2^250 - 2^50
+   fmul(t0, t0, b);     // 2^250 - 2^0
+   fsquare(t0, t0, 5);  // 2^255 - 2^5
+   fmul(out, t0, a);    // 2^255 - 21
+   }
+
+}
+
+void
+curve25519_donna(uint8_t mypublic[32], const uint8_t secret[32], const uint8_t basepoint[32])
+   {
+   CT::poison(secret, 32);
+   CT::poison(basepoint, 32);
+
+   uint64_t bp[5], x[5], z[5], zmone[5];
+   uint8_t e[32];
+
+   copy_mem(e, secret, 32);
+   e[ 0] &= 248;
+   e[31] &= 127;
+   e[31] |= 64;
+
+   fexpand(bp, basepoint);
+   cmult(x, z, e, bp);
+   crecip(zmone, z);
+   fmul(z, x, zmone);
+   fcontract(mypublic, z);
+
+   CT::unpoison(secret, 32);
+   CT::unpoison(basepoint, 32);
+   CT::unpoison(mypublic, 32);
+   }
+
+}
+/*
+* Dynamically Loaded Object
+* (C) 2010 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+#if defined(BOTAN_TARGET_OS_HAS_POSIX1)
+  #include <dlfcn.h>
+#elif defined(BOTAN_TARGET_OS_HAS_WIN32)
+  #define NOMINMAX 1
+  #define _WINSOCKAPI_ // stop windows.h including winsock.h
+  #include <windows.h>
+#endif
+
+namespace Botan {
+
+namespace {
+
+void raise_runtime_loader_exception(const std::string& lib_name,
+                                    const char* msg)
+   {
+   const std::string ex_msg =
+      "Failed to load " + lib_name + ": " +
+      (msg ? msg : "Unknown error");
+
+   throw System_Error(ex_msg, 0);
+   }
+
+}
+
+Dynamically_Loaded_Library::Dynamically_Loaded_Library(
+   const std::string& library) :
+   m_lib_name(library), m_lib(nullptr)
+   {
+#if defined(BOTAN_TARGET_OS_HAS_POSIX1)
+   m_lib = ::dlopen(m_lib_name.c_str(), RTLD_LAZY);
+
+   if(!m_lib)
+      raise_runtime_loader_exception(m_lib_name, ::dlerror());
+
+#elif defined(BOTAN_TARGET_OS_HAS_WIN32)
+   m_lib = ::LoadLibraryA(m_lib_name.c_str());
+
+   if(!m_lib)
+      raise_runtime_loader_exception(m_lib_name, "LoadLibrary failed");
+#endif
+
+   if(!m_lib)
+      raise_runtime_loader_exception(m_lib_name, "Dynamic load not supported");
+   }
+
+Dynamically_Loaded_Library::~Dynamically_Loaded_Library()
+   {
+#if defined(BOTAN_TARGET_OS_HAS_POSIX1)
+   ::dlclose(m_lib);
+#elif defined(BOTAN_TARGET_OS_HAS_WIN32)
+   ::FreeLibrary((HMODULE)m_lib);
+#endif
+   }
+
+void* Dynamically_Loaded_Library::resolve_symbol(const std::string& symbol)
+   {
+   void* addr = nullptr;
+
+#if defined(BOTAN_TARGET_OS_HAS_POSIX1)
+   addr = ::dlsym(m_lib, symbol.c_str());
+#elif defined(BOTAN_TARGET_OS_HAS_WIN32)
+   addr = reinterpret_cast<void*>(::GetProcAddress((HMODULE)m_lib, symbol.c_str()));
+#endif
+
+   if(!addr)
+      throw Invalid_Argument("Failed to resolve symbol " + symbol +
+                             " in " + m_lib_name);
+
+   return addr;
+   }
+
+}
+/*
 * EAX Mode Encryption
 * (C) 1999-2007 Jack Lloyd
 * (C) 2016 Daniel Neus, Rohde & Schwarz Cybersecurity
@@ -9608,6 +17005,3689 @@ void EAX_Decryption::finish(secure_vector<uint8_t>& buffer, size_t offset)
    buffer.resize(offset + remaining);
 
    m_nonce_mac.clear();
+   }
+
+}
+/*
+* Ed25519
+* (C) 2017 Ribose Inc
+*
+* Based on the public domain code from SUPERCOP ref10 by
+* Peter Schwabe, Daniel J. Bernstein, Niels Duif, Tanja Lange, Bo-Yin Yang
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+void ed25519_gen_keypair(uint8_t* pk, uint8_t* sk, const uint8_t seed[32])
+   {
+   uint8_t az[64];
+
+   SHA_512 sha;
+   sha.update(seed, 32);
+   sha.final(az);
+   az[0] &= 248;
+   az[31] &= 63;
+   az[31] |= 64;
+
+   ge_scalarmult_base(pk, az);
+
+   // todo copy_mem
+   copy_mem(sk, seed, 32);
+   copy_mem(sk + 32, pk, 32);
+   }
+
+void ed25519_sign(uint8_t sig[64],
+                  const uint8_t m[], size_t mlen,
+                  const uint8_t sk[64],
+                  const uint8_t domain_sep[], size_t domain_sep_len)
+   {
+   uint8_t az[64];
+   uint8_t nonce[64];
+   uint8_t hram[64];
+
+   SHA_512 sha;
+
+   sha.update(sk, 32);
+   sha.final(az);
+   az[0] &= 248;
+   az[31] &= 63;
+   az[31] |= 64;
+
+   sha.update(domain_sep, domain_sep_len);
+   sha.update(az + 32, 32);
+   sha.update(m, mlen);
+   sha.final(nonce);
+
+   sc_reduce(nonce);
+   ge_scalarmult_base(sig, nonce);
+
+   sha.update(domain_sep, domain_sep_len);
+   sha.update(sig, 32);
+   sha.update(sk + 32, 32);
+   sha.update(m, mlen);
+   sha.final(hram);
+
+   sc_reduce(hram);
+   sc_muladd(sig + 32, hram, az, nonce);
+   }
+
+bool ed25519_verify(const uint8_t* m, size_t mlen,
+                    const uint8_t sig[64],
+                    const uint8_t* pk,
+                    const uint8_t domain_sep[], size_t domain_sep_len)
+   {
+   uint8_t h[64];
+   uint8_t rcheck[32];
+   ge_p3 A;
+   SHA_512 sha;
+
+   if(sig[63] & 224)
+      {
+      return false;
+      }
+   if(ge_frombytes_negate_vartime(&A, pk) != 0)
+      {
+      return false;
+      }
+
+   sha.update(domain_sep, domain_sep_len);
+   sha.update(sig, 32);
+   sha.update(pk, 32);
+   sha.update(m, mlen);
+   sha.final(h);
+   sc_reduce(h);
+
+   ge_double_scalarmult_vartime(rcheck, h, &A, sig + 32);
+
+   return constant_time_compare(rcheck, sig, 32);
+   }
+
+}
+/*
+* Ed25519 field element
+* (C) 2017 Ribose Inc
+*
+* Based on the public domain code from SUPERCOP ref10 by
+* Peter Schwabe, Daniel J. Bernstein, Niels Duif, Tanja Lange, Bo-Yin Yang
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+//static
+FE_25519 FE_25519::invert(const FE_25519& z)
+   {
+   fe t0;
+   fe t1;
+   fe t2;
+   fe t3;
+
+   fe_sq(t0, z);
+   fe_sq_iter(t1, t0, 2);
+   fe_mul(t1, z, t1);
+   fe_mul(t0, t0, t1);
+   fe_sq(t2, t0);
+   fe_mul(t1, t1, t2);
+   fe_sq_iter(t2, t1, 5);
+   fe_mul(t1, t2, t1);
+   fe_sq_iter(t2, t1, 10);
+   fe_mul(t2, t2, t1);
+   fe_sq_iter(t3, t2, 20);
+   fe_mul(t2, t3, t2);
+   fe_sq_iter(t2, t2, 10);
+   fe_mul(t1, t2, t1);
+   fe_sq_iter(t2, t1, 50);
+   fe_mul(t2, t2, t1);
+   fe_sq_iter(t3, t2, 100);
+   fe_mul(t2, t3, t2);
+   fe_sq_iter(t2, t2, 50);
+   fe_mul(t1, t2, t1);
+   fe_sq_iter(t1, t1, 5);
+
+   fe_mul(t0, t1, t0);
+   return t0;
+   }
+
+FE_25519 FE_25519::pow_22523(const fe& z)
+   {
+   fe t0;
+   fe t1;
+   fe t2;
+
+   fe_sq(t0, z);
+   fe_sq_iter(t1, t0, 2);
+   fe_mul(t1, z, t1);
+   fe_mul(t0, t0, t1);
+   fe_sq(t0, t0);
+   fe_mul(t0, t1, t0);
+   fe_sq_iter(t1, t0, 5);
+   fe_mul(t0, t1, t0);
+   fe_sq_iter(t1, t0, 10);
+   fe_mul(t1, t1, t0);
+   fe_sq_iter(t2, t1, 20);
+   fe_mul(t1, t2, t1);
+   fe_sq_iter(t1, t1, 10);
+   fe_mul(t0, t1, t0);
+   fe_sq_iter(t1, t0, 50);
+   fe_mul(t1, t1, t0);
+   fe_sq_iter(t2, t1, 100);
+   fe_mul(t1, t2, t1);
+   fe_sq_iter(t1, t1, 50);
+   fe_mul(t0, t1, t0);
+   fe_sq_iter(t0, t0, 2);
+
+   fe_mul(t0, t0, z);
+   return t0;
+   }
+
+/*
+h = f * g
+Can overlap h with f or g.
+
+Preconditions:
+|f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
+|g| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
+
+Postconditions:
+|h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
+*/
+
+/*
+Notes on implementation strategy:
+
+Using schoolbook multiplication.
+Karatsuba would save a little in some cost models.
+
+Most multiplications by 2 and 19 are 32-bit precomputations;
+cheaper than 64-bit postcomputations.
+
+There is one remaining multiplication by 19 in the carry chain;
+one *19 precomputation can be merged into this,
+but the resulting data flow is considerably less clean.
+
+There are 12 carries below.
+10 of them are 2-way parallelizable and vectorizable.
+Can get away with 11 carries, but then data flow is much deeper.
+
+With tighter constraints on inputs can squeeze carries into int32.
+*/
+
+//static
+FE_25519 FE_25519::mul(const FE_25519& f, const FE_25519& g)
+   {
+   const int32_t f0 = f[0];
+   const int32_t f1 = f[1];
+   const int32_t f2 = f[2];
+   const int32_t f3 = f[3];
+   const int32_t f4 = f[4];
+   const int32_t f5 = f[5];
+   const int32_t f6 = f[6];
+   const int32_t f7 = f[7];
+   const int32_t f8 = f[8];
+   const int32_t f9 = f[9];
+
+   const int32_t g0 = g[0];
+   const int32_t g1 = g[1];
+   const int32_t g2 = g[2];
+   const int32_t g3 = g[3];
+   const int32_t g4 = g[4];
+   const int32_t g5 = g[5];
+   const int32_t g6 = g[6];
+   const int32_t g7 = g[7];
+   const int32_t g8 = g[8];
+   const int32_t g9 = g[9];
+
+   const int32_t g1_19 = 19 * g1; /* 1.959375*2^29 */
+   const int32_t g2_19 = 19 * g2; /* 1.959375*2^30; still ok */
+   const int32_t g3_19 = 19 * g3;
+   const int32_t g4_19 = 19 * g4;
+   const int32_t g5_19 = 19 * g5;
+   const int32_t g6_19 = 19 * g6;
+   const int32_t g7_19 = 19 * g7;
+   const int32_t g8_19 = 19 * g8;
+   const int32_t g9_19 = 19 * g9;
+   const int32_t f1_2 = 2 * f1;
+   const int32_t f3_2 = 2 * f3;
+   const int32_t f5_2 = 2 * f5;
+   const int32_t f7_2 = 2 * f7;
+   const int32_t f9_2 = 2 * f9;
+
+   const int64_t f0g0    = f0   * static_cast<int64_t>(g0);
+   const int64_t f0g1    = f0   * static_cast<int64_t>(g1);
+   const int64_t f0g2    = f0   * static_cast<int64_t>(g2);
+   const int64_t f0g3    = f0   * static_cast<int64_t>(g3);
+   const int64_t f0g4    = f0   * static_cast<int64_t>(g4);
+   const int64_t f0g5    = f0   * static_cast<int64_t>(g5);
+   const int64_t f0g6    = f0   * static_cast<int64_t>(g6);
+   const int64_t f0g7    = f0   * static_cast<int64_t>(g7);
+   const int64_t f0g8    = f0   * static_cast<int64_t>(g8);
+   const int64_t f0g9    = f0   * static_cast<int64_t>(g9);
+   const int64_t f1g0    = f1   * static_cast<int64_t>(g0);
+   const int64_t f1g1_2  = f1_2 * static_cast<int64_t>(g1);
+   const int64_t f1g2    = f1   * static_cast<int64_t>(g2);
+   const int64_t f1g3_2  = f1_2 * static_cast<int64_t>(g3);
+   const int64_t f1g4    = f1   * static_cast<int64_t>(g4);
+   const int64_t f1g5_2  = f1_2 * static_cast<int64_t>(g5);
+   const int64_t f1g6    = f1   * static_cast<int64_t>(g6);
+   const int64_t f1g7_2  = f1_2 * static_cast<int64_t>(g7);
+   const int64_t f1g8    = f1   * static_cast<int64_t>(g8);
+   const int64_t f1g9_38 = f1_2 * static_cast<int64_t>(g9_19);
+   const int64_t f2g0    = f2   * static_cast<int64_t>(g0);
+   const int64_t f2g1    = f2   * static_cast<int64_t>(g1);
+   const int64_t f2g2    = f2   * static_cast<int64_t>(g2);
+   const int64_t f2g3    = f2   * static_cast<int64_t>(g3);
+   const int64_t f2g4    = f2   * static_cast<int64_t>(g4);
+   const int64_t f2g5    = f2   * static_cast<int64_t>(g5);
+   const int64_t f2g6    = f2   * static_cast<int64_t>(g6);
+   const int64_t f2g7    = f2   * static_cast<int64_t>(g7);
+   const int64_t f2g8_19 = f2   * static_cast<int64_t>(g8_19);
+   const int64_t f2g9_19 = f2   * static_cast<int64_t>(g9_19);
+   const int64_t f3g0    = f3   * static_cast<int64_t>(g0);
+   const int64_t f3g1_2  = f3_2 * static_cast<int64_t>(g1);
+   const int64_t f3g2    = f3   * static_cast<int64_t>(g2);
+   const int64_t f3g3_2  = f3_2 * static_cast<int64_t>(g3);
+   const int64_t f3g4    = f3   * static_cast<int64_t>(g4);
+   const int64_t f3g5_2  = f3_2 * static_cast<int64_t>(g5);
+   const int64_t f3g6    = f3   * static_cast<int64_t>(g6);
+   const int64_t f3g7_38 = f3_2 * static_cast<int64_t>(g7_19);
+   const int64_t f3g8_19 = f3   * static_cast<int64_t>(g8_19);
+   const int64_t f3g9_38 = f3_2 * static_cast<int64_t>(g9_19);
+   const int64_t f4g0    = f4   * static_cast<int64_t>(g0);
+   const int64_t f4g1    = f4   * static_cast<int64_t>(g1);
+   const int64_t f4g2    = f4   * static_cast<int64_t>(g2);
+   const int64_t f4g3    = f4   * static_cast<int64_t>(g3);
+   const int64_t f4g4    = f4   * static_cast<int64_t>(g4);
+   const int64_t f4g5    = f4   * static_cast<int64_t>(g5);
+   const int64_t f4g6_19 = f4   * static_cast<int64_t>(g6_19);
+   const int64_t f4g7_19 = f4   * static_cast<int64_t>(g7_19);
+   const int64_t f4g8_19 = f4   * static_cast<int64_t>(g8_19);
+   const int64_t f4g9_19 = f4   * static_cast<int64_t>(g9_19);
+   const int64_t f5g0    = f5   * static_cast<int64_t>(g0);
+   const int64_t f5g1_2  = f5_2 * static_cast<int64_t>(g1);
+   const int64_t f5g2    = f5   * static_cast<int64_t>(g2);
+   const int64_t f5g3_2  = f5_2 * static_cast<int64_t>(g3);
+   const int64_t f5g4    = f5   * static_cast<int64_t>(g4);
+   const int64_t f5g5_38 = f5_2 * static_cast<int64_t>(g5_19);
+   const int64_t f5g6_19 = f5   * static_cast<int64_t>(g6_19);
+   const int64_t f5g7_38 = f5_2 * static_cast<int64_t>(g7_19);
+   const int64_t f5g8_19 = f5   * static_cast<int64_t>(g8_19);
+   const int64_t f5g9_38 = f5_2 * static_cast<int64_t>(g9_19);
+   const int64_t f6g0    = f6   * static_cast<int64_t>(g0);
+   const int64_t f6g1    = f6   * static_cast<int64_t>(g1);
+   const int64_t f6g2    = f6   * static_cast<int64_t>(g2);
+   const int64_t f6g3    = f6   * static_cast<int64_t>(g3);
+   const int64_t f6g4_19 = f6   * static_cast<int64_t>(g4_19);
+   const int64_t f6g5_19 = f6   * static_cast<int64_t>(g5_19);
+   const int64_t f6g6_19 = f6   * static_cast<int64_t>(g6_19);
+   const int64_t f6g7_19 = f6   * static_cast<int64_t>(g7_19);
+   const int64_t f6g8_19 = f6   * static_cast<int64_t>(g8_19);
+   const int64_t f6g9_19 = f6   * static_cast<int64_t>(g9_19);
+   const int64_t f7g0    = f7   * static_cast<int64_t>(g0);
+   const int64_t f7g1_2  = f7_2 * static_cast<int64_t>(g1);
+   const int64_t f7g2    = f7   * static_cast<int64_t>(g2);
+   const int64_t f7g3_38 = f7_2 * static_cast<int64_t>(g3_19);
+   const int64_t f7g4_19 = f7   * static_cast<int64_t>(g4_19);
+   const int64_t f7g5_38 = f7_2 * static_cast<int64_t>(g5_19);
+   const int64_t f7g6_19 = f7   * static_cast<int64_t>(g6_19);
+   const int64_t f7g7_38 = f7_2 * static_cast<int64_t>(g7_19);
+   const int64_t f7g8_19 = f7   * static_cast<int64_t>(g8_19);
+   const int64_t f7g9_38 = f7_2 * static_cast<int64_t>(g9_19);
+   const int64_t f8g0    = f8   * static_cast<int64_t>(g0);
+   const int64_t f8g1    = f8   * static_cast<int64_t>(g1);
+   const int64_t f8g2_19 = f8   * static_cast<int64_t>(g2_19);
+   const int64_t f8g3_19 = f8   * static_cast<int64_t>(g3_19);
+   const int64_t f8g4_19 = f8   * static_cast<int64_t>(g4_19);
+   const int64_t f8g5_19 = f8   * static_cast<int64_t>(g5_19);
+   const int64_t f8g6_19 = f8   * static_cast<int64_t>(g6_19);
+   const int64_t f8g7_19 = f8   * static_cast<int64_t>(g7_19);
+   const int64_t f8g8_19 = f8   * static_cast<int64_t>(g8_19);
+   const int64_t f8g9_19 = f8   * static_cast<int64_t>(g9_19);
+   const int64_t f9g0    = f9   * static_cast<int64_t>(g0);
+   const int64_t f9g1_38 = f9_2 * static_cast<int64_t>(g1_19);
+   const int64_t f9g2_19 = f9   * static_cast<int64_t>(g2_19);
+   const int64_t f9g3_38 = f9_2 * static_cast<int64_t>(g3_19);
+   const int64_t f9g4_19 = f9   * static_cast<int64_t>(g4_19);
+   const int64_t f9g5_38 = f9_2 * static_cast<int64_t>(g5_19);
+   const int64_t f9g6_19 = f9   * static_cast<int64_t>(g6_19);
+   const int64_t f9g7_38 = f9_2 * static_cast<int64_t>(g7_19);
+   const int64_t f9g8_19 = f9   * static_cast<int64_t>(g8_19);
+   const int64_t f9g9_38 = f9_2 * static_cast<int64_t>(g9_19);
+
+   int64_t h0 = f0g0+f1g9_38+f2g8_19+f3g7_38+f4g6_19+f5g5_38+f6g4_19+f7g3_38+f8g2_19+f9g1_38;
+   int64_t h1 = f0g1+f1g0   +f2g9_19+f3g8_19+f4g7_19+f5g6_19+f6g5_19+f7g4_19+f8g3_19+f9g2_19;
+   int64_t h2 = f0g2+f1g1_2 +f2g0   +f3g9_38+f4g8_19+f5g7_38+f6g6_19+f7g5_38+f8g4_19+f9g3_38;
+   int64_t h3 = f0g3+f1g2   +f2g1   +f3g0   +f4g9_19+f5g8_19+f6g7_19+f7g6_19+f8g5_19+f9g4_19;
+   int64_t h4 = f0g4+f1g3_2 +f2g2   +f3g1_2 +f4g0   +f5g9_38+f6g8_19+f7g7_38+f8g6_19+f9g5_38;
+   int64_t h5 = f0g5+f1g4   +f2g3   +f3g2   +f4g1   +f5g0   +f6g9_19+f7g8_19+f8g7_19+f9g6_19;
+   int64_t h6 = f0g6+f1g5_2 +f2g4   +f3g3_2 +f4g2   +f5g1_2 +f6g0   +f7g9_38+f8g8_19+f9g7_38;
+   int64_t h7 = f0g7+f1g6   +f2g5   +f3g4   +f4g3   +f5g2   +f6g1   +f7g0   +f8g9_19+f9g8_19;
+   int64_t h8 = f0g8+f1g7_2 +f2g6   +f3g5_2 +f4g4   +f5g3_2 +f6g2   +f7g1_2 +f8g0   +f9g9_38;
+   int64_t h9 = f0g9+f1g8   +f2g7   +f3g6   +f4g5   +f5g4   +f6g3   +f7g2   +f8g1   +f9g0   ;
+
+   /*
+   |h0| <= (1.65*1.65*2^52*(1+19+19+19+19)+1.65*1.65*2^50*(38+38+38+38+38))
+   i.e. |h0| <= 1.4*2^60; narrower ranges for h2, h4, h6, h8
+   |h1| <= (1.65*1.65*2^51*(1+1+19+19+19+19+19+19+19+19))
+   i.e. |h1| <= 1.7*2^59; narrower ranges for h3, h5, h7, h9
+   */
+   carry<26>(h0, h1);
+   carry<26>(h4, h5);
+
+   /* |h0| <= 2^25 */
+   /* |h4| <= 2^25 */
+   /* |h1| <= 1.71*2^59 */
+   /* |h5| <= 1.71*2^59 */
+
+   carry<25>(h1, h2);
+   carry<25>(h5, h6);
+
+   /* |h1| <= 2^24; from now on fits into int32 */
+   /* |h5| <= 2^24; from now on fits into int32 */
+   /* |h2| <= 1.41*2^60 */
+   /* |h6| <= 1.41*2^60 */
+
+   carry<26>(h2, h3);
+   carry<26>(h6, h7);
+   /* |h2| <= 2^25; from now on fits into int32 unchanged */
+   /* |h6| <= 2^25; from now on fits into int32 unchanged */
+   /* |h3| <= 1.71*2^59 */
+   /* |h7| <= 1.71*2^59 */
+
+   carry<25>(h3, h4);
+   carry<25>(h7, h8);
+   /* |h3| <= 2^24; from now on fits into int32 unchanged */
+   /* |h7| <= 2^24; from now on fits into int32 unchanged */
+   /* |h4| <= 1.72*2^34 */
+   /* |h8| <= 1.41*2^60 */
+
+   carry<26>(h4, h5);
+   carry<26>(h8, h9);
+   /* |h4| <= 2^25; from now on fits into int32 unchanged */
+   /* |h8| <= 2^25; from now on fits into int32 unchanged */
+   /* |h5| <= 1.01*2^24 */
+   /* |h9| <= 1.71*2^59 */
+
+   carry<25, 19>(h9, h0);
+
+   /* |h9| <= 2^24; from now on fits into int32 unchanged */
+   /* |h0| <= 1.1*2^39 */
+
+   carry<26>(h0, h1);
+   /* |h0| <= 2^25; from now on fits into int32 unchanged */
+   /* |h1| <= 1.01*2^24 */
+
+   return FE_25519(h0, h1, h2, h3, h4, h5, h6, h7, h8, h9);
+   }
+
+/*
+h = f * f
+Can overlap h with f.
+
+Preconditions:
+|f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
+
+Postconditions:
+|h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
+*/
+
+/*
+See fe_mul.c for discussion of implementation strategy.
+*/
+
+//static
+FE_25519 FE_25519::sqr_iter(const FE_25519& f, size_t iter)
+   {
+   int32_t f0 = f[0];
+   int32_t f1 = f[1];
+   int32_t f2 = f[2];
+   int32_t f3 = f[3];
+   int32_t f4 = f[4];
+   int32_t f5 = f[5];
+   int32_t f6 = f[6];
+   int32_t f7 = f[7];
+   int32_t f8 = f[8];
+   int32_t f9 = f[9];
+
+   for(size_t i = 0; i != iter; ++i)
+      {
+      const int32_t f0_2 = 2 * f0;
+      const int32_t f1_2 = 2 * f1;
+      const int32_t f2_2 = 2 * f2;
+      const int32_t f3_2 = 2 * f3;
+      const int32_t f4_2 = 2 * f4;
+      const int32_t f5_2 = 2 * f5;
+      const int32_t f6_2 = 2 * f6;
+      const int32_t f7_2 = 2 * f7;
+      const int32_t f5_38 = 38 * f5; /* 1.959375*2^30 */
+      const int32_t f6_19 = 19 * f6; /* 1.959375*2^30 */
+      const int32_t f7_38 = 38 * f7; /* 1.959375*2^30 */
+      const int32_t f8_19 = 19 * f8; /* 1.959375*2^30 */
+      const int32_t f9_38 = 38 * f9; /* 1.959375*2^30 */
+
+      const int64_t f0f0    = f0   * static_cast<int64_t>(f0);
+      const int64_t f0f1_2  = f0_2 * static_cast<int64_t>(f1);
+      const int64_t f0f2_2  = f0_2 * static_cast<int64_t>(f2);
+      const int64_t f0f3_2  = f0_2 * static_cast<int64_t>(f3);
+      const int64_t f0f4_2  = f0_2 * static_cast<int64_t>(f4);
+      const int64_t f0f5_2  = f0_2 * static_cast<int64_t>(f5);
+      const int64_t f0f6_2  = f0_2 * static_cast<int64_t>(f6);
+      const int64_t f0f7_2  = f0_2 * static_cast<int64_t>(f7);
+      const int64_t f0f8_2  = f0_2 * static_cast<int64_t>(f8);
+      const int64_t f0f9_2  = f0_2 * static_cast<int64_t>(f9);
+      const int64_t f1f1_2  = f1_2 * static_cast<int64_t>(f1);
+      const int64_t f1f2_2  = f1_2 * static_cast<int64_t>(f2);
+      const int64_t f1f3_4  = f1_2 * static_cast<int64_t>(f3_2);
+      const int64_t f1f4_2  = f1_2 * static_cast<int64_t>(f4);
+      const int64_t f1f5_4  = f1_2 * static_cast<int64_t>(f5_2);
+      const int64_t f1f6_2  = f1_2 * static_cast<int64_t>(f6);
+      const int64_t f1f7_4  = f1_2 * static_cast<int64_t>(f7_2);
+      const int64_t f1f8_2  = f1_2 * static_cast<int64_t>(f8);
+      const int64_t f1f9_76 = f1_2 * static_cast<int64_t>(f9_38);
+      const int64_t f2f2    = f2   * static_cast<int64_t>(f2);
+      const int64_t f2f3_2  = f2_2 * static_cast<int64_t>(f3);
+      const int64_t f2f4_2  = f2_2 * static_cast<int64_t>(f4);
+      const int64_t f2f5_2  = f2_2 * static_cast<int64_t>(f5);
+      const int64_t f2f6_2  = f2_2 * static_cast<int64_t>(f6);
+      const int64_t f2f7_2  = f2_2 * static_cast<int64_t>(f7);
+      const int64_t f2f8_38 = f2_2 * static_cast<int64_t>(f8_19);
+      const int64_t f2f9_38 = f2   * static_cast<int64_t>(f9_38);
+      const int64_t f3f3_2  = f3_2 * static_cast<int64_t>(f3);
+      const int64_t f3f4_2  = f3_2 * static_cast<int64_t>(f4);
+      const int64_t f3f5_4  = f3_2 * static_cast<int64_t>(f5_2);
+      const int64_t f3f6_2  = f3_2 * static_cast<int64_t>(f6);
+      const int64_t f3f7_76 = f3_2 * static_cast<int64_t>(f7_38);
+      const int64_t f3f8_38 = f3_2 * static_cast<int64_t>(f8_19);
+      const int64_t f3f9_76 = f3_2 * static_cast<int64_t>(f9_38);
+      const int64_t f4f4    = f4   * static_cast<int64_t>(f4);
+      const int64_t f4f5_2  = f4_2 * static_cast<int64_t>(f5);
+      const int64_t f4f6_38 = f4_2 * static_cast<int64_t>(f6_19);
+      const int64_t f4f7_38 = f4   * static_cast<int64_t>(f7_38);
+      const int64_t f4f8_38 = f4_2 * static_cast<int64_t>(f8_19);
+      const int64_t f4f9_38 = f4   * static_cast<int64_t>(f9_38);
+      const int64_t f5f5_38 = f5   * static_cast<int64_t>(f5_38);
+      const int64_t f5f6_38 = f5_2 * static_cast<int64_t>(f6_19);
+      const int64_t f5f7_76 = f5_2 * static_cast<int64_t>(f7_38);
+      const int64_t f5f8_38 = f5_2 * static_cast<int64_t>(f8_19);
+      const int64_t f5f9_76 = f5_2 * static_cast<int64_t>(f9_38);
+      const int64_t f6f6_19 = f6   * static_cast<int64_t>(f6_19);
+      const int64_t f6f7_38 = f6   * static_cast<int64_t>(f7_38);
+      const int64_t f6f8_38 = f6_2 * static_cast<int64_t>(f8_19);
+      const int64_t f6f9_38 = f6   * static_cast<int64_t>(f9_38);
+      const int64_t f7f7_38 = f7   * static_cast<int64_t>(f7_38);
+      const int64_t f7f8_38 = f7_2 * static_cast<int64_t>(f8_19);
+      const int64_t f7f9_76 = f7_2 * static_cast<int64_t>(f9_38);
+      const int64_t f8f8_19 = f8   * static_cast<int64_t>(f8_19);
+      const int64_t f8f9_38 = f8   * static_cast<int64_t>(f9_38);
+      const int64_t f9f9_38 = f9   * static_cast<int64_t>(f9_38);
+
+      int64_t h0 = f0f0  +f1f9_76+f2f8_38+f3f7_76+f4f6_38+f5f5_38;
+      int64_t h1 = f0f1_2+f2f9_38+f3f8_38+f4f7_38+f5f6_38;
+      int64_t h2 = f0f2_2+f1f1_2 +f3f9_76+f4f8_38+f5f7_76+f6f6_19;
+      int64_t h3 = f0f3_2+f1f2_2 +f4f9_38+f5f8_38+f6f7_38;
+      int64_t h4 = f0f4_2+f1f3_4 +f2f2   +f5f9_76+f6f8_38+f7f7_38;
+      int64_t h5 = f0f5_2+f1f4_2 +f2f3_2 +f6f9_38+f7f8_38;
+      int64_t h6 = f0f6_2+f1f5_4 +f2f4_2 +f3f3_2 +f7f9_76+f8f8_19;
+      int64_t h7 = f0f7_2+f1f6_2 +f2f5_2 +f3f4_2 +f8f9_38;
+      int64_t h8 = f0f8_2+f1f7_4 +f2f6_2 +f3f5_4 +f4f4   +f9f9_38;
+      int64_t h9 = f0f9_2+f1f8_2 +f2f7_2 +f3f6_2 +f4f5_2;
+
+      carry<26>(h0, h1);
+      carry<26>(h4, h5);
+      carry<25>(h1, h2);
+      carry<25>(h5, h6);
+      carry<26>(h2, h3);
+      carry<26>(h6, h7);
+
+      carry<25>(h3, h4);
+      carry<25>(h7, h8);
+
+      carry<26>(h4, h5);
+      carry<26>(h8, h9);
+      carry<25,19>(h9, h0);
+      carry<26>(h0, h1);
+
+      f0 = static_cast<int32_t>(h0);
+      f1 = static_cast<int32_t>(h1);
+      f2 = static_cast<int32_t>(h2);
+      f3 = static_cast<int32_t>(h3);
+      f4 = static_cast<int32_t>(h4);
+      f5 = static_cast<int32_t>(h5);
+      f6 = static_cast<int32_t>(h6);
+      f7 = static_cast<int32_t>(h7);
+      f8 = static_cast<int32_t>(h8);
+      f9 = static_cast<int32_t>(h9);
+      }
+
+   return FE_25519(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9);
+   }
+
+/*
+h = 2 * f * f
+Can overlap h with f.
+
+Preconditions:
+|f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
+
+Postconditions:
+|h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
+*/
+
+/*
+See fe_mul.c for discussion of implementation strategy.
+*/
+
+//static
+FE_25519 FE_25519::sqr2(const FE_25519& f)
+   {
+   const int32_t f0 = f[0];
+   const int32_t f1 = f[1];
+   const int32_t f2 = f[2];
+   const int32_t f3 = f[3];
+   const int32_t f4 = f[4];
+   const int32_t f5 = f[5];
+   const int32_t f6 = f[6];
+   const int32_t f7 = f[7];
+   const int32_t f8 = f[8];
+   const int32_t f9 = f[9];
+   const int32_t f0_2 = 2 * f0;
+   const int32_t f1_2 = 2 * f1;
+   const int32_t f2_2 = 2 * f2;
+   const int32_t f3_2 = 2 * f3;
+   const int32_t f4_2 = 2 * f4;
+   const int32_t f5_2 = 2 * f5;
+   const int32_t f6_2 = 2 * f6;
+   const int32_t f7_2 = 2 * f7;
+   const int32_t f5_38 = 38 * f5; /* 1.959375*2^30 */
+   const int32_t f6_19 = 19 * f6; /* 1.959375*2^30 */
+   const int32_t f7_38 = 38 * f7; /* 1.959375*2^30 */
+   const int32_t f8_19 = 19 * f8; /* 1.959375*2^30 */
+   const int32_t f9_38 = 38 * f9; /* 1.959375*2^30 */
+   const int64_t f0f0    = f0   * static_cast<int64_t>(f0);
+   const int64_t f0f1_2  = f0_2 * static_cast<int64_t>(f1);
+   const int64_t f0f2_2  = f0_2 * static_cast<int64_t>(f2);
+   const int64_t f0f3_2  = f0_2 * static_cast<int64_t>(f3);
+   const int64_t f0f4_2  = f0_2 * static_cast<int64_t>(f4);
+   const int64_t f0f5_2  = f0_2 * static_cast<int64_t>(f5);
+   const int64_t f0f6_2  = f0_2 * static_cast<int64_t>(f6);
+   const int64_t f0f7_2  = f0_2 * static_cast<int64_t>(f7);
+   const int64_t f0f8_2  = f0_2 * static_cast<int64_t>(f8);
+   const int64_t f0f9_2  = f0_2 * static_cast<int64_t>(f9);
+   const int64_t f1f1_2  = f1_2 * static_cast<int64_t>(f1);
+   const int64_t f1f2_2  = f1_2 * static_cast<int64_t>(f2);
+   const int64_t f1f3_4  = f1_2 * static_cast<int64_t>(f3_2);
+   const int64_t f1f4_2  = f1_2 * static_cast<int64_t>(f4);
+   const int64_t f1f5_4  = f1_2 * static_cast<int64_t>(f5_2);
+   const int64_t f1f6_2  = f1_2 * static_cast<int64_t>(f6);
+   const int64_t f1f7_4  = f1_2 * static_cast<int64_t>(f7_2);
+   const int64_t f1f8_2  = f1_2 * static_cast<int64_t>(f8);
+   const int64_t f1f9_76 = f1_2 * static_cast<int64_t>(f9_38);
+   const int64_t f2f2    = f2   * static_cast<int64_t>(f2);
+   const int64_t f2f3_2  = f2_2 * static_cast<int64_t>(f3);
+   const int64_t f2f4_2  = f2_2 * static_cast<int64_t>(f4);
+   const int64_t f2f5_2  = f2_2 * static_cast<int64_t>(f5);
+   const int64_t f2f6_2  = f2_2 * static_cast<int64_t>(f6);
+   const int64_t f2f7_2  = f2_2 * static_cast<int64_t>(f7);
+   const int64_t f2f8_38 = f2_2 * static_cast<int64_t>(f8_19);
+   const int64_t f2f9_38 = f2   * static_cast<int64_t>(f9_38);
+   const int64_t f3f3_2  = f3_2 * static_cast<int64_t>(f3);
+   const int64_t f3f4_2  = f3_2 * static_cast<int64_t>(f4);
+   const int64_t f3f5_4  = f3_2 * static_cast<int64_t>(f5_2);
+   const int64_t f3f6_2  = f3_2 * static_cast<int64_t>(f6);
+   const int64_t f3f7_76 = f3_2 * static_cast<int64_t>(f7_38);
+   const int64_t f3f8_38 = f3_2 * static_cast<int64_t>(f8_19);
+   const int64_t f3f9_76 = f3_2 * static_cast<int64_t>(f9_38);
+   const int64_t f4f4    = f4   * static_cast<int64_t>(f4);
+   const int64_t f4f5_2  = f4_2 * static_cast<int64_t>(f5);
+   const int64_t f4f6_38 = f4_2 * static_cast<int64_t>(f6_19);
+   const int64_t f4f7_38 = f4   * static_cast<int64_t>(f7_38);
+   const int64_t f4f8_38 = f4_2 * static_cast<int64_t>(f8_19);
+   const int64_t f4f9_38 = f4   * static_cast<int64_t>(f9_38);
+   const int64_t f5f5_38 = f5   * static_cast<int64_t>(f5_38);
+   const int64_t f5f6_38 = f5_2 * static_cast<int64_t>(f6_19);
+   const int64_t f5f7_76 = f5_2 * static_cast<int64_t>(f7_38);
+   const int64_t f5f8_38 = f5_2 * static_cast<int64_t>(f8_19);
+   const int64_t f5f9_76 = f5_2 * static_cast<int64_t>(f9_38);
+   const int64_t f6f6_19 = f6   * static_cast<int64_t>(f6_19);
+   const int64_t f6f7_38 = f6   * static_cast<int64_t>(f7_38);
+   const int64_t f6f8_38 = f6_2 * static_cast<int64_t>(f8_19);
+   const int64_t f6f9_38 = f6   * static_cast<int64_t>(f9_38);
+   const int64_t f7f7_38 = f7   * static_cast<int64_t>(f7_38);
+   const int64_t f7f8_38 = f7_2 * static_cast<int64_t>(f8_19);
+   const int64_t f7f9_76 = f7_2 * static_cast<int64_t>(f9_38);
+   const int64_t f8f8_19 = f8   * static_cast<int64_t>(f8_19);
+   const int64_t f8f9_38 = f8   * static_cast<int64_t>(f9_38);
+   const int64_t f9f9_38 = f9   * static_cast<int64_t>(f9_38);
+
+   int64_t h0 = f0f0  +f1f9_76+f2f8_38+f3f7_76+f4f6_38+f5f5_38;
+   int64_t h1 = f0f1_2+f2f9_38+f3f8_38+f4f7_38+f5f6_38;
+   int64_t h2 = f0f2_2+f1f1_2 +f3f9_76+f4f8_38+f5f7_76+f6f6_19;
+   int64_t h3 = f0f3_2+f1f2_2 +f4f9_38+f5f8_38+f6f7_38;
+   int64_t h4 = f0f4_2+f1f3_4 +f2f2   +f5f9_76+f6f8_38+f7f7_38;
+   int64_t h5 = f0f5_2+f1f4_2 +f2f3_2 +f6f9_38+f7f8_38;
+   int64_t h6 = f0f6_2+f1f5_4 +f2f4_2 +f3f3_2 +f7f9_76+f8f8_19;
+   int64_t h7 = f0f7_2+f1f6_2 +f2f5_2 +f3f4_2 +f8f9_38;
+   int64_t h8 = f0f8_2+f1f7_4 +f2f6_2 +f3f5_4 +f4f4   +f9f9_38;
+   int64_t h9 = f0f9_2+f1f8_2 +f2f7_2 +f3f6_2 +f4f5_2;
+
+   h0 += h0;
+   h1 += h1;
+   h2 += h2;
+   h3 += h3;
+   h4 += h4;
+   h5 += h5;
+   h6 += h6;
+   h7 += h7;
+   h8 += h8;
+   h9 += h9;
+
+   carry<26>(h0, h1);
+   carry<26>(h4, h5);
+
+   carry<25>(h1, h2);
+   carry<25>(h5, h6);
+
+   carry<26>(h2, h3);
+   carry<26>(h6, h7);
+
+   carry<25>(h3, h4);
+   carry<25>(h7, h8);
+   carry<26>(h4, h5);
+   carry<26>(h8, h9);
+   carry<25,19>(h9, h0);
+   carry<26>(h0, h1);
+
+   return FE_25519(h0, h1, h2, h3, h4, h5, h6, h7, h8, h9);
+   }
+
+/*
+Ignores top bit of h.
+*/
+
+void FE_25519::from_bytes(const uint8_t s[32])
+   {
+   int64_t h0 = load_4(s);
+   int64_t h1 = load_3(s + 4) << 6;
+   int64_t h2 = load_3(s + 7) << 5;
+   int64_t h3 = load_3(s + 10) << 3;
+   int64_t h4 = load_3(s + 13) << 2;
+   int64_t h5 = load_4(s + 16);
+   int64_t h6 = load_3(s + 20) << 7;
+   int64_t h7 = load_3(s + 23) << 5;
+   int64_t h8 = load_3(s + 26) << 4;
+   int64_t h9 = (load_3(s + 29) & 0x7fffff) << 2;
+
+   carry<25,19>(h9, h0);
+   carry<25>(h1, h2);
+   carry<25>(h3, h4);
+   carry<25>(h5, h6);
+   carry<25>(h7, h8);
+
+   carry<26>(h0, h1);
+   carry<26>(h2, h3);
+   carry<26>(h4, h5);
+   carry<26>(h6, h7);
+   carry<26>(h8, h9);
+
+   m_fe[0] = static_cast<int32_t>(h0);
+   m_fe[1] = static_cast<int32_t>(h1);
+   m_fe[2] = static_cast<int32_t>(h2);
+   m_fe[3] = static_cast<int32_t>(h3);
+   m_fe[4] = static_cast<int32_t>(h4);
+   m_fe[5] = static_cast<int32_t>(h5);
+   m_fe[6] = static_cast<int32_t>(h6);
+   m_fe[7] = static_cast<int32_t>(h7);
+   m_fe[8] = static_cast<int32_t>(h8);
+   m_fe[9] = static_cast<int32_t>(h9);
+   }
+
+/*
+Preconditions:
+|h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
+
+Write p=2^255-19; q=floor(h/p).
+Basic claim: q = floor(2^(-255)(h + 19 2^(-25)h9 + 2^(-1))).
+
+Proof:
+Have |h|<=p so |q|<=1 so |19^2 2^(-255) q|<1/4.
+Also have |h-2^230 h9|<2^231 so |19 2^(-255)(h-2^230 h9)|<1/4.
+
+Write y=2^(-1)-19^2 2^(-255)q-19 2^(-255)(h-2^230 h9).
+Then 0<y<1.
+
+Write r=h-pq.
+Have 0<=r<=p-1=2^255-20.
+Thus 0<=r+19(2^-255)r<r+19(2^-255)2^255<=2^255-1.
+
+Write x=r+19(2^-255)r+y.
+Then 0<x<2^255 so floor(2^(-255)x) = 0 so floor(q+2^(-255)x) = q.
+
+Have q+2^(-255)x = 2^(-255)(h + 19 2^(-25) h9 + 2^(-1))
+so floor(2^(-255)(h + 19 2^(-25) h9 + 2^(-1))) = q.
+*/
+
+void FE_25519::to_bytes(uint8_t s[32]) const
+   {
+   const int64_t X25 = (1 << 25);
+
+   int32_t h0 = m_fe[0];
+   int32_t h1 = m_fe[1];
+   int32_t h2 = m_fe[2];
+   int32_t h3 = m_fe[3];
+   int32_t h4 = m_fe[4];
+   int32_t h5 = m_fe[5];
+   int32_t h6 = m_fe[6];
+   int32_t h7 = m_fe[7];
+   int32_t h8 = m_fe[8];
+   int32_t h9 = m_fe[9];
+   int32_t q;
+
+   q = (19 * h9 + ((static_cast<int32_t>(1) << 24))) >> 25;
+   q = (h0 + q) >> 26;
+   q = (h1 + q) >> 25;
+   q = (h2 + q) >> 26;
+   q = (h3 + q) >> 25;
+   q = (h4 + q) >> 26;
+   q = (h5 + q) >> 25;
+   q = (h6 + q) >> 26;
+   q = (h7 + q) >> 25;
+   q = (h8 + q) >> 26;
+   q = (h9 + q) >> 25;
+
+   /* Goal: Output h-(2^255-19)q, which is between 0 and 2^255-20. */
+   h0 += 19 * q;
+   /* Goal: Output h-2^255 q, which is between 0 and 2^255-20. */
+
+   carry0<26>(h0, h1);
+   carry0<25>(h1, h2);
+   carry0<26>(h2, h3);
+   carry0<25>(h3, h4);
+   carry0<26>(h4, h5);
+   carry0<25>(h5, h6);
+   carry0<26>(h6, h7);
+   carry0<25>(h7, h8);
+   carry0<26>(h8, h9);
+
+   int32_t carry9 = h9 >> 25;
+   h9 -= carry9 * X25;
+   /* h10 = carry9 */
+
+   /*
+   Goal: Output h0+...+2^255 h10-2^255 q, which is between 0 and 2^255-20.
+   Have h0+...+2^230 h9 between 0 and 2^255-1;
+   evidently 2^255 h10-2^255 q = 0.
+   Goal: Output h0+...+2^230 h9.
+   */
+
+   s[0] = static_cast<uint8_t>(h0 >> 0);
+   s[1] = static_cast<uint8_t>(h0 >> 8);
+   s[2] = static_cast<uint8_t>(h0 >> 16);
+   s[3] = static_cast<uint8_t>((h0 >> 24) | (h1 << 2));
+   s[4] = static_cast<uint8_t>(h1 >> 6);
+   s[5] = static_cast<uint8_t>(h1 >> 14);
+   s[6] = static_cast<uint8_t>((h1 >> 22) | (h2 << 3));
+   s[7] = static_cast<uint8_t>(h2 >> 5);
+   s[8] = static_cast<uint8_t>(h2 >> 13);
+   s[9] = static_cast<uint8_t>((h2 >> 21) | (h3 << 5));
+   s[10] = static_cast<uint8_t>(h3 >> 3);
+   s[11] = static_cast<uint8_t>(h3 >> 11);
+   s[12] = static_cast<uint8_t>((h3 >> 19) | (h4 << 6));
+   s[13] = static_cast<uint8_t>(h4 >> 2);
+   s[14] = static_cast<uint8_t>(h4 >> 10);
+   s[15] = static_cast<uint8_t>(h4 >> 18);
+   s[16] = static_cast<uint8_t>(h5 >> 0);
+   s[17] = static_cast<uint8_t>(h5 >> 8);
+   s[18] = static_cast<uint8_t>(h5 >> 16);
+   s[19] = static_cast<uint8_t>((h5 >> 24) | (h6 << 1));
+   s[20] = static_cast<uint8_t>(h6 >> 7);
+   s[21] = static_cast<uint8_t>(h6 >> 15);
+   s[22] = static_cast<uint8_t>((h6 >> 23) | (h7 << 3));
+   s[23] = static_cast<uint8_t>(h7 >> 5);
+   s[24] = static_cast<uint8_t>(h7 >> 13);
+   s[25] = static_cast<uint8_t>((h7 >> 21) | (h8 << 4));
+   s[26] = static_cast<uint8_t>(h8 >> 4);
+   s[27] = static_cast<uint8_t>(h8 >> 12);
+   s[28] = static_cast<uint8_t>((h8 >> 20) | (h9 << 6));
+   s[29] = static_cast<uint8_t>(h9 >> 2);
+   s[30] = static_cast<uint8_t>(h9 >> 10);
+   s[31] = static_cast<uint8_t>(h9 >> 18);
+   }
+
+}
+/*
+* Ed25519
+* (C) 2017 Ribose Inc
+*
+* Based on the public domain code from SUPERCOP ref10 by
+* Peter Schwabe, Daniel J. Bernstein, Niels Duif, Tanja Lange, Bo-Yin Yang
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+AlgorithmIdentifier Ed25519_PublicKey::algorithm_identifier() const
+   {
+   return AlgorithmIdentifier(get_oid(), AlgorithmIdentifier::USE_EMPTY_PARAM);
+   }
+
+bool Ed25519_PublicKey::check_key(RandomNumberGenerator&, bool) const
+   {
+   return true; // no tests possible?
+   // TODO could check cofactor
+   }
+
+Ed25519_PublicKey::Ed25519_PublicKey(const uint8_t pub_key[], size_t pub_len)
+   {
+   if(pub_len != 32)
+      throw Decoding_Error("Invalid length for Ed25519 key");
+   m_public.assign(pub_key, pub_key + pub_len);
+   }
+
+Ed25519_PublicKey::Ed25519_PublicKey(const AlgorithmIdentifier&,
+                                     const std::vector<uint8_t>& key_bits)
+   {
+   m_public = key_bits;
+
+   if(m_public.size() != 32)
+      throw Decoding_Error("Invalid size for Ed25519 public key");
+   }
+
+std::vector<uint8_t> Ed25519_PublicKey::public_key_bits() const
+   {
+   return m_public;
+   }
+
+Ed25519_PrivateKey::Ed25519_PrivateKey(const secure_vector<uint8_t>& secret_key)
+   {
+   if(secret_key.size() == 64)
+      {
+      m_private = secret_key;
+      m_public.assign(m_private.begin() + 32, m_private.end());
+      }
+   else if(secret_key.size() == 32)
+      {
+      m_public.resize(32);
+      m_private.resize(64);
+      ed25519_gen_keypair(m_public.data(), m_private.data(), secret_key.data());
+      }
+   else
+      throw Decoding_Error("Invalid size for Ed25519 private key");
+   }
+
+Ed25519_PrivateKey::Ed25519_PrivateKey(RandomNumberGenerator& rng)
+   {
+   const secure_vector<uint8_t> seed = rng.random_vec(32);
+   m_public.resize(32);
+   m_private.resize(64);
+   ed25519_gen_keypair(m_public.data(), m_private.data(), seed.data());
+   }
+
+Ed25519_PrivateKey::Ed25519_PrivateKey(const AlgorithmIdentifier&,
+                                       const secure_vector<uint8_t>& key_bits)
+   {
+   secure_vector<uint8_t> bits;
+   BER_Decoder(key_bits).decode(bits, OCTET_STRING).discard_remaining();
+
+   if(bits.size() != 32)
+      throw Decoding_Error("Invalid size for Ed25519 private key");
+   m_public.resize(32);
+   m_private.resize(64);
+   ed25519_gen_keypair(m_public.data(), m_private.data(), bits.data());
+   }
+
+secure_vector<uint8_t> Ed25519_PrivateKey::private_key_bits() const
+   {
+   secure_vector<uint8_t> bits(&m_private[0], &m_private[32]);
+   return DER_Encoder().encode(bits, OCTET_STRING).get_contents();
+   }
+
+bool Ed25519_PrivateKey::check_key(RandomNumberGenerator&, bool) const
+   {
+   return true; // ???
+   }
+
+namespace {
+
+/**
+* Ed25519 verifying operation
+*/
+class Ed25519_Pure_Verify_Operation final : public PK_Ops::Verification
+   {
+   public:
+      Ed25519_Pure_Verify_Operation(const Ed25519_PublicKey& key) : m_key(key)
+         {
+         }
+
+      void update(const uint8_t msg[], size_t msg_len) override
+         {
+         m_msg.insert(m_msg.end(), msg, msg + msg_len);
+         }
+
+      bool is_valid_signature(const uint8_t sig[], size_t sig_len) override
+         {
+         if(sig_len != 64)
+            return false;
+
+         const std::vector<uint8_t>& pub_key = m_key.get_public_key();
+         BOTAN_ASSERT_EQUAL(pub_key.size(), 32, "Expected size");
+         const bool ok = ed25519_verify(m_msg.data(), m_msg.size(), sig, pub_key.data(), nullptr, 0);
+         m_msg.clear();
+         return ok;
+         }
+
+   private:
+      std::vector<uint8_t> m_msg;
+      const Ed25519_PublicKey& m_key;
+   };
+
+/**
+* Ed25519 verifying operation with pre-hash
+*/
+class Ed25519_Hashed_Verify_Operation final : public PK_Ops::Verification
+   {
+   public:
+      Ed25519_Hashed_Verify_Operation(const Ed25519_PublicKey& key, const std::string& hash, bool rfc8032) :
+         m_key(key)
+         {
+         m_hash = HashFunction::create_or_throw(hash);
+
+         if(rfc8032)
+            {
+            m_domain_sep = {
+               0x53, 0x69, 0x67, 0x45, 0x64, 0x32, 0x35, 0x35, 0x31, 0x39, 0x20, 0x6E, 0x6F, 0x20, 0x45, 0x64,
+               0x32, 0x35, 0x35, 0x31, 0x39, 0x20, 0x63, 0x6F, 0x6C, 0x6C, 0x69, 0x73, 0x69, 0x6F, 0x6E, 0x73,
+               0x01, 0x00 };
+            }
+         }
+
+      void update(const uint8_t msg[], size_t msg_len) override
+         {
+         m_hash->update(msg, msg_len);
+         }
+
+      bool is_valid_signature(const uint8_t sig[], size_t sig_len) override
+         {
+         if(sig_len != 64)
+            return false;
+         std::vector<uint8_t> msg_hash(m_hash->output_length());
+         m_hash->final(msg_hash.data());
+
+         const std::vector<uint8_t>& pub_key = m_key.get_public_key();
+         BOTAN_ASSERT_EQUAL(pub_key.size(), 32, "Expected size");
+         return ed25519_verify(msg_hash.data(), msg_hash.size(), sig, pub_key.data(), m_domain_sep.data(), m_domain_sep.size());
+         }
+
+   private:
+      std::unique_ptr<HashFunction> m_hash;
+      const Ed25519_PublicKey& m_key;
+      std::vector<uint8_t> m_domain_sep;
+   };
+
+/**
+* Ed25519 signing operation ('pure' - signs message directly)
+*/
+class Ed25519_Pure_Sign_Operation final : public PK_Ops::Signature
+   {
+   public:
+      Ed25519_Pure_Sign_Operation(const Ed25519_PrivateKey& key) : m_key(key)
+         {
+         }
+
+      void update(const uint8_t msg[], size_t msg_len) override
+         {
+         m_msg.insert(m_msg.end(), msg, msg + msg_len);
+         }
+
+      secure_vector<uint8_t> sign(RandomNumberGenerator&) override
+         {
+         secure_vector<uint8_t> sig(64);
+         ed25519_sign(sig.data(), m_msg.data(), m_msg.size(), m_key.get_private_key().data(), nullptr, 0);
+         m_msg.clear();
+         return sig;
+         }
+
+      size_t signature_length() const override { return 64; }
+
+   private:
+      std::vector<uint8_t> m_msg;
+      const Ed25519_PrivateKey& m_key;
+   };
+
+/**
+* Ed25519 signing operation with pre-hash
+*/
+class Ed25519_Hashed_Sign_Operation final : public PK_Ops::Signature
+   {
+   public:
+      Ed25519_Hashed_Sign_Operation(const Ed25519_PrivateKey& key, const std::string& hash, bool rfc8032) :
+         m_key(key)
+         {
+         m_hash = HashFunction::create_or_throw(hash);
+
+         if(rfc8032)
+            {
+            m_domain_sep = std::vector<uint8_t>{
+               0x53, 0x69, 0x67, 0x45, 0x64, 0x32, 0x35, 0x35, 0x31, 0x39, 0x20, 0x6E, 0x6F, 0x20, 0x45, 0x64,
+               0x32, 0x35, 0x35, 0x31, 0x39, 0x20, 0x63, 0x6F, 0x6C, 0x6C, 0x69, 0x73, 0x69, 0x6F, 0x6E, 0x73,
+               0x01, 0x00 };
+            }
+         }
+
+      size_t signature_length() const override { return 64; }
+
+      void update(const uint8_t msg[], size_t msg_len) override
+         {
+         m_hash->update(msg, msg_len);
+         }
+
+      secure_vector<uint8_t> sign(RandomNumberGenerator&) override
+         {
+         secure_vector<uint8_t> sig(64);
+         std::vector<uint8_t> msg_hash(m_hash->output_length());
+         m_hash->final(msg_hash.data());
+         ed25519_sign(sig.data(),
+                      msg_hash.data(), msg_hash.size(),
+                      m_key.get_private_key().data(),
+                      m_domain_sep.data(), m_domain_sep.size());
+         return sig;
+         }
+
+   private:
+      std::unique_ptr<HashFunction> m_hash;
+      const Ed25519_PrivateKey& m_key;
+      std::vector<uint8_t> m_domain_sep;
+   };
+
+}
+
+std::unique_ptr<PK_Ops::Verification>
+Ed25519_PublicKey::create_verification_op(const std::string& params,
+                                          const std::string& provider) const
+   {
+   if(provider == "base" || provider.empty())
+      {
+      if(params == "" || params == "Identity" || params == "Pure")
+         return std::unique_ptr<PK_Ops::Verification>(new Ed25519_Pure_Verify_Operation(*this));
+      else if(params == "Ed25519ph")
+         return std::unique_ptr<PK_Ops::Verification>(new Ed25519_Hashed_Verify_Operation(*this, "SHA-512", true));
+      else
+         return std::unique_ptr<PK_Ops::Verification>(new Ed25519_Hashed_Verify_Operation(*this, params, false));
+      }
+   throw Provider_Not_Found(algo_name(), provider);
+   }
+
+std::unique_ptr<PK_Ops::Signature>
+Ed25519_PrivateKey::create_signature_op(RandomNumberGenerator&,
+                                        const std::string& params,
+                                        const std::string& provider) const
+   {
+   if(provider == "base" || provider.empty())
+      {
+      if(params == "" || params == "Identity" || params == "Pure")
+         return std::unique_ptr<PK_Ops::Signature>(new Ed25519_Pure_Sign_Operation(*this));
+      else if(params == "Ed25519ph")
+         return std::unique_ptr<PK_Ops::Signature>(new Ed25519_Hashed_Sign_Operation(*this, "SHA-512", true));
+      else
+         return std::unique_ptr<PK_Ops::Signature>(new Ed25519_Hashed_Sign_Operation(*this, params, false));
+      }
+   throw Provider_Not_Found(algo_name(), provider);
+   }
+
+}
+/*
+* Ed25519 group operations
+* (C) 2017 Ribose Inc
+*
+* Based on the public domain code from SUPERCOP ref10 by
+* Peter Schwabe, Daniel J. Bernstein, Niels Duif, Tanja Lange, Bo-Yin Yang
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+#include <assert.h>
+
+namespace Botan {
+
+namespace {
+
+/*
+Representations:
+  ge_p2 (projective): (X:Y:Z) satisfying x=X/Z, y=Y/Z
+  ge_p3 (extended): (X:Y:Z:T) satisfying x=X/Z, y=Y/Z, XY=ZT
+  ge_p1p1 (completed): ((X:Z),(Y:T)) satisfying x=X/Z, y=Y/T
+  ge_precomp (Duif): (y+x,y-x,2dxy)
+*/
+typedef struct
+   {
+   fe X;
+   fe Y;
+   fe Z;
+   } ge_p2;
+
+typedef struct
+   {
+   fe X;
+   fe Y;
+   fe Z;
+   fe T;
+   } ge_p1p1;
+
+typedef struct
+   {
+   fe yplusx;
+   fe yminusx;
+   fe xy2d;
+   } ge_precomp;
+
+typedef struct
+   {
+   fe YplusX;
+   fe YminusX;
+   fe Z;
+   fe T2d;
+   } ge_cached;
+
+/*
+r = p + q
+*/
+
+void ge_add(ge_p1p1* r, const ge_p3* p, const ge_cached* q)
+   {
+   fe t0;
+   /* qhasm: YpX1 = Y1+X1 */
+   /* asm 1: fe_add(>YpX1=fe#1,<Y1=fe#12,<X1=fe#11); */
+   /* asm 2: fe_add(>YpX1=r->X,<Y1=p->Y,<X1=p->X); */
+   fe_add(r->X, p->Y, p->X);
+
+   /* qhasm: YmX1 = Y1-X1 */
+   /* asm 1: fe_sub(>YmX1=fe#2,<Y1=fe#12,<X1=fe#11); */
+   /* asm 2: fe_sub(>YmX1=r->Y,<Y1=p->Y,<X1=p->X); */
+   fe_sub(r->Y, p->Y, p->X);
+
+   /* qhasm: A = YpX1*YpX2 */
+   /* asm 1: fe_mul(>A=fe#3,<YpX1=fe#1,<YpX2=fe#15); */
+   /* asm 2: fe_mul(>A=r->Z,<YpX1=r->X,<YpX2=q->YplusX); */
+   fe_mul(r->Z, r->X, q->YplusX);
+
+   /* qhasm: B = YmX1*YmX2 */
+   /* asm 1: fe_mul(>B=fe#2,<YmX1=fe#2,<YmX2=fe#16); */
+   /* asm 2: fe_mul(>B=r->Y,<YmX1=r->Y,<YmX2=q->YminusX); */
+   fe_mul(r->Y, r->Y, q->YminusX);
+
+   /* qhasm: C = T2d2*T1 */
+   /* asm 1: fe_mul(>C=fe#4,<T2d2=fe#18,<T1=fe#14); */
+   /* asm 2: fe_mul(>C=r->T,<T2d2=q->T2d,<T1=p->T); */
+   fe_mul(r->T, q->T2d, p->T);
+
+   /* qhasm: ZZ = Z1*Z2 */
+   /* asm 1: fe_mul(>ZZ=fe#1,<Z1=fe#13,<Z2=fe#17); */
+   /* asm 2: fe_mul(>ZZ=r->X,<Z1=p->Z,<Z2=q->Z); */
+   fe_mul(r->X, p->Z, q->Z);
+
+   /* qhasm: D = 2*ZZ */
+   /* asm 1: fe_add(>D=fe#5,<ZZ=fe#1,<ZZ=fe#1); */
+   /* asm 2: fe_add(>D=t0,<ZZ=r->X,<ZZ=r->X); */
+   fe_add(t0, r->X, r->X);
+
+   /* qhasm: X3 = A-B */
+   /* asm 1: fe_sub(>X3=fe#1,<A=fe#3,<B=fe#2); */
+   /* asm 2: fe_sub(>X3=r->X,<A=r->Z,<B=r->Y); */
+   fe_sub(r->X, r->Z, r->Y);
+
+   /* qhasm: Y3 = A+B */
+   /* asm 1: fe_add(>Y3=fe#2,<A=fe#3,<B=fe#2); */
+   /* asm 2: fe_add(>Y3=r->Y,<A=r->Z,<B=r->Y); */
+   fe_add(r->Y, r->Z, r->Y);
+
+   /* qhasm: Z3 = D+C */
+   /* asm 1: fe_add(>Z3=fe#3,<D=fe#5,<C=fe#4); */
+   /* asm 2: fe_add(>Z3=r->Z,<D=t0,<C=r->T); */
+   fe_add(r->Z, t0, r->T);
+
+   /* qhasm: T3 = D-C */
+   /* asm 1: fe_sub(>T3=fe#4,<D=fe#5,<C=fe#4); */
+   /* asm 2: fe_sub(>T3=r->T,<D=t0,<C=r->T); */
+   fe_sub(r->T, t0, r->T);
+   }
+
+/*
+r = p + q
+*/
+
+void ge_madd(ge_p1p1* r, const ge_p3* p, const ge_precomp* q)
+   {
+   fe t0;
+   /* qhasm: YpX1 = Y1+X1 */
+   fe_add(r->X, p->Y, p->X);
+
+   /* qhasm: YmX1 = Y1-X1 */
+   fe_sub(r->Y, p->Y, p->X);
+
+   /* qhasm: A = YpX1*ypx2 */
+   fe_mul(r->Z, r->X, q->yplusx);
+
+   /* qhasm: B = YmX1*ymx2 */
+   fe_mul(r->Y, r->Y, q->yminusx);
+
+   /* qhasm: C = xy2d2*T1 */
+   fe_mul(r->T, q->xy2d, p->T);
+
+   /* qhasm: D = 2*Z1 */
+   fe_add(t0, p->Z, p->Z);
+
+   /* qhasm: X3 = A-B */
+   fe_sub(r->X, r->Z, r->Y);
+
+   /* qhasm: Y3 = A+B */
+   fe_add(r->Y, r->Z, r->Y);
+
+   /* qhasm: Z3 = D+C */
+   fe_add(r->Z, t0, r->T);
+
+   /* qhasm: T3 = D-C */
+   fe_sub(r->T, t0, r->T);
+   }
+
+/*
+r = p - q
+*/
+
+void ge_msub(ge_p1p1* r, const ge_p3* p, const ge_precomp* q)
+   {
+   fe t0;
+
+   /* qhasm: YpX1 = Y1+X1 */
+   /* asm 1: fe_add(>YpX1=fe#1,<Y1=fe#12,<X1=fe#11); */
+   /* asm 2: fe_add(>YpX1=r->X,<Y1=p->Y,<X1=p->X); */
+   fe_add(r->X, p->Y, p->X);
+
+   /* qhasm: YmX1 = Y1-X1 */
+   /* asm 1: fe_sub(>YmX1=fe#2,<Y1=fe#12,<X1=fe#11); */
+   /* asm 2: fe_sub(>YmX1=r->Y,<Y1=p->Y,<X1=p->X); */
+   fe_sub(r->Y, p->Y, p->X);
+
+   /* qhasm: A = YpX1*ymx2 */
+   /* asm 1: fe_mul(>A=fe#3,<YpX1=fe#1,<ymx2=fe#16); */
+   /* asm 2: fe_mul(>A=r->Z,<YpX1=r->X,<ymx2=q->yminusx); */
+   fe_mul(r->Z, r->X, q->yminusx);
+
+   /* qhasm: B = YmX1*ypx2 */
+   /* asm 1: fe_mul(>B=fe#2,<YmX1=fe#2,<ypx2=fe#15); */
+   /* asm 2: fe_mul(>B=r->Y,<YmX1=r->Y,<ypx2=q->yplusx); */
+   fe_mul(r->Y, r->Y, q->yplusx);
+
+   /* qhasm: C = xy2d2*T1 */
+   /* asm 1: fe_mul(>C=fe#4,<xy2d2=fe#17,<T1=fe#14); */
+   /* asm 2: fe_mul(>C=r->T,<xy2d2=q->xy2d,<T1=p->T); */
+   fe_mul(r->T, q->xy2d, p->T);
+
+   /* qhasm: D = 2*Z1 */
+   /* asm 1: fe_add(>D=fe#5,<Z1=fe#13,<Z1=fe#13); */
+   /* asm 2: fe_add(>D=t0,<Z1=p->Z,<Z1=p->Z); */
+   fe_add(t0, p->Z, p->Z);
+
+   /* qhasm: X3 = A-B */
+   /* asm 1: fe_sub(>X3=fe#1,<A=fe#3,<B=fe#2); */
+   /* asm 2: fe_sub(>X3=r->X,<A=r->Z,<B=r->Y); */
+   fe_sub(r->X, r->Z, r->Y);
+
+   /* qhasm: Y3 = A+B */
+   /* asm 1: fe_add(>Y3=fe#2,<A=fe#3,<B=fe#2); */
+   /* asm 2: fe_add(>Y3=r->Y,<A=r->Z,<B=r->Y); */
+   fe_add(r->Y, r->Z, r->Y);
+
+   /* qhasm: Z3 = D-C */
+   /* asm 1: fe_sub(>Z3=fe#3,<D=fe#5,<C=fe#4); */
+   /* asm 2: fe_sub(>Z3=r->Z,<D=t0,<C=r->T); */
+   fe_sub(r->Z, t0, r->T);
+
+   /* qhasm: T3 = D+C */
+   /* asm 1: fe_add(>T3=fe#4,<D=fe#5,<C=fe#4); */
+   /* asm 2: fe_add(>T3=r->T,<D=t0,<C=r->T); */
+   fe_add(r->T, t0, r->T);
+
+   }
+
+/*
+r = p
+*/
+
+void ge_p1p1_to_p2(ge_p2* r, const ge_p1p1* p)
+   {
+   fe_mul(r->X, p->X, p->T);
+   fe_mul(r->Y, p->Y, p->Z);
+   fe_mul(r->Z, p->Z, p->T);
+   }
+
+/*
+r = p
+*/
+
+void ge_p1p1_to_p3(ge_p3* r, const ge_p1p1* p)
+   {
+   fe_mul(r->X, p->X, p->T);
+   fe_mul(r->Y, p->Y, p->Z);
+   fe_mul(r->Z, p->Z, p->T);
+   fe_mul(r->T, p->X, p->Y);
+   }
+
+/*
+r = 2 * p
+*/
+
+void ge_p2_dbl(ge_p1p1* r, const ge_p2* p)
+   {
+   fe t0;
+   /* qhasm: XX=X1^2 */
+   /* asm 1: fe_sq(>XX=fe#1,<X1=fe#11); */
+   /* asm 2: fe_sq(>XX=r->X,<X1=p->X); */
+   fe_sq(r->X, p->X);
+
+   /* qhasm: YY=Y1^2 */
+   /* asm 1: fe_sq(>YY=fe#3,<Y1=fe#12); */
+   /* asm 2: fe_sq(>YY=r->Z,<Y1=p->Y); */
+   fe_sq(r->Z, p->Y);
+
+   /* qhasm: B=2*Z1^2 */
+   /* asm 1: fe_sq2(>B=fe#4,<Z1=fe#13); */
+   /* asm 2: fe_sq2(>B=r->T,<Z1=p->Z); */
+   fe_sq2(r->T, p->Z);
+
+   /* qhasm: A=X1+Y1 */
+   /* asm 1: fe_add(>A=fe#2,<X1=fe#11,<Y1=fe#12); */
+   /* asm 2: fe_add(>A=r->Y,<X1=p->X,<Y1=p->Y); */
+   fe_add(r->Y, p->X, p->Y);
+
+   /* qhasm: AA=A^2 */
+   /* asm 1: fe_sq(>AA=fe#5,<A=fe#2); */
+   /* asm 2: fe_sq(>AA=t0,<A=r->Y); */
+   fe_sq(t0, r->Y);
+
+   /* qhasm: Y3=YY+XX */
+   /* asm 1: fe_add(>Y3=fe#2,<YY=fe#3,<XX=fe#1); */
+   /* asm 2: fe_add(>Y3=r->Y,<YY=r->Z,<XX=r->X); */
+   fe_add(r->Y, r->Z, r->X);
+
+   /* qhasm: Z3=YY-XX */
+   /* asm 1: fe_sub(>Z3=fe#3,<YY=fe#3,<XX=fe#1); */
+   /* asm 2: fe_sub(>Z3=r->Z,<YY=r->Z,<XX=r->X); */
+   fe_sub(r->Z, r->Z, r->X);
+
+   /* qhasm: X3=AA-Y3 */
+   /* asm 1: fe_sub(>X3=fe#1,<AA=fe#5,<Y3=fe#2); */
+   /* asm 2: fe_sub(>X3=r->X,<AA=t0,<Y3=r->Y); */
+   fe_sub(r->X, t0, r->Y);
+
+   /* qhasm: T3=B-Z3 */
+   /* asm 1: fe_sub(>T3=fe#4,<B=fe#4,<Z3=fe#3); */
+   /* asm 2: fe_sub(>T3=r->T,<B=r->T,<Z3=r->Z); */
+   fe_sub(r->T, r->T, r->Z);
+   }
+
+void ge_p3_0(ge_p3* h)
+   {
+   fe_0(h->X);
+   fe_1(h->Y);
+   fe_1(h->Z);
+   fe_0(h->T);
+   }
+
+/*
+r = 2 * p
+*/
+
+void ge_p3_dbl(ge_p1p1* r, const ge_p3* p)
+   {
+   ge_p2 q;
+   // Convert to p2 rep
+   q.X = p->X;
+   q.Y = p->Y;
+   q.Z = p->Z;
+   ge_p2_dbl(r, &q);
+   }
+
+/*
+r = p
+*/
+
+
+void ge_p3_to_cached(ge_cached* r, const ge_p3* p)
+   {
+   static const fe d2 =
+      {
+      -21827239, -5839606, -30745221, 13898782, 229458, 15978800, -12551817, -6495438, 29715968, 9444199
+      } ;
+   fe_add(r->YplusX, p->Y, p->X);
+   fe_sub(r->YminusX, p->Y, p->X);
+   fe_copy(r->Z, p->Z);
+   fe_mul(r->T2d, p->T, d2);
+   }
+
+/*
+r = p - q
+*/
+
+void ge_sub(ge_p1p1* r, const ge_p3* p, const ge_cached* q)
+   {
+   fe t0;
+   /* qhasm: YpX1 = Y1+X1 */
+   /* asm 1: fe_add(>YpX1=fe#1,<Y1=fe#12,<X1=fe#11); */
+   /* asm 2: fe_add(>YpX1=r->X,<Y1=p->Y,<X1=p->X); */
+   fe_add(r->X, p->Y, p->X);
+
+   /* qhasm: YmX1 = Y1-X1 */
+   /* asm 1: fe_sub(>YmX1=fe#2,<Y1=fe#12,<X1=fe#11); */
+   /* asm 2: fe_sub(>YmX1=r->Y,<Y1=p->Y,<X1=p->X); */
+   fe_sub(r->Y, p->Y, p->X);
+
+   /* qhasm: A = YpX1*YmX2 */
+   /* asm 1: fe_mul(>A=fe#3,<YpX1=fe#1,<YmX2=fe#16); */
+   /* asm 2: fe_mul(>A=r->Z,<YpX1=r->X,<YmX2=q->YminusX); */
+   fe_mul(r->Z, r->X, q->YminusX);
+
+   /* qhasm: B = YmX1*YpX2 */
+   /* asm 1: fe_mul(>B=fe#2,<YmX1=fe#2,<YpX2=fe#15); */
+   /* asm 2: fe_mul(>B=r->Y,<YmX1=r->Y,<YpX2=q->YplusX); */
+   fe_mul(r->Y, r->Y, q->YplusX);
+
+   /* qhasm: C = T2d2*T1 */
+   /* asm 1: fe_mul(>C=fe#4,<T2d2=fe#18,<T1=fe#14); */
+   /* asm 2: fe_mul(>C=r->T,<T2d2=q->T2d,<T1=p->T); */
+   fe_mul(r->T, q->T2d, p->T);
+
+   /* qhasm: ZZ = Z1*Z2 */
+   /* asm 1: fe_mul(>ZZ=fe#1,<Z1=fe#13,<Z2=fe#17); */
+   /* asm 2: fe_mul(>ZZ=r->X,<Z1=p->Z,<Z2=q->Z); */
+   fe_mul(r->X, p->Z, q->Z);
+
+   /* qhasm: D = 2*ZZ */
+   /* asm 1: fe_add(>D=fe#5,<ZZ=fe#1,<ZZ=fe#1); */
+   /* asm 2: fe_add(>D=t0,<ZZ=r->X,<ZZ=r->X); */
+   fe_add(t0, r->X, r->X);
+
+   /* qhasm: X3 = A-B */
+   /* asm 1: fe_sub(>X3=fe#1,<A=fe#3,<B=fe#2); */
+   /* asm 2: fe_sub(>X3=r->X,<A=r->Z,<B=r->Y); */
+   fe_sub(r->X, r->Z, r->Y);
+
+   /* qhasm: Y3 = A+B */
+   /* asm 1: fe_add(>Y3=fe#2,<A=fe#3,<B=fe#2); */
+   /* asm 2: fe_add(>Y3=r->Y,<A=r->Z,<B=r->Y); */
+   fe_add(r->Y, r->Z, r->Y);
+
+   /* qhasm: Z3 = D-C */
+   /* asm 1: fe_sub(>Z3=fe#3,<D=fe#5,<C=fe#4); */
+   /* asm 2: fe_sub(>Z3=r->Z,<D=t0,<C=r->T); */
+   fe_sub(r->Z, t0, r->T);
+
+   /* qhasm: T3 = D+C */
+   /* asm 1: fe_add(>T3=fe#4,<D=fe#5,<C=fe#4); */
+   /* asm 2: fe_add(>T3=r->T,<D=t0,<C=r->T); */
+   fe_add(r->T, t0, r->T);
+
+   }
+
+void slide(int8_t* r, const uint8_t* a)
+   {
+   for(size_t i = 0; i < 256; ++i)
+      {
+      r[i] = 1 & (a[i >> 3] >> (i & 7));
+      }
+
+   for(size_t i = 0; i < 256; ++i)
+      {
+      if(r[i])
+         {
+         for(size_t b = 1; b <= 6 && i + b < 256; ++b)
+            {
+            if(r[i + b])
+               {
+               if(r[i] + (r[i + b] << b) <= 15)
+                  {
+                  r[i] += r[i + b] << b;
+                  r[i + b] = 0;
+                  }
+               else if(r[i] - (r[i + b] << b) >= -15)
+                  {
+                  r[i] -= r[i + b] << b;
+                  for(size_t k = i + b; k < 256; ++k)
+                     {
+                     if(!r[k])
+                        {
+                        r[k] = 1;
+                        break;
+                        }
+                     r[k] = 0;
+                     }
+                  }
+               else
+                  { break; }
+               }
+            }
+         }
+      }
+   }
+
+void ge_tobytes(uint8_t* s, const ge_p2* h)
+   {
+   fe recip;
+   fe x;
+   fe y;
+
+   fe_invert(recip, h->Z);
+   fe_mul(x, h->X, recip);
+   fe_mul(y, h->Y, recip);
+   fe_tobytes(s, y);
+   s[31] ^= fe_isnegative(x) << 7;
+   }
+
+void ge_p2_0(ge_p2* h)
+   {
+   fe_0(h->X);
+   fe_1(h->Y);
+   fe_1(h->Z);
+   }
+
+}
+
+int ge_frombytes_negate_vartime(ge_p3* h, const uint8_t* s)
+   {
+   static const fe d =
+      {
+      -10913610, 13857413, -15372611, 6949391, 114729, -8787816, -6275908, -3247719, -18696448, -12055116
+      } ;
+   static const fe sqrtm1 =
+      {
+      -32595792, -7943725, 9377950, 3500415, 12389472, -272473, -25146209, -2005654, 326686, 11406482
+      } ;
+
+   fe u;
+   fe v;
+   fe v3;
+   fe vxx;
+   fe check;
+
+   fe_frombytes(h->Y, s);
+   fe_1(h->Z);
+   fe_sq(u, h->Y);
+   fe_mul(v, u, d);
+   fe_sub(u, u, h->Z);     /* u = y^2-1 */
+   fe_add(v, v, h->Z);     /* v = dy^2+1 */
+
+   fe_sq(v3, v);
+   fe_mul(v3, v3, v);      /* v3 = v^3 */
+   fe_sq(h->X, v3);
+   fe_mul(h->X, h->X, v);
+   fe_mul(h->X, h->X, u);  /* x = uv^7 */
+
+   fe_pow22523(h->X, h->X); /* x = (uv^7)^((q-5)/8) */
+   fe_mul(h->X, h->X, v3);
+   fe_mul(h->X, h->X, u);  /* x = uv^3(uv^7)^((q-5)/8) */
+
+   fe_sq(vxx, h->X);
+   fe_mul(vxx, vxx, v);
+   fe_sub(check, vxx, u);  /* vx^2-u */
+   if(fe_isnonzero(check))
+      {
+      fe_add(check, vxx, u); /* vx^2+u */
+      if(fe_isnonzero(check))
+         {
+         return -1;
+         }
+      fe_mul(h->X, h->X, sqrtm1);
+      }
+
+   if(fe_isnegative(h->X) == (s[31] >> 7))
+      { fe_neg(h->X, h->X); }
+
+   fe_mul(h->T, h->X, h->Y);
+   return 0;
+   }
+
+/*
+r = a * A + b * B
+where a = a[0]+256*a[1]+...+256^31 a[31].
+and b = b[0]+256*b[1]+...+256^31 b[31].
+B is the Ed25519 base point (x,4/5) with x positive.
+*/
+
+void ge_double_scalarmult_vartime(
+   uint8_t out[32],
+   const uint8_t* a, const ge_p3* A, const uint8_t* b)
+   {
+   static const ge_precomp Bi[8] =
+      {
+         {
+            { 25967493, -14356035, 29566456, 3660896, -12694345, 4014787, 27544626, -11754271, -6079156, 2047605 },
+            { -12545711, 934262, -2722910, 3049990, -727428, 9406986, 12720692, 5043384, 19500929, -15469378 },
+            { -8738181, 4489570, 9688441, -14785194, 10184609, -12363380, 29287919, 11864899, -24514362, -4438546 },
+         },
+         {
+            { 15636291, -9688557, 24204773, -7912398, 616977, -16685262, 27787600, -14772189, 28944400, -1550024 },
+            { 16568933, 4717097, -11556148, -1102322, 15682896, -11807043, 16354577, -11775962, 7689662, 11199574 },
+            { 30464156, -5976125, -11779434, -15670865, 23220365, 15915852, 7512774, 10017326, -17749093, -9920357 },
+         },
+         {
+            { 10861363, 11473154, 27284546, 1981175, -30064349, 12577861, 32867885, 14515107, -15438304, 10819380 },
+            { 4708026, 6336745, 20377586, 9066809, -11272109, 6594696, -25653668, 12483688, -12668491, 5581306 },
+            { 19563160, 16186464, -29386857, 4097519, 10237984, -4348115, 28542350, 13850243, -23678021, -15815942 },
+         },
+         {
+            { 5153746, 9909285, 1723747, -2777874, 30523605, 5516873, 19480852, 5230134, -23952439, -15175766 },
+            { -30269007, -3463509, 7665486, 10083793, 28475525, 1649722, 20654025, 16520125, 30598449, 7715701 },
+            { 28881845, 14381568, 9657904, 3680757, -20181635, 7843316, -31400660, 1370708, 29794553, -1409300 },
+         },
+         {
+            { -22518993, -6692182, 14201702, -8745502, -23510406, 8844726, 18474211, -1361450, -13062696, 13821877 },
+            { -6455177, -7839871, 3374702, -4740862, -27098617, -10571707, 31655028, -7212327, 18853322, -14220951 },
+            { 4566830, -12963868, -28974889, -12240689, -7602672, -2830569, -8514358, -10431137, 2207753, -3209784 },
+         },
+         {
+            { -25154831, -4185821, 29681144, 7868801, -6854661, -9423865, -12437364, -663000, -31111463, -16132436 },
+            { 25576264, -2703214, 7349804, -11814844, 16472782, 9300885, 3844789, 15725684, 171356, 6466918 },
+            { 23103977, 13316479, 9739013, -16149481, 817875, -15038942, 8965339, -14088058, -30714912, 16193877 },
+         },
+         {
+            { -33521811, 3180713, -2394130, 14003687, -16903474, -16270840, 17238398, 4729455, -18074513, 9256800 },
+            { -25182317, -4174131, 32336398, 5036987, -21236817, 11360617, 22616405, 9761698, -19827198, 630305 },
+            { -13720693, 2639453, -24237460, -7406481, 9494427, -5774029, -6554551, -15960994, -2449256, -14291300 },
+         },
+         {
+            { -3151181, -5046075, 9282714, 6866145, -31907062, -863023, -18940575, 15033784, 25105118, -7894876 },
+            { -24326370, 15950226, -31801215, -14592823, -11662737, -5090925, 1573892, -2625887, 2198790, -15804619 },
+            { -3099351, 10324967, -2241613, 7453183, -5446979, -2735503, -13812022, -16236442, -32461234, -12290683 },
+         },
+      } ;
+
+   int8_t aslide[256];
+   int8_t bslide[256];
+   ge_cached Ai[8]; /* A,3A,5A,7A,9A,11A,13A,15A */
+   ge_p1p1 t;
+   ge_p3 u;
+   ge_p3 A2;
+   ge_p2 r;
+   int i;
+
+   slide(aslide, a);
+   slide(bslide, b);
+
+   ge_p3_to_cached(&Ai[0], A);
+   ge_p3_dbl(&t, A);
+   ge_p1p1_to_p3(&A2, &t);
+   ge_add(&t, &A2, &Ai[0]);
+   ge_p1p1_to_p3(&u, &t);
+   ge_p3_to_cached(&Ai[1], &u);
+   ge_add(&t, &A2, &Ai[1]);
+   ge_p1p1_to_p3(&u, &t);
+   ge_p3_to_cached(&Ai[2], &u);
+   ge_add(&t, &A2, &Ai[2]);
+   ge_p1p1_to_p3(&u, &t);
+   ge_p3_to_cached(&Ai[3], &u);
+   ge_add(&t, &A2, &Ai[3]);
+   ge_p1p1_to_p3(&u, &t);
+   ge_p3_to_cached(&Ai[4], &u);
+   ge_add(&t, &A2, &Ai[4]);
+   ge_p1p1_to_p3(&u, &t);
+   ge_p3_to_cached(&Ai[5], &u);
+   ge_add(&t, &A2, &Ai[5]);
+   ge_p1p1_to_p3(&u, &t);
+   ge_p3_to_cached(&Ai[6], &u);
+   ge_add(&t, &A2, &Ai[6]);
+   ge_p1p1_to_p3(&u, &t);
+   ge_p3_to_cached(&Ai[7], &u);
+
+   ge_p2_0(&r);
+
+   for(i = 255; i >= 0; --i)
+      {
+      if(aslide[i] || bslide[i])
+         {
+         break;
+         }
+      }
+
+   for(; i >= 0; --i)
+      {
+      ge_p2_dbl(&t, &r);
+
+      if(aslide[i] > 0)
+         {
+         ge_p1p1_to_p3(&u, &t);
+         ge_add(&t, &u, &Ai[aslide[i] >> 1]);
+         }
+      else if(aslide[i] < 0)
+         {
+         ge_p1p1_to_p3(&u, &t);
+         ge_sub(&t, &u, &Ai[(-aslide[i]) >> 1]);
+         }
+
+      if(bslide[i] > 0)
+         {
+         ge_p1p1_to_p3(&u, &t);
+         ge_madd(&t, &u, &Bi[bslide[i] >> 1]);
+         }
+      else if(bslide[i] < 0)
+         {
+         ge_p1p1_to_p3(&u, &t);
+         ge_msub(&t, &u, &Bi[(-bslide[i]) >> 1]);
+         }
+
+      ge_p1p1_to_p2(&r, &t);
+      }
+
+   ge_tobytes(out, &r);
+   }
+
+/* base[i][j] = (j+1)*256^i*B */
+static const ge_precomp B_precomp[32][8] =
+   {
+      {
+         {
+            { 25967493, -14356035, 29566456, 3660896, -12694345, 4014787, 27544626, -11754271, -6079156, 2047605 },
+            { -12545711, 934262, -2722910, 3049990, -727428, 9406986, 12720692, 5043384, 19500929, -15469378 },
+            { -8738181, 4489570, 9688441, -14785194, 10184609, -12363380, 29287919, 11864899, -24514362, -4438546 },
+         },
+         {
+            { -12815894, -12976347, -21581243, 11784320, -25355658, -2750717, -11717903, -3814571, -358445, -10211303 },
+            { -21703237, 6903825, 27185491, 6451973, -29577724, -9554005, -15616551, 11189268, -26829678, -5319081 },
+            { 26966642, 11152617, 32442495, 15396054, 14353839, -12752335, -3128826, -9541118, -15472047, -4166697 },
+         },
+         {
+            { 15636291, -9688557, 24204773, -7912398, 616977, -16685262, 27787600, -14772189, 28944400, -1550024 },
+            { 16568933, 4717097, -11556148, -1102322, 15682896, -11807043, 16354577, -11775962, 7689662, 11199574 },
+            { 30464156, -5976125, -11779434, -15670865, 23220365, 15915852, 7512774, 10017326, -17749093, -9920357 },
+         },
+         {
+            { -17036878, 13921892, 10945806, -6033431, 27105052, -16084379, -28926210, 15006023, 3284568, -6276540 },
+            { 23599295, -8306047, -11193664, -7687416, 13236774, 10506355, 7464579, 9656445, 13059162, 10374397 },
+            { 7798556, 16710257, 3033922, 2874086, 28997861, 2835604, 32406664, -3839045, -641708, -101325 },
+         },
+         {
+            { 10861363, 11473154, 27284546, 1981175, -30064349, 12577861, 32867885, 14515107, -15438304, 10819380 },
+            { 4708026, 6336745, 20377586, 9066809, -11272109, 6594696, -25653668, 12483688, -12668491, 5581306 },
+            { 19563160, 16186464, -29386857, 4097519, 10237984, -4348115, 28542350, 13850243, -23678021, -15815942 },
+         },
+         {
+            { -15371964, -12862754, 32573250, 4720197, -26436522, 5875511, -19188627, -15224819, -9818940, -12085777 },
+            { -8549212, 109983, 15149363, 2178705, 22900618, 4543417, 3044240, -15689887, 1762328, 14866737 },
+            { -18199695, -15951423, -10473290, 1707278, -17185920, 3916101, -28236412, 3959421, 27914454, 4383652 },
+         },
+         {
+            { 5153746, 9909285, 1723747, -2777874, 30523605, 5516873, 19480852, 5230134, -23952439, -15175766 },
+            { -30269007, -3463509, 7665486, 10083793, 28475525, 1649722, 20654025, 16520125, 30598449, 7715701 },
+            { 28881845, 14381568, 9657904, 3680757, -20181635, 7843316, -31400660, 1370708, 29794553, -1409300 },
+         },
+         {
+            { 14499471, -2729599, -33191113, -4254652, 28494862, 14271267, 30290735, 10876454, -33154098, 2381726 },
+            { -7195431, -2655363, -14730155, 462251, -27724326, 3941372, -6236617, 3696005, -32300832, 15351955 },
+            { 27431194, 8222322, 16448760, -3907995, -18707002, 11938355, -32961401, -2970515, 29551813, 10109425 },
+         },
+      },
+      {
+         {
+            { -13657040, -13155431, -31283750, 11777098, 21447386, 6519384, -2378284, -1627556, 10092783, -4764171 },
+            { 27939166, 14210322, 4677035, 16277044, -22964462, -12398139, -32508754, 12005538, -17810127, 12803510 },
+            { 17228999, -15661624, -1233527, 300140, -1224870, -11714777, 30364213, -9038194, 18016357, 4397660 },
+         },
+         {
+            { -10958843, -7690207, 4776341, -14954238, 27850028, -15602212, -26619106, 14544525, -17477504, 982639 },
+            { 29253598, 15796703, -2863982, -9908884, 10057023, 3163536, 7332899, -4120128, -21047696, 9934963 },
+            { 5793303, 16271923, -24131614, -10116404, 29188560, 1206517, -14747930, 4559895, -30123922, -10897950 },
+         },
+         {
+            { -27643952, -11493006, 16282657, -11036493, 28414021, -15012264, 24191034, 4541697, -13338309, 5500568 },
+            { 12650548, -1497113, 9052871, 11355358, -17680037, -8400164, -17430592, 12264343, 10874051, 13524335 },
+            { 25556948, -3045990, 714651, 2510400, 23394682, -10415330, 33119038, 5080568, -22528059, 5376628 },
+         },
+         {
+            { -26088264, -4011052, -17013699, -3537628, -6726793, 1920897, -22321305, -9447443, 4535768, 1569007 },
+            { -2255422, 14606630, -21692440, -8039818, 28430649, 8775819, -30494562, 3044290, 31848280, 12543772 },
+            { -22028579, 2943893, -31857513, 6777306, 13784462, -4292203, -27377195, -2062731, 7718482, 14474653 },
+         },
+         {
+            { 2385315, 2454213, -22631320, 46603, -4437935, -15680415, 656965, -7236665, 24316168, -5253567 },
+            { 13741529, 10911568, -33233417, -8603737, -20177830, -1033297, 33040651, -13424532, -20729456, 8321686 },
+            { 21060490, -2212744, 15712757, -4336099, 1639040, 10656336, 23845965, -11874838, -9984458, 608372 },
+         },
+         {
+            { -13672732, -15087586, -10889693, -7557059, -6036909, 11305547, 1123968, -6780577, 27229399, 23887 },
+            { -23244140, -294205, -11744728, 14712571, -29465699, -2029617, 12797024, -6440308, -1633405, 16678954 },
+            { -29500620, 4770662, -16054387, 14001338, 7830047, 9564805, -1508144, -4795045, -17169265, 4904953 },
+         },
+         {
+            { 24059557, 14617003, 19037157, -15039908, 19766093, -14906429, 5169211, 16191880, 2128236, -4326833 },
+            { -16981152, 4124966, -8540610, -10653797, 30336522, -14105247, -29806336, 916033, -6882542, -2986532 },
+            { -22630907, 12419372, -7134229, -7473371, -16478904, 16739175, 285431, 2763829, 15736322, 4143876 },
+         },
+         {
+            { 2379352, 11839345, -4110402, -5988665, 11274298, 794957, 212801, -14594663, 23527084, -16458268 },
+            { 33431127, -11130478, -17838966, -15626900, 8909499, 8376530, -32625340, 4087881, -15188911, -14416214 },
+            { 1767683, 7197987, -13205226, -2022635, -13091350, 448826, 5799055, 4357868, -4774191, -16323038 },
+         },
+      },
+      {
+         {
+            { 6721966, 13833823, -23523388, -1551314, 26354293, -11863321, 23365147, -3949732, 7390890, 2759800 },
+            { 4409041, 2052381, 23373853, 10530217, 7676779, -12885954, 21302353, -4264057, 1244380, -12919645 },
+            { -4421239, 7169619, 4982368, -2957590, 30256825, -2777540, 14086413, 9208236, 15886429, 16489664 },
+         },
+         {
+            { 1996075, 10375649, 14346367, 13311202, -6874135, -16438411, -13693198, 398369, -30606455, -712933 },
+            { -25307465, 9795880, -2777414, 14878809, -33531835, 14780363, 13348553, 12076947, -30836462, 5113182 },
+            { -17770784, 11797796, 31950843, 13929123, -25888302, 12288344, -30341101, -7336386, 13847711, 5387222 },
+         },
+         {
+            { -18582163, -3416217, 17824843, -2340966, 22744343, -10442611, 8763061, 3617786, -19600662, 10370991 },
+            { 20246567, -14369378, 22358229, -543712, 18507283, -10413996, 14554437, -8746092, 32232924, 16763880 },
+            { 9648505, 10094563, 26416693, 14745928, -30374318, -6472621, 11094161, 15689506, 3140038, -16510092 },
+         },
+         {
+            { -16160072, 5472695, 31895588, 4744994, 8823515, 10365685, -27224800, 9448613, -28774454, 366295 },
+            { 19153450, 11523972, -11096490, -6503142, -24647631, 5420647, 28344573, 8041113, 719605, 11671788 },
+            { 8678025, 2694440, -6808014, 2517372, 4964326, 11152271, -15432916, -15266516, 27000813, -10195553 },
+         },
+         {
+            { -15157904, 7134312, 8639287, -2814877, -7235688, 10421742, 564065, 5336097, 6750977, -14521026 },
+            { 11836410, -3979488, 26297894, 16080799, 23455045, 15735944, 1695823, -8819122, 8169720, 16220347 },
+            { -18115838, 8653647, 17578566, -6092619, -8025777, -16012763, -11144307, -2627664, -5990708, -14166033 },
+         },
+         {
+            { -23308498, -10968312, 15213228, -10081214, -30853605, -11050004, 27884329, 2847284, 2655861, 1738395 },
+            { -27537433, -14253021, -25336301, -8002780, -9370762, 8129821, 21651608, -3239336, -19087449, -11005278 },
+            { 1533110, 3437855, 23735889, 459276, 29970501, 11335377, 26030092, 5821408, 10478196, 8544890 },
+         },
+         {
+            { 32173121, -16129311, 24896207, 3921497, 22579056, -3410854, 19270449, 12217473, 17789017, -3395995 },
+            { -30552961, -2228401, -15578829, -10147201, 13243889, 517024, 15479401, -3853233, 30460520, 1052596 },
+            { -11614875, 13323618, 32618793, 8175907, -15230173, 12596687, 27491595, -4612359, 3179268, -9478891 },
+         },
+         {
+            { 31947069, -14366651, -4640583, -15339921, -15125977, -6039709, -14756777, -16411740, 19072640, -9511060 },
+            { 11685058, 11822410, 3158003, -13952594, 33402194, -4165066, 5977896, -5215017, 473099, 5040608 },
+            { -20290863, 8198642, -27410132, 11602123, 1290375, -2799760, 28326862, 1721092, -19558642, -3131606 },
+         },
+      },
+      {
+         {
+            { 7881532, 10687937, 7578723, 7738378, -18951012, -2553952, 21820786, 8076149, -27868496, 11538389 },
+            { -19935666, 3899861, 18283497, -6801568, -15728660, -11249211, 8754525, 7446702, -5676054, 5797016 },
+            { -11295600, -3793569, -15782110, -7964573, 12708869, -8456199, 2014099, -9050574, -2369172, -5877341 },
+         },
+         {
+            { -22472376, -11568741, -27682020, 1146375, 18956691, 16640559, 1192730, -3714199, 15123619, 10811505 },
+            { 14352098, -3419715, -18942044, 10822655, 32750596, 4699007, -70363, 15776356, -28886779, -11974553 },
+            { -28241164, -8072475, -4978962, -5315317, 29416931, 1847569, -20654173, -16484855, 4714547, -9600655 },
+         },
+         {
+            { 15200332, 8368572, 19679101, 15970074, -31872674, 1959451, 24611599, -4543832, -11745876, 12340220 },
+            { 12876937, -10480056, 33134381, 6590940, -6307776, 14872440, 9613953, 8241152, 15370987, 9608631 },
+            { -4143277, -12014408, 8446281, -391603, 4407738, 13629032, -7724868, 15866074, -28210621, -8814099 },
+         },
+         {
+            { 26660628, -15677655, 8393734, 358047, -7401291, 992988, -23904233, 858697, 20571223, 8420556 },
+            { 14620715, 13067227, -15447274, 8264467, 14106269, 15080814, 33531827, 12516406, -21574435, -12476749 },
+            { 236881, 10476226, 57258, -14677024, 6472998, 2466984, 17258519, 7256740, 8791136, 15069930 },
+         },
+         {
+            { 1276410, -9371918, 22949635, -16322807, -23493039, -5702186, 14711875, 4874229, -30663140, -2331391 },
+            { 5855666, 4990204, -13711848, 7294284, -7804282, 1924647, -1423175, -7912378, -33069337, 9234253 },
+            { 20590503, -9018988, 31529744, -7352666, -2706834, 10650548, 31559055, -11609587, 18979186, 13396066 },
+         },
+         {
+            { 24474287, 4968103, 22267082, 4407354, 24063882, -8325180, -18816887, 13594782, 33514650, 7021958 },
+            { -11566906, -6565505, -21365085, 15928892, -26158305, 4315421, -25948728, -3916677, -21480480, 12868082 },
+            { -28635013, 13504661, 19988037, -2132761, 21078225, 6443208, -21446107, 2244500, -12455797, -8089383 },
+         },
+         {
+            { -30595528, 13793479, -5852820, 319136, -25723172, -6263899, 33086546, 8957937, -15233648, 5540521 },
+            { -11630176, -11503902, -8119500, -7643073, 2620056, 1022908, -23710744, -1568984, -16128528, -14962807 },
+            { 23152971, 775386, 27395463, 14006635, -9701118, 4649512, 1689819, 892185, -11513277, -15205948 },
+         },
+         {
+            { 9770129, 9586738, 26496094, 4324120, 1556511, -3550024, 27453819, 4763127, -19179614, 5867134 },
+            { -32765025, 1927590, 31726409, -4753295, 23962434, -16019500, 27846559, 5931263, -29749703, -16108455 },
+            { 27461885, -2977536, 22380810, 1815854, -23033753, -3031938, 7283490, -15148073, -19526700, 7734629 },
+         },
+      },
+      {
+         {
+            { -8010264, -9590817, -11120403, 6196038, 29344158, -13430885, 7585295, -3176626, 18549497, 15302069 },
+            { -32658337, -6171222, -7672793, -11051681, 6258878, 13504381, 10458790, -6418461, -8872242, 8424746 },
+            { 24687205, 8613276, -30667046, -3233545, 1863892, -1830544, 19206234, 7134917, -11284482, -828919 },
+         },
+         {
+            { 11334899, -9218022, 8025293, 12707519, 17523892, -10476071, 10243738, -14685461, -5066034, 16498837 },
+            { 8911542, 6887158, -9584260, -6958590, 11145641, -9543680, 17303925, -14124238, 6536641, 10543906 },
+            { -28946384, 15479763, -17466835, 568876, -1497683, 11223454, -2669190, -16625574, -27235709, 8876771 },
+         },
+         {
+            { -25742899, -12566864, -15649966, -846607, -33026686, -796288, -33481822, 15824474, -604426, -9039817 },
+            { 10330056, 70051, 7957388, -9002667, 9764902, 15609756, 27698697, -4890037, 1657394, 3084098 },
+            { 10477963, -7470260, 12119566, -13250805, 29016247, -5365589, 31280319, 14396151, -30233575, 15272409 },
+         },
+         {
+            { -12288309, 3169463, 28813183, 16658753, 25116432, -5630466, -25173957, -12636138, -25014757, 1950504 },
+            { -26180358, 9489187, 11053416, -14746161, -31053720, 5825630, -8384306, -8767532, 15341279, 8373727 },
+            { 28685821, 7759505, -14378516, -12002860, -31971820, 4079242, 298136, -10232602, -2878207, 15190420 },
+         },
+         {
+            { -32932876, 13806336, -14337485, -15794431, -24004620, 10940928, 8669718, 2742393, -26033313, -6875003 },
+            { -1580388, -11729417, -25979658, -11445023, -17411874, -10912854, 9291594, -16247779, -12154742, 6048605 },
+            { -30305315, 14843444, 1539301, 11864366, 20201677, 1900163, 13934231, 5128323, 11213262, 9168384 },
+         },
+         {
+            { -26280513, 11007847, 19408960, -940758, -18592965, -4328580, -5088060, -11105150, 20470157, -16398701 },
+            { -23136053, 9282192, 14855179, -15390078, -7362815, -14408560, -22783952, 14461608, 14042978, 5230683 },
+            { 29969567, -2741594, -16711867, -8552442, 9175486, -2468974, 21556951, 3506042, -5933891, -12449708 },
+         },
+         {
+            { -3144746, 8744661, 19704003, 4581278, -20430686, 6830683, -21284170, 8971513, -28539189, 15326563 },
+            { -19464629, 10110288, -17262528, -3503892, -23500387, 1355669, -15523050, 15300988, -20514118, 9168260 },
+            { -5353335, 4488613, -23803248, 16314347, 7780487, -15638939, -28948358, 9601605, 33087103, -9011387 },
+         },
+         {
+            { -19443170, -15512900, -20797467, -12445323, -29824447, 10229461, -27444329, -15000531, -5996870, 15664672 },
+            { 23294591, -16632613, -22650781, -8470978, 27844204, 11461195, 13099750, -2460356, 18151676, 13417686 },
+            { -24722913, -4176517, -31150679, 5988919, -26858785, 6685065, 1661597, -12551441, 15271676, -15452665 },
+         },
+      },
+      {
+         {
+            { 11433042, -13228665, 8239631, -5279517, -1985436, -725718, -18698764, 2167544, -6921301, -13440182 },
+            { -31436171, 15575146, 30436815, 12192228, -22463353, 9395379, -9917708, -8638997, 12215110, 12028277 },
+            { 14098400, 6555944, 23007258, 5757252, -15427832, -12950502, 30123440, 4617780, -16900089, -655628 },
+         },
+         {
+            { -4026201, -15240835, 11893168, 13718664, -14809462, 1847385, -15819999, 10154009, 23973261, -12684474 },
+            { -26531820, -3695990, -1908898, 2534301, -31870557, -16550355, 18341390, -11419951, 32013174, -10103539 },
+            { -25479301, 10876443, -11771086, -14625140, -12369567, 1838104, 21911214, 6354752, 4425632, -837822 },
+         },
+         {
+            { -10433389, -14612966, 22229858, -3091047, -13191166, 776729, -17415375, -12020462, 4725005, 14044970 },
+            { 19268650, -7304421, 1555349, 8692754, -21474059, -9910664, 6347390, -1411784, -19522291, -16109756 },
+            { -24864089, 12986008, -10898878, -5558584, -11312371, -148526, 19541418, 8180106, 9282262, 10282508 },
+         },
+         {
+            { -26205082, 4428547, -8661196, -13194263, 4098402, -14165257, 15522535, 8372215, 5542595, -10702683 },
+            { -10562541, 14895633, 26814552, -16673850, -17480754, -2489360, -2781891, 6993761, -18093885, 10114655 },
+            { -20107055, -929418, 31422704, 10427861, -7110749, 6150669, -29091755, -11529146, 25953725, -106158 },
+         },
+         {
+            { -4234397, -8039292, -9119125, 3046000, 2101609, -12607294, 19390020, 6094296, -3315279, 12831125 },
+            { -15998678, 7578152, 5310217, 14408357, -33548620, -224739, 31575954, 6326196, 7381791, -2421839 },
+            { -20902779, 3296811, 24736065, -16328389, 18374254, 7318640, 6295303, 8082724, -15362489, 12339664 },
+         },
+         {
+            { 27724736, 2291157, 6088201, -14184798, 1792727, 5857634, 13848414, 15768922, 25091167, 14856294 },
+            { -18866652, 8331043, 24373479, 8541013, -701998, -9269457, 12927300, -12695493, -22182473, -9012899 },
+            { -11423429, -5421590, 11632845, 3405020, 30536730, -11674039, -27260765, 13866390, 30146206, 9142070 },
+         },
+         {
+            { 3924129, -15307516, -13817122, -10054960, 12291820, -668366, -27702774, 9326384, -8237858, 4171294 },
+            { -15921940, 16037937, 6713787, 16606682, -21612135, 2790944, 26396185, 3731949, 345228, -5462949 },
+            { -21327538, 13448259, 25284571, 1143661, 20614966, -8849387, 2031539, -12391231, -16253183, -13582083 },
+         },
+         {
+            { 31016211, -16722429, 26371392, -14451233, -5027349, 14854137, 17477601, 3842657, 28012650, -16405420 },
+            { -5075835, 9368966, -8562079, -4600902, -15249953, 6970560, -9189873, 16292057, -8867157, 3507940 },
+            { 29439664, 3537914, 23333589, 6997794, -17555561, -11018068, -15209202, -15051267, -9164929, 6580396 },
+         },
+      },
+      {
+         {
+            { -12185861, -7679788, 16438269, 10826160, -8696817, -6235611, 17860444, -9273846, -2095802, 9304567 },
+            { 20714564, -4336911, 29088195, 7406487, 11426967, -5095705, 14792667, -14608617, 5289421, -477127 },
+            { -16665533, -10650790, -6160345, -13305760, 9192020, -1802462, 17271490, 12349094, 26939669, -3752294 },
+         },
+         {
+            { -12889898, 9373458, 31595848, 16374215, 21471720, 13221525, -27283495, -12348559, -3698806, 117887 },
+            { 22263325, -6560050, 3984570, -11174646, -15114008, -566785, 28311253, 5358056, -23319780, 541964 },
+            { 16259219, 3261970, 2309254, -15534474, -16885711, -4581916, 24134070, -16705829, -13337066, -13552195 },
+         },
+         {
+            { 9378160, -13140186, -22845982, -12745264, 28198281, -7244098, -2399684, -717351, 690426, 14876244 },
+            { 24977353, -314384, -8223969, -13465086, 28432343, -1176353, -13068804, -12297348, -22380984, 6618999 },
+            { -1538174, 11685646, 12944378, 13682314, -24389511, -14413193, 8044829, -13817328, 32239829, -5652762 },
+         },
+         {
+            { -18603066, 4762990, -926250, 8885304, -28412480, -3187315, 9781647, -10350059, 32779359, 5095274 },
+            { -33008130, -5214506, -32264887, -3685216, 9460461, -9327423, -24601656, 14506724, 21639561, -2630236 },
+            { -16400943, -13112215, 25239338, 15531969, 3987758, -4499318, -1289502, -6863535, 17874574, 558605 },
+         },
+         {
+            { -13600129, 10240081, 9171883, 16131053, -20869254, 9599700, 33499487, 5080151, 2085892, 5119761 },
+            { -22205145, -2519528, -16381601, 414691, -25019550, 2170430, 30634760, -8363614, -31999993, -5759884 },
+            { -6845704, 15791202, 8550074, -1312654, 29928809, -12092256, 27534430, -7192145, -22351378, 12961482 },
+         },
+         {
+            { -24492060, -9570771, 10368194, 11582341, -23397293, -2245287, 16533930, 8206996, -30194652, -5159638 },
+            { -11121496, -3382234, 2307366, 6362031, -135455, 8868177, -16835630, 7031275, 7589640, 8945490 },
+            { -32152748, 8917967, 6661220, -11677616, -1192060, -15793393, 7251489, -11182180, 24099109, -14456170 },
+         },
+         {
+            { 5019558, -7907470, 4244127, -14714356, -26933272, 6453165, -19118182, -13289025, -6231896, -10280736 },
+            { 10853594, 10721687, 26480089, 5861829, -22995819, 1972175, -1866647, -10557898, -3363451, -6441124 },
+            { -17002408, 5906790, 221599, -6563147, 7828208, -13248918, 24362661, -2008168, -13866408, 7421392 },
+         },
+         {
+            { 8139927, -6546497, 32257646, -5890546, 30375719, 1886181, -21175108, 15441252, 28826358, -4123029 },
+            { 6267086, 9695052, 7709135, -16603597, -32869068, -1886135, 14795160, -7840124, 13746021, -1742048 },
+            { 28584902, 7787108, -6732942, -15050729, 22846041, -7571236, -3181936, -363524, 4771362, -8419958 },
+         },
+      },
+      {
+         {
+            { 24949256, 6376279, -27466481, -8174608, -18646154, -9930606, 33543569, -12141695, 3569627, 11342593 },
+            { 26514989, 4740088, 27912651, 3697550, 19331575, -11472339, 6809886, 4608608, 7325975, -14801071 },
+            { -11618399, -14554430, -24321212, 7655128, -1369274, 5214312, -27400540, 10258390, -17646694, -8186692 },
+         },
+         {
+            { 11431204, 15823007, 26570245, 14329124, 18029990, 4796082, -31446179, 15580664, 9280358, -3973687 },
+            { -160783, -10326257, -22855316, -4304997, -20861367, -13621002, -32810901, -11181622, -15545091, 4387441 },
+            { -20799378, 12194512, 3937617, -5805892, -27154820, 9340370, -24513992, 8548137, 20617071, -7482001 },
+         },
+         {
+            { -938825, -3930586, -8714311, 16124718, 24603125, -6225393, -13775352, -11875822, 24345683, 10325460 },
+            { -19855277, -1568885, -22202708, 8714034, 14007766, 6928528, 16318175, -1010689, 4766743, 3552007 },
+            { -21751364, -16730916, 1351763, -803421, -4009670, 3950935, 3217514, 14481909, 10988822, -3994762 },
+         },
+         {
+            { 15564307, -14311570, 3101243, 5684148, 30446780, -8051356, 12677127, -6505343, -8295852, 13296005 },
+            { -9442290, 6624296, -30298964, -11913677, -4670981, -2057379, 31521204, 9614054, -30000824, 12074674 },
+            { 4771191, -135239, 14290749, -13089852, 27992298, 14998318, -1413936, -1556716, 29832613, -16391035 },
+         },
+         {
+            { 7064884, -7541174, -19161962, -5067537, -18891269, -2912736, 25825242, 5293297, -27122660, 13101590 },
+            { -2298563, 2439670, -7466610, 1719965, -27267541, -16328445, 32512469, -5317593, -30356070, -4190957 },
+            { -30006540, 10162316, -33180176, 3981723, -16482138, -13070044, 14413974, 9515896, 19568978, 9628812 },
+         },
+         {
+            { 33053803, 199357, 15894591, 1583059, 27380243, -4580435, -17838894, -6106839, -6291786, 3437740 },
+            { -18978877, 3884493, 19469877, 12726490, 15913552, 13614290, -22961733, 70104, 7463304, 4176122 },
+            { -27124001, 10659917, 11482427, -16070381, 12771467, -6635117, -32719404, -5322751, 24216882, 5944158 },
+         },
+         {
+            { 8894125, 7450974, -2664149, -9765752, -28080517, -12389115, 19345746, 14680796, 11632993, 5847885 },
+            { 26942781, -2315317, 9129564, -4906607, 26024105, 11769399, -11518837, 6367194, -9727230, 4782140 },
+            { 19916461, -4828410, -22910704, -11414391, 25606324, -5972441, 33253853, 8220911, 6358847, -1873857 },
+         },
+         {
+            { 801428, -2081702, 16569428, 11065167, 29875704, 96627, 7908388, -4480480, -13538503, 1387155 },
+            { 19646058, 5720633, -11416706, 12814209, 11607948, 12749789, 14147075, 15156355, -21866831, 11835260 },
+            { 19299512, 1155910, 28703737, 14890794, 2925026, 7269399, 26121523, 15467869, -26560550, 5052483 },
+         },
+      },
+      {
+         {
+            { -3017432, 10058206, 1980837, 3964243, 22160966, 12322533, -6431123, -12618185, 12228557, -7003677 },
+            { 32944382, 14922211, -22844894, 5188528, 21913450, -8719943, 4001465, 13238564, -6114803, 8653815 },
+            { 22865569, -4652735, 27603668, -12545395, 14348958, 8234005, 24808405, 5719875, 28483275, 2841751 },
+         },
+         {
+            { -16420968, -1113305, -327719, -12107856, 21886282, -15552774, -1887966, -315658, 19932058, -12739203 },
+            { -11656086, 10087521, -8864888, -5536143, -19278573, -3055912, 3999228, 13239134, -4777469, -13910208 },
+            { 1382174, -11694719, 17266790, 9194690, -13324356, 9720081, 20403944, 11284705, -14013818, 3093230 },
+         },
+         {
+            { 16650921, -11037932, -1064178, 1570629, -8329746, 7352753, -302424, 16271225, -24049421, -6691850 },
+            { -21911077, -5927941, -4611316, -5560156, -31744103, -10785293, 24123614, 15193618, -21652117, -16739389 },
+            { -9935934, -4289447, -25279823, 4372842, 2087473, 10399484, 31870908, 14690798, 17361620, 11864968 },
+         },
+         {
+            { -11307610, 6210372, 13206574, 5806320, -29017692, -13967200, -12331205, -7486601, -25578460, -16240689 },
+            { 14668462, -12270235, 26039039, 15305210, 25515617, 4542480, 10453892, 6577524, 9145645, -6443880 },
+            { 5974874, 3053895, -9433049, -10385191, -31865124, 3225009, -7972642, 3936128, -5652273, -3050304 },
+         },
+         {
+            { 30625386, -4729400, -25555961, -12792866, -20484575, 7695099, 17097188, -16303496, -27999779, 1803632 },
+            { -3553091, 9865099, -5228566, 4272701, -5673832, -16689700, 14911344, 12196514, -21405489, 7047412 },
+            { 20093277, 9920966, -11138194, -5343857, 13161587, 12044805, -32856851, 4124601, -32343828, -10257566 },
+         },
+         {
+            { -20788824, 14084654, -13531713, 7842147, 19119038, -13822605, 4752377, -8714640, -21679658, 2288038 },
+            { -26819236, -3283715, 29965059, 3039786, -14473765, 2540457, 29457502, 14625692, -24819617, 12570232 },
+            { -1063558, -11551823, 16920318, 12494842, 1278292, -5869109, -21159943, -3498680, -11974704, 4724943 },
+         },
+         {
+            { 17960970, -11775534, -4140968, -9702530, -8876562, -1410617, -12907383, -8659932, -29576300, 1903856 },
+            { 23134274, -14279132, -10681997, -1611936, 20684485, 15770816, -12989750, 3190296, 26955097, 14109738 },
+            { 15308788, 5320727, -30113809, -14318877, 22902008, 7767164, 29425325, -11277562, 31960942, 11934971 },
+         },
+         {
+            { -27395711, 8435796, 4109644, 12222639, -24627868, 14818669, 20638173, 4875028, 10491392, 1379718 },
+            { -13159415, 9197841, 3875503, -8936108, -1383712, -5879801, 33518459, 16176658, 21432314, 12180697 },
+            { -11787308, 11500838, 13787581, -13832590, -22430679, 10140205, 1465425, 12689540, -10301319, -13872883 },
+         },
+      },
+      {
+         {
+            { 5414091, -15386041, -21007664, 9643570, 12834970, 1186149, -2622916, -1342231, 26128231, 6032912 },
+            { -26337395, -13766162, 32496025, -13653919, 17847801, -12669156, 3604025, 8316894, -25875034, -10437358 },
+            { 3296484, 6223048, 24680646, -12246460, -23052020, 5903205, -8862297, -4639164, 12376617, 3188849 },
+         },
+         {
+            { 29190488, -14659046, 27549113, -1183516, 3520066, -10697301, 32049515, -7309113, -16109234, -9852307 },
+            { -14744486, -9309156, 735818, -598978, -20407687, -5057904, 25246078, -15795669, 18640741, -960977 },
+            { -6928835, -16430795, 10361374, 5642961, 4910474, 12345252, -31638386, -494430, 10530747, 1053335 },
+         },
+         {
+            { -29265967, -14186805, -13538216, -12117373, -19457059, -10655384, -31462369, -2948985, 24018831, 15026644 },
+            { -22592535, -3145277, -2289276, 5953843, -13440189, 9425631, 25310643, 13003497, -2314791, -15145616 },
+            { -27419985, -603321, -8043984, -1669117, -26092265, 13987819, -27297622, 187899, -23166419, -2531735 },
+         },
+         {
+            { -21744398, -13810475, 1844840, 5021428, -10434399, -15911473, 9716667, 16266922, -5070217, 726099 },
+            { 29370922, -6053998, 7334071, -15342259, 9385287, 2247707, -13661962, -4839461, 30007388, -15823341 },
+            { -936379, 16086691, 23751945, -543318, -1167538, -5189036, 9137109, 730663, 9835848, 4555336 },
+         },
+         {
+            { -23376435, 1410446, -22253753, -12899614, 30867635, 15826977, 17693930, 544696, -11985298, 12422646 },
+            { 31117226, -12215734, -13502838, 6561947, -9876867, -12757670, -5118685, -4096706, 29120153, 13924425 },
+            { -17400879, -14233209, 19675799, -2734756, -11006962, -5858820, -9383939, -11317700, 7240931, -237388 },
+         },
+         {
+            { -31361739, -11346780, -15007447, -5856218, -22453340, -12152771, 1222336, 4389483, 3293637, -15551743 },
+            { -16684801, -14444245, 11038544, 11054958, -13801175, -3338533, -24319580, 7733547, 12796905, -6335822 },
+            { -8759414, -10817836, -25418864, 10783769, -30615557, -9746811, -28253339, 3647836, 3222231, -11160462 },
+         },
+         {
+            { 18606113, 1693100, -25448386, -15170272, 4112353, 10045021, 23603893, -2048234, -7550776, 2484985 },
+            { 9255317, -3131197, -12156162, -1004256, 13098013, -9214866, 16377220, -2102812, -19802075, -3034702 },
+            { -22729289, 7496160, -5742199, 11329249, 19991973, -3347502, -31718148, 9936966, -30097688, -10618797 },
+         },
+         {
+            { 21878590, -5001297, 4338336, 13643897, -3036865, 13160960, 19708896, 5415497, -7360503, -4109293 },
+            { 27736861, 10103576, 12500508, 8502413, -3413016, -9633558, 10436918, -1550276, -23659143, -8132100 },
+            { 19492550, -12104365, -29681976, -852630, -3208171, 12403437, 30066266, 8367329, 13243957, 8709688 },
+         },
+      },
+      {
+         {
+            { 12015105, 2801261, 28198131, 10151021, 24818120, -4743133, -11194191, -5645734, 5150968, 7274186 },
+            { 2831366, -12492146, 1478975, 6122054, 23825128, -12733586, 31097299, 6083058, 31021603, -9793610 },
+            { -2529932, -2229646, 445613, 10720828, -13849527, -11505937, -23507731, 16354465, 15067285, -14147707 },
+         },
+         {
+            { 7840942, 14037873, -33364863, 15934016, -728213, -3642706, 21403988, 1057586, -19379462, -12403220 },
+            { 915865, -16469274, 15608285, -8789130, -24357026, 6060030, -17371319, 8410997, -7220461, 16527025 },
+            { 32922597, -556987, 20336074, -16184568, 10903705, -5384487, 16957574, 52992, 23834301, 6588044 },
+         },
+         {
+            { 32752030, 11232950, 3381995, -8714866, 22652988, -10744103, 17159699, 16689107, -20314580, -1305992 },
+            { -4689649, 9166776, -25710296, -10847306, 11576752, 12733943, 7924251, -2752281, 1976123, -7249027 },
+            { 21251222, 16309901, -2983015, -6783122, 30810597, 12967303, 156041, -3371252, 12331345, -8237197 },
+         },
+         {
+            { 8651614, -4477032, -16085636, -4996994, 13002507, 2950805, 29054427, -5106970, 10008136, -4667901 },
+            { 31486080, 15114593, -14261250, 12951354, 14369431, -7387845, 16347321, -13662089, 8684155, -10532952 },
+            { 19443825, 11385320, 24468943, -9659068, -23919258, 2187569, -26263207, -6086921, 31316348, 14219878 },
+         },
+         {
+            { -28594490, 1193785, 32245219, 11392485, 31092169, 15722801, 27146014, 6992409, 29126555, 9207390 },
+            { 32382935, 1110093, 18477781, 11028262, -27411763, -7548111, -4980517, 10843782, -7957600, -14435730 },
+            { 2814918, 7836403, 27519878, -7868156, -20894015, -11553689, -21494559, 8550130, 28346258, 1994730 },
+         },
+         {
+            { -19578299, 8085545, -14000519, -3948622, 2785838, -16231307, -19516951, 7174894, 22628102, 8115180 },
+            { -30405132, 955511, -11133838, -15078069, -32447087, -13278079, -25651578, 3317160, -9943017, 930272 },
+            { -15303681, -6833769, 28856490, 1357446, 23421993, 1057177, 24091212, -1388970, -22765376, -10650715 },
+         },
+         {
+            { -22751231, -5303997, -12907607, -12768866, -15811511, -7797053, -14839018, -16554220, -1867018, 8398970 },
+            { -31969310, 2106403, -4736360, 1362501, 12813763, 16200670, 22981545, -6291273, 18009408, -15772772 },
+            { -17220923, -9545221, -27784654, 14166835, 29815394, 7444469, 29551787, -3727419, 19288549, 1325865 },
+         },
+         {
+            { 15100157, -15835752, -23923978, -1005098, -26450192, 15509408, 12376730, -3479146, 33166107, -8042750 },
+            { 20909231, 13023121, -9209752, 16251778, -5778415, -8094914, 12412151, 10018715, 2213263, -13878373 },
+            { 32529814, -11074689, 30361439, -16689753, -9135940, 1513226, 22922121, 6382134, -5766928, 8371348 },
+         },
+      },
+      {
+         {
+            { 9923462, 11271500, 12616794, 3544722, -29998368, -1721626, 12891687, -8193132, -26442943, 10486144 },
+            { -22597207, -7012665, 8587003, -8257861, 4084309, -12970062, 361726, 2610596, -23921530, -11455195 },
+            { 5408411, -1136691, -4969122, 10561668, 24145918, 14240566, 31319731, -4235541, 19985175, -3436086 },
+         },
+         {
+            { -13994457, 16616821, 14549246, 3341099, 32155958, 13648976, -17577068, 8849297, 65030, 8370684 },
+            { -8320926, -12049626, 31204563, 5839400, -20627288, -1057277, -19442942, 6922164, 12743482, -9800518 },
+            { -2361371, 12678785, 28815050, 4759974, -23893047, 4884717, 23783145, 11038569, 18800704, 255233 },
+         },
+         {
+            { -5269658, -1773886, 13957886, 7990715, 23132995, 728773, 13393847, 9066957, 19258688, -14753793 },
+            { -2936654, -10827535, -10432089, 14516793, -3640786, 4372541, -31934921, 2209390, -1524053, 2055794 },
+            { 580882, 16705327, 5468415, -2683018, -30926419, -14696000, -7203346, -8994389, -30021019, 7394435 },
+         },
+         {
+            { 23838809, 1822728, -15738443, 15242727, 8318092, -3733104, -21672180, -3492205, -4821741, 14799921 },
+            { 13345610, 9759151, 3371034, -16137791, 16353039, 8577942, 31129804, 13496856, -9056018, 7402518 },
+            { 2286874, -4435931, -20042458, -2008336, -13696227, 5038122, 11006906, -15760352, 8205061, 1607563 },
+         },
+         {
+            { 14414086, -8002132, 3331830, -3208217, 22249151, -5594188, 18364661, -2906958, 30019587, -9029278 },
+            { -27688051, 1585953, -10775053, 931069, -29120221, -11002319, -14410829, 12029093, 9944378, 8024 },
+            { 4368715, -3709630, 29874200, -15022983, -20230386, -11410704, -16114594, -999085, -8142388, 5640030 },
+         },
+         {
+            { 10299610, 13746483, 11661824, 16234854, 7630238, 5998374, 9809887, -16694564, 15219798, -14327783 },
+            { 27425505, -5719081, 3055006, 10660664, 23458024, 595578, -15398605, -1173195, -18342183, 9742717 },
+            { 6744077, 2427284, 26042789, 2720740, -847906, 1118974, 32324614, 7406442, 12420155, 1994844 },
+         },
+         {
+            { 14012521, -5024720, -18384453, -9578469, -26485342, -3936439, -13033478, -10909803, 24319929, -6446333 },
+            { 16412690, -4507367, 10772641, 15929391, -17068788, -4658621, 10555945, -10484049, -30102368, -4739048 },
+            { 22397382, -7767684, -9293161, -12792868, 17166287, -9755136, -27333065, 6199366, 21880021, -12250760 },
+         },
+         {
+            { -4283307, 5368523, -31117018, 8163389, -30323063, 3209128, 16557151, 8890729, 8840445, 4957760 },
+            { -15447727, 709327, -6919446, -10870178, -29777922, 6522332, -21720181, 12130072, -14796503, 5005757 },
+            { -2114751, -14308128, 23019042, 15765735, -25269683, 6002752, 10183197, -13239326, -16395286, -2176112 },
+         },
+      },
+      {
+         {
+            { -19025756, 1632005, 13466291, -7995100, -23640451, 16573537, -32013908, -3057104, 22208662, 2000468 },
+            { 3065073, -1412761, -25598674, -361432, -17683065, -5703415, -8164212, 11248527, -3691214, -7414184 },
+            { 10379208, -6045554, 8877319, 1473647, -29291284, -12507580, 16690915, 2553332, -3132688, 16400289 },
+         },
+         {
+            { 15716668, 1254266, -18472690, 7446274, -8448918, 6344164, -22097271, -7285580, 26894937, 9132066 },
+            { 24158887, 12938817, 11085297, -8177598, -28063478, -4457083, -30576463, 64452, -6817084, -2692882 },
+            { 13488534, 7794716, 22236231, 5989356, 25426474, -12578208, 2350710, -3418511, -4688006, 2364226 },
+         },
+         {
+            { 16335052, 9132434, 25640582, 6678888, 1725628, 8517937, -11807024, -11697457, 15445875, -7798101 },
+            { 29004207, -7867081, 28661402, -640412, -12794003, -7943086, 31863255, -4135540, -278050, -15759279 },
+            { -6122061, -14866665, -28614905, 14569919, -10857999, -3591829, 10343412, -6976290, -29828287, -10815811 },
+         },
+         {
+            { 27081650, 3463984, 14099042, -4517604, 1616303, -6205604, 29542636, 15372179, 17293797, 960709 },
+            { 20263915, 11434237, -5765435, 11236810, 13505955, -10857102, -16111345, 6493122, -19384511, 7639714 },
+            { -2830798, -14839232, 25403038, -8215196, -8317012, -16173699, 18006287, -16043750, 29994677, -15808121 },
+         },
+         {
+            { 9769828, 5202651, -24157398, -13631392, -28051003, -11561624, -24613141, -13860782, -31184575, 709464 },
+            { 12286395, 13076066, -21775189, -1176622, -25003198, 4057652, -32018128, -8890874, 16102007, 13205847 },
+            { 13733362, 5599946, 10557076, 3195751, -5557991, 8536970, -25540170, 8525972, 10151379, 10394400 },
+         },
+         {
+            { 4024660, -16137551, 22436262, 12276534, -9099015, -2686099, 19698229, 11743039, -33302334, 8934414 },
+            { -15879800, -4525240, -8580747, -2934061, 14634845, -698278, -9449077, 3137094, -11536886, 11721158 },
+            { 17555939, -5013938, 8268606, 2331751, -22738815, 9761013, 9319229, 8835153, -9205489, -1280045 },
+         },
+         {
+            { -461409, -7830014, 20614118, 16688288, -7514766, -4807119, 22300304, 505429, 6108462, -6183415 },
+            { -5070281, 12367917, -30663534, 3234473, 32617080, -8422642, 29880583, -13483331, -26898490, -7867459 },
+            { -31975283, 5726539, 26934134, 10237677, -3173717, -605053, 24199304, 3795095, 7592688, -14992079 },
+         },
+         {
+            { 21594432, -14964228, 17466408, -4077222, 32537084, 2739898, 6407723, 12018833, -28256052, 4298412 },
+            { -20650503, -11961496, -27236275, 570498, 3767144, -1717540, 13891942, -1569194, 13717174, 10805743 },
+            { -14676630, -15644296, 15287174, 11927123, 24177847, -8175568, -796431, 14860609, -26938930, -5863836 },
+         },
+      },
+      {
+         {
+            { 12962541, 5311799, -10060768, 11658280, 18855286, -7954201, 13286263, -12808704, -4381056, 9882022 },
+            { 18512079, 11319350, -20123124, 15090309, 18818594, 5271736, -22727904, 3666879, -23967430, -3299429 },
+            { -6789020, -3146043, 16192429, 13241070, 15898607, -14206114, -10084880, -6661110, -2403099, 5276065 },
+         },
+         {
+            { 30169808, -5317648, 26306206, -11750859, 27814964, 7069267, 7152851, 3684982, 1449224, 13082861 },
+            { 10342826, 3098505, 2119311, 193222, 25702612, 12233820, 23697382, 15056736, -21016438, -8202000 },
+            { -33150110, 3261608, 22745853, 7948688, 19370557, -15177665, -26171976, 6482814, -10300080, -11060101 },
+         },
+         {
+            { 32869458, -5408545, 25609743, 15678670, -10687769, -15471071, 26112421, 2521008, -22664288, 6904815 },
+            { 29506923, 4457497, 3377935, -9796444, -30510046, 12935080, 1561737, 3841096, -29003639, -6657642 },
+            { 10340844, -6630377, -18656632, -2278430, 12621151, -13339055, 30878497, -11824370, -25584551, 5181966 },
+         },
+         {
+            { 25940115, -12658025, 17324188, -10307374, -8671468, 15029094, 24396252, -16450922, -2322852, -12388574 },
+            { -21765684, 9916823, -1300409, 4079498, -1028346, 11909559, 1782390, 12641087, 20603771, -6561742 },
+            { -18882287, -11673380, 24849422, 11501709, 13161720, -4768874, 1925523, 11914390, 4662781, 7820689 },
+         },
+         {
+            { 12241050, -425982, 8132691, 9393934, 32846760, -1599620, 29749456, 12172924, 16136752, 15264020 },
+            { -10349955, -14680563, -8211979, 2330220, -17662549, -14545780, 10658213, 6671822, 19012087, 3772772 },
+            { 3753511, -3421066, 10617074, 2028709, 14841030, -6721664, 28718732, -15762884, 20527771, 12988982 },
+         },
+         {
+            { -14822485, -5797269, -3707987, 12689773, -898983, -10914866, -24183046, -10564943, 3299665, -12424953 },
+            { -16777703, -15253301, -9642417, 4978983, 3308785, 8755439, 6943197, 6461331, -25583147, 8991218 },
+            { -17226263, 1816362, -1673288, -6086439, 31783888, -8175991, -32948145, 7417950, -30242287, 1507265 },
+         },
+         {
+            { 29692663, 6829891, -10498800, 4334896, 20945975, -11906496, -28887608, 8209391, 14606362, -10647073 },
+            { -3481570, 8707081, 32188102, 5672294, 22096700, 1711240, -33020695, 9761487, 4170404, -2085325 },
+            { -11587470, 14855945, -4127778, -1531857, -26649089, 15084046, 22186522, 16002000, -14276837, -8400798 },
+         },
+         {
+            { -4811456, 13761029, -31703877, -2483919, -3312471, 7869047, -7113572, -9620092, 13240845, 10965870 },
+            { -7742563, -8256762, -14768334, -13656260, -23232383, 12387166, 4498947, 14147411, 29514390, 4302863 },
+            { -13413405, -12407859, 20757302, -13801832, 14785143, 8976368, -5061276, -2144373, 17846988, -13971927 },
+         },
+      },
+      {
+         {
+            { -2244452, -754728, -4597030, -1066309, -6247172, 1455299, -21647728, -9214789, -5222701, 12650267 },
+            { -9906797, -16070310, 21134160, 12198166, -27064575, 708126, 387813, 13770293, -19134326, 10958663 },
+            { 22470984, 12369526, 23446014, -5441109, -21520802, -9698723, -11772496, -11574455, -25083830, 4271862 },
+         },
+         {
+            { -25169565, -10053642, -19909332, 15361595, -5984358, 2159192, 75375, -4278529, -32526221, 8469673 },
+            { 15854970, 4148314, -8893890, 7259002, 11666551, 13824734, -30531198, 2697372, 24154791, -9460943 },
+            { 15446137, -15806644, 29759747, 14019369, 30811221, -9610191, -31582008, 12840104, 24913809, 9815020 },
+         },
+         {
+            { -4709286, -5614269, -31841498, -12288893, -14443537, 10799414, -9103676, 13438769, 18735128, 9466238 },
+            { 11933045, 9281483, 5081055, -5183824, -2628162, -4905629, -7727821, -10896103, -22728655, 16199064 },
+            { 14576810, 379472, -26786533, -8317236, -29426508, -10812974, -102766, 1876699, 30801119, 2164795 },
+         },
+         {
+            { 15995086, 3199873, 13672555, 13712240, -19378835, -4647646, -13081610, -15496269, -13492807, 1268052 },
+            { -10290614, -3659039, -3286592, 10948818, 23037027, 3794475, -3470338, -12600221, -17055369, 3565904 },
+            { 29210088, -9419337, -5919792, -4952785, 10834811, -13327726, -16512102, -10820713, -27162222, -14030531 },
+         },
+         {
+            { -13161890, 15508588, 16663704, -8156150, -28349942, 9019123, -29183421, -3769423, 2244111, -14001979 },
+            { -5152875, -3800936, -9306475, -6071583, 16243069, 14684434, -25673088, -16180800, 13491506, 4641841 },
+            { 10813417, 643330, -19188515, -728916, 30292062, -16600078, 27548447, -7721242, 14476989, -12767431 },
+         },
+         {
+            { 10292079, 9984945, 6481436, 8279905, -7251514, 7032743, 27282937, -1644259, -27912810, 12651324 },
+            { -31185513, -813383, 22271204, 11835308, 10201545, 15351028, 17099662, 3988035, 21721536, -3148940 },
+            { 10202177, -6545839, -31373232, -9574638, -32150642, -8119683, -12906320, 3852694, 13216206, 14842320 },
+         },
+         {
+            { -15815640, -10601066, -6538952, -7258995, -6984659, -6581778, -31500847, 13765824, -27434397, 9900184 },
+            { 14465505, -13833331, -32133984, -14738873, -27443187, 12990492, 33046193, 15796406, -7051866, -8040114 },
+            { 30924417, -8279620, 6359016, -12816335, 16508377, 9071735, -25488601, 15413635, 9524356, -7018878 },
+         },
+         {
+            { 12274201, -13175547, 32627641, -1785326, 6736625, 13267305, 5237659, -5109483, 15663516, 4035784 },
+            { -2951309, 8903985, 17349946, 601635, -16432815, -4612556, -13732739, -15889334, -22258478, 4659091 },
+            { -16916263, -4952973, -30393711, -15158821, 20774812, 15897498, 5736189, 15026997, -2178256, -13455585 },
+         },
+      },
+      {
+         {
+            { -8858980, -2219056, 28571666, -10155518, -474467, -10105698, -3801496, 278095, 23440562, -290208 },
+            { 10226241, -5928702, 15139956, 120818, -14867693, 5218603, 32937275, 11551483, -16571960, -7442864 },
+            { 17932739, -12437276, -24039557, 10749060, 11316803, 7535897, 22503767, 5561594, -3646624, 3898661 },
+         },
+         {
+            { 7749907, -969567, -16339731, -16464, -25018111, 15122143, -1573531, 7152530, 21831162, 1245233 },
+            { 26958459, -14658026, 4314586, 8346991, -5677764, 11960072, -32589295, -620035, -30402091, -16716212 },
+            { -12165896, 9166947, 33491384, 13673479, 29787085, 13096535, 6280834, 14587357, -22338025, 13987525 },
+         },
+         {
+            { -24349909, 7778775, 21116000, 15572597, -4833266, -5357778, -4300898, -5124639, -7469781, -2858068 },
+            { 9681908, -6737123, -31951644, 13591838, -6883821, 386950, 31622781, 6439245, -14581012, 4091397 },
+            { -8426427, 1470727, -28109679, -1596990, 3978627, -5123623, -19622683, 12092163, 29077877, -14741988 },
+         },
+         {
+            { 5269168, -6859726, -13230211, -8020715, 25932563, 1763552, -5606110, -5505881, -20017847, 2357889 },
+            { 32264008, -15407652, -5387735, -1160093, -2091322, -3946900, 23104804, -12869908, 5727338, 189038 },
+            { 14609123, -8954470, -6000566, -16622781, -14577387, -7743898, -26745169, 10942115, -25888931, -14884697 },
+         },
+         {
+            { 20513500, 5557931, -15604613, 7829531, 26413943, -2019404, -21378968, 7471781, 13913677, -5137875 },
+            { -25574376, 11967826, 29233242, 12948236, -6754465, 4713227, -8940970, 14059180, 12878652, 8511905 },
+            { -25656801, 3393631, -2955415, -7075526, -2250709, 9366908, -30223418, 6812974, 5568676, -3127656 },
+         },
+         {
+            { 11630004, 12144454, 2116339, 13606037, 27378885, 15676917, -17408753, -13504373, -14395196, 8070818 },
+            { 27117696, -10007378, -31282771, -5570088, 1127282, 12772488, -29845906, 10483306, -11552749, -1028714 },
+            { 10637467, -5688064, 5674781, 1072708, -26343588, -6982302, -1683975, 9177853, -27493162, 15431203 },
+         },
+         {
+            { 20525145, 10892566, -12742472, 12779443, -29493034, 16150075, -28240519, 14943142, -15056790, -7935931 },
+            { -30024462, 5626926, -551567, -9981087, 753598, 11981191, 25244767, -3239766, -3356550, 9594024 },
+            { -23752644, 2636870, -5163910, -10103818, 585134, 7877383, 11345683, -6492290, 13352335, -10977084 },
+         },
+         {
+            { -1931799, -5407458, 3304649, -12884869, 17015806, -4877091, -29783850, -7752482, -13215537, -319204 },
+            { 20239939, 6607058, 6203985, 3483793, -18386976, -779229, -20723742, 15077870, -22750759, 14523817 },
+            { 27406042, -6041657, 27423596, -4497394, 4996214, 10002360, -28842031, -4545494, -30172742, -4805667 },
+         },
+      },
+      {
+         {
+            { 11374242, 12660715, 17861383, -12540833, 10935568, 1099227, -13886076, -9091740, -27727044, 11358504 },
+            { -12730809, 10311867, 1510375, 10778093, -2119455, -9145702, 32676003, 11149336, -26123651, 4985768 },
+            { -19096303, 341147, -6197485, -239033, 15756973, -8796662, -983043, 13794114, -19414307, -15621255 },
+         },
+         {
+            { 6490081, 11940286, 25495923, -7726360, 8668373, -8751316, 3367603, 6970005, -1691065, -9004790 },
+            { 1656497, 13457317, 15370807, 6364910, 13605745, 8362338, -19174622, -5475723, -16796596, -5031438 },
+            { -22273315, -13524424, -64685, -4334223, -18605636, -10921968, -20571065, -7007978, -99853, -10237333 },
+         },
+         {
+            { 17747465, 10039260, 19368299, -4050591, -20630635, -16041286, 31992683, -15857976, -29260363, -5511971 },
+            { 31932027, -4986141, -19612382, 16366580, 22023614, 88450, 11371999, -3744247, 4882242, -10626905 },
+            { 29796507, 37186, 19818052, 10115756, -11829032, 3352736, 18551198, 3272828, -5190932, -4162409 },
+         },
+         {
+            { 12501286, 4044383, -8612957, -13392385, -32430052, 5136599, -19230378, -3529697, 330070, -3659409 },
+            { 6384877, 2899513, 17807477, 7663917, -2358888, 12363165, 25366522, -8573892, -271295, 12071499 },
+            { -8365515, -4042521, 25133448, -4517355, -6211027, 2265927, -32769618, 1936675, -5159697, 3829363 },
+         },
+         {
+            { 28425966, -5835433, -577090, -4697198, -14217555, 6870930, 7921550, -6567787, 26333140, 14267664 },
+            { -11067219, 11871231, 27385719, -10559544, -4585914, -11189312, 10004786, -8709488, -21761224, 8930324 },
+            { -21197785, -16396035, 25654216, -1725397, 12282012, 11008919, 1541940, 4757911, -26491501, -16408940 },
+         },
+         {
+            { 13537262, -7759490, -20604840, 10961927, -5922820, -13218065, -13156584, 6217254, -15943699, 13814990 },
+            { -17422573, 15157790, 18705543, 29619, 24409717, -260476, 27361681, 9257833, -1956526, -1776914 },
+            { -25045300, -10191966, 15366585, 15166509, -13105086, 8423556, -29171540, 12361135, -18685978, 4578290 },
+         },
+         {
+            { 24579768, 3711570, 1342322, -11180126, -27005135, 14124956, -22544529, 14074919, 21964432, 8235257 },
+            { -6528613, -2411497, 9442966, -5925588, 12025640, -1487420, -2981514, -1669206, 13006806, 2355433 },
+            { -16304899, -13605259, -6632427, -5142349, 16974359, -10911083, 27202044, 1719366, 1141648, -12796236 },
+         },
+         {
+            { -12863944, -13219986, -8318266, -11018091, -6810145, -4843894, 13475066, -3133972, 32674895, 13715045 },
+            { 11423335, -5468059, 32344216, 8962751, 24989809, 9241752, -13265253, 16086212, -28740881, -15642093 },
+            { -1409668, 12530728, -6368726, 10847387, 19531186, -14132160, -11709148, 7791794, -27245943, 4383347 },
+         },
+      },
+      {
+         {
+            { -28970898, 5271447, -1266009, -9736989, -12455236, 16732599, -4862407, -4906449, 27193557, 6245191 },
+            { -15193956, 5362278, -1783893, 2695834, 4960227, 12840725, 23061898, 3260492, 22510453, 8577507 },
+            { -12632451, 11257346, -32692994, 13548177, -721004, 10879011, 31168030, 13952092, -29571492, -3635906 },
+         },
+         {
+            { 3877321, -9572739, 32416692, 5405324, -11004407, -13656635, 3759769, 11935320, 5611860, 8164018 },
+            { -16275802, 14667797, 15906460, 12155291, -22111149, -9039718, 32003002, -8832289, 5773085, -8422109 },
+            { -23788118, -8254300, 1950875, 8937633, 18686727, 16459170, -905725, 12376320, 31632953, 190926 },
+         },
+         {
+            { -24593607, -16138885, -8423991, 13378746, 14162407, 6901328, -8288749, 4508564, -25341555, -3627528 },
+            { 8884438, -5884009, 6023974, 10104341, -6881569, -4941533, 18722941, -14786005, -1672488, 827625 },
+            { -32720583, -16289296, -32503547, 7101210, 13354605, 2659080, -1800575, -14108036, -24878478, 1541286 },
+         },
+         {
+            { 2901347, -1117687, 3880376, -10059388, -17620940, -3612781, -21802117, -3567481, 20456845, -1885033 },
+            { 27019610, 12299467, -13658288, -1603234, -12861660, -4861471, -19540150, -5016058, 29439641, 15138866 },
+            { 21536104, -6626420, -32447818, -10690208, -22408077, 5175814, -5420040, -16361163, 7779328, 109896 },
+         },
+         {
+            { 30279744, 14648750, -8044871, 6425558, 13639621, -743509, 28698390, 12180118, 23177719, -554075 },
+            { 26572847, 3405927, -31701700, 12890905, -19265668, 5335866, -6493768, 2378492, 4439158, -13279347 },
+            { -22716706, 3489070, -9225266, -332753, 18875722, -1140095, 14819434, -12731527, -17717757, -5461437 },
+         },
+         {
+            { -5056483, 16566551, 15953661, 3767752, -10436499, 15627060, -820954, 2177225, 8550082, -15114165 },
+            { -18473302, 16596775, -381660, 15663611, 22860960, 15585581, -27844109, -3582739, -23260460, -8428588 },
+            { -32480551, 15707275, -8205912, -5652081, 29464558, 2713815, -22725137, 15860482, -21902570, 1494193 },
+         },
+         {
+            { -19562091, -14087393, -25583872, -9299552, 13127842, 759709, 21923482, 16529112, 8742704, 12967017 },
+            { -28464899, 1553205, 32536856, -10473729, -24691605, -406174, -8914625, -2933896, -29903758, 15553883 },
+            { 21877909, 3230008, 9881174, 10539357, -4797115, 2841332, 11543572, 14513274, 19375923, -12647961 },
+         },
+         {
+            { 8832269, -14495485, 13253511, 5137575, 5037871, 4078777, 24880818, -6222716, 2862653, 9455043 },
+            { 29306751, 5123106, 20245049, -14149889, 9592566, 8447059, -2077124, -2990080, 15511449, 4789663 },
+            { -20679756, 7004547, 8824831, -9434977, -4045704, -3750736, -5754762, 108893, 23513200, 16652362 },
+         },
+      },
+      {
+         {
+            { -33256173, 4144782, -4476029, -6579123, 10770039, -7155542, -6650416, -12936300, -18319198, 10212860 },
+            { 2756081, 8598110, 7383731, -6859892, 22312759, -1105012, 21179801, 2600940, -9988298, -12506466 },
+            { -24645692, 13317462, -30449259, -15653928, 21365574, -10869657, 11344424, 864440, -2499677, -16710063 },
+         },
+         {
+            { -26432803, 6148329, -17184412, -14474154, 18782929, -275997, -22561534, 211300, 2719757, 4940997 },
+            { -1323882, 3911313, -6948744, 14759765, -30027150, 7851207, 21690126, 8518463, 26699843, 5276295 },
+            { -13149873, -6429067, 9396249, 365013, 24703301, -10488939, 1321586, 149635, -15452774, 7159369 },
+         },
+         {
+            { 9987780, -3404759, 17507962, 9505530, 9731535, -2165514, 22356009, 8312176, 22477218, -8403385 },
+            { 18155857, -16504990, 19744716, 9006923, 15154154, -10538976, 24256460, -4864995, -22548173, 9334109 },
+            { 2986088, -4911893, 10776628, -3473844, 10620590, -7083203, -21413845, 14253545, -22587149, 536906 },
+         },
+         {
+            { 4377756, 8115836, 24567078, 15495314, 11625074, 13064599, 7390551, 10589625, 10838060, -15420424 },
+            { -19342404, 867880, 9277171, -3218459, -14431572, -1986443, 19295826, -15796950, 6378260, 699185 },
+            { 7895026, 4057113, -7081772, -13077756, -17886831, -323126, -716039, 15693155, -5045064, -13373962 },
+         },
+         {
+            { -7737563, -5869402, -14566319, -7406919, 11385654, 13201616, 31730678, -10962840, -3918636, -9669325 },
+            { 10188286, -15770834, -7336361, 13427543, 22223443, 14896287, 30743455, 7116568, -21786507, 5427593 },
+            { 696102, 13206899, 27047647, -10632082, 15285305, -9853179, 10798490, -4578720, 19236243, 12477404 },
+         },
+         {
+            { -11229439, 11243796, -17054270, -8040865, -788228, -8167967, -3897669, 11180504, -23169516, 7733644 },
+            { 17800790, -14036179, -27000429, -11766671, 23887827, 3149671, 23466177, -10538171, 10322027, 15313801 },
+            { 26246234, 11968874, 32263343, -5468728, 6830755, -13323031, -15794704, -101982, -24449242, 10890804 },
+         },
+         {
+            { -31365647, 10271363, -12660625, -6267268, 16690207, -13062544, -14982212, 16484931, 25180797, -5334884 },
+            { -586574, 10376444, -32586414, -11286356, 19801893, 10997610, 2276632, 9482883, 316878, 13820577 },
+            { -9882808, -4510367, -2115506, 16457136, -11100081, 11674996, 30756178, -7515054, 30696930, -3712849 },
+         },
+         {
+            { 32988917, -9603412, 12499366, 7910787, -10617257, -11931514, -7342816, -9985397, -32349517, 7392473 },
+            { -8855661, 15927861, 9866406, -3649411, -2396914, -16655781, -30409476, -9134995, 25112947, -2926644 },
+            { -2504044, -436966, 25621774, -5678772, 15085042, -5479877, -24884878, -13526194, 5537438, -13914319 },
+         },
+      },
+      {
+         {
+            { -11225584, 2320285, -9584280, 10149187, -33444663, 5808648, -14876251, -1729667, 31234590, 6090599 },
+            { -9633316, 116426, 26083934, 2897444, -6364437, -2688086, 609721, 15878753, -6970405, -9034768 },
+            { -27757857, 247744, -15194774, -9002551, 23288161, -10011936, -23869595, 6503646, 20650474, 1804084 },
+         },
+         {
+            { -27589786, 15456424, 8972517, 8469608, 15640622, 4439847, 3121995, -10329713, 27842616, -202328 },
+            { -15306973, 2839644, 22530074, 10026331, 4602058, 5048462, 28248656, 5031932, -11375082, 12714369 },
+            { 20807691, -7270825, 29286141, 11421711, -27876523, -13868230, -21227475, 1035546, -19733229, 12796920 },
+         },
+         {
+            { 12076899, -14301286, -8785001, -11848922, -25012791, 16400684, -17591495, -12899438, 3480665, -15182815 },
+            { -32361549, 5457597, 28548107, 7833186, 7303070, -11953545, -24363064, -15921875, -33374054, 2771025 },
+            { -21389266, 421932, 26597266, 6860826, 22486084, -6737172, -17137485, -4210226, -24552282, 15673397 },
+         },
+         {
+            { -20184622, 2338216, 19788685, -9620956, -4001265, -8740893, -20271184, 4733254, 3727144, -12934448 },
+            { 6120119, 814863, -11794402, -622716, 6812205, -15747771, 2019594, 7975683, 31123697, -10958981 },
+            { 30069250, -11435332, 30434654, 2958439, 18399564, -976289, 12296869, 9204260, -16432438, 9648165 },
+         },
+         {
+            { 32705432, -1550977, 30705658, 7451065, -11805606, 9631813, 3305266, 5248604, -26008332, -11377501 },
+            { 17219865, 2375039, -31570947, -5575615, -19459679, 9219903, 294711, 15298639, 2662509, -16297073 },
+            { -1172927, -7558695, -4366770, -4287744, -21346413, -8434326, 32087529, -1222777, 32247248, -14389861 },
+         },
+         {
+            { 14312628, 1221556, 17395390, -8700143, -4945741, -8684635, -28197744, -9637817, -16027623, -13378845 },
+            { -1428825, -9678990, -9235681, 6549687, -7383069, -468664, 23046502, 9803137, 17597934, 2346211 },
+            { 18510800, 15337574, 26171504, 981392, -22241552, 7827556, -23491134, -11323352, 3059833, -11782870 },
+         },
+         {
+            { 10141598, 6082907, 17829293, -1947643, 9830092, 13613136, -25556636, -5544586, -33502212, 3592096 },
+            { 33114168, -15889352, -26525686, -13343397, 33076705, 8716171, 1151462, 1521897, -982665, -6837803 },
+            { -32939165, -4255815, 23947181, -324178, -33072974, -12305637, -16637686, 3891704, 26353178, 693168 },
+         },
+         {
+            { 30374239, 1595580, -16884039, 13186931, 4600344, 406904, 9585294, -400668, 31375464, 14369965 },
+            { -14370654, -7772529, 1510301, 6434173, -18784789, -6262728, 32732230, -13108839, 17901441, 16011505 },
+            { 18171223, -11934626, -12500402, 15197122, -11038147, -15230035, -19172240, -16046376, 8764035, 12309598 },
+         },
+      },
+      {
+         {
+            { 5975908, -5243188, -19459362, -9681747, -11541277, 14015782, -23665757, 1228319, 17544096, -10593782 },
+            { 5811932, -1715293, 3442887, -2269310, -18367348, -8359541, -18044043, -15410127, -5565381, 12348900 },
+            { -31399660, 11407555, 25755363, 6891399, -3256938, 14872274, -24849353, 8141295, -10632534, -585479 },
+         },
+         {
+            { -12675304, 694026, -5076145, 13300344, 14015258, -14451394, -9698672, -11329050, 30944593, 1130208 },
+            { 8247766, -6710942, -26562381, -7709309, -14401939, -14648910, 4652152, 2488540, 23550156, -271232 },
+            { 17294316, -3788438, 7026748, 15626851, 22990044, 113481, 2267737, -5908146, -408818, -137719 },
+         },
+         {
+            { 16091085, -16253926, 18599252, 7340678, 2137637, -1221657, -3364161, 14550936, 3260525, -7166271 },
+            { -4910104, -13332887, 18550887, 10864893, -16459325, -7291596, -23028869, -13204905, -12748722, 2701326 },
+            { -8574695, 16099415, 4629974, -16340524, -20786213, -6005432, -10018363, 9276971, 11329923, 1862132 },
+         },
+         {
+            { 14763076, -15903608, -30918270, 3689867, 3511892, 10313526, -21951088, 12219231, -9037963, -940300 },
+            { 8894987, -3446094, 6150753, 3013931, 301220, 15693451, -31981216, -2909717, -15438168, 11595570 },
+            { 15214962, 3537601, -26238722, -14058872, 4418657, -15230761, 13947276, 10730794, -13489462, -4363670 },
+         },
+         {
+            { -2538306, 7682793, 32759013, 263109, -29984731, -7955452, -22332124, -10188635, 977108, 699994 },
+            { -12466472, 4195084, -9211532, 550904, -15565337, 12917920, 19118110, -439841, -30534533, -14337913 },
+            { 31788461, -14507657, 4799989, 7372237, 8808585, -14747943, 9408237, -10051775, 12493932, -5409317 },
+         },
+         {
+            { -25680606, 5260744, -19235809, -6284470, -3695942, 16566087, 27218280, 2607121, 29375955, 6024730 },
+            { 842132, -2794693, -4763381, -8722815, 26332018, -12405641, 11831880, 6985184, -9940361, 2854096 },
+            { -4847262, -7969331, 2516242, -5847713, 9695691, -7221186, 16512645, 960770, 12121869, 16648078 },
+         },
+         {
+            { -15218652, 14667096, -13336229, 2013717, 30598287, -464137, -31504922, -7882064, 20237806, 2838411 },
+            { -19288047, 4453152, 15298546, -16178388, 22115043, -15972604, 12544294, -13470457, 1068881, -12499905 },
+            { -9558883, -16518835, 33238498, 13506958, 30505848, -1114596, -8486907, -2630053, 12521378, 4845654 },
+         },
+         {
+            { -28198521, 10744108, -2958380, 10199664, 7759311, -13088600, 3409348, -873400, -6482306, -12885870 },
+            { -23561822, 6230156, -20382013, 10655314, -24040585, -11621172, 10477734, -1240216, -3113227, 13974498 },
+            { 12966261, 15550616, -32038948, -1615346, 21025980, -629444, 5642325, 7188737, 18895762, 12629579 },
+         },
+      },
+      {
+         {
+            { 14741879, -14946887, 22177208, -11721237, 1279741, 8058600, 11758140, 789443, 32195181, 3895677 },
+            { 10758205, 15755439, -4509950, 9243698, -4879422, 6879879, -2204575, -3566119, -8982069, 4429647 },
+            { -2453894, 15725973, -20436342, -10410672, -5803908, -11040220, -7135870, -11642895, 18047436, -15281743 },
+         },
+         {
+            { -25173001, -11307165, 29759956, 11776784, -22262383, -15820455, 10993114, -12850837, -17620701, -9408468 },
+            { 21987233, 700364, -24505048, 14972008, -7774265, -5718395, 32155026, 2581431, -29958985, 8773375 },
+            { -25568350, 454463, -13211935, 16126715, 25240068, 8594567, 20656846, 12017935, -7874389, -13920155 },
+         },
+         {
+            { 6028182, 6263078, -31011806, -11301710, -818919, 2461772, -31841174, -5468042, -1721788, -2776725 },
+            { -12278994, 16624277, 987579, -5922598, 32908203, 1248608, 7719845, -4166698, 28408820, 6816612 },
+            { -10358094, -8237829, 19549651, -12169222, 22082623, 16147817, 20613181, 13982702, -10339570, 5067943 },
+         },
+         {
+            { -30505967, -3821767, 12074681, 13582412, -19877972, 2443951, -19719286, 12746132, 5331210, -10105944 },
+            { 30528811, 3601899, -1957090, 4619785, -27361822, -15436388, 24180793, -12570394, 27679908, -1648928 },
+            { 9402404, -13957065, 32834043, 10838634, -26580150, -13237195, 26653274, -8685565, 22611444, -12715406 },
+         },
+         {
+            { 22190590, 1118029, 22736441, 15130463, -30460692, -5991321, 19189625, -4648942, 4854859, 6622139 },
+            { -8310738, -2953450, -8262579, -3388049, -10401731, -271929, 13424426, -3567227, 26404409, 13001963 },
+            { -31241838, -15415700, -2994250, 8939346, 11562230, -12840670, -26064365, -11621720, -15405155, 11020693 },
+         },
+         {
+            { 1866042, -7949489, -7898649, -10301010, 12483315, 13477547, 3175636, -12424163, 28761762, 1406734 },
+            { -448555, -1777666, 13018551, 3194501, -9580420, -11161737, 24760585, -4347088, 25577411, -13378680 },
+            { -24290378, 4759345, -690653, -1852816, 2066747, 10693769, -29595790, 9884936, -9368926, 4745410 },
+         },
+         {
+            { -9141284, 6049714, -19531061, -4341411, -31260798, 9944276, -15462008, -11311852, 10931924, -11931931 },
+            { -16561513, 14112680, -8012645, 4817318, -8040464, -11414606, -22853429, 10856641, -20470770, 13434654 },
+            { 22759489, -10073434, -16766264, -1871422, 13637442, -10168091, 1765144, -12654326, 28445307, -5364710 },
+         },
+         {
+            { 29875063, 12493613, 2795536, -3786330, 1710620, 15181182, -10195717, -8788675, 9074234, 1167180 },
+            { -26205683, 11014233, -9842651, -2635485, -26908120, 7532294, -18716888, -9535498, 3843903, 9367684 },
+            { -10969595, -6403711, 9591134, 9582310, 11349256, 108879, 16235123, 8601684, -139197, 4242895 },
+         },
+      },
+      {
+         {
+            { 22092954, -13191123, -2042793, -11968512, 32186753, -11517388, -6574341, 2470660, -27417366, 16625501 },
+            { -11057722, 3042016, 13770083, -9257922, 584236, -544855, -7770857, 2602725, -27351616, 14247413 },
+            { 6314175, -10264892, -32772502, 15957557, -10157730, 168750, -8618807, 14290061, 27108877, -1180880 },
+         },
+         {
+            { -8586597, -7170966, 13241782, 10960156, -32991015, -13794596, 33547976, -11058889, -27148451, 981874 },
+            { 22833440, 9293594, -32649448, -13618667, -9136966, 14756819, -22928859, -13970780, -10479804, -16197962 },
+            { -7768587, 3326786, -28111797, 10783824, 19178761, 14905060, 22680049, 13906969, -15933690, 3797899 },
+         },
+         {
+            { 21721356, -4212746, -12206123, 9310182, -3882239, -13653110, 23740224, -2709232, 20491983, -8042152 },
+            { 9209270, -15135055, -13256557, -6167798, -731016, 15289673, 25947805, 15286587, 30997318, -6703063 },
+            { 7392032, 16618386, 23946583, -8039892, -13265164, -1533858, -14197445, -2321576, 17649998, -250080 },
+         },
+         {
+            { -9301088, -14193827, 30609526, -3049543, -25175069, -1283752, -15241566, -9525724, -2233253, 7662146 },
+            { -17558673, 1763594, -33114336, 15908610, -30040870, -12174295, 7335080, -8472199, -3174674, 3440183 },
+            { -19889700, -5977008, -24111293, -9688870, 10799743, -16571957, 40450, -4431835, 4862400, 1133 },
+         },
+         {
+            { -32856209, -7873957, -5422389, 14860950, -16319031, 7956142, 7258061, 311861, -30594991, -7379421 },
+            { -3773428, -1565936, 28985340, 7499440, 24445838, 9325937, 29727763, 16527196, 18278453, 15405622 },
+            { -4381906, 8508652, -19898366, -3674424, -5984453, 15149970, -13313598, 843523, -21875062, 13626197 },
+         },
+         {
+            { 2281448, -13487055, -10915418, -2609910, 1879358, 16164207, -10783882, 3953792, 13340839, 15928663 },
+            { 31727126, -7179855, -18437503, -8283652, 2875793, -16390330, -25269894, -7014826, -23452306, 5964753 },
+            { 4100420, -5959452, -17179337, 6017714, -18705837, 12227141, -26684835, 11344144, 2538215, -7570755 },
+         },
+         {
+            { -9433605, 6123113, 11159803, -2156608, 30016280, 14966241, -20474983, 1485421, -629256, -15958862 },
+            { -26804558, 4260919, 11851389, 9658551, -32017107, 16367492, -20205425, -13191288, 11659922, -11115118 },
+            { 26180396, 10015009, -30844224, -8581293, 5418197, 9480663, 2231568, -10170080, 33100372, -1306171 },
+         },
+         {
+            { 15121113, -5201871, -10389905, 15427821, -27509937, -15992507, 21670947, 4486675, -5931810, -14466380 },
+            { 16166486, -9483733, -11104130, 6023908, -31926798, -1364923, 2340060, -16254968, -10735770, -10039824 },
+            { 28042865, -3557089, -12126526, 12259706, -3717498, -6945899, 6766453, -8689599, 18036436, 5803270 },
+         },
+      },
+      {
+         {
+            { -817581, 6763912, 11803561, 1585585, 10958447, -2671165, 23855391, 4598332, -6159431, -14117438 },
+            { -31031306, -14256194, 17332029, -2383520, 31312682, -5967183, 696309, 50292, -20095739, 11763584 },
+            { -594563, -2514283, -32234153, 12643980, 12650761, 14811489, 665117, -12613632, -19773211, -10713562 },
+         },
+         {
+            { 30464590, -11262872, -4127476, -12734478, 19835327, -7105613, -24396175, 2075773, -17020157, 992471 },
+            { 18357185, -6994433, 7766382, 16342475, -29324918, 411174, 14578841, 8080033, -11574335, -10601610 },
+            { 19598397, 10334610, 12555054, 2555664, 18821899, -10339780, 21873263, 16014234, 26224780, 16452269 },
+         },
+         {
+            { -30223925, 5145196, 5944548, 16385966, 3976735, 2009897, -11377804, -7618186, -20533829, 3698650 },
+            { 14187449, 3448569, -10636236, -10810935, -22663880, -3433596, 7268410, -10890444, 27394301, 12015369 },
+            { 19695761, 16087646, 28032085, 12999827, 6817792, 11427614, 20244189, -1312777, -13259127, -3402461 },
+         },
+         {
+            { 30860103, 12735208, -1888245, -4699734, -16974906, 2256940, -8166013, 12298312, -8550524, -10393462 },
+            { -5719826, -11245325, -1910649, 15569035, 26642876, -7587760, -5789354, -15118654, -4976164, 12651793 },
+            { -2848395, 9953421, 11531313, -5282879, 26895123, -12697089, -13118820, -16517902, 9768698, -2533218 },
+         },
+         {
+            { -24719459, 1894651, -287698, -4704085, 15348719, -8156530, 32767513, 12765450, 4940095, 10678226 },
+            { 18860224, 15980149, -18987240, -1562570, -26233012, -11071856, -7843882, 13944024, -24372348, 16582019 },
+            { -15504260, 4970268, -29893044, 4175593, -20993212, -2199756, -11704054, 15444560, -11003761, 7989037 },
+         },
+         {
+            { 31490452, 5568061, -2412803, 2182383, -32336847, 4531686, -32078269, 6200206, -19686113, -14800171 },
+            { -17308668, -15879940, -31522777, -2831, -32887382, 16375549, 8680158, -16371713, 28550068, -6857132 },
+            { -28126887, -5688091, 16837845, -1820458, -6850681, 12700016, -30039981, 4364038, 1155602, 5988841 },
+         },
+         {
+            { 21890435, -13272907, -12624011, 12154349, -7831873, 15300496, 23148983, -4470481, 24618407, 8283181 },
+            { -33136107, -10512751, 9975416, 6841041, -31559793, 16356536, 3070187, -7025928, 1466169, 10740210 },
+            { -1509399, -15488185, -13503385, -10655916, 32799044, 909394, -13938903, -5779719, -32164649, -15327040 },
+         },
+         {
+            { 3960823, -14267803, -28026090, -15918051, -19404858, 13146868, 15567327, 951507, -3260321, -573935 },
+            { 24740841, 5052253, -30094131, 8961361, 25877428, 6165135, -24368180, 14397372, -7380369, -6144105 },
+            { -28888365, 3510803, -28103278, -1158478, -11238128, -10631454, -15441463, -14453128, -1625486, -6494814 },
+         },
+      },
+      {
+         {
+            { 793299, -9230478, 8836302, -6235707, -27360908, -2369593, 33152843, -4885251, -9906200, -621852 },
+            { 5666233, 525582, 20782575, -8038419, -24538499, 14657740, 16099374, 1468826, -6171428, -15186581 },
+            { -4859255, -3779343, -2917758, -6748019, 7778750, 11688288, -30404353, -9871238, -1558923, -9863646 },
+         },
+         {
+            { 10896332, -7719704, 824275, 472601, -19460308, 3009587, 25248958, 14783338, -30581476, -15757844 },
+            { 10566929, 12612572, -31944212, 11118703, -12633376, 12362879, 21752402, 8822496, 24003793, 14264025 },
+            { 27713862, -7355973, -11008240, 9227530, 27050101, 2504721, 23886875, -13117525, 13958495, -5732453 },
+         },
+         {
+            { -23481610, 4867226, -27247128, 3900521, 29838369, -8212291, -31889399, -10041781, 7340521, -15410068 },
+            { 4646514, -8011124, -22766023, -11532654, 23184553, 8566613, 31366726, -1381061, -15066784, -10375192 },
+            { -17270517, 12723032, -16993061, 14878794, 21619651, -6197576, 27584817, 3093888, -8843694, 3849921 },
+         },
+         {
+            { -9064912, 2103172, 25561640, -15125738, -5239824, 9582958, 32477045, -9017955, 5002294, -15550259 },
+            { -12057553, -11177906, 21115585, -13365155, 8808712, -12030708, 16489530, 13378448, -25845716, 12741426 },
+            { -5946367, 10645103, -30911586, 15390284, -3286982, -7118677, 24306472, 15852464, 28834118, -7646072 },
+         },
+         {
+            { -17335748, -9107057, -24531279, 9434953, -8472084, -583362, -13090771, 455841, 20461858, 5491305 },
+            { 13669248, -16095482, -12481974, -10203039, -14569770, -11893198, -24995986, 11293807, -28588204, -9421832 },
+            { 28497928, 6272777, -33022994, 14470570, 8906179, -1225630, 18504674, -14165166, 29867745, -8795943 },
+         },
+         {
+            { -16207023, 13517196, -27799630, -13697798, 24009064, -6373891, -6367600, -13175392, 22853429, -4012011 },
+            { 24191378, 16712145, -13931797, 15217831, 14542237, 1646131, 18603514, -11037887, 12876623, -2112447 },
+            { 17902668, 4518229, -411702, -2829247, 26878217, 5258055, -12860753, 608397, 16031844, 3723494 },
+         },
+         {
+            { -28632773, 12763728, -20446446, 7577504, 33001348, -13017745, 17558842, -7872890, 23896954, -4314245 },
+            { -20005381, -12011952, 31520464, 605201, 2543521, 5991821, -2945064, 7229064, -9919646, -8826859 },
+            { 28816045, 298879, -28165016, -15920938, 19000928, -1665890, -12680833, -2949325, -18051778, -2082915 },
+         },
+         {
+            { 16000882, -344896, 3493092, -11447198, -29504595, -13159789, 12577740, 16041268, -19715240, 7847707 },
+            { 10151868, 10572098, 27312476, 7922682, 14825339, 4723128, -32855931, -6519018, -10020567, 3852848 },
+            { -11430470, 15697596, -21121557, -4420647, 5386314, 15063598, 16514493, -15932110, 29330899, -15076224 },
+         },
+      },
+      {
+         {
+            { -25499735, -4378794, -15222908, -6901211, 16615731, 2051784, 3303702, 15490, -27548796, 12314391 },
+            { 15683520, -6003043, 18109120, -9980648, 15337968, -5997823, -16717435, 15921866, 16103996, -3731215 },
+            { -23169824, -10781249, 13588192, -1628807, -3798557, -1074929, -19273607, 5402699, -29815713, -9841101 },
+         },
+         {
+            { 23190676, 2384583, -32714340, 3462154, -29903655, -1529132, -11266856, 8911517, -25205859, 2739713 },
+            { 21374101, -3554250, -33524649, 9874411, 15377179, 11831242, -33529904, 6134907, 4931255, 11987849 },
+            { -7732, -2978858, -16223486, 7277597, 105524, -322051, -31480539, 13861388, -30076310, 10117930 },
+         },
+         {
+            { -29501170, -10744872, -26163768, 13051539, -25625564, 5089643, -6325503, 6704079, 12890019, 15728940 },
+            { -21972360, -11771379, -951059, -4418840, 14704840, 2695116, 903376, -10428139, 12885167, 8311031 },
+            { -17516482, 5352194, 10384213, -13811658, 7506451, 13453191, 26423267, 4384730, 1888765, -5435404 },
+         },
+         {
+            { -25817338, -3107312, -13494599, -3182506, 30896459, -13921729, -32251644, -12707869, -19464434, -3340243 },
+            { -23607977, -2665774, -526091, 4651136, 5765089, 4618330, 6092245, 14845197, 17151279, -9854116 },
+            { -24830458, -12733720, -15165978, 10367250, -29530908, -265356, 22825805, -7087279, -16866484, 16176525 },
+         },
+         {
+            { -23583256, 6564961, 20063689, 3798228, -4740178, 7359225, 2006182, -10363426, -28746253, -10197509 },
+            { -10626600, -4486402, -13320562, -5125317, 3432136, -6393229, 23632037, -1940610, 32808310, 1099883 },
+            { 15030977, 5768825, -27451236, -2887299, -6427378, -15361371, -15277896, -6809350, 2051441, -15225865 },
+         },
+         {
+            { -3362323, -7239372, 7517890, 9824992, 23555850, 295369, 5148398, -14154188, -22686354, 16633660 },
+            { 4577086, -16752288, 13249841, -15304328, 19958763, -14537274, 18559670, -10759549, 8402478, -9864273 },
+            { -28406330, -1051581, -26790155, -907698, -17212414, -11030789, 9453451, -14980072, 17983010, 9967138 },
+         },
+         {
+            { -25762494, 6524722, 26585488, 9969270, 24709298, 1220360, -1677990, 7806337, 17507396, 3651560 },
+            { -10420457, -4118111, 14584639, 15971087, -15768321, 8861010, 26556809, -5574557, -18553322, -11357135 },
+            { 2839101, 14284142, 4029895, 3472686, 14402957, 12689363, -26642121, 8459447, -5605463, -7621941 },
+         },
+         {
+            { -4839289, -3535444, 9744961, 2871048, 25113978, 3187018, -25110813, -849066, 17258084, -7977739 },
+            { 18164541, -10595176, -17154882, -1542417, 19237078, -9745295, 23357533, -15217008, 26908270, 12150756 },
+            { -30264870, -7647865, 5112249, -7036672, -1499807, -6974257, 43168, -5537701, -32302074, 16215819 },
+         },
+      },
+      {
+         {
+            { -6898905, 9824394, -12304779, -4401089, -31397141, -6276835, 32574489, 12532905, -7503072, -8675347 },
+            { -27343522, -16515468, -27151524, -10722951, 946346, 16291093, 254968, 7168080, 21676107, -1943028 },
+            { 21260961, -8424752, -16831886, -11920822, -23677961, 3968121, -3651949, -6215466, -3556191, -7913075 },
+         },
+         {
+            { 16544754, 13250366, -16804428, 15546242, -4583003, 12757258, -2462308, -8680336, -18907032, -9662799 },
+            { -2415239, -15577728, 18312303, 4964443, -15272530, -12653564, 26820651, 16690659, 25459437, -4564609 },
+            { -25144690, 11425020, 28423002, -11020557, -6144921, -15826224, 9142795, -2391602, -6432418, -1644817 },
+         },
+         {
+            { -23104652, 6253476, 16964147, -3768872, -25113972, -12296437, -27457225, -16344658, 6335692, 7249989 },
+            { -30333227, 13979675, 7503222, -12368314, -11956721, -4621693, -30272269, 2682242, 25993170, -12478523 },
+            { 4364628, 5930691, 32304656, -10044554, -8054781, 15091131, 22857016, -10598955, 31820368, 15075278 },
+         },
+         {
+            { 31879134, -8918693, 17258761, 90626, -8041836, -4917709, 24162788, -9650886, -17970238, 12833045 },
+            { 19073683, 14851414, -24403169, -11860168, 7625278, 11091125, -19619190, 2074449, -9413939, 14905377 },
+            { 24483667, -11935567, -2518866, -11547418, -1553130, 15355506, -25282080, 9253129, 27628530, -7555480 },
+         },
+         {
+            { 17597607, 8340603, 19355617, 552187, 26198470, -3176583, 4593324, -9157582, -14110875, 15297016 },
+            { 510886, 14337390, -31785257, 16638632, 6328095, 2713355, -20217417, -11864220, 8683221, 2921426 },
+            { 18606791, 11874196, 27155355, -5281482, -24031742, 6265446, -25178240, -1278924, 4674690, 13890525 },
+         },
+         {
+            { 13609624, 13069022, -27372361, -13055908, 24360586, 9592974, 14977157, 9835105, 4389687, 288396 },
+            { 9922506, -519394, 13613107, 5883594, -18758345, -434263, -12304062, 8317628, 23388070, 16052080 },
+            { 12720016, 11937594, -31970060, -5028689, 26900120, 8561328, -20155687, -11632979, -14754271, -10812892 },
+         },
+         {
+            { 15961858, 14150409, 26716931, -665832, -22794328, 13603569, 11829573, 7467844, -28822128, 929275 },
+            { 11038231, -11582396, -27310482, -7316562, -10498527, -16307831, -23479533, -9371869, -21393143, 2465074 },
+            { 20017163, -4323226, 27915242, 1529148, 12396362, 15675764, 13817261, -9658066, 2463391, -4622140 },
+         },
+         {
+            { -16358878, -12663911, -12065183, 4996454, -1256422, 1073572, 9583558, 12851107, 4003896, 12673717 },
+            { -1731589, -15155870, -3262930, 16143082, 19294135, 13385325, 14741514, -9103726, 7903886, 2348101 },
+            { 24536016, -16515207, 12715592, -3862155, 1511293, 10047386, -3842346, -7129159, -28377538, 10048127 },
+         },
+      },
+      {
+         {
+            { -12622226, -6204820, 30718825, 2591312, -10617028, 12192840, 18873298, -7297090, -32297756, 15221632 },
+            { -26478122, -11103864, 11546244, -1852483, 9180880, 7656409, -21343950, 2095755, 29769758, 6593415 },
+            { -31994208, -2907461, 4176912, 3264766, 12538965, -868111, 26312345, -6118678, 30958054, 8292160 },
+         },
+         {
+            { 31429822, -13959116, 29173532, 15632448, 12174511, -2760094, 32808831, 3977186, 26143136, -3148876 },
+            { 22648901, 1402143, -22799984, 13746059, 7936347, 365344, -8668633, -1674433, -3758243, -2304625 },
+            { -15491917, 8012313, -2514730, -12702462, -23965846, -10254029, -1612713, -1535569, -16664475, 8194478 },
+         },
+         {
+            { 27338066, -7507420, -7414224, 10140405, -19026427, -6589889, 27277191, 8855376, 28572286, 3005164 },
+            { 26287124, 4821776, 25476601, -4145903, -3764513, -15788984, -18008582, 1182479, -26094821, -13079595 },
+            { -7171154, 3178080, 23970071, 6201893, -17195577, -4489192, -21876275, -13982627, 32208683, -1198248 },
+         },
+         {
+            { -16657702, 2817643, -10286362, 14811298, 6024667, 13349505, -27315504, -10497842, -27672585, -11539858 },
+            { 15941029, -9405932, -21367050, 8062055, 31876073, -238629, -15278393, -1444429, 15397331, -4130193 },
+            { 8934485, -13485467, -23286397, -13423241, -32446090, 14047986, 31170398, -1441021, -27505566, 15087184 },
+         },
+         {
+            { -18357243, -2156491, 24524913, -16677868, 15520427, -6360776, -15502406, 11461896, 16788528, -5868942 },
+            { -1947386, 16013773, 21750665, 3714552, -17401782, -16055433, -3770287, -10323320, 31322514, -11615635 },
+            { 21426655, -5650218, -13648287, -5347537, -28812189, -4920970, -18275391, -14621414, 13040862, -12112948 },
+         },
+         {
+            { 11293895, 12478086, -27136401, 15083750, -29307421, 14748872, 14555558, -13417103, 1613711, 4896935 },
+            { -25894883, 15323294, -8489791, -8057900, 25967126, -13425460, 2825960, -4897045, -23971776, -11267415 },
+            { -15924766, -5229880, -17443532, 6410664, 3622847, 10243618, 20615400, 12405433, -23753030, -8436416 },
+         },
+         {
+            { -7091295, 12556208, -20191352, 9025187, -17072479, 4333801, 4378436, 2432030, 23097949, -566018 },
+            { 4565804, -16025654, 20084412, -7842817, 1724999, 189254, 24767264, 10103221, -18512313, 2424778 },
+            { 366633, -11976806, 8173090, -6890119, 30788634, 5745705, -7168678, 1344109, -3642553, 12412659 },
+         },
+         {
+            { -24001791, 7690286, 14929416, -168257, -32210835, -13412986, 24162697, -15326504, -3141501, 11179385 },
+            { 18289522, -14724954, 8056945, 16430056, -21729724, 7842514, -6001441, -1486897, -18684645, -11443503 },
+            { 476239, 6601091, -6152790, -9723375, 17503545, -4863900, 27672959, 13403813, 11052904, 5219329 },
+         },
+      },
+      {
+         {
+            { 20678546, -8375738, -32671898, 8849123, -5009758, 14574752, 31186971, -3973730, 9014762, -8579056 },
+            { -13644050, -10350239, -15962508, 5075808, -1514661, -11534600, -33102500, 9160280, 8473550, -3256838 },
+            { 24900749, 14435722, 17209120, -15292541, -22592275, 9878983, -7689309, -16335821, -24568481, 11788948 },
+         },
+         {
+            { -3118155, -11395194, -13802089, 14797441, 9652448, -6845904, -20037437, 10410733, -24568470, -1458691 },
+            { -15659161, 16736706, -22467150, 10215878, -9097177, 7563911, 11871841, -12505194, -18513325, 8464118 },
+            { -23400612, 8348507, -14585951, -861714, -3950205, -6373419, 14325289, 8628612, 33313881, -8370517 },
+         },
+         {
+            { -20186973, -4967935, 22367356, 5271547, -1097117, -4788838, -24805667, -10236854, -8940735, -5818269 },
+            { -6948785, -1795212, -32625683, -16021179, 32635414, -7374245, 15989197, -12838188, 28358192, -4253904 },
+            { -23561781, -2799059, -32351682, -1661963, -9147719, 10429267, -16637684, 4072016, -5351664, 5596589 },
+         },
+         {
+            { -28236598, -3390048, 12312896, 6213178, 3117142, 16078565, 29266239, 2557221, 1768301, 15373193 },
+            { -7243358, -3246960, -4593467, -7553353, -127927, -912245, -1090902, -4504991, -24660491, 3442910 },
+            { -30210571, 5124043, 14181784, 8197961, 18964734, -11939093, 22597931, 7176455, -18585478, 13365930 },
+         },
+         {
+            { -7877390, -1499958, 8324673, 4690079, 6261860, 890446, 24538107, -8570186, -9689599, -3031667 },
+            { 25008904, -10771599, -4305031, -9638010, 16265036, 15721635, 683793, -11823784, 15723479, -15163481 },
+            { -9660625, 12374379, -27006999, -7026148, -7724114, -12314514, 11879682, 5400171, 519526, -1235876 },
+         },
+         {
+            { 22258397, -16332233, -7869817, 14613016, -22520255, -2950923, -20353881, 7315967, 16648397, 7605640 },
+            { -8081308, -8464597, -8223311, 9719710, 19259459, -15348212, 23994942, -5281555, -9468848, 4763278 },
+            { -21699244, 9220969, -15730624, 1084137, -25476107, -2852390, 31088447, -7764523, -11356529, 728112 },
+         },
+         {
+            { 26047220, -11751471, -6900323, -16521798, 24092068, 9158119, -4273545, -12555558, -29365436, -5498272 },
+            { 17510331, -322857, 5854289, 8403524, 17133918, -3112612, -28111007, 12327945, 10750447, 10014012 },
+            { -10312768, 3936952, 9156313, -8897683, 16498692, -994647, -27481051, -666732, 3424691, 7540221 },
+         },
+         {
+            { 30322361, -6964110, 11361005, -4143317, 7433304, 4989748, -7071422, -16317219, -9244265, 15258046 },
+            { 13054562, -2779497, 19155474, 469045, -12482797, 4566042, 5631406, 2711395, 1062915, -5136345 },
+            { -19240248, -11254599, -29509029, -7499965, -5835763, 13005411, -6066489, 12194497, 32960380, 1459310 },
+         },
+      },
+      {
+         {
+            { 19852034, 7027924, 23669353, 10020366, 8586503, -6657907, 394197, -6101885, 18638003, -11174937 },
+            { 31395534, 15098109, 26581030, 8030562, -16527914, -5007134, 9012486, -7584354, -6643087, -5442636 },
+            { -9192165, -2347377, -1997099, 4529534, 25766844, 607986, -13222, 9677543, -32294889, -6456008 },
+         },
+         {
+            { -2444496, -149937, 29348902, 8186665, 1873760, 12489863, -30934579, -7839692, -7852844, -8138429 },
+            { -15236356, -15433509, 7766470, 746860, 26346930, -10221762, -27333451, 10754588, -9431476, 5203576 },
+            { 31834314, 14135496, -770007, 5159118, 20917671, -16768096, -7467973, -7337524, 31809243, 7347066 },
+         },
+         {
+            { -9606723, -11874240, 20414459, 13033986, 13716524, -11691881, 19797970, -12211255, 15192876, -2087490 },
+            { -12663563, -2181719, 1168162, -3804809, 26747877, -14138091, 10609330, 12694420, 33473243, -13382104 },
+            { 33184999, 11180355, 15832085, -11385430, -1633671, 225884, 15089336, -11023903, -6135662, 14480053 },
+         },
+         {
+            { 31308717, -5619998, 31030840, -1897099, 15674547, -6582883, 5496208, 13685227, 27595050, 8737275 },
+            { -20318852, -15150239, 10933843, -16178022, 8335352, -7546022, -31008351, -12610604, 26498114, 66511 },
+            { 22644454, -8761729, -16671776, 4884562, -3105614, -13559366, 30540766, -4286747, -13327787, -7515095 },
+         },
+         {
+            { -28017847, 9834845, 18617207, -2681312, -3401956, -13307506, 8205540, 13585437, -17127465, 15115439 },
+            { 23711543, -672915, 31206561, -8362711, 6164647, -9709987, -33535882, -1426096, 8236921, 16492939 },
+            { -23910559, -13515526, -26299483, -4503841, 25005590, -7687270, 19574902, 10071562, 6708380, -6222424 },
+         },
+         {
+            { 2101391, -4930054, 19702731, 2367575, -15427167, 1047675, 5301017, 9328700, 29955601, -11678310 },
+            { 3096359, 9271816, -21620864, -15521844, -14847996, -7592937, -25892142, -12635595, -9917575, 6216608 },
+            { -32615849, 338663, -25195611, 2510422, -29213566, -13820213, 24822830, -6146567, -26767480, 7525079 },
+         },
+         {
+            { -23066649, -13985623, 16133487, -7896178, -3389565, 778788, -910336, -2782495, -19386633, 11994101 },
+            { 21691500, -13624626, -641331, -14367021, 3285881, -3483596, -25064666, 9718258, -7477437, 13381418 },
+            { 18445390, -4202236, 14979846, 11622458, -1727110, -3582980, 23111648, -6375247, 28535282, 15779576 },
+         },
+         {
+            { 30098053, 3089662, -9234387, 16662135, -21306940, 11308411, -14068454, 12021730, 9955285, -16303356 },
+            { 9734894, -14576830, -7473633, -9138735, 2060392, 11313496, -18426029, 9924399, 20194861, 13380996 },
+            { -26378102, -7965207, -22167821, 15789297, -18055342, -6168792, -1984914, 15707771, 26342023, 10146099 },
+         },
+      },
+      {
+         {
+            { -26016874, -219943, 21339191, -41388, 19745256, -2878700, -29637280, 2227040, 21612326, -545728 },
+            { -13077387, 1184228, 23562814, -5970442, -20351244, -6348714, 25764461, 12243797, -20856566, 11649658 },
+            { -10031494, 11262626, 27384172, 2271902, 26947504, -15997771, 39944, 6114064, 33514190, 2333242 },
+         },
+         {
+            { -21433588, -12421821, 8119782, 7219913, -21830522, -9016134, -6679750, -12670638, 24350578, -13450001 },
+            { -4116307, -11271533, -23886186, 4843615, -30088339, 690623, -31536088, -10406836, 8317860, 12352766 },
+            { 18200138, -14475911, -33087759, -2696619, -23702521, -9102511, -23552096, -2287550, 20712163, 6719373 },
+         },
+         {
+            { 26656208, 6075253, -7858556, 1886072, -28344043, 4262326, 11117530, -3763210, 26224235, -3297458 },
+            { -17168938, -14854097, -3395676, -16369877, -19954045, 14050420, 21728352, 9493610, 18620611, -16428628 },
+            { -13323321, 13325349, 11432106, 5964811, 18609221, 6062965, -5269471, -9725556, -30701573, -16479657 },
+         },
+         {
+            { -23860538, -11233159, 26961357, 1640861, -32413112, -16737940, 12248509, -5240639, 13735342, 1934062 },
+            { 25089769, 6742589, 17081145, -13406266, 21909293, -16067981, -15136294, -3765346, -21277997, 5473616 },
+            { 31883677, -7961101, 1083432, -11572403, 22828471, 13290673, -7125085, 12469656, 29111212, -5451014 },
+         },
+         {
+            { 24244947, -15050407, -26262976, 2791540, -14997599, 16666678, 24367466, 6388839, -10295587, 452383 },
+            { -25640782, -3417841, 5217916, 16224624, 19987036, -4082269, -24236251, -5915248, 15766062, 8407814 },
+            { -20406999, 13990231, 15495425, 16395525, 5377168, 15166495, -8917023, -4388953, -8067909, 2276718 },
+         },
+         {
+            { 30157918, 12924066, -17712050, 9245753, 19895028, 3368142, -23827587, 5096219, 22740376, -7303417 },
+            { 2041139, -14256350, 7783687, 13876377, -25946985, -13352459, 24051124, 13742383, -15637599, 13295222 },
+            { 33338237, -8505733, 12532113, 7977527, 9106186, -1715251, -17720195, -4612972, -4451357, -14669444 },
+         },
+         {
+            { -20045281, 5454097, -14346548, 6447146, 28862071, 1883651, -2469266, -4141880, 7770569, 9620597 },
+            { 23208068, 7979712, 33071466, 8149229, 1758231, -10834995, 30945528, -1694323, -33502340, -14767970 },
+            { 1439958, -16270480, -1079989, -793782, 4625402, 10647766, -5043801, 1220118, 30494170, -11440799 },
+         },
+         {
+            { -5037580, -13028295, -2970559, -3061767, 15640974, -6701666, -26739026, 926050, -1684339, -13333647 },
+            { 13908495, -3549272, 30919928, -6273825, -21521863, 7989039, 9021034, 9078865, 3353509, 4033511 },
+            { -29663431, -15113610, 32259991, -344482, 24295849, -12912123, 23161163, 8839127, 27485041, 7356032 },
+         },
+      },
+      {
+         {
+            { 9661027, 705443, 11980065, -5370154, -1628543, 14661173, -6346142, 2625015, 28431036, -16771834 },
+            { -23839233, -8311415, -25945511, 7480958, -17681669, -8354183, -22545972, 14150565, 15970762, 4099461 },
+            { 29262576, 16756590, 26350592, -8793563, 8529671, -11208050, 13617293, -9937143, 11465739, 8317062 },
+         },
+         {
+            { -25493081, -6962928, 32500200, -9419051, -23038724, -2302222, 14898637, 3848455, 20969334, -5157516 },
+            { -20384450, -14347713, -18336405, 13884722, -33039454, 2842114, -21610826, -3649888, 11177095, 14989547 },
+            { -24496721, -11716016, 16959896, 2278463, 12066309, 10137771, 13515641, 2581286, -28487508, 9930240 },
+         },
+         {
+            { -17751622, -2097826, 16544300, -13009300, -15914807, -14949081, 18345767, -13403753, 16291481, -5314038 },
+            { -33229194, 2553288, 32678213, 9875984, 8534129, 6889387, -9676774, 6957617, 4368891, 9788741 },
+            { 16660756, 7281060, -10830758, 12911820, 20108584, -8101676, -21722536, -8613148, 16250552, -11111103 },
+         },
+         {
+            { -19765507, 2390526, -16551031, 14161980, 1905286, 6414907, 4689584, 10604807, -30190403, 4782747 },
+            { -1354539, 14736941, -7367442, -13292886, 7710542, -14155590, -9981571, 4383045, 22546403, 437323 },
+            { 31665577, -12180464, -16186830, 1491339, -18368625, 3294682, 27343084, 2786261, -30633590, -14097016 },
+         },
+         {
+            { -14467279, -683715, -33374107, 7448552, 19294360, 14334329, -19690631, 2355319, -19284671, -6114373 },
+            { 15121312, -15796162, 6377020, -6031361, -10798111, -12957845, 18952177, 15496498, -29380133, 11754228 },
+            { -2637277, -13483075, 8488727, -14303896, 12728761, -1622493, 7141596, 11724556, 22761615, -10134141 },
+         },
+         {
+            { 16918416, 11729663, -18083579, 3022987, -31015732, -13339659, -28741185, -12227393, 32851222, 11717399 },
+            { 11166634, 7338049, -6722523, 4531520, -29468672, -7302055, 31474879, 3483633, -1193175, -4030831 },
+            { -185635, 9921305, 31456609, -13536438, -12013818, 13348923, 33142652, 6546660, -19985279, -3948376 },
+         },
+         {
+            { -32460596, 11266712, -11197107, -7899103, 31703694, 3855903, -8537131, -12833048, -30772034, -15486313 },
+            { -18006477, 12709068, 3991746, -6479188, -21491523, -10550425, -31135347, -16049879, 10928917, 3011958 },
+            { -6957757, -15594337, 31696059, 334240, 29576716, 14796075, -30831056, -12805180, 18008031, 10258577 },
+         },
+         {
+            { -22448644, 15655569, 7018479, -4410003, -30314266, -1201591, -1853465, 1367120, 25127874, 6671743 },
+            { 29701166, -14373934, -10878120, 9279288, -17568, 13127210, 21382910, 11042292, 25838796, 4642684 },
+            { -20430234, 14955537, -24126347, 8124619, -5369288, -5990470, 30468147, -13900640, 18423289, 4177476 },
+         },
+      },
+   } ;
+
+namespace {
+
+inline uint8_t equal(int8_t b, int8_t c)
+   {
+   uint8_t ub = b;
+   uint8_t uc = c;
+   uint8_t x = ub ^ uc; /* 0: yes; 1..255: no */
+   uint32_t y = x; /* 0: yes; 1..255: no */
+   y -= 1; /* 4294967295: yes; 0..254: no */
+   y >>= 31; /* 1: yes; 0: no */
+   return static_cast<uint8_t>(y);
+   }
+
+inline int32_t equal32(int8_t b, int8_t c)
+   {
+   return -static_cast<int32_t>(equal(b, c));
+   }
+
+inline uint8_t negative(int8_t b)
+   {
+   uint64_t x = b; /* 18446744073709551361..18446744073709551615: yes; 0..255: no */
+   x >>= 63; /* 1: yes; 0: no */
+   return static_cast<uint8_t>(x);
+   }
+
+inline void ge_precomp_0(ge_precomp* h)
+   {
+   fe_1(h->yplusx);
+   fe_1(h->yminusx);
+   fe_0(h->xy2d);
+   }
+
+inline void select(ge_precomp* t,
+                   const ge_precomp* base,
+                   int8_t b)
+   {
+   const uint8_t bnegative = negative(b);
+   const uint8_t babs = b - ((-static_cast<int>(bnegative) & b) * 2);
+   const int32_t neg_mask = equal32(bnegative, 1);
+
+   const int32_t mask1 = equal32(babs, 1);
+   const int32_t mask2 = equal32(babs, 2);
+   const int32_t mask3 = equal32(babs, 3);
+   const int32_t mask4 = equal32(babs, 4);
+   const int32_t mask5 = equal32(babs, 5);
+   const int32_t mask6 = equal32(babs, 6);
+   const int32_t mask7 = equal32(babs, 7);
+   const int32_t mask8 = equal32(babs, 8);
+
+   ge_precomp_0(t);
+
+   for(size_t i = 0; i != 10; ++i)
+      {
+      t->yplusx[i] = t->yplusx[i] ^
+                     ((t->yplusx[i] ^ base[0].yplusx[i]) & mask1) ^
+                     ((t->yplusx[i] ^ base[1].yplusx[i]) & mask2) ^
+                     ((t->yplusx[i] ^ base[2].yplusx[i]) & mask3) ^
+                     ((t->yplusx[i] ^ base[3].yplusx[i]) & mask4) ^
+                     ((t->yplusx[i] ^ base[4].yplusx[i]) & mask5) ^
+                     ((t->yplusx[i] ^ base[5].yplusx[i]) & mask6) ^
+                     ((t->yplusx[i] ^ base[6].yplusx[i]) & mask7) ^
+                     ((t->yplusx[i] ^ base[7].yplusx[i]) & mask8);
+
+      t->yminusx[i] = t->yminusx[i] ^
+                      ((t->yminusx[i] ^ base[0].yminusx[i]) & mask1) ^
+                      ((t->yminusx[i] ^ base[1].yminusx[i]) & mask2) ^
+                      ((t->yminusx[i] ^ base[2].yminusx[i]) & mask3) ^
+                      ((t->yminusx[i] ^ base[3].yminusx[i]) & mask4) ^
+                      ((t->yminusx[i] ^ base[4].yminusx[i]) & mask5) ^
+                      ((t->yminusx[i] ^ base[5].yminusx[i]) & mask6) ^
+                      ((t->yminusx[i] ^ base[6].yminusx[i]) & mask7) ^
+                      ((t->yminusx[i] ^ base[7].yminusx[i]) & mask8);
+
+      t->xy2d[i] = t->xy2d[i] ^
+                   ((t->xy2d[i] ^ base[0].xy2d[i]) & mask1) ^
+                   ((t->xy2d[i] ^ base[1].xy2d[i]) & mask2) ^
+                   ((t->xy2d[i] ^ base[2].xy2d[i]) & mask3) ^
+                   ((t->xy2d[i] ^ base[3].xy2d[i]) & mask4) ^
+                   ((t->xy2d[i] ^ base[4].xy2d[i]) & mask5) ^
+                   ((t->xy2d[i] ^ base[5].xy2d[i]) & mask6) ^
+                   ((t->xy2d[i] ^ base[6].xy2d[i]) & mask7) ^
+                   ((t->xy2d[i] ^ base[7].xy2d[i]) & mask8);
+      }
+
+   fe minus_xy2d;
+   fe_neg(minus_xy2d, t->xy2d);
+
+   // If negative have to swap yminusx and yplusx
+   for(size_t i = 0; i != 10; ++i)
+      {
+      int32_t t_yplusx = t->yplusx[i] ^ ((t->yplusx[i] ^ t->yminusx[i]) & neg_mask);
+      int32_t t_yminusx = t->yminusx[i] ^ ((t->yminusx[i] ^ t->yplusx[i]) & neg_mask);
+
+      t->yplusx[i] = t_yplusx;
+      t->yminusx[i] = t_yminusx;
+      t->xy2d[i] = t->xy2d[i] ^ ((t->xy2d[i] ^ minus_xy2d[i]) & neg_mask);
+      }
+   }
+
+void ge_p3_tobytes(uint8_t* s, const ge_p3* h)
+   {
+   fe recip;
+   fe x;
+   fe y;
+
+   fe_invert(recip, h->Z);
+   fe_mul(x, h->X, recip);
+   fe_mul(y, h->Y, recip);
+   fe_tobytes(s, y);
+   s[31] ^= fe_isnegative(x) << 7;
+   }
+
+}
+
+/*
+h = a * B
+where a = a[0]+256*a[1]+...+256^31 a[31]
+B is the Ed25519 base point (x,4/5) with x positive.
+
+Preconditions:
+  a[31] <= 127
+*/
+
+void ge_scalarmult_base(uint8_t out[32], const uint8_t a[32])
+   {
+   int8_t e[64];
+   int8_t carry;
+   ge_p1p1 r;
+   ge_p2 s;
+   ge_p3 h;
+   ge_precomp t;
+   int i;
+
+   for(i = 0; i < 32; ++i)
+      {
+      e[2 * i + 0] = (a[i] >> 0) & 15;
+      e[2 * i + 1] = (a[i] >> 4) & 15;
+      }
+   /* each e[i] is between 0 and 15 */
+   /* e[63] is between 0 and 7 */
+
+   carry = 0;
+   for(i = 0; i < 63; ++i)
+      {
+      e[i] += carry;
+      carry = e[i] + 8;
+      carry >>= 4;
+      e[i] -= carry << 4;
+      }
+   e[63] += carry;
+   /* each e[i] is between -8 and 8 */
+
+   ge_p3_0(&h);
+   for(i = 1; i < 64; i += 2)
+      {
+      select(&t, B_precomp[i / 2], e[i]);
+      ge_madd(&r, &h, &t);
+      ge_p1p1_to_p3(&h, &r);
+      }
+
+   ge_p3_dbl(&r, &h);
+   ge_p1p1_to_p2(&s, &r);
+   ge_p2_dbl(&r, &s);
+   ge_p1p1_to_p2(&s, &r);
+   ge_p2_dbl(&r, &s);
+   ge_p1p1_to_p2(&s, &r);
+   ge_p2_dbl(&r, &s);
+   ge_p1p1_to_p3(&h, &r);
+
+   for(i = 0; i < 64; i += 2)
+      {
+      select(&t, B_precomp[i / 2], e[i]);
+      ge_madd(&r, &h, &t);
+      ge_p1p1_to_p3(&h, &r);
+      }
+
+   ge_p3_tobytes(out, &h);
+   }
+
+}
+/*
+* Ed25519
+* (C) 2017 Ribose Inc
+*
+* Based on the public domain code from SUPERCOP ref10 by
+* Peter Schwabe, Daniel J. Bernstein, Niels Duif, Tanja Lange, Bo-Yin Yang
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+Input:
+  a[0]+256*a[1]+...+256^31*a[31] = a
+  b[0]+256*b[1]+...+256^31*b[31] = b
+  c[0]+256*c[1]+...+256^31*c[31] = c
+
+Output:
+  s[0]+256*s[1]+...+256^31*s[31] = (ab+c) mod l
+  where l = 2^252 + 27742317777372353535851937790883648493.
+*/
+
+void sc_muladd(uint8_t* s, const uint8_t* a, const uint8_t* b, const uint8_t* c)
+   {
+   const int32_t MASK = 0x1fffff;
+
+   const int64_t a0 = MASK & load_3(a);
+   const int64_t a1 = MASK & (load_4(a + 2) >> 5);
+   const int64_t a2 = MASK & (load_3(a + 5) >> 2);
+   const int64_t a3 = MASK & (load_4(a + 7) >> 7);
+   const int64_t a4 = MASK & (load_4(a + 10) >> 4);
+   const int64_t a5 = MASK & (load_3(a + 13) >> 1);
+   const int64_t a6 = MASK & (load_4(a + 15) >> 6);
+   const int64_t a7 = MASK & (load_3(a + 18) >> 3);
+   const int64_t a8 = MASK & load_3(a + 21);
+   const int64_t a9 = MASK & (load_4(a + 23) >> 5);
+   const int64_t a10 = MASK & (load_3(a + 26) >> 2);
+   const int64_t a11 = (load_4(a + 28) >> 7);
+   const int64_t b0 = MASK & load_3(b);
+   const int64_t b1 = MASK & (load_4(b + 2) >> 5);
+   const int64_t b2 = MASK & (load_3(b + 5) >> 2);
+   const int64_t b3 = MASK & (load_4(b + 7) >> 7);
+   const int64_t b4 = MASK & (load_4(b + 10) >> 4);
+   const int64_t b5 = MASK & (load_3(b + 13) >> 1);
+   const int64_t b6 = MASK & (load_4(b + 15) >> 6);
+   const int64_t b7 = MASK & (load_3(b + 18) >> 3);
+   const int64_t b8 = MASK & load_3(b + 21);
+   const int64_t b9 = MASK & (load_4(b + 23) >> 5);
+   const int64_t b10 = MASK & (load_3(b + 26) >> 2);
+   const int64_t b11 = (load_4(b + 28) >> 7);
+   const int64_t c0 = MASK & load_3(c);
+   const int64_t c1 = MASK & (load_4(c + 2) >> 5);
+   const int64_t c2 = MASK & (load_3(c + 5) >> 2);
+   const int64_t c3 = MASK & (load_4(c + 7) >> 7);
+   const int64_t c4 = MASK & (load_4(c + 10) >> 4);
+   const int64_t c5 = MASK & (load_3(c + 13) >> 1);
+   const int64_t c6 = MASK & (load_4(c + 15) >> 6);
+   const int64_t c7 = MASK & (load_3(c + 18) >> 3);
+   const int64_t c8 = MASK & load_3(c + 21);
+   const int64_t c9 = MASK & (load_4(c + 23) >> 5);
+   const int64_t c10 = MASK & (load_3(c + 26) >> 2);
+   const int64_t c11 = (load_4(c + 28) >> 7);
+
+   int64_t s0 = c0 + a0*b0;
+   int64_t s1 = c1 + a0*b1 + a1*b0;
+   int64_t s2 = c2 + a0*b2 + a1*b1 + a2*b0;
+   int64_t s3 = c3 + a0*b3 + a1*b2 + a2*b1 + a3*b0;
+   int64_t s4 = c4 + a0*b4 + a1*b3 + a2*b2 + a3*b1 + a4*b0;
+   int64_t s5 = c5 + a0*b5 + a1*b4 + a2*b3 + a3*b2 + a4*b1 + a5*b0;
+   int64_t s6 = c6 + a0*b6 + a1*b5 + a2*b4 + a3*b3 + a4*b2 + a5*b1 + a6*b0;
+   int64_t s7 = c7 + a0*b7 + a1*b6 + a2*b5 + a3*b4 + a4*b3 + a5*b2 + a6*b1 + a7*b0;
+   int64_t s8 = c8 + a0*b8 + a1*b7 + a2*b6 + a3*b5 + a4*b4 + a5*b3 + a6*b2 + a7*b1 + a8*b0;
+   int64_t s9 = c9 + a0*b9 + a1*b8 + a2*b7 + a3*b6 + a4*b5 + a5*b4 + a6*b3 + a7*b2 + a8*b1 + a9*b0;
+   int64_t s10 = c10 + a0*b10 + a1*b9 + a2*b8 + a3*b7 + a4*b6 + a5*b5 + a6*b4 + a7*b3 + a8*b2 + a9*b1 + a10*b0;
+   int64_t s11 = c11 + a0*b11 + a1*b10 + a2*b9 + a3*b8 + a4*b7 + a5*b6 + a6*b5 + a7*b4 + a8*b3 + a9*b2 + a10*b1 + a11*b0;
+   int64_t s12 = a1*b11 + a2*b10 + a3*b9 + a4*b8 + a5*b7 + a6*b6 + a7*b5 + a8*b4 + a9*b3 + a10*b2 + a11*b1;
+   int64_t s13 = a2*b11 + a3*b10 + a4*b9 + a5*b8 + a6*b7 + a7*b6 + a8*b5 + a9*b4 + a10*b3 + a11*b2;
+   int64_t s14 = a3*b11 + a4*b10 + a5*b9 + a6*b8 + a7*b7 + a8*b6 + a9*b5 + a10*b4 + a11*b3;
+   int64_t s15 = a4*b11 + a5*b10 + a6*b9 + a7*b8 + a8*b7 + a9*b6 + a10*b5 + a11*b4;
+   int64_t s16 = a5*b11 + a6*b10 + a7*b9 + a8*b8 + a9*b7 + a10*b6 + a11*b5;
+   int64_t s17 = a6*b11 + a7*b10 + a8*b9 + a9*b8 + a10*b7 + a11*b6;
+   int64_t s18 = a7*b11 + a8*b10 + a9*b9 + a10*b8 + a11*b7;
+   int64_t s19 = a8*b11 + a9*b10 + a10*b9 + a11*b8;
+   int64_t s20 = a9*b11 + a10*b10 + a11*b9;
+   int64_t s21 = a10*b11 + a11*b10;
+   int64_t s22 = a11*b11;
+   int64_t s23 = 0;
+
+   carry<21>(s0, s1);
+   carry<21>(s2, s3);
+   carry<21>(s4, s5);
+   carry<21>(s6, s7);
+   carry<21>(s8, s9);
+   carry<21>(s10, s11);
+   carry<21>(s12, s13);
+   carry<21>(s14, s15);
+   carry<21>(s16, s17);
+   carry<21>(s18, s19);
+   carry<21>(s20, s21);
+   carry<21>(s22, s23);
+
+   carry<21>(s1, s2);
+   carry<21>(s3, s4);
+   carry<21>(s5, s6);
+   carry<21>(s7, s8);
+   carry<21>(s9, s10);
+   carry<21>(s11, s12);
+   carry<21>(s13, s14);
+   carry<21>(s15, s16);
+   carry<21>(s17, s18);
+   carry<21>(s19, s20);
+   carry<21>(s21, s22);
+
+   redc_mul(s11, s12, s13, s14, s15, s16, s23);
+   redc_mul(s10, s11, s12, s13, s14, s15, s22);
+   redc_mul( s9, s10, s11, s12, s13, s14, s21);
+   redc_mul( s8,  s9, s10, s11, s12, s13, s20);
+   redc_mul( s7,  s8,  s9, s10, s11, s12, s19);
+   redc_mul( s6,  s7,  s8,  s9, s10, s11, s18);
+
+   carry<21>(s6, s7);
+   carry<21>(s8, s9);
+   carry<21>(s10, s11);
+   carry<21>(s12, s13);
+   carry<21>(s14, s15);
+   carry<21>(s16, s17);
+
+   carry<21>(s7, s8);
+   carry<21>(s9, s10);
+   carry<21>(s11, s12);
+   carry<21>(s13, s14);
+   carry<21>(s15, s16);
+
+   redc_mul(s5, s6, s7, s8, s9, s10, s17);
+   redc_mul(s4, s5, s6, s7, s8, s9, s16);
+   redc_mul(s3, s4, s5, s6, s7, s8, s15);
+   redc_mul(s2, s3, s4, s5, s6, s7, s14);
+   redc_mul(s1, s2, s3, s4, s5, s6, s13);
+   redc_mul(s0, s1, s2, s3, s4, s5, s12);
+
+   carry<21>(s0, s1);
+   carry<21>(s2, s3);
+   carry<21>(s4, s5);
+   carry<21>(s6, s7);
+   carry<21>(s8, s9);
+   carry<21>(s10, s11);
+
+   carry<21>(s1, s2);
+   carry<21>(s3, s4);
+   carry<21>(s5, s6);
+   carry<21>(s7, s8);
+   carry<21>(s9, s10);
+   carry<21>(s11, s12);
+
+   redc_mul(s0, s1, s2, s3, s4, s5, s12);
+
+   carry0<21>(s0, s1);
+   carry0<21>(s1, s2);
+   carry0<21>(s2, s3);
+   carry0<21>(s3, s4);
+   carry0<21>(s4, s5);
+   carry0<21>(s5, s6);
+   carry0<21>(s6, s7);
+   carry0<21>(s7, s8);
+   carry0<21>(s8, s9);
+   carry0<21>(s9, s10);
+   carry0<21>(s10, s11);
+   carry0<21>(s11, s12);
+
+   redc_mul(s0, s1, s2, s3, s4, s5, s12);
+
+   carry0<21>(s0, s1);
+   carry0<21>(s1, s2);
+   carry0<21>(s2, s3);
+   carry0<21>(s3, s4);
+   carry0<21>(s4, s5);
+   carry0<21>(s5, s6);
+   carry0<21>(s6, s7);
+   carry0<21>(s7, s8);
+   carry0<21>(s8, s9);
+   carry0<21>(s9, s10);
+   carry0<21>(s10, s11);
+
+   s[0] = static_cast<uint8_t>(s0 >> 0);
+   s[1] = static_cast<uint8_t>(s0 >> 8);
+   s[2] = static_cast<uint8_t>((s0 >> 16) | (s1 << 5));
+   s[3] = static_cast<uint8_t>(s1 >> 3);
+   s[4] = static_cast<uint8_t>(s1 >> 11);
+   s[5] = static_cast<uint8_t>((s1 >> 19) | (s2 << 2));
+   s[6] = static_cast<uint8_t>(s2 >> 6);
+   s[7] = static_cast<uint8_t>((s2 >> 14) | (s3 << 7));
+   s[8] = static_cast<uint8_t>(s3 >> 1);
+   s[9] = static_cast<uint8_t>(s3 >> 9);
+   s[10] = static_cast<uint8_t>((s3 >> 17) | (s4 << 4));
+   s[11] = static_cast<uint8_t>(s4 >> 4);
+   s[12] = static_cast<uint8_t>(s4 >> 12);
+   s[13] = static_cast<uint8_t>((s4 >> 20) | (s5 << 1));
+   s[14] = static_cast<uint8_t>(s5 >> 7);
+   s[15] = static_cast<uint8_t>((s5 >> 15) | (s6 << 6));
+   s[16] = static_cast<uint8_t>(s6 >> 2);
+   s[17] = static_cast<uint8_t>(s6 >> 10);
+   s[18] = static_cast<uint8_t>((s6 >> 18) | (s7 << 3));
+   s[19] = static_cast<uint8_t>(s7 >> 5);
+   s[20] = static_cast<uint8_t>(s7 >> 13);
+   s[21] = static_cast<uint8_t>(s8 >> 0);
+   s[22] = static_cast<uint8_t>(s8 >> 8);
+   s[23] = static_cast<uint8_t>((s8 >> 16) | (s9 << 5));
+   s[24] = static_cast<uint8_t>(s9 >> 3);
+   s[25] = static_cast<uint8_t>(s9 >> 11);
+   s[26] = static_cast<uint8_t>((s9 >> 19) | (s10 << 2));
+   s[27] = static_cast<uint8_t>(s10 >> 6);
+   s[28] = static_cast<uint8_t>((s10 >> 14) | (s11 << 7));
+   s[29] = static_cast<uint8_t>(s11 >> 1);
+   s[30] = static_cast<uint8_t>(s11 >> 9);
+   s[31] = static_cast<uint8_t>(s11 >> 17);
+   }
+
+}
+/*
+* Ed25519
+* (C) 2017 Ribose Inc
+*
+* Based on the public domain code from SUPERCOP ref10 by
+* Peter Schwabe, Daniel J. Bernstein, Niels Duif, Tanja Lange, Bo-Yin Yang
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+Input:
+  s[0]+256*s[1]+...+256^63*s[63] = s
+
+Output:
+  s[0]+256*s[1]+...+256^31*s[31] = s mod l
+  where l = 2^252 + 27742317777372353535851937790883648493.
+  Overwrites s in place.
+*/
+
+void sc_reduce(uint8_t* s)
+   {
+   const uint32_t MASK = 0x1fffff;
+
+   int64_t s0 = MASK & load_3(s);
+   int64_t s1 = MASK & (load_4(s + 2) >> 5);
+   int64_t s2 = MASK & (load_3(s + 5) >> 2);
+   int64_t s3 = MASK & (load_4(s + 7) >> 7);
+   int64_t s4 = MASK & (load_4(s + 10) >> 4);
+   int64_t s5 = MASK & (load_3(s + 13) >> 1);
+   int64_t s6 = MASK & (load_4(s + 15) >> 6);
+   int64_t s7 = MASK & (load_3(s + 18) >> 3);
+   int64_t s8 = MASK & load_3(s + 21);
+   int64_t s9 = MASK & (load_4(s + 23) >> 5);
+   int64_t s10 = MASK & (load_3(s + 26) >> 2);
+   int64_t s11 = MASK & (load_4(s + 28) >> 7);
+   int64_t s12 = MASK & (load_4(s + 31) >> 4);
+   int64_t s13 = MASK & (load_3(s + 34) >> 1);
+   int64_t s14 = MASK & (load_4(s + 36) >> 6);
+   int64_t s15 = MASK & (load_3(s + 39) >> 3);
+   int64_t s16 = MASK & load_3(s + 42);
+   int64_t s17 = MASK & (load_4(s + 44) >> 5);
+   int64_t s18 = MASK & (load_3(s + 47) >> 2);
+   int64_t s19 = MASK & (load_4(s + 49) >> 7);
+   int64_t s20 = MASK & (load_4(s + 52) >> 4);
+   int64_t s21 = MASK & (load_3(s + 55) >> 1);
+   int64_t s22 = MASK & (load_4(s + 57) >> 6);
+   int64_t s23 = (load_4(s + 60) >> 3);
+
+   redc_mul(s11, s12, s13, s14, s15, s16, s23);
+   redc_mul(s10, s11, s12, s13, s14, s15, s22);
+   redc_mul( s9, s10, s11, s12, s13, s14, s21);
+   redc_mul( s8,  s9, s10, s11, s12, s13, s20);
+   redc_mul( s7,  s8,  s9, s10, s11, s12, s19);
+   redc_mul( s6,  s7,  s8,  s9, s10, s11, s18);
+
+   carry<21>(s6, s7);
+   carry<21>(s8, s9);
+   carry<21>(s10, s11);
+   carry<21>(s12, s13);
+   carry<21>(s14, s15);
+   carry<21>(s16, s17);
+
+   carry<21>(s7, s8);
+   carry<21>(s9, s10);
+   carry<21>(s11, s12);
+   carry<21>(s13, s14);
+   carry<21>(s15, s16);
+
+   redc_mul(s5, s6, s7, s8, s9, s10, s17);
+   redc_mul(s4, s5, s6, s7, s8, s9, s16);
+   redc_mul(s3, s4, s5, s6, s7, s8, s15);
+   redc_mul(s2, s3, s4, s5, s6, s7, s14);
+   redc_mul(s1, s2, s3, s4, s5, s6, s13);
+   redc_mul(s0, s1, s2, s3, s4, s5, s12);
+
+   carry<21>(s0, s1);
+   carry<21>(s2, s3);
+   carry<21>(s4, s5);
+   carry<21>(s6, s7);
+   carry<21>(s8, s9);
+   carry<21>(s10, s11);
+
+   carry<21>(s1, s2);
+   carry<21>(s3, s4);
+   carry<21>(s5, s6);
+   carry<21>(s7, s8);
+   carry<21>(s9, s10);
+   carry<21>(s11, s12);
+
+   redc_mul(s0, s1, s2, s3, s4, s5, s12);
+
+   carry0<21>(s0, s1);
+   carry0<21>(s1, s2);
+   carry0<21>(s2, s3);
+   carry0<21>(s3, s4);
+   carry0<21>(s4, s5);
+   carry0<21>(s5, s6);
+   carry0<21>(s6, s7);
+   carry0<21>(s7, s8);
+   carry0<21>(s8, s9);
+   carry0<21>(s9, s10);
+   carry0<21>(s10, s11);
+   carry0<21>(s11, s12);
+
+   redc_mul(s0, s1, s2, s3, s4, s5, s12);
+
+   carry0<21>(s0, s1);
+   carry0<21>(s1, s2);
+   carry0<21>(s2, s3);
+   carry0<21>(s3, s4);
+   carry0<21>(s4, s5);
+   carry0<21>(s5, s6);
+   carry0<21>(s6, s7);
+   carry0<21>(s7, s8);
+   carry0<21>(s8, s9);
+   carry0<21>(s9, s10);
+   carry0<21>(s10, s11);
+   carry0<21>(s11, s12);
+
+   s[0] = static_cast<uint8_t>(s0 >> 0);
+   s[1] = static_cast<uint8_t>(s0 >> 8);
+   s[2] = static_cast<uint8_t>((s0 >> 16) | (s1 << 5));
+   s[3] = static_cast<uint8_t>(s1 >> 3);
+   s[4] = static_cast<uint8_t>(s1 >> 11);
+   s[5] = static_cast<uint8_t>((s1 >> 19) | (s2 << 2));
+   s[6] = static_cast<uint8_t>(s2 >> 6);
+   s[7] = static_cast<uint8_t>((s2 >> 14) | (s3 << 7));
+   s[8] = static_cast<uint8_t>(s3 >> 1);
+   s[9] = static_cast<uint8_t>(s3 >> 9);
+   s[10] = static_cast<uint8_t>((s3 >> 17) | (s4 << 4));
+   s[11] = static_cast<uint8_t>(s4 >> 4);
+   s[12] = static_cast<uint8_t>(s4 >> 12);
+   s[13] = static_cast<uint8_t>((s4 >> 20) | (s5 << 1));
+   s[14] = static_cast<uint8_t>(s5 >> 7);
+   s[15] = static_cast<uint8_t>((s5 >> 15) | (s6 << 6));
+   s[16] = static_cast<uint8_t>(s6 >> 2);
+   s[17] = static_cast<uint8_t>(s6 >> 10);
+   s[18] = static_cast<uint8_t>((s6 >> 18) | (s7 << 3));
+   s[19] = static_cast<uint8_t>(s7 >> 5);
+   s[20] = static_cast<uint8_t>(s7 >> 13);
+   s[21] = static_cast<uint8_t>(s8 >> 0);
+   s[22] = static_cast<uint8_t>(s8 >> 8);
+   s[23] = static_cast<uint8_t>((s8 >> 16) | (s9 << 5));
+   s[24] = static_cast<uint8_t>(s9 >> 3);
+   s[25] = static_cast<uint8_t>(s9 >> 11);
+   s[26] = static_cast<uint8_t>((s9 >> 19) | (s10 << 2));
+   s[27] = static_cast<uint8_t>(s10 >> 6);
+   s[28] = static_cast<uint8_t>((s10 >> 14) | (s11 << 7));
+   s[29] = static_cast<uint8_t>(s11 >> 1);
+   s[30] = static_cast<uint8_t>(s11 >> 9);
+   s[31] = static_cast<uint8_t>(s11 >> 17);
    }
 
 }
@@ -11555,6 +22635,247 @@ size_t HMAC_DRBG::security_level() const
    }
 }
 /*
+* KDF Retrieval
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+#if defined(BOTAN_HAS_HKDF)
+#endif
+
+#if defined(BOTAN_HAS_KDF1)
+#endif
+
+#if defined(BOTAN_HAS_KDF2)
+#endif
+
+#if defined(BOTAN_HAS_KDF1_18033)
+#endif
+
+#if defined(BOTAN_HAS_TLS_V10_PRF) || defined(BOTAN_HAS_TLS_V12_PRF)
+#endif
+
+#if defined(BOTAN_HAS_X942_PRF)
+#endif
+
+#if defined(BOTAN_HAS_SP800_108)
+#endif
+
+#if defined(BOTAN_HAS_SP800_56A)
+#endif
+
+#if defined(BOTAN_HAS_SP800_56C)
+#endif
+
+namespace Botan {
+
+namespace {
+
+template<typename KDF_Type>
+std::unique_ptr<KDF>
+kdf_create_mac_or_hash(const std::string& nm)
+   {
+   if(auto mac = MessageAuthenticationCode::create(nm))
+      return std::unique_ptr<KDF>(new KDF_Type(mac.release()));
+
+   if(auto mac = MessageAuthenticationCode::create("HMAC(" + nm + ")"))
+      return std::unique_ptr<KDF>(new KDF_Type(mac.release()));
+
+   return nullptr;
+   }
+
+}
+
+std::unique_ptr<KDF> KDF::create(const std::string& algo_spec,
+                                 const std::string& provider)
+   {
+   const SCAN_Name req(algo_spec);
+
+#if defined(BOTAN_HAS_HKDF)
+   if(req.algo_name() == "HKDF" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         return kdf_create_mac_or_hash<HKDF>(req.arg(0));
+         }
+      }
+
+   if(req.algo_name() == "HKDF-Extract" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         return kdf_create_mac_or_hash<HKDF_Extract>(req.arg(0));
+         }
+      }
+
+   if(req.algo_name() == "HKDF-Expand" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         return kdf_create_mac_or_hash<HKDF_Expand>(req.arg(0));
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_KDF2)
+   if(req.algo_name() == "KDF2" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         if(auto hash = HashFunction::create(req.arg(0)))
+            return std::unique_ptr<KDF>(new KDF2(hash.release()));
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_KDF1_18033)
+   if(req.algo_name() == "KDF1-18033" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         if(auto hash = HashFunction::create(req.arg(0)))
+            return std::unique_ptr<KDF>(new KDF1_18033(hash.release()));
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_KDF1)
+   if(req.algo_name() == "KDF1" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         if(auto hash = HashFunction::create(req.arg(0)))
+            return std::unique_ptr<KDF>(new KDF1(hash.release()));
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_TLS_V10_PRF)
+   if(req.algo_name() == "TLS-PRF" && req.arg_count() == 0)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         auto hmac_md5 = MessageAuthenticationCode::create("HMAC(MD5)");
+         auto hmac_sha1 = MessageAuthenticationCode::create("HMAC(SHA-1)");
+
+         if(hmac_md5 && hmac_sha1)
+            return std::unique_ptr<KDF>(new TLS_PRF(std::move(hmac_md5), std::move(hmac_sha1)));
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_TLS_V12_PRF)
+   if(req.algo_name() == "TLS-12-PRF" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         return kdf_create_mac_or_hash<TLS_12_PRF>(req.arg(0));
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_X942_PRF)
+   if(req.algo_name() == "X9.42-PRF" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         return std::unique_ptr<KDF>(new X942_PRF(req.arg(0)));
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_SP800_108)
+   if(req.algo_name() == "SP800-108-Counter" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         return kdf_create_mac_or_hash<SP800_108_Counter>(req.arg(0));
+         }
+      }
+
+   if(req.algo_name() == "SP800-108-Feedback" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         return kdf_create_mac_or_hash<SP800_108_Feedback>(req.arg(0));
+         }
+      }
+
+   if(req.algo_name() == "SP800-108-Pipeline" && req.arg_count() == 1)
+      {
+      if(provider.empty() || provider == "base")
+         {
+         return kdf_create_mac_or_hash<SP800_108_Pipeline>(req.arg(0));
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_SP800_56A)
+   if(req.algo_name() == "SP800-56A" && req.arg_count() == 1)
+      {
+      if(auto hash = HashFunction::create(req.arg(0)))
+         return std::unique_ptr<KDF>(new SP800_56A_Hash(hash.release()));
+      if(auto mac = MessageAuthenticationCode::create(req.arg(0)))
+         return std::unique_ptr<KDF>(new SP800_56A_HMAC(mac.release()));
+      }
+#endif
+
+#if defined(BOTAN_HAS_SP800_56C)
+   if(req.algo_name() == "SP800-56C" && req.arg_count() == 1)
+      {
+      std::unique_ptr<KDF> exp(kdf_create_mac_or_hash<SP800_108_Feedback>(req.arg(0)));
+      if(exp)
+         {
+         if(auto mac = MessageAuthenticationCode::create(req.arg(0)))
+            return std::unique_ptr<KDF>(new SP800_56C(mac.release(), exp.release()));
+
+         if(auto mac = MessageAuthenticationCode::create("HMAC(" + req.arg(0) + ")"))
+            return std::unique_ptr<KDF>(new SP800_56C(mac.release(), exp.release()));
+         }
+      }
+#endif
+
+   BOTAN_UNUSED(req);
+   BOTAN_UNUSED(provider);
+
+   return nullptr;
+   }
+
+//static
+std::unique_ptr<KDF>
+KDF::create_or_throw(const std::string& algo,
+                             const std::string& provider)
+   {
+   if(auto kdf = KDF::create(algo, provider))
+      {
+      return kdf;
+      }
+   throw Lookup_Error("KDF", algo, provider);
+   }
+
+std::vector<std::string> KDF::providers(const std::string& algo_spec)
+   {
+   return probe_providers_of<KDF>(algo_spec, { "base" });
+   }
+
+KDF* get_kdf(const std::string& algo_spec)
+   {
+   SCAN_Name request(algo_spec);
+
+   if(request.algo_name() == "Raw")
+      return nullptr; // No KDF
+
+   //return KDF::create_or_throw(algo_spec).release();
+   auto kdf = KDF::create(algo_spec);
+   if(!kdf)
+      throw Algorithm_Not_Found(algo_spec);
+   return kdf.release();
+   }
+
+}
+/*
 * Keccak
 * (C) 2010,2016 Jack Lloyd
 *
@@ -12365,6 +23686,9119 @@ std::vector<std::string> Cipher_Mode::providers(const std::string& algo_spec)
 
 }
 /*
+* Comba Multiplication and Squaring
+*
+* This file was automatically generated by ./src/scripts/comba.py on 2018-05-08
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+* Comba 4x4 Squaring
+*/
+void bigint_comba_sqr4(word z[8], const word x[4])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd  (&w2, &w1, &w0, x[ 0], x[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 1]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 2]);
+   word3_muladd  (&w1, &w0, &w2, x[ 1], x[ 1]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 3]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 2]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 3]);
+   word3_muladd  (&w0, &w2, &w1, x[ 2], x[ 2]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 3]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd  (&w2, &w1, &w0, x[ 3], x[ 3]);
+   z[ 6] = w0;
+   z[ 7] = w1;
+   }
+
+/*
+* Comba 4x4 Multiplication
+*/
+void bigint_comba_mul4(word z[8], const word x[4], const word y[4])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 0]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 0]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 0]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 1]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 2]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 3]);
+   z[ 6] = w0;
+   z[ 7] = w1;
+   }
+
+/*
+* Comba 6x6 Squaring
+*/
+void bigint_comba_sqr6(word z[12], const word x[6])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd  (&w2, &w1, &w0, x[ 0], x[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 1]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 2]);
+   word3_muladd  (&w1, &w0, &w2, x[ 1], x[ 1]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 3]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 2]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 4]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 3]);
+   word3_muladd  (&w0, &w2, &w1, x[ 2], x[ 2]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 5]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[ 4]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 3]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 5]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[ 4]);
+   word3_muladd  (&w2, &w1, &w0, x[ 3], x[ 3]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[ 5]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[ 4]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[ 5]);
+   word3_muladd  (&w1, &w0, &w2, x[ 4], x[ 4]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[ 5]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd  (&w0, &w2, &w1, x[ 5], x[ 5]);
+   z[10] = w1;
+   z[11] = w2;
+   }
+
+/*
+* Comba 6x6 Multiplication
+*/
+void bigint_comba_mul6(word z[12], const word x[6], const word y[6])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 0]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 0]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 0]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 0]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 0]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 1]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 2]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 3]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 4]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 5]);
+   z[10] = w1;
+   z[11] = w2;
+   }
+
+/*
+* Comba 8x8 Squaring
+*/
+void bigint_comba_sqr8(word z[16], const word x[8])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd  (&w2, &w1, &w0, x[ 0], x[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 1]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 2]);
+   word3_muladd  (&w1, &w0, &w2, x[ 1], x[ 1]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 3]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 2]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 4]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 3]);
+   word3_muladd  (&w0, &w2, &w1, x[ 2], x[ 2]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 5]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[ 4]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 3]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 6]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 5]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[ 4]);
+   word3_muladd  (&w2, &w1, &w0, x[ 3], x[ 3]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 7]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 6]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[ 5]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[ 4]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[ 7]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 6]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[ 5]);
+   word3_muladd  (&w1, &w0, &w2, x[ 4], x[ 4]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[ 7]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[ 6]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[ 5]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[ 7]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[ 6]);
+   word3_muladd  (&w0, &w2, &w1, x[ 5], x[ 5]);
+   z[10] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[ 7]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[ 6]);
+   z[11] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[ 7]);
+   word3_muladd  (&w2, &w1, &w0, x[ 6], x[ 6]);
+   z[12] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[ 7]);
+   z[13] = w1; w1 = 0;
+
+   word3_muladd  (&w1, &w0, &w2, x[ 7], x[ 7]);
+   z[14] = w2;
+   z[15] = w0;
+   }
+
+/*
+* Comba 8x8 Multiplication
+*/
+void bigint_comba_mul8(word z[16], const word x[8], const word y[8])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 0]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 0]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 0]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 0]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 0]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 0]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 0]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 1]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 2]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 3]);
+   z[10] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 4]);
+   z[11] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 5]);
+   z[12] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 6]);
+   z[13] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 7]);
+   z[14] = w2;
+   z[15] = w0;
+   }
+
+/*
+* Comba 9x9 Squaring
+*/
+void bigint_comba_sqr9(word z[18], const word x[9])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd  (&w2, &w1, &w0, x[ 0], x[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 1]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 2]);
+   word3_muladd  (&w1, &w0, &w2, x[ 1], x[ 1]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 3]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 2]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 4]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 3]);
+   word3_muladd  (&w0, &w2, &w1, x[ 2], x[ 2]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 5]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[ 4]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 3]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 6]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 5]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[ 4]);
+   word3_muladd  (&w2, &w1, &w0, x[ 3], x[ 3]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 7]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 6]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[ 5]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[ 4]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 8]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[ 7]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 6]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[ 5]);
+   word3_muladd  (&w1, &w0, &w2, x[ 4], x[ 4]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 8]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[ 7]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[ 6]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[ 5]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[ 8]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[ 7]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[ 6]);
+   word3_muladd  (&w0, &w2, &w1, x[ 5], x[ 5]);
+   z[10] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[ 8]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[ 7]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[ 6]);
+   z[11] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[ 8]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[ 7]);
+   word3_muladd  (&w2, &w1, &w0, x[ 6], x[ 6]);
+   z[12] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[ 8]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[ 7]);
+   z[13] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[ 8]);
+   word3_muladd  (&w1, &w0, &w2, x[ 7], x[ 7]);
+   z[14] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[ 8]);
+   z[15] = w0; w0 = 0;
+
+   word3_muladd  (&w0, &w2, &w1, x[ 8], x[ 8]);
+   z[16] = w1;
+   z[17] = w2;
+   }
+
+/*
+* Comba 9x9 Multiplication
+*/
+void bigint_comba_mul9(word z[18], const word x[9], const word y[9])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 0]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 0]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 0]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 0]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 0]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 0]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 0]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 0]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[ 1]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[ 2]);
+   z[10] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 3]);
+   z[11] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[ 4]);
+   z[12] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[ 5]);
+   z[13] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 6]);
+   z[14] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[ 7]);
+   z[15] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[ 8]);
+   z[16] = w1;
+   z[17] = w2;
+   }
+
+/*
+* Comba 16x16 Squaring
+*/
+void bigint_comba_sqr16(word z[32], const word x[16])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd  (&w2, &w1, &w0, x[ 0], x[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 1]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 2]);
+   word3_muladd  (&w1, &w0, &w2, x[ 1], x[ 1]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 3]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 2]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 4]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 3]);
+   word3_muladd  (&w0, &w2, &w1, x[ 2], x[ 2]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 5]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[ 4]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 3]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 6]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 5]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[ 4]);
+   word3_muladd  (&w2, &w1, &w0, x[ 3], x[ 3]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 7]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 6]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[ 5]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[ 4]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 8]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[ 7]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 6]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[ 5]);
+   word3_muladd  (&w1, &w0, &w2, x[ 4], x[ 4]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 9]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 8]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[ 7]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[ 6]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[ 5]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[10]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 9]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[ 8]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[ 7]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[ 6]);
+   word3_muladd  (&w0, &w2, &w1, x[ 5], x[ 5]);
+   z[10] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[11]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[10]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 9]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[ 8]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[ 7]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[ 6]);
+   z[11] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[12]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[11]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[10]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[ 9]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[ 8]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[ 7]);
+   word3_muladd  (&w2, &w1, &w0, x[ 6], x[ 6]);
+   z[12] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[13]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[12]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[11]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[10]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[ 9]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[ 8]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[ 7]);
+   z[13] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[14]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[13]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[12]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[11]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[10]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[ 9]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[ 8]);
+   word3_muladd  (&w1, &w0, &w2, x[ 7], x[ 7]);
+   z[14] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[14]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[13]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[12]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[11]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[10]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 6], x[ 9]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[ 8]);
+   z[15] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[15]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[14]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[13]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[12]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[11]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[10]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 7], x[ 9]);
+   word3_muladd  (&w0, &w2, &w1, x[ 8], x[ 8]);
+   z[16] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[15]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[14]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[13]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[12]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[11]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 7], x[10]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 8], x[ 9]);
+   z[17] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[14]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[13]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 6], x[12]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[11]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 8], x[10]);
+   word3_muladd  (&w2, &w1, &w0, x[ 9], x[ 9]);
+   z[18] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[15]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[14]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[13]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 7], x[12]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 8], x[11]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 9], x[10]);
+   z[19] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[15]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[14]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 7], x[13]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 8], x[12]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 9], x[11]);
+   word3_muladd  (&w1, &w0, &w2, x[10], x[10]);
+   z[20] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 6], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[14]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 8], x[13]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 9], x[12]);
+   word3_muladd_2(&w2, &w1, &w0, x[10], x[11]);
+   z[21] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 7], x[15]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 8], x[14]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 9], x[13]);
+   word3_muladd_2(&w0, &w2, &w1, x[10], x[12]);
+   word3_muladd  (&w0, &w2, &w1, x[11], x[11]);
+   z[22] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 8], x[15]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 9], x[14]);
+   word3_muladd_2(&w1, &w0, &w2, x[10], x[13]);
+   word3_muladd_2(&w1, &w0, &w2, x[11], x[12]);
+   z[23] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 9], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[10], x[14]);
+   word3_muladd_2(&w2, &w1, &w0, x[11], x[13]);
+   word3_muladd  (&w2, &w1, &w0, x[12], x[12]);
+   z[24] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[10], x[15]);
+   word3_muladd_2(&w0, &w2, &w1, x[11], x[14]);
+   word3_muladd_2(&w0, &w2, &w1, x[12], x[13]);
+   z[25] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[11], x[15]);
+   word3_muladd_2(&w1, &w0, &w2, x[12], x[14]);
+   word3_muladd  (&w1, &w0, &w2, x[13], x[13]);
+   z[26] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[12], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[13], x[14]);
+   z[27] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[13], x[15]);
+   word3_muladd  (&w0, &w2, &w1, x[14], x[14]);
+   z[28] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[14], x[15]);
+   z[29] = w2; w2 = 0;
+
+   word3_muladd  (&w2, &w1, &w0, x[15], x[15]);
+   z[30] = w0;
+   z[31] = w1;
+   }
+
+/*
+* Comba 16x16 Multiplication
+*/
+void bigint_comba_mul16(word z[32], const word x[16], const word y[16])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 0]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 0]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 0]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 0]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 0]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 0]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 0]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 0]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[ 0]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[ 0]);
+   z[10] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[ 0]);
+   z[11] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[ 0]);
+   z[12] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[ 0]);
+   z[13] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[ 0]);
+   z[14] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[ 0]);
+   z[15] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[ 1]);
+   z[16] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[ 2]);
+   z[17] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[ 3]);
+   z[18] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[ 4]);
+   z[19] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[ 5]);
+   z[20] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[ 6]);
+   z[21] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[ 7]);
+   z[22] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[ 8]);
+   z[23] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[ 9]);
+   z[24] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[10], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[10]);
+   z[25] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[11], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[11]);
+   z[26] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[12], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[12]);
+   z[27] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[13], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[13]);
+   z[28] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[14], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[14]);
+   z[29] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[15], y[15]);
+   z[30] = w0;
+   z[31] = w1;
+   }
+
+/*
+* Comba 24x24 Squaring
+*/
+void bigint_comba_sqr24(word z[48], const word x[24])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd  (&w2, &w1, &w0, x[ 0], x[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 1]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 2]);
+   word3_muladd  (&w1, &w0, &w2, x[ 1], x[ 1]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 3]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 2]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 4]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 3]);
+   word3_muladd  (&w0, &w2, &w1, x[ 2], x[ 2]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 5]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[ 4]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 3]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 6]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 5]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[ 4]);
+   word3_muladd  (&w2, &w1, &w0, x[ 3], x[ 3]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[ 7]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 6]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[ 5]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[ 4]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[ 8]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[ 7]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 6]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[ 5]);
+   word3_muladd  (&w1, &w0, &w2, x[ 4], x[ 4]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[ 9]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[ 8]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[ 7]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[ 6]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[ 5]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[10]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[ 9]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[ 8]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[ 7]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[ 6]);
+   word3_muladd  (&w0, &w2, &w1, x[ 5], x[ 5]);
+   z[10] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[11]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[10]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[ 9]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[ 8]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[ 7]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[ 6]);
+   z[11] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[12]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[11]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[10]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[ 9]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[ 8]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[ 7]);
+   word3_muladd  (&w2, &w1, &w0, x[ 6], x[ 6]);
+   z[12] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[13]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[12]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[11]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[10]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[ 9]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[ 8]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[ 7]);
+   z[13] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[14]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[13]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[12]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[11]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[10]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[ 9]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[ 8]);
+   word3_muladd  (&w1, &w0, &w2, x[ 7], x[ 7]);
+   z[14] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[14]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[13]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[12]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[11]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[10]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 6], x[ 9]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[ 8]);
+   z[15] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[16]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[15]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[14]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[13]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[12]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[11]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[10]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 7], x[ 9]);
+   word3_muladd  (&w0, &w2, &w1, x[ 8], x[ 8]);
+   z[16] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[17]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[16]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[15]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[14]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[13]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[12]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[11]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 7], x[10]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 8], x[ 9]);
+   z[17] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[18]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[17]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[16]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[14]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[13]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 6], x[12]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[11]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 8], x[10]);
+   word3_muladd  (&w2, &w1, &w0, x[ 9], x[ 9]);
+   z[18] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[19]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[18]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[17]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[16]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[15]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[14]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[13]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 7], x[12]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 8], x[11]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 9], x[10]);
+   z[19] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[20]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[19]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[18]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[17]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[16]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[15]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[14]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 7], x[13]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 8], x[12]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 9], x[11]);
+   word3_muladd  (&w1, &w0, &w2, x[10], x[10]);
+   z[20] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 0], x[21]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[20]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[19]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[18]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[17]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[16]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 6], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[14]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 8], x[13]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 9], x[12]);
+   word3_muladd_2(&w2, &w1, &w0, x[10], x[11]);
+   z[21] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 0], x[22]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 1], x[21]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[20]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[19]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[18]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[17]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[16]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 7], x[15]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 8], x[14]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 9], x[13]);
+   word3_muladd_2(&w0, &w2, &w1, x[10], x[12]);
+   word3_muladd  (&w0, &w2, &w1, x[11], x[11]);
+   z[22] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 0], x[23]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 1], x[22]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 2], x[21]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[20]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[19]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[18]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[17]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 7], x[16]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 8], x[15]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 9], x[14]);
+   word3_muladd_2(&w1, &w0, &w2, x[10], x[13]);
+   word3_muladd_2(&w1, &w0, &w2, x[11], x[12]);
+   z[23] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 1], x[23]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 2], x[22]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 3], x[21]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[20]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[19]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 6], x[18]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[17]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 8], x[16]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 9], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[10], x[14]);
+   word3_muladd_2(&w2, &w1, &w0, x[11], x[13]);
+   word3_muladd  (&w2, &w1, &w0, x[12], x[12]);
+   z[24] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 2], x[23]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 3], x[22]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 4], x[21]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[20]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[19]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 7], x[18]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 8], x[17]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 9], x[16]);
+   word3_muladd_2(&w0, &w2, &w1, x[10], x[15]);
+   word3_muladd_2(&w0, &w2, &w1, x[11], x[14]);
+   word3_muladd_2(&w0, &w2, &w1, x[12], x[13]);
+   z[25] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 3], x[23]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 4], x[22]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 5], x[21]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[20]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 7], x[19]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 8], x[18]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 9], x[17]);
+   word3_muladd_2(&w1, &w0, &w2, x[10], x[16]);
+   word3_muladd_2(&w1, &w0, &w2, x[11], x[15]);
+   word3_muladd_2(&w1, &w0, &w2, x[12], x[14]);
+   word3_muladd  (&w1, &w0, &w2, x[13], x[13]);
+   z[26] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 4], x[23]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 5], x[22]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 6], x[21]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[20]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 8], x[19]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 9], x[18]);
+   word3_muladd_2(&w2, &w1, &w0, x[10], x[17]);
+   word3_muladd_2(&w2, &w1, &w0, x[11], x[16]);
+   word3_muladd_2(&w2, &w1, &w0, x[12], x[15]);
+   word3_muladd_2(&w2, &w1, &w0, x[13], x[14]);
+   z[27] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 5], x[23]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 6], x[22]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 7], x[21]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 8], x[20]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 9], x[19]);
+   word3_muladd_2(&w0, &w2, &w1, x[10], x[18]);
+   word3_muladd_2(&w0, &w2, &w1, x[11], x[17]);
+   word3_muladd_2(&w0, &w2, &w1, x[12], x[16]);
+   word3_muladd_2(&w0, &w2, &w1, x[13], x[15]);
+   word3_muladd  (&w0, &w2, &w1, x[14], x[14]);
+   z[28] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 6], x[23]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 7], x[22]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 8], x[21]);
+   word3_muladd_2(&w1, &w0, &w2, x[ 9], x[20]);
+   word3_muladd_2(&w1, &w0, &w2, x[10], x[19]);
+   word3_muladd_2(&w1, &w0, &w2, x[11], x[18]);
+   word3_muladd_2(&w1, &w0, &w2, x[12], x[17]);
+   word3_muladd_2(&w1, &w0, &w2, x[13], x[16]);
+   word3_muladd_2(&w1, &w0, &w2, x[14], x[15]);
+   z[29] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[ 7], x[23]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 8], x[22]);
+   word3_muladd_2(&w2, &w1, &w0, x[ 9], x[21]);
+   word3_muladd_2(&w2, &w1, &w0, x[10], x[20]);
+   word3_muladd_2(&w2, &w1, &w0, x[11], x[19]);
+   word3_muladd_2(&w2, &w1, &w0, x[12], x[18]);
+   word3_muladd_2(&w2, &w1, &w0, x[13], x[17]);
+   word3_muladd_2(&w2, &w1, &w0, x[14], x[16]);
+   word3_muladd  (&w2, &w1, &w0, x[15], x[15]);
+   z[30] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[ 8], x[23]);
+   word3_muladd_2(&w0, &w2, &w1, x[ 9], x[22]);
+   word3_muladd_2(&w0, &w2, &w1, x[10], x[21]);
+   word3_muladd_2(&w0, &w2, &w1, x[11], x[20]);
+   word3_muladd_2(&w0, &w2, &w1, x[12], x[19]);
+   word3_muladd_2(&w0, &w2, &w1, x[13], x[18]);
+   word3_muladd_2(&w0, &w2, &w1, x[14], x[17]);
+   word3_muladd_2(&w0, &w2, &w1, x[15], x[16]);
+   z[31] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[ 9], x[23]);
+   word3_muladd_2(&w1, &w0, &w2, x[10], x[22]);
+   word3_muladd_2(&w1, &w0, &w2, x[11], x[21]);
+   word3_muladd_2(&w1, &w0, &w2, x[12], x[20]);
+   word3_muladd_2(&w1, &w0, &w2, x[13], x[19]);
+   word3_muladd_2(&w1, &w0, &w2, x[14], x[18]);
+   word3_muladd_2(&w1, &w0, &w2, x[15], x[17]);
+   word3_muladd  (&w1, &w0, &w2, x[16], x[16]);
+   z[32] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[10], x[23]);
+   word3_muladd_2(&w2, &w1, &w0, x[11], x[22]);
+   word3_muladd_2(&w2, &w1, &w0, x[12], x[21]);
+   word3_muladd_2(&w2, &w1, &w0, x[13], x[20]);
+   word3_muladd_2(&w2, &w1, &w0, x[14], x[19]);
+   word3_muladd_2(&w2, &w1, &w0, x[15], x[18]);
+   word3_muladd_2(&w2, &w1, &w0, x[16], x[17]);
+   z[33] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[11], x[23]);
+   word3_muladd_2(&w0, &w2, &w1, x[12], x[22]);
+   word3_muladd_2(&w0, &w2, &w1, x[13], x[21]);
+   word3_muladd_2(&w0, &w2, &w1, x[14], x[20]);
+   word3_muladd_2(&w0, &w2, &w1, x[15], x[19]);
+   word3_muladd_2(&w0, &w2, &w1, x[16], x[18]);
+   word3_muladd  (&w0, &w2, &w1, x[17], x[17]);
+   z[34] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[12], x[23]);
+   word3_muladd_2(&w1, &w0, &w2, x[13], x[22]);
+   word3_muladd_2(&w1, &w0, &w2, x[14], x[21]);
+   word3_muladd_2(&w1, &w0, &w2, x[15], x[20]);
+   word3_muladd_2(&w1, &w0, &w2, x[16], x[19]);
+   word3_muladd_2(&w1, &w0, &w2, x[17], x[18]);
+   z[35] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[13], x[23]);
+   word3_muladd_2(&w2, &w1, &w0, x[14], x[22]);
+   word3_muladd_2(&w2, &w1, &w0, x[15], x[21]);
+   word3_muladd_2(&w2, &w1, &w0, x[16], x[20]);
+   word3_muladd_2(&w2, &w1, &w0, x[17], x[19]);
+   word3_muladd  (&w2, &w1, &w0, x[18], x[18]);
+   z[36] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[14], x[23]);
+   word3_muladd_2(&w0, &w2, &w1, x[15], x[22]);
+   word3_muladd_2(&w0, &w2, &w1, x[16], x[21]);
+   word3_muladd_2(&w0, &w2, &w1, x[17], x[20]);
+   word3_muladd_2(&w0, &w2, &w1, x[18], x[19]);
+   z[37] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[15], x[23]);
+   word3_muladd_2(&w1, &w0, &w2, x[16], x[22]);
+   word3_muladd_2(&w1, &w0, &w2, x[17], x[21]);
+   word3_muladd_2(&w1, &w0, &w2, x[18], x[20]);
+   word3_muladd  (&w1, &w0, &w2, x[19], x[19]);
+   z[38] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[16], x[23]);
+   word3_muladd_2(&w2, &w1, &w0, x[17], x[22]);
+   word3_muladd_2(&w2, &w1, &w0, x[18], x[21]);
+   word3_muladd_2(&w2, &w1, &w0, x[19], x[20]);
+   z[39] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[17], x[23]);
+   word3_muladd_2(&w0, &w2, &w1, x[18], x[22]);
+   word3_muladd_2(&w0, &w2, &w1, x[19], x[21]);
+   word3_muladd  (&w0, &w2, &w1, x[20], x[20]);
+   z[40] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[18], x[23]);
+   word3_muladd_2(&w1, &w0, &w2, x[19], x[22]);
+   word3_muladd_2(&w1, &w0, &w2, x[20], x[21]);
+   z[41] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[19], x[23]);
+   word3_muladd_2(&w2, &w1, &w0, x[20], x[22]);
+   word3_muladd  (&w2, &w1, &w0, x[21], x[21]);
+   z[42] = w0; w0 = 0;
+
+   word3_muladd_2(&w0, &w2, &w1, x[20], x[23]);
+   word3_muladd_2(&w0, &w2, &w1, x[21], x[22]);
+   z[43] = w1; w1 = 0;
+
+   word3_muladd_2(&w1, &w0, &w2, x[21], x[23]);
+   word3_muladd  (&w1, &w0, &w2, x[22], x[22]);
+   z[44] = w2; w2 = 0;
+
+   word3_muladd_2(&w2, &w1, &w0, x[22], x[23]);
+   z[45] = w0; w0 = 0;
+
+   word3_muladd  (&w0, &w2, &w1, x[23], x[23]);
+   z[46] = w1;
+   z[47] = w2;
+   }
+
+/*
+* Comba 24x24 Multiplication
+*/
+void bigint_comba_mul24(word z[48], const word x[24], const word y[24])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 0]);
+   z[ 0] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 0]);
+   z[ 1] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 0]);
+   z[ 2] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 0]);
+   z[ 3] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 0]);
+   z[ 4] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 0]);
+   z[ 5] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 0]);
+   z[ 6] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 0]);
+   z[ 7] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 0]);
+   z[ 8] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[ 0]);
+   z[ 9] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[ 0]);
+   z[10] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[ 0]);
+   z[11] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[ 0]);
+   z[12] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[ 0]);
+   z[13] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[ 0]);
+   z[14] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[ 0]);
+   z[15] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[16]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[16], y[ 0]);
+   z[16] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[17]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[16]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[16], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[17], y[ 0]);
+   z[17] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[18]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[17]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[16]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[16], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[17], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[18], y[ 0]);
+   z[18] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[19]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[18]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[17]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[16]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[16], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[17], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[18], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[19], y[ 0]);
+   z[19] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[20]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[19]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[18]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[17]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[16]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[16], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[17], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[18], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[19], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[20], y[ 0]);
+   z[20] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 0], y[21]);
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[20]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[19]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[18]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[17]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[16]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[16], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[17], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[18], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[19], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[20], y[ 1]);
+   word3_muladd(&w2, &w1, &w0, x[21], y[ 0]);
+   z[21] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 0], y[22]);
+   word3_muladd(&w0, &w2, &w1, x[ 1], y[21]);
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[20]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[19]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[18]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[17]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[16]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[16], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[17], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[18], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[19], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[20], y[ 2]);
+   word3_muladd(&w0, &w2, &w1, x[21], y[ 1]);
+   word3_muladd(&w0, &w2, &w1, x[22], y[ 0]);
+   z[22] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 0], y[23]);
+   word3_muladd(&w1, &w0, &w2, x[ 1], y[22]);
+   word3_muladd(&w1, &w0, &w2, x[ 2], y[21]);
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[20]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[19]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[18]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[17]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[16]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[16], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[17], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[18], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[19], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[20], y[ 3]);
+   word3_muladd(&w1, &w0, &w2, x[21], y[ 2]);
+   word3_muladd(&w1, &w0, &w2, x[22], y[ 1]);
+   word3_muladd(&w1, &w0, &w2, x[23], y[ 0]);
+   z[23] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 1], y[23]);
+   word3_muladd(&w2, &w1, &w0, x[ 2], y[22]);
+   word3_muladd(&w2, &w1, &w0, x[ 3], y[21]);
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[20]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[19]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[18]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[17]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[16]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[16], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[17], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[18], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[19], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[20], y[ 4]);
+   word3_muladd(&w2, &w1, &w0, x[21], y[ 3]);
+   word3_muladd(&w2, &w1, &w0, x[22], y[ 2]);
+   word3_muladd(&w2, &w1, &w0, x[23], y[ 1]);
+   z[24] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 2], y[23]);
+   word3_muladd(&w0, &w2, &w1, x[ 3], y[22]);
+   word3_muladd(&w0, &w2, &w1, x[ 4], y[21]);
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[20]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[19]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[18]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[17]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[16]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[16], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[17], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[18], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[19], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[20], y[ 5]);
+   word3_muladd(&w0, &w2, &w1, x[21], y[ 4]);
+   word3_muladd(&w0, &w2, &w1, x[22], y[ 3]);
+   word3_muladd(&w0, &w2, &w1, x[23], y[ 2]);
+   z[25] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 3], y[23]);
+   word3_muladd(&w1, &w0, &w2, x[ 4], y[22]);
+   word3_muladd(&w1, &w0, &w2, x[ 5], y[21]);
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[20]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[19]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[18]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[17]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[16]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[16], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[17], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[18], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[19], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[20], y[ 6]);
+   word3_muladd(&w1, &w0, &w2, x[21], y[ 5]);
+   word3_muladd(&w1, &w0, &w2, x[22], y[ 4]);
+   word3_muladd(&w1, &w0, &w2, x[23], y[ 3]);
+   z[26] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 4], y[23]);
+   word3_muladd(&w2, &w1, &w0, x[ 5], y[22]);
+   word3_muladd(&w2, &w1, &w0, x[ 6], y[21]);
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[20]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[19]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[18]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[17]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[16]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[16], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[17], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[18], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[19], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[20], y[ 7]);
+   word3_muladd(&w2, &w1, &w0, x[21], y[ 6]);
+   word3_muladd(&w2, &w1, &w0, x[22], y[ 5]);
+   word3_muladd(&w2, &w1, &w0, x[23], y[ 4]);
+   z[27] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 5], y[23]);
+   word3_muladd(&w0, &w2, &w1, x[ 6], y[22]);
+   word3_muladd(&w0, &w2, &w1, x[ 7], y[21]);
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[20]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[19]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[18]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[17]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[16]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[16], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[17], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[18], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[19], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[20], y[ 8]);
+   word3_muladd(&w0, &w2, &w1, x[21], y[ 7]);
+   word3_muladd(&w0, &w2, &w1, x[22], y[ 6]);
+   word3_muladd(&w0, &w2, &w1, x[23], y[ 5]);
+   z[28] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 6], y[23]);
+   word3_muladd(&w1, &w0, &w2, x[ 7], y[22]);
+   word3_muladd(&w1, &w0, &w2, x[ 8], y[21]);
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[20]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[19]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[18]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[17]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[16]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[16], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[17], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[18], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[19], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[20], y[ 9]);
+   word3_muladd(&w1, &w0, &w2, x[21], y[ 8]);
+   word3_muladd(&w1, &w0, &w2, x[22], y[ 7]);
+   word3_muladd(&w1, &w0, &w2, x[23], y[ 6]);
+   z[29] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[ 7], y[23]);
+   word3_muladd(&w2, &w1, &w0, x[ 8], y[22]);
+   word3_muladd(&w2, &w1, &w0, x[ 9], y[21]);
+   word3_muladd(&w2, &w1, &w0, x[10], y[20]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[19]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[18]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[17]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[16]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[16], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[17], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[18], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[19], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[20], y[10]);
+   word3_muladd(&w2, &w1, &w0, x[21], y[ 9]);
+   word3_muladd(&w2, &w1, &w0, x[22], y[ 8]);
+   word3_muladd(&w2, &w1, &w0, x[23], y[ 7]);
+   z[30] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[ 8], y[23]);
+   word3_muladd(&w0, &w2, &w1, x[ 9], y[22]);
+   word3_muladd(&w0, &w2, &w1, x[10], y[21]);
+   word3_muladd(&w0, &w2, &w1, x[11], y[20]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[19]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[18]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[17]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[16]);
+   word3_muladd(&w0, &w2, &w1, x[16], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[17], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[18], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[19], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[20], y[11]);
+   word3_muladd(&w0, &w2, &w1, x[21], y[10]);
+   word3_muladd(&w0, &w2, &w1, x[22], y[ 9]);
+   word3_muladd(&w0, &w2, &w1, x[23], y[ 8]);
+   z[31] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[ 9], y[23]);
+   word3_muladd(&w1, &w0, &w2, x[10], y[22]);
+   word3_muladd(&w1, &w0, &w2, x[11], y[21]);
+   word3_muladd(&w1, &w0, &w2, x[12], y[20]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[19]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[18]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[17]);
+   word3_muladd(&w1, &w0, &w2, x[16], y[16]);
+   word3_muladd(&w1, &w0, &w2, x[17], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[18], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[19], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[20], y[12]);
+   word3_muladd(&w1, &w0, &w2, x[21], y[11]);
+   word3_muladd(&w1, &w0, &w2, x[22], y[10]);
+   word3_muladd(&w1, &w0, &w2, x[23], y[ 9]);
+   z[32] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[10], y[23]);
+   word3_muladd(&w2, &w1, &w0, x[11], y[22]);
+   word3_muladd(&w2, &w1, &w0, x[12], y[21]);
+   word3_muladd(&w2, &w1, &w0, x[13], y[20]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[19]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[18]);
+   word3_muladd(&w2, &w1, &w0, x[16], y[17]);
+   word3_muladd(&w2, &w1, &w0, x[17], y[16]);
+   word3_muladd(&w2, &w1, &w0, x[18], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[19], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[20], y[13]);
+   word3_muladd(&w2, &w1, &w0, x[21], y[12]);
+   word3_muladd(&w2, &w1, &w0, x[22], y[11]);
+   word3_muladd(&w2, &w1, &w0, x[23], y[10]);
+   z[33] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[11], y[23]);
+   word3_muladd(&w0, &w2, &w1, x[12], y[22]);
+   word3_muladd(&w0, &w2, &w1, x[13], y[21]);
+   word3_muladd(&w0, &w2, &w1, x[14], y[20]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[19]);
+   word3_muladd(&w0, &w2, &w1, x[16], y[18]);
+   word3_muladd(&w0, &w2, &w1, x[17], y[17]);
+   word3_muladd(&w0, &w2, &w1, x[18], y[16]);
+   word3_muladd(&w0, &w2, &w1, x[19], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[20], y[14]);
+   word3_muladd(&w0, &w2, &w1, x[21], y[13]);
+   word3_muladd(&w0, &w2, &w1, x[22], y[12]);
+   word3_muladd(&w0, &w2, &w1, x[23], y[11]);
+   z[34] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[12], y[23]);
+   word3_muladd(&w1, &w0, &w2, x[13], y[22]);
+   word3_muladd(&w1, &w0, &w2, x[14], y[21]);
+   word3_muladd(&w1, &w0, &w2, x[15], y[20]);
+   word3_muladd(&w1, &w0, &w2, x[16], y[19]);
+   word3_muladd(&w1, &w0, &w2, x[17], y[18]);
+   word3_muladd(&w1, &w0, &w2, x[18], y[17]);
+   word3_muladd(&w1, &w0, &w2, x[19], y[16]);
+   word3_muladd(&w1, &w0, &w2, x[20], y[15]);
+   word3_muladd(&w1, &w0, &w2, x[21], y[14]);
+   word3_muladd(&w1, &w0, &w2, x[22], y[13]);
+   word3_muladd(&w1, &w0, &w2, x[23], y[12]);
+   z[35] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[13], y[23]);
+   word3_muladd(&w2, &w1, &w0, x[14], y[22]);
+   word3_muladd(&w2, &w1, &w0, x[15], y[21]);
+   word3_muladd(&w2, &w1, &w0, x[16], y[20]);
+   word3_muladd(&w2, &w1, &w0, x[17], y[19]);
+   word3_muladd(&w2, &w1, &w0, x[18], y[18]);
+   word3_muladd(&w2, &w1, &w0, x[19], y[17]);
+   word3_muladd(&w2, &w1, &w0, x[20], y[16]);
+   word3_muladd(&w2, &w1, &w0, x[21], y[15]);
+   word3_muladd(&w2, &w1, &w0, x[22], y[14]);
+   word3_muladd(&w2, &w1, &w0, x[23], y[13]);
+   z[36] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[14], y[23]);
+   word3_muladd(&w0, &w2, &w1, x[15], y[22]);
+   word3_muladd(&w0, &w2, &w1, x[16], y[21]);
+   word3_muladd(&w0, &w2, &w1, x[17], y[20]);
+   word3_muladd(&w0, &w2, &w1, x[18], y[19]);
+   word3_muladd(&w0, &w2, &w1, x[19], y[18]);
+   word3_muladd(&w0, &w2, &w1, x[20], y[17]);
+   word3_muladd(&w0, &w2, &w1, x[21], y[16]);
+   word3_muladd(&w0, &w2, &w1, x[22], y[15]);
+   word3_muladd(&w0, &w2, &w1, x[23], y[14]);
+   z[37] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[15], y[23]);
+   word3_muladd(&w1, &w0, &w2, x[16], y[22]);
+   word3_muladd(&w1, &w0, &w2, x[17], y[21]);
+   word3_muladd(&w1, &w0, &w2, x[18], y[20]);
+   word3_muladd(&w1, &w0, &w2, x[19], y[19]);
+   word3_muladd(&w1, &w0, &w2, x[20], y[18]);
+   word3_muladd(&w1, &w0, &w2, x[21], y[17]);
+   word3_muladd(&w1, &w0, &w2, x[22], y[16]);
+   word3_muladd(&w1, &w0, &w2, x[23], y[15]);
+   z[38] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[16], y[23]);
+   word3_muladd(&w2, &w1, &w0, x[17], y[22]);
+   word3_muladd(&w2, &w1, &w0, x[18], y[21]);
+   word3_muladd(&w2, &w1, &w0, x[19], y[20]);
+   word3_muladd(&w2, &w1, &w0, x[20], y[19]);
+   word3_muladd(&w2, &w1, &w0, x[21], y[18]);
+   word3_muladd(&w2, &w1, &w0, x[22], y[17]);
+   word3_muladd(&w2, &w1, &w0, x[23], y[16]);
+   z[39] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[17], y[23]);
+   word3_muladd(&w0, &w2, &w1, x[18], y[22]);
+   word3_muladd(&w0, &w2, &w1, x[19], y[21]);
+   word3_muladd(&w0, &w2, &w1, x[20], y[20]);
+   word3_muladd(&w0, &w2, &w1, x[21], y[19]);
+   word3_muladd(&w0, &w2, &w1, x[22], y[18]);
+   word3_muladd(&w0, &w2, &w1, x[23], y[17]);
+   z[40] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[18], y[23]);
+   word3_muladd(&w1, &w0, &w2, x[19], y[22]);
+   word3_muladd(&w1, &w0, &w2, x[20], y[21]);
+   word3_muladd(&w1, &w0, &w2, x[21], y[20]);
+   word3_muladd(&w1, &w0, &w2, x[22], y[19]);
+   word3_muladd(&w1, &w0, &w2, x[23], y[18]);
+   z[41] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[19], y[23]);
+   word3_muladd(&w2, &w1, &w0, x[20], y[22]);
+   word3_muladd(&w2, &w1, &w0, x[21], y[21]);
+   word3_muladd(&w2, &w1, &w0, x[22], y[20]);
+   word3_muladd(&w2, &w1, &w0, x[23], y[19]);
+   z[42] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[20], y[23]);
+   word3_muladd(&w0, &w2, &w1, x[21], y[22]);
+   word3_muladd(&w0, &w2, &w1, x[22], y[21]);
+   word3_muladd(&w0, &w2, &w1, x[23], y[20]);
+   z[43] = w1; w1 = 0;
+
+   word3_muladd(&w1, &w0, &w2, x[21], y[23]);
+   word3_muladd(&w1, &w0, &w2, x[22], y[22]);
+   word3_muladd(&w1, &w0, &w2, x[23], y[21]);
+   z[44] = w2; w2 = 0;
+
+   word3_muladd(&w2, &w1, &w0, x[22], y[23]);
+   word3_muladd(&w2, &w1, &w0, x[23], y[22]);
+   z[45] = w0; w0 = 0;
+
+   word3_muladd(&w0, &w2, &w1, x[23], y[23]);
+   z[46] = w1;
+   z[47] = w2;
+   }
+
+}
+/*
+* Multiplication and Squaring
+* (C) 1999-2010,2018 Jack Lloyd
+*     2016 Matthias Gierlings
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+const size_t KARATSUBA_MULTIPLY_THRESHOLD = 32;
+const size_t KARATSUBA_SQUARE_THRESHOLD = 32;
+
+/*
+* Simple O(N^2) Multiplication
+*/
+void basecase_mul(word z[], size_t z_size,
+                  const word x[], size_t x_size,
+                  const word y[], size_t y_size)
+   {
+   if(z_size < x_size + y_size)
+      throw Invalid_Argument("basecase_mul z_size too small");
+
+   const size_t x_size_8 = x_size - (x_size % 8);
+
+   clear_mem(z, z_size);
+
+   for(size_t i = 0; i != y_size; ++i)
+      {
+      const word y_i = y[i];
+
+      word carry = 0;
+
+      for(size_t j = 0; j != x_size_8; j += 8)
+         carry = word8_madd3(z + i + j, x + j, y_i, carry);
+
+      for(size_t j = x_size_8; j != x_size; ++j)
+         z[i+j] = word_madd3(x[j], y_i, z[i+j], &carry);
+
+      z[x_size+i] = carry;
+      }
+   }
+
+void basecase_sqr(word z[], size_t z_size,
+                  const word x[], size_t x_size)
+   {
+   if(z_size < 2*x_size)
+      throw Invalid_Argument("basecase_sqr z_size too small");
+
+   const size_t x_size_8 = x_size - (x_size % 8);
+
+   clear_mem(z, z_size);
+
+   for(size_t i = 0; i != x_size; ++i)
+      {
+      const word x_i = x[i];
+
+      word carry = 0;
+
+      for(size_t j = 0; j != x_size_8; j += 8)
+         carry = word8_madd3(z + i + j, x + j, x_i, carry);
+
+      for(size_t j = x_size_8; j != x_size; ++j)
+         z[i+j] = word_madd3(x[j], x_i, z[i+j], &carry);
+
+      z[x_size+i] = carry;
+      }
+   }
+
+/*
+* Karatsuba Multiplication Operation
+*/
+void karatsuba_mul(word z[], const word x[], const word y[], size_t N,
+                   word workspace[])
+   {
+   if(N < KARATSUBA_MULTIPLY_THRESHOLD || N % 2)
+      {
+      switch(N)
+         {
+         case 6:
+            return bigint_comba_mul6(z, x, y);
+         case 8:
+            return bigint_comba_mul8(z, x, y);
+         case 9:
+            return bigint_comba_mul9(z, x, y);
+         case 16:
+            return bigint_comba_mul16(z, x, y);
+         case 24:
+            return bigint_comba_mul24(z, x, y);
+         default:
+            return basecase_mul(z, 2*N, x, N, y, N);
+         }
+      }
+
+   const size_t N2 = N / 2;
+
+   const word* x0 = x;
+   const word* x1 = x + N2;
+   const word* y0 = y;
+   const word* y1 = y + N2;
+   word* z0 = z;
+   word* z1 = z + N;
+
+   word* ws0 = workspace;
+   word* ws1 = workspace + N;
+
+   clear_mem(workspace, 2*N);
+
+   /*
+   * If either of cmp0 or cmp1 is zero then z0 or z1 resp is zero here,
+   * resulting in a no-op - z0*z1 will be equal to zero so we don't need to do
+   * anything, clear_mem above already set the correct result.
+   *
+   * However we ignore the result of the comparisons and always perform the
+   * subtractions and recursively multiply to avoid the timing channel.
+   */
+
+   // First compute (X_lo - X_hi)*(Y_hi - Y_lo)
+   const auto cmp0 = bigint_sub_abs(z0, x0, x1, N2, workspace);
+   const auto cmp1 = bigint_sub_abs(z1, y1, y0, N2, workspace);
+   const auto neg_mask = ~(cmp0 ^ cmp1);
+
+   karatsuba_mul(ws0, z0, z1, N2, ws1);
+
+   // Compute X_lo * Y_lo
+   karatsuba_mul(z0, x0, y0, N2, ws1);
+
+   // Compute X_hi * Y_hi
+   karatsuba_mul(z1, x1, y1, N2, ws1);
+
+   const word ws_carry = bigint_add3_nc(ws1, z0, N, z1, N);
+   word z_carry = bigint_add2_nc(z + N2, N, ws1, N);
+
+   z_carry += bigint_add2_nc(z + N + N2, N2, &ws_carry, 1);
+   bigint_add2_nc(z + N + N2, N2, &z_carry, 1);
+
+   clear_mem(workspace + N, N2);
+
+   bigint_cnd_add_or_sub(neg_mask, z + N2, workspace, 2*N-N2);
+   }
+
+/*
+* Karatsuba Squaring Operation
+*/
+void karatsuba_sqr(word z[], const word x[], size_t N, word workspace[])
+   {
+   if(N < KARATSUBA_SQUARE_THRESHOLD || N % 2)
+      {
+      switch(N)
+         {
+         case 6:
+            return bigint_comba_sqr6(z, x);
+         case 8:
+            return bigint_comba_sqr8(z, x);
+         case 9:
+            return bigint_comba_sqr9(z, x);
+         case 16:
+            return bigint_comba_sqr16(z, x);
+         case 24:
+            return bigint_comba_sqr24(z, x);
+         default:
+            return basecase_sqr(z, 2*N, x, N);
+         }
+      }
+
+   const size_t N2 = N / 2;
+
+   const word* x0 = x;
+   const word* x1 = x + N2;
+   word* z0 = z;
+   word* z1 = z + N;
+
+   word* ws0 = workspace;
+   word* ws1 = workspace + N;
+
+   clear_mem(workspace, 2*N);
+
+   // See comment in karatsuba_mul
+   bigint_sub_abs(z0, x0, x1, N2, workspace);
+   karatsuba_sqr(ws0, z0, N2, ws1);
+
+   karatsuba_sqr(z0, x0, N2, ws1);
+   karatsuba_sqr(z1, x1, N2, ws1);
+
+   const word ws_carry = bigint_add3_nc(ws1, z0, N, z1, N);
+   word z_carry = bigint_add2_nc(z + N2, N, ws1, N);
+
+   z_carry += bigint_add2_nc(z + N + N2, N2, &ws_carry, 1);
+   bigint_add2_nc(z + N + N2, N2, &z_carry, 1);
+
+   /*
+   * This is only actually required if cmp (result of bigint_sub_abs) is != 0,
+   * however if cmp==0 then ws0[0:N] == 0 and avoiding the jump hides a
+   * timing channel.
+   */
+   bigint_sub2(z + N2, 2*N-N2, ws0, N);
+   }
+
+/*
+* Pick a good size for the Karatsuba multiply
+*/
+size_t karatsuba_size(size_t z_size,
+                      size_t x_size, size_t x_sw,
+                      size_t y_size, size_t y_sw)
+   {
+   if(x_sw > x_size || x_sw > y_size || y_sw > x_size || y_sw > y_size)
+      return 0;
+
+   if(((x_size == x_sw) && (x_size % 2)) ||
+      ((y_size == y_sw) && (y_size % 2)))
+      return 0;
+
+   const size_t start = (x_sw > y_sw) ? x_sw : y_sw;
+   const size_t end = (x_size < y_size) ? x_size : y_size;
+
+   if(start == end)
+      {
+      if(start % 2)
+         return 0;
+      return start;
+      }
+
+   for(size_t j = start; j <= end; ++j)
+      {
+      if(j % 2)
+         continue;
+
+      if(2*j > z_size)
+         return 0;
+
+      if(x_sw <= j && j <= x_size && y_sw <= j && j <= y_size)
+         {
+         if(j % 4 == 2 &&
+            (j+2) <= x_size && (j+2) <= y_size && 2*(j+2) <= z_size)
+            return j+2;
+         return j;
+         }
+      }
+
+   return 0;
+   }
+
+/*
+* Pick a good size for the Karatsuba squaring
+*/
+size_t karatsuba_size(size_t z_size, size_t x_size, size_t x_sw)
+   {
+   if(x_sw == x_size)
+      {
+      if(x_sw % 2)
+         return 0;
+      return x_sw;
+      }
+
+   for(size_t j = x_sw; j <= x_size; ++j)
+      {
+      if(j % 2)
+         continue;
+
+      if(2*j > z_size)
+         return 0;
+
+      if(j % 4 == 2 && (j+2) <= x_size && 2*(j+2) <= z_size)
+         return j+2;
+      return j;
+      }
+
+   return 0;
+   }
+
+template<size_t SZ>
+inline bool sized_for_comba_mul(size_t x_sw, size_t x_size,
+                                size_t y_sw, size_t y_size,
+                                size_t z_size)
+   {
+   return (x_sw <= SZ && x_size >= SZ &&
+           y_sw <= SZ && y_size >= SZ &&
+           z_size >= 2*SZ);
+   }
+
+template<size_t SZ>
+inline bool sized_for_comba_sqr(size_t x_sw, size_t x_size,
+                                size_t z_size)
+   {
+   return (x_sw <= SZ && x_size >= SZ && z_size >= 2*SZ);
+   }
+
+}
+
+void bigint_mul(word z[], size_t z_size,
+                const word x[], size_t x_size, size_t x_sw,
+                const word y[], size_t y_size, size_t y_sw,
+                word workspace[], size_t ws_size)
+   {
+   clear_mem(z, z_size);
+
+   if(x_sw == 1)
+      {
+      bigint_linmul3(z, y, y_sw, x[0]);
+      }
+   else if(y_sw == 1)
+      {
+      bigint_linmul3(z, x, x_sw, y[0]);
+      }
+   else if(sized_for_comba_mul<4>(x_sw, x_size, y_sw, y_size, z_size))
+      {
+      bigint_comba_mul4(z, x, y);
+      }
+   else if(sized_for_comba_mul<6>(x_sw, x_size, y_sw, y_size, z_size))
+      {
+      bigint_comba_mul6(z, x, y);
+      }
+   else if(sized_for_comba_mul<8>(x_sw, x_size, y_sw, y_size, z_size))
+      {
+      bigint_comba_mul8(z, x, y);
+      }
+   else if(sized_for_comba_mul<9>(x_sw, x_size, y_sw, y_size, z_size))
+      {
+      bigint_comba_mul9(z, x, y);
+      }
+   else if(sized_for_comba_mul<16>(x_sw, x_size, y_sw, y_size, z_size))
+      {
+      bigint_comba_mul16(z, x, y);
+      }
+   else if(sized_for_comba_mul<24>(x_sw, x_size, y_sw, y_size, z_size))
+      {
+      bigint_comba_mul24(z, x, y);
+      }
+   else if(x_sw < KARATSUBA_MULTIPLY_THRESHOLD ||
+           y_sw < KARATSUBA_MULTIPLY_THRESHOLD ||
+           !workspace)
+      {
+      basecase_mul(z, z_size, x, x_sw, y, y_sw);
+      }
+   else
+      {
+      const size_t N = karatsuba_size(z_size, x_size, x_sw, y_size, y_sw);
+
+      if(N && z_size >= 2*N && ws_size >= 2*N)
+         karatsuba_mul(z, x, y, N, workspace);
+      else
+         basecase_mul(z, z_size, x, x_sw, y, y_sw);
+      }
+   }
+
+/*
+* Squaring Algorithm Dispatcher
+*/
+void bigint_sqr(word z[], size_t z_size,
+                const word x[], size_t x_size, size_t x_sw,
+                word workspace[], size_t ws_size)
+   {
+   clear_mem(z, z_size);
+
+   BOTAN_ASSERT(z_size/2 >= x_sw, "Output size is sufficient");
+
+   if(x_sw == 1)
+      {
+      bigint_linmul3(z, x, x_sw, x[0]);
+      }
+   else if(sized_for_comba_sqr<4>(x_sw, x_size, z_size))
+      {
+      bigint_comba_sqr4(z, x);
+      }
+   else if(sized_for_comba_sqr<6>(x_sw, x_size, z_size))
+      {
+      bigint_comba_sqr6(z, x);
+      }
+   else if(sized_for_comba_sqr<8>(x_sw, x_size, z_size))
+      {
+      bigint_comba_sqr8(z, x);
+      }
+   else if(sized_for_comba_sqr<9>(x_sw, x_size, z_size))
+      {
+      bigint_comba_sqr9(z, x);
+      }
+   else if(sized_for_comba_sqr<16>(x_sw, x_size, z_size))
+      {
+      bigint_comba_sqr16(z, x);
+      }
+   else if(sized_for_comba_sqr<24>(x_sw, x_size, z_size))
+      {
+      bigint_comba_sqr24(z, x);
+      }
+   else if(x_size < KARATSUBA_SQUARE_THRESHOLD || !workspace)
+      {
+      basecase_sqr(z, z_size, x, x_sw);
+      }
+   else
+      {
+      const size_t N = karatsuba_size(z_size, x_size, x_sw);
+
+      if(N && z_size >= 2*N && ws_size >= 2*N)
+         karatsuba_sqr(z, x, N, workspace);
+      else
+         basecase_sqr(z, z_size, x, x_sw);
+      }
+   }
+
+}
+/*
+* Montgomery Reduction
+* (C) 1999-2011 Jack Lloyd
+*     2006 Luca Piccarreta
+*     2016 Matthias Gierlings
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+/*
+* Montgomery reduction - product scanning form
+*
+* https://www.iacr.org/archive/ches2005/006.pdf
+* https://eprint.iacr.org/2013/882.pdf
+* https://www.microsoft.com/en-us/research/wp-content/uploads/1996/01/j37acmon.pdf
+*/
+void bigint_monty_redc_generic(word z[], size_t z_size,
+                               const word p[], size_t p_size, word p_dash,
+                               word ws[])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+
+   w0 = z[0];
+
+   ws[0] = w0 * p_dash;
+
+   word3_muladd(&w2, &w1, &w0, ws[0], p[0]);
+
+   w0 = w1;
+   w1 = w2;
+   w2 = 0;
+
+   for(size_t i = 1; i != p_size; ++i)
+      {
+      for(size_t j = 0; j < i; ++j)
+         {
+         word3_muladd(&w2, &w1, &w0, ws[j], p[i-j]);
+         }
+
+      word3_add(&w2, &w1, &w0, z[i]);
+
+      ws[i] = w0 * p_dash;
+
+      word3_muladd(&w2, &w1, &w0, ws[i], p[0]);
+
+      w0 = w1;
+      w1 = w2;
+      w2 = 0;
+      }
+
+   for(size_t i = 0; i != p_size; ++i)
+      {
+      for(size_t j = i + 1; j != p_size; ++j)
+         {
+         word3_muladd(&w2, &w1, &w0, ws[j], p[p_size + i-j]);
+         }
+
+      word3_add(&w2, &w1, &w0, z[p_size+i]);
+
+      ws[i] = w0;
+      w0 = w1;
+      w1 = w2;
+      w2 = 0;
+      }
+
+   word3_add(&w2, &w1, &w0, z[z_size-1]);
+
+   ws[p_size] = w0;
+   ws[p_size+1] = w1;
+
+   /*
+   * The result might need to be reduced mod p. To avoid a timing
+   * channel, always perform the subtraction. If in the compution
+   * of x - p a borrow is required then x was already < p.
+   *
+   * x starts at ws[0] and is p_size+1 bytes long.
+   * x - p starts at ws[p_size+1] and is also p_size+1 bytes log
+   *
+   * Select which address to copy from indexing off of the final
+   * borrow.
+   */
+
+   // word borrow = bigint_sub3(ws + p_size + 1, ws, p_size + 1, p, p_size);
+   word borrow = 0;
+   for(size_t i = 0; i != p_size; ++i)
+      ws[p_size + 1 + i] = word_sub(ws[i], p[i], &borrow);
+   ws[2*p_size+1] = word_sub(ws[p_size], 0, &borrow);
+
+   BOTAN_DEBUG_ASSERT(borrow == 0 || borrow == 1);
+
+   CT::conditional_copy_mem(borrow, z, ws, ws + (p_size + 1), (p_size + 1));
+   clear_mem(z + p_size, z_size - p_size - 2);
+   }
+
+}
+
+void bigint_monty_redc(word z[],
+                       const word p[], size_t p_size, word p_dash,
+                       word ws[], size_t ws_size)
+   {
+   const size_t z_size = 2*(p_size+1);
+
+   BOTAN_ARG_CHECK(ws_size >= z_size, "workspace too small");
+
+   if(p_size == 4)
+      bigint_monty_redc_4(z, p, p_dash, ws);
+   else if(p_size == 6)
+      bigint_monty_redc_6(z, p, p_dash, ws);
+   else if(p_size == 8)
+      bigint_monty_redc_8(z, p, p_dash, ws);
+   else if(p_size == 16)
+      bigint_monty_redc_16(z, p, p_dash, ws);
+   else if(p_size == 24)
+      bigint_monty_redc_24(z, p, p_dash, ws);
+   else if(p_size == 32)
+      bigint_monty_redc_32(z, p, p_dash, ws);
+   else
+      bigint_monty_redc_generic(z, z_size, p, p_size, p_dash, ws);
+   }
+
+}
+/*
+* This file was automatically generated by ./src/scripts/monty.py on 2018-06-11
+* All manual changes will be lost. Edit the script instead.
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+void bigint_monty_redc_4(word z[], const word p[4], word p_dash, word ws[])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+   w0 = z[0];
+   ws[0] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[1]);
+   word3_add(&w2, &w1, &w0, z[1]);
+   ws[1] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[1]);
+   word3_add(&w2, &w1, &w0, z[2]);
+   ws[2] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[1]);
+   word3_add(&w2, &w1, &w0, z[3]);
+   ws[3] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[1]);
+   word3_add(&w2, &w1, &w0, z[4]);
+   ws[0] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[2]);
+   word3_add(&w2, &w1, &w0, z[5]);
+   ws[1] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[3]);
+   word3_add(&w2, &w1, &w0, z[6]);
+   ws[2] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[7]);
+   ws[3] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[9]);
+   ws[4] = w0;
+   ws[5] = w1;
+   word borrow = 0;
+   ws[5] = word_sub(ws[0], p[0], &borrow);
+   ws[6] = word_sub(ws[1], p[1], &borrow);
+   ws[7] = word_sub(ws[2], p[2], &borrow);
+   ws[8] = word_sub(ws[3], p[3], &borrow);
+   ws[9] = word_sub(ws[4], 0, &borrow);
+   CT::conditional_copy_mem(borrow, z, ws, ws + 5, 5);
+   clear_mem(z + 4, 2*(4+1) - 4);
+   }
+
+void bigint_monty_redc_6(word z[], const word p[6], word p_dash, word ws[])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+   w0 = z[0];
+   ws[0] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[1]);
+   word3_add(&w2, &w1, &w0, z[1]);
+   ws[1] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[1]);
+   word3_add(&w2, &w1, &w0, z[2]);
+   ws[2] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[1]);
+   word3_add(&w2, &w1, &w0, z[3]);
+   ws[3] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[1]);
+   word3_add(&w2, &w1, &w0, z[4]);
+   ws[4] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[1]);
+   word3_add(&w2, &w1, &w0, z[5]);
+   ws[5] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[1]);
+   word3_add(&w2, &w1, &w0, z[6]);
+   ws[0] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[2]);
+   word3_add(&w2, &w1, &w0, z[7]);
+   ws[1] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[3]);
+   word3_add(&w2, &w1, &w0, z[8]);
+   ws[2] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[4]);
+   word3_add(&w2, &w1, &w0, z[9]);
+   ws[3] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[5]);
+   word3_add(&w2, &w1, &w0, z[10]);
+   ws[4] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[11]);
+   ws[5] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[13]);
+   ws[6] = w0;
+   ws[7] = w1;
+   word borrow = 0;
+   ws[7] = word_sub(ws[0], p[0], &borrow);
+   ws[8] = word_sub(ws[1], p[1], &borrow);
+   ws[9] = word_sub(ws[2], p[2], &borrow);
+   ws[10] = word_sub(ws[3], p[3], &borrow);
+   ws[11] = word_sub(ws[4], p[4], &borrow);
+   ws[12] = word_sub(ws[5], p[5], &borrow);
+   ws[13] = word_sub(ws[6], 0, &borrow);
+   CT::conditional_copy_mem(borrow, z, ws, ws + 7, 7);
+   clear_mem(z + 6, 2*(6+1) - 6);
+   }
+
+void bigint_monty_redc_8(word z[], const word p[8], word p_dash, word ws[])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+   w0 = z[0];
+   ws[0] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[1]);
+   word3_add(&w2, &w1, &w0, z[1]);
+   ws[1] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[1]);
+   word3_add(&w2, &w1, &w0, z[2]);
+   ws[2] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[1]);
+   word3_add(&w2, &w1, &w0, z[3]);
+   ws[3] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[1]);
+   word3_add(&w2, &w1, &w0, z[4]);
+   ws[4] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[1]);
+   word3_add(&w2, &w1, &w0, z[5]);
+   ws[5] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[1]);
+   word3_add(&w2, &w1, &w0, z[6]);
+   ws[6] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[6], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[1]);
+   word3_add(&w2, &w1, &w0, z[7]);
+   ws[7] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[7], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[1]);
+   word3_add(&w2, &w1, &w0, z[8]);
+   ws[0] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[2]);
+   word3_add(&w2, &w1, &w0, z[9]);
+   ws[1] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[3]);
+   word3_add(&w2, &w1, &w0, z[10]);
+   ws[2] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[4]);
+   word3_add(&w2, &w1, &w0, z[11]);
+   ws[3] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[5]);
+   word3_add(&w2, &w1, &w0, z[12]);
+   ws[4] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[6], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[6]);
+   word3_add(&w2, &w1, &w0, z[13]);
+   ws[5] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[7], p[7]);
+   word3_add(&w2, &w1, &w0, z[14]);
+   ws[6] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[15]);
+   ws[7] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[17]);
+   ws[8] = w0;
+   ws[9] = w1;
+   word borrow = 0;
+   ws[9] = word_sub(ws[0], p[0], &borrow);
+   ws[10] = word_sub(ws[1], p[1], &borrow);
+   ws[11] = word_sub(ws[2], p[2], &borrow);
+   ws[12] = word_sub(ws[3], p[3], &borrow);
+   ws[13] = word_sub(ws[4], p[4], &borrow);
+   ws[14] = word_sub(ws[5], p[5], &borrow);
+   ws[15] = word_sub(ws[6], p[6], &borrow);
+   ws[16] = word_sub(ws[7], p[7], &borrow);
+   ws[17] = word_sub(ws[8], 0, &borrow);
+   CT::conditional_copy_mem(borrow, z, ws, ws + 9, 9);
+   clear_mem(z + 8, 2*(8+1) - 8);
+   }
+
+void bigint_monty_redc_16(word z[], const word p[16], word p_dash, word ws[])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+   w0 = z[0];
+   ws[0] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[1]);
+   word3_add(&w2, &w1, &w0, z[1]);
+   ws[1] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[1]);
+   word3_add(&w2, &w1, &w0, z[2]);
+   ws[2] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[1]);
+   word3_add(&w2, &w1, &w0, z[3]);
+   ws[3] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[1]);
+   word3_add(&w2, &w1, &w0, z[4]);
+   ws[4] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[1]);
+   word3_add(&w2, &w1, &w0, z[5]);
+   ws[5] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[1]);
+   word3_add(&w2, &w1, &w0, z[6]);
+   ws[6] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[6], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[1]);
+   word3_add(&w2, &w1, &w0, z[7]);
+   ws[7] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[7], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[1]);
+   word3_add(&w2, &w1, &w0, z[8]);
+   ws[8] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[8], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[1]);
+   word3_add(&w2, &w1, &w0, z[9]);
+   ws[9] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[9], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[1]);
+   word3_add(&w2, &w1, &w0, z[10]);
+   ws[10] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[10], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[1]);
+   word3_add(&w2, &w1, &w0, z[11]);
+   ws[11] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[11], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[1]);
+   word3_add(&w2, &w1, &w0, z[12]);
+   ws[12] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[12], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[1]);
+   word3_add(&w2, &w1, &w0, z[13]);
+   ws[13] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[13], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[1]);
+   word3_add(&w2, &w1, &w0, z[14]);
+   ws[14] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[14], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[1]);
+   word3_add(&w2, &w1, &w0, z[15]);
+   ws[15] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[15], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[1]);
+   word3_add(&w2, &w1, &w0, z[16]);
+   ws[0] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[2]);
+   word3_add(&w2, &w1, &w0, z[17]);
+   ws[1] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[3]);
+   word3_add(&w2, &w1, &w0, z[18]);
+   ws[2] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[4]);
+   word3_add(&w2, &w1, &w0, z[19]);
+   ws[3] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[5]);
+   word3_add(&w2, &w1, &w0, z[20]);
+   ws[4] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[6], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[6]);
+   word3_add(&w2, &w1, &w0, z[21]);
+   ws[5] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[7], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[7]);
+   word3_add(&w2, &w1, &w0, z[22]);
+   ws[6] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[8], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[8]);
+   word3_add(&w2, &w1, &w0, z[23]);
+   ws[7] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[9], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[9]);
+   word3_add(&w2, &w1, &w0, z[24]);
+   ws[8] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[10], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[10]);
+   word3_add(&w2, &w1, &w0, z[25]);
+   ws[9] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[11], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[11]);
+   word3_add(&w2, &w1, &w0, z[26]);
+   ws[10] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[12], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[12]);
+   word3_add(&w2, &w1, &w0, z[27]);
+   ws[11] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[13], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[13]);
+   word3_add(&w2, &w1, &w0, z[28]);
+   ws[12] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[14], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[14]);
+   word3_add(&w2, &w1, &w0, z[29]);
+   ws[13] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[15], p[15]);
+   word3_add(&w2, &w1, &w0, z[30]);
+   ws[14] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[31]);
+   ws[15] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[33]);
+   ws[16] = w0;
+   ws[17] = w1;
+   word borrow = bigint_sub3(ws + 16 + 1, ws, 16 + 1, p, 16);
+   CT::conditional_copy_mem(borrow, z, ws, ws + 17, 17);
+   clear_mem(z + 16, 2*(16+1) - 16);
+   }
+
+void bigint_monty_redc_24(word z[], const word p[24], word p_dash, word ws[])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+   w0 = z[0];
+   ws[0] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[1]);
+   word3_add(&w2, &w1, &w0, z[1]);
+   ws[1] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[1]);
+   word3_add(&w2, &w1, &w0, z[2]);
+   ws[2] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[1]);
+   word3_add(&w2, &w1, &w0, z[3]);
+   ws[3] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[1]);
+   word3_add(&w2, &w1, &w0, z[4]);
+   ws[4] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[1]);
+   word3_add(&w2, &w1, &w0, z[5]);
+   ws[5] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[1]);
+   word3_add(&w2, &w1, &w0, z[6]);
+   ws[6] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[6], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[1]);
+   word3_add(&w2, &w1, &w0, z[7]);
+   ws[7] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[7], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[1]);
+   word3_add(&w2, &w1, &w0, z[8]);
+   ws[8] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[8], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[1]);
+   word3_add(&w2, &w1, &w0, z[9]);
+   ws[9] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[9], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[1]);
+   word3_add(&w2, &w1, &w0, z[10]);
+   ws[10] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[10], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[1]);
+   word3_add(&w2, &w1, &w0, z[11]);
+   ws[11] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[11], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[1]);
+   word3_add(&w2, &w1, &w0, z[12]);
+   ws[12] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[12], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[1]);
+   word3_add(&w2, &w1, &w0, z[13]);
+   ws[13] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[13], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[1]);
+   word3_add(&w2, &w1, &w0, z[14]);
+   ws[14] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[14], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[1]);
+   word3_add(&w2, &w1, &w0, z[15]);
+   ws[15] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[15], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[1]);
+   word3_add(&w2, &w1, &w0, z[16]);
+   ws[16] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[16], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[1]);
+   word3_add(&w2, &w1, &w0, z[17]);
+   ws[17] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[17], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[1]);
+   word3_add(&w2, &w1, &w0, z[18]);
+   ws[18] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[18], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[1]);
+   word3_add(&w2, &w1, &w0, z[19]);
+   ws[19] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[19], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[1]);
+   word3_add(&w2, &w1, &w0, z[20]);
+   ws[20] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[20], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[1]);
+   word3_add(&w2, &w1, &w0, z[21]);
+   ws[21] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[21], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[1]);
+   word3_add(&w2, &w1, &w0, z[22]);
+   ws[22] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[22], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[1]);
+   word3_add(&w2, &w1, &w0, z[23]);
+   ws[23] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[23], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[1]);
+   word3_add(&w2, &w1, &w0, z[24]);
+   ws[0] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[2]);
+   word3_add(&w2, &w1, &w0, z[25]);
+   ws[1] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[3]);
+   word3_add(&w2, &w1, &w0, z[26]);
+   ws[2] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[4]);
+   word3_add(&w2, &w1, &w0, z[27]);
+   ws[3] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[5]);
+   word3_add(&w2, &w1, &w0, z[28]);
+   ws[4] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[6], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[6]);
+   word3_add(&w2, &w1, &w0, z[29]);
+   ws[5] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[7], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[7]);
+   word3_add(&w2, &w1, &w0, z[30]);
+   ws[6] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[8], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[8]);
+   word3_add(&w2, &w1, &w0, z[31]);
+   ws[7] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[9], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[9]);
+   word3_add(&w2, &w1, &w0, z[32]);
+   ws[8] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[10], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[10]);
+   word3_add(&w2, &w1, &w0, z[33]);
+   ws[9] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[11], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[11]);
+   word3_add(&w2, &w1, &w0, z[34]);
+   ws[10] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[12], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[12]);
+   word3_add(&w2, &w1, &w0, z[35]);
+   ws[11] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[13], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[13]);
+   word3_add(&w2, &w1, &w0, z[36]);
+   ws[12] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[14], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[14]);
+   word3_add(&w2, &w1, &w0, z[37]);
+   ws[13] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[15], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[15]);
+   word3_add(&w2, &w1, &w0, z[38]);
+   ws[14] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[16], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[16]);
+   word3_add(&w2, &w1, &w0, z[39]);
+   ws[15] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[17], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[17]);
+   word3_add(&w2, &w1, &w0, z[40]);
+   ws[16] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[18], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[18]);
+   word3_add(&w2, &w1, &w0, z[41]);
+   ws[17] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[19], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[19]);
+   word3_add(&w2, &w1, &w0, z[42]);
+   ws[18] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[20], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[20]);
+   word3_add(&w2, &w1, &w0, z[43]);
+   ws[19] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[21], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[21]);
+   word3_add(&w2, &w1, &w0, z[44]);
+   ws[20] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[22], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[22]);
+   word3_add(&w2, &w1, &w0, z[45]);
+   ws[21] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[23], p[23]);
+   word3_add(&w2, &w1, &w0, z[46]);
+   ws[22] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[47]);
+   ws[23] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[49]);
+   ws[24] = w0;
+   ws[25] = w1;
+   word borrow = bigint_sub3(ws + 24 + 1, ws, 24 + 1, p, 24);
+   CT::conditional_copy_mem(borrow, z, ws, ws + 25, 25);
+   clear_mem(z + 24, 2*(24+1) - 24);
+   }
+
+void bigint_monty_redc_32(word z[], const word p[32], word p_dash, word ws[])
+   {
+   word w2 = 0, w1 = 0, w0 = 0;
+   w0 = z[0];
+   ws[0] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[1]);
+   word3_add(&w2, &w1, &w0, z[1]);
+   ws[1] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[1]);
+   word3_add(&w2, &w1, &w0, z[2]);
+   ws[2] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[1]);
+   word3_add(&w2, &w1, &w0, z[3]);
+   ws[3] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[1]);
+   word3_add(&w2, &w1, &w0, z[4]);
+   ws[4] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[1]);
+   word3_add(&w2, &w1, &w0, z[5]);
+   ws[5] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[1]);
+   word3_add(&w2, &w1, &w0, z[6]);
+   ws[6] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[6], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[1]);
+   word3_add(&w2, &w1, &w0, z[7]);
+   ws[7] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[7], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[1]);
+   word3_add(&w2, &w1, &w0, z[8]);
+   ws[8] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[8], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[1]);
+   word3_add(&w2, &w1, &w0, z[9]);
+   ws[9] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[9], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[1]);
+   word3_add(&w2, &w1, &w0, z[10]);
+   ws[10] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[10], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[1]);
+   word3_add(&w2, &w1, &w0, z[11]);
+   ws[11] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[11], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[1]);
+   word3_add(&w2, &w1, &w0, z[12]);
+   ws[12] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[12], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[1]);
+   word3_add(&w2, &w1, &w0, z[13]);
+   ws[13] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[13], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[1]);
+   word3_add(&w2, &w1, &w0, z[14]);
+   ws[14] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[14], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[1]);
+   word3_add(&w2, &w1, &w0, z[15]);
+   ws[15] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[15], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[1]);
+   word3_add(&w2, &w1, &w0, z[16]);
+   ws[16] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[16], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[1]);
+   word3_add(&w2, &w1, &w0, z[17]);
+   ws[17] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[17], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[1]);
+   word3_add(&w2, &w1, &w0, z[18]);
+   ws[18] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[18], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[1]);
+   word3_add(&w2, &w1, &w0, z[19]);
+   ws[19] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[19], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[1]);
+   word3_add(&w2, &w1, &w0, z[20]);
+   ws[20] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[20], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[1]);
+   word3_add(&w2, &w1, &w0, z[21]);
+   ws[21] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[21], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[1]);
+   word3_add(&w2, &w1, &w0, z[22]);
+   ws[22] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[22], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[1]);
+   word3_add(&w2, &w1, &w0, z[23]);
+   ws[23] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[23], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[1]);
+   word3_add(&w2, &w1, &w0, z[24]);
+   ws[24] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[24], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[1]);
+   word3_add(&w2, &w1, &w0, z[25]);
+   ws[25] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[25], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[1]);
+   word3_add(&w2, &w1, &w0, z[26]);
+   ws[26] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[26], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[1]);
+   word3_add(&w2, &w1, &w0, z[27]);
+   ws[27] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[27], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[1]);
+   word3_add(&w2, &w1, &w0, z[28]);
+   ws[28] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[28], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[1]);
+   word3_add(&w2, &w1, &w0, z[29]);
+   ws[29] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[29], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[1]);
+   word3_add(&w2, &w1, &w0, z[30]);
+   ws[30] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[30], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[0], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[1], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[1]);
+   word3_add(&w2, &w1, &w0, z[31]);
+   ws[31] = w0 * p_dash;
+   word3_muladd(&w2, &w1, &w0, ws[31], p[0]);
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[1], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[2], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[2]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[1]);
+   word3_add(&w2, &w1, &w0, z[32]);
+   ws[0] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[2], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[3], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[3]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[2]);
+   word3_add(&w2, &w1, &w0, z[33]);
+   ws[1] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[3], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[4], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[4]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[3]);
+   word3_add(&w2, &w1, &w0, z[34]);
+   ws[2] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[4], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[5], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[5]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[4]);
+   word3_add(&w2, &w1, &w0, z[35]);
+   ws[3] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[5], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[6], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[6]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[5]);
+   word3_add(&w2, &w1, &w0, z[36]);
+   ws[4] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[6], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[7], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[7]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[6]);
+   word3_add(&w2, &w1, &w0, z[37]);
+   ws[5] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[7], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[8], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[8]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[7]);
+   word3_add(&w2, &w1, &w0, z[38]);
+   ws[6] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[8], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[9], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[9]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[8]);
+   word3_add(&w2, &w1, &w0, z[39]);
+   ws[7] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[9], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[10], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[10]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[9]);
+   word3_add(&w2, &w1, &w0, z[40]);
+   ws[8] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[10], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[11], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[11]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[10]);
+   word3_add(&w2, &w1, &w0, z[41]);
+   ws[9] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[11], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[12], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[12]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[11]);
+   word3_add(&w2, &w1, &w0, z[42]);
+   ws[10] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[12], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[13], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[13]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[12]);
+   word3_add(&w2, &w1, &w0, z[43]);
+   ws[11] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[13], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[14], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[14]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[13]);
+   word3_add(&w2, &w1, &w0, z[44]);
+   ws[12] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[14], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[15], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[15]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[14]);
+   word3_add(&w2, &w1, &w0, z[45]);
+   ws[13] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[15], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[16], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[16]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[15]);
+   word3_add(&w2, &w1, &w0, z[46]);
+   ws[14] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[16], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[17], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[17]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[16]);
+   word3_add(&w2, &w1, &w0, z[47]);
+   ws[15] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[17], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[18], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[18]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[17]);
+   word3_add(&w2, &w1, &w0, z[48]);
+   ws[16] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[18], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[19], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[19]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[18]);
+   word3_add(&w2, &w1, &w0, z[49]);
+   ws[17] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[19], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[20], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[20]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[19]);
+   word3_add(&w2, &w1, &w0, z[50]);
+   ws[18] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[20], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[21], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[21]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[20]);
+   word3_add(&w2, &w1, &w0, z[51]);
+   ws[19] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[21], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[22], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[22]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[21]);
+   word3_add(&w2, &w1, &w0, z[52]);
+   ws[20] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[22], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[23], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[23]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[22]);
+   word3_add(&w2, &w1, &w0, z[53]);
+   ws[21] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[23], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[24], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[24]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[23]);
+   word3_add(&w2, &w1, &w0, z[54]);
+   ws[22] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[24], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[25], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[25]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[24]);
+   word3_add(&w2, &w1, &w0, z[55]);
+   ws[23] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[25], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[26], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[26]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[25]);
+   word3_add(&w2, &w1, &w0, z[56]);
+   ws[24] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[26], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[27], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[27]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[26]);
+   word3_add(&w2, &w1, &w0, z[57]);
+   ws[25] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[27], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[28], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[28]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[27]);
+   word3_add(&w2, &w1, &w0, z[58]);
+   ws[26] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[28], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[29], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[29]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[28]);
+   word3_add(&w2, &w1, &w0, z[59]);
+   ws[27] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[29], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[30], p[30]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[29]);
+   word3_add(&w2, &w1, &w0, z[60]);
+   ws[28] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[30], p[31]);
+   word3_muladd(&w2, &w1, &w0, ws[31], p[30]);
+   word3_add(&w2, &w1, &w0, z[61]);
+   ws[29] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_muladd(&w2, &w1, &w0, ws[31], p[31]);
+   word3_add(&w2, &w1, &w0, z[62]);
+   ws[30] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[63]);
+   ws[31] = w0;
+   w0 = w1; w1 = w2; w2 = 0;
+   word3_add(&w2, &w1, &w0, z[65]);
+   ws[32] = w0;
+   ws[33] = w1;
+   word borrow = bigint_sub3(ws + 32 + 1, ws, 32 + 1, p, 32);
+   CT::conditional_copy_mem(borrow, z, ws, ws + 33, 33);
+   clear_mem(z + 32, 2*(32+1) - 32);
+   }
+
+}
+/*
+* DSA Parameter Generation
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+/*
+* Check if this size is allowed by FIPS 186-3
+*/
+bool fips186_3_valid_size(size_t pbits, size_t qbits)
+   {
+   if(qbits == 160)
+      return (pbits == 1024);
+
+   if(qbits == 224)
+      return (pbits == 2048);
+
+   if(qbits == 256)
+      return (pbits == 2048 || pbits == 3072);
+
+   return false;
+   }
+
+}
+
+/*
+* Attempt DSA prime generation with given seed
+*/
+bool generate_dsa_primes(RandomNumberGenerator& rng,
+                         BigInt& p, BigInt& q,
+                         size_t pbits, size_t qbits,
+                         const std::vector<uint8_t>& seed_c,
+                         size_t offset)
+   {
+   if(!fips186_3_valid_size(pbits, qbits))
+      throw Invalid_Argument(
+         "FIPS 186-3 does not allow DSA domain parameters of " +
+         std::to_string(pbits) + "/" + std::to_string(qbits) + " bits long");
+
+   if(seed_c.size() * 8 < qbits)
+      throw Invalid_Argument(
+         "Generating a DSA parameter set with a " + std::to_string(qbits) +
+         " bit long q requires a seed at least as many bits long");
+
+   const std::string hash_name = "SHA-" + std::to_string(qbits);
+   std::unique_ptr<HashFunction> hash(HashFunction::create_or_throw(hash_name));
+
+   const size_t HASH_SIZE = hash->output_length();
+
+   class Seed final
+      {
+      public:
+         explicit Seed(const std::vector<uint8_t>& s) : m_seed(s) {}
+
+         const std::vector<uint8_t>& value() const { return m_seed; }
+
+         Seed& operator++()
+            {
+            for(size_t j = m_seed.size(); j > 0; --j)
+               if(++m_seed[j-1])
+                  break;
+            return (*this);
+            }
+      private:
+         std::vector<uint8_t> m_seed;
+      };
+
+   Seed seed(seed_c);
+
+   q.binary_decode(hash->process(seed.value()));
+   q.set_bit(qbits-1);
+   q.set_bit(0);
+
+   if(!is_prime(q, rng, 128, true))
+      return false;
+
+   const size_t n = (pbits-1) / (HASH_SIZE * 8),
+                b = (pbits-1) % (HASH_SIZE * 8);
+
+   BigInt X;
+   std::vector<uint8_t> V(HASH_SIZE * (n+1));
+
+   Modular_Reducer mod_2q(2*q);
+
+   for(size_t j = 0; j != 4*pbits; ++j)
+      {
+      for(size_t k = 0; k <= n; ++k)
+         {
+         ++seed;
+         hash->update(seed.value());
+         hash->final(&V[HASH_SIZE * (n-k)]);
+         }
+
+      if(j >= offset)
+         {
+         X.binary_decode(&V[HASH_SIZE - 1 - b/8],
+                         V.size() - (HASH_SIZE - 1 - b/8));
+         X.set_bit(pbits-1);
+
+         p = X - (mod_2q.reduce(X) - 1);
+
+         if(p.bits() == pbits && is_prime(p, rng, 128, true))
+            return true;
+         }
+      }
+   return false;
+   }
+
+/*
+* Generate DSA Primes
+*/
+std::vector<uint8_t> generate_dsa_primes(RandomNumberGenerator& rng,
+                                      BigInt& p, BigInt& q,
+                                      size_t pbits, size_t qbits)
+   {
+   while(true)
+      {
+      std::vector<uint8_t> seed(qbits / 8);
+      rng.randomize(seed.data(), seed.size());
+
+      if(generate_dsa_primes(rng, p, q, pbits, qbits, seed))
+         return seed;
+      }
+   }
+
+}
+/*
+* Jacobi Function
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+* Calculate the Jacobi symbol
+*/
+int32_t jacobi(const BigInt& a, const BigInt& n)
+   {
+   if(n.is_even() || n < 2)
+      throw Invalid_Argument("jacobi: second argument must be odd and > 1");
+
+   BigInt x = a % n;
+   BigInt y = n;
+   int32_t J = 1;
+
+   while(y > 1)
+      {
+      x %= y;
+      if(x > y / 2)
+         {
+         x = y - x;
+         if(y % 4 == 3)
+            J = -J;
+         }
+      if(x.is_zero())
+         return 0;
+
+      size_t shifts = low_zero_bits(x);
+      x >>= shifts;
+      if(shifts % 2)
+         {
+         word y_mod_8 = y % 8;
+         if(y_mod_8 == 3 || y_mod_8 == 5)
+            J = -J;
+         }
+
+      if(x % 4 == 3 && y % 4 == 3)
+         J = -J;
+      std::swap(x, y);
+      }
+   return J;
+   }
+
+}
+/*
+* Prime Generation
+* (C) 1999-2007,2018,2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+class Prime_Sieve final
+   {
+   public:
+      Prime_Sieve(const BigInt& init_value, size_t sieve_size) :
+         m_sieve(std::min(sieve_size, PRIME_TABLE_SIZE))
+         {
+         for(size_t i = 0; i != m_sieve.size(); ++i)
+            m_sieve[i] = static_cast<uint16_t>(init_value % PRIMES[i]);
+         }
+
+      void step(word increment)
+         {
+         for(size_t i = 0; i != m_sieve.size(); ++i)
+            {
+            m_sieve[i] = (m_sieve[i] + increment) % PRIMES[i];
+            }
+         }
+
+      bool passes(bool check_2p1 = false) const
+         {
+         for(size_t i = 0; i != m_sieve.size(); ++i)
+            {
+            /*
+            In this case, p is a multiple of PRIMES[i]
+            */
+            if(m_sieve[i] == 0)
+               return false;
+
+            if(check_2p1)
+               {
+               /*
+               In this case, 2*p+1 will be a multiple of PRIMES[i]
+
+               So if potentially generating a safe prime, we want to
+               avoid this value because 2*p+1 will certainly not be prime.
+
+               See "Safe Prime Generation with a Combined Sieve" M. Wiener
+               https://eprint.iacr.org/2003/186.pdf
+               */
+               if(m_sieve[i] == (PRIMES[i] - 1) / 2)
+                  return false;
+               }
+            }
+
+         return true;
+         }
+
+   private:
+      std::vector<uint16_t> m_sieve;
+   };
+
+}
+
+
+/*
+* Generate a random prime
+*/
+BigInt random_prime(RandomNumberGenerator& rng,
+                    size_t bits, const BigInt& coprime,
+                    size_t equiv, size_t modulo,
+                    size_t prob)
+   {
+   if(bits <= 1)
+      {
+      throw Invalid_Argument("random_prime: Can't make a prime of " +
+                             std::to_string(bits) + " bits");
+      }
+   if(coprime.is_negative() || (!coprime.is_zero() && coprime.is_even()) || coprime.bits() >= bits)
+      {
+      throw Invalid_Argument("random_prime: invalid coprime");
+      }
+   if(modulo == 0)
+      {
+      throw Invalid_Argument("random_prime: Invalid modulo value");
+      }
+
+   equiv %= modulo;
+
+   if(equiv == 0)
+      throw Invalid_Argument("random_prime Invalid value for equiv/modulo");
+
+   // Handle small values:
+
+   if(bits <= 16)
+      {
+      if(equiv != 1 || modulo != 2 || coprime != 0)
+         throw Not_Implemented("random_prime equiv/modulo/coprime options not usable for small primes");
+
+      if(bits == 2)
+         {
+         return ((rng.next_byte() % 2) ? 2 : 3);
+         }
+      else if(bits == 3)
+         {
+         return ((rng.next_byte() % 2) ? 5 : 7);
+         }
+      else if(bits == 4)
+         {
+         return ((rng.next_byte() % 2) ? 11 : 13);
+         }
+      else
+         {
+         for(;;)
+            {
+            // This is slightly biased, but for small primes it does not seem to matter
+            uint8_t b[4];
+            rng.randomize(b, 4);
+            const size_t idx = load_le<uint32_t>(b, 0) % PRIME_TABLE_SIZE;
+            const uint16_t small_prime = PRIMES[idx];
+
+            if(high_bit(small_prime) == bits)
+               return small_prime;
+            }
+         }
+      }
+
+   const size_t MAX_ATTEMPTS = 32*1024;
+
+   const size_t mr_trials = miller_rabin_test_iterations(bits, prob, true);
+
+   while(true)
+      {
+      BigInt p(rng, bits);
+
+      // Force lowest and two top bits on
+      p.set_bit(bits - 1);
+      p.set_bit(bits - 2);
+      p.set_bit(0);
+
+      // Force p to be equal to equiv mod modulo
+      p += (modulo - (p % modulo)) + equiv;
+
+      Prime_Sieve sieve(p, bits);
+
+      for(size_t attempt = 0; attempt <= MAX_ATTEMPTS; ++attempt)
+         {
+         p += modulo;
+
+         sieve.step(modulo);
+
+         // p can be even if modulo is odd, continue on in that case
+         if(p.is_even() || sieve.passes(true) == false)
+            continue;
+
+         Modular_Reducer mod_p(p);
+
+         if(coprime > 1)
+            {
+            /*
+            First do a single M-R iteration to quickly elimate most non-primes,
+            before doing the coprimality check which is expensive
+            */
+            if(is_miller_rabin_probable_prime(p, mod_p, rng, 1) == false)
+               continue;
+
+            /*
+            * Check if p - 1 and coprime are relatively prime, using gcd.
+            * The gcd computation is const-time
+            */
+            if(gcd(p - 1, coprime) > 1)
+               continue;
+            }
+
+         if(p.bits() > bits)
+            break;
+
+         if(is_miller_rabin_probable_prime(p, mod_p, rng, mr_trials) == false)
+            continue;
+
+         if(prob > 32 && !is_lucas_probable_prime(p, mod_p))
+            continue;
+
+         return p;
+         }
+      }
+   }
+
+BigInt generate_rsa_prime(RandomNumberGenerator& keygen_rng,
+                          RandomNumberGenerator& prime_test_rng,
+                          size_t bits,
+                          const BigInt& coprime,
+                          size_t prob)
+   {
+   if(bits < 512)
+      throw Invalid_Argument("generate_rsa_prime bits too small");
+
+   /*
+   * The restriction on coprime <= 64 bits is arbitrary but generally speaking
+   * very large RSA public exponents are a bad idea both for performance and due
+   * to attacks on small d.
+   */
+   if(coprime <= 1 || coprime.is_even() || coprime.bits() > 64)
+      throw Invalid_Argument("generate_rsa_prime coprime must be small odd positive integer");
+
+   const size_t MAX_ATTEMPTS = 32*1024;
+
+   const size_t mr_trials = miller_rabin_test_iterations(bits, prob, true);
+
+   while(true)
+      {
+      BigInt p(keygen_rng, bits);
+
+      // Force high two bits so multiplication always results in expected n bit integer
+      p.set_bit(bits - 1);
+      p.set_bit(bits - 2);
+      p.set_bit(0);
+
+      const word step = 2;
+
+      Prime_Sieve sieve(p, bits);
+
+      for(size_t attempt = 0; attempt <= MAX_ATTEMPTS; ++attempt)
+         {
+         p += step;
+
+         sieve.step(step);
+
+         if(sieve.passes() == false)
+            continue;
+
+         Modular_Reducer mod_p(p);
+
+         /*
+         * Do a single primality test first before checking coprimality, since
+         * currently a single Miller-Rabin test is faster than computing gcd,
+         * and this eliminates almost all wasted gcd computations.
+         */
+         if(is_miller_rabin_probable_prime(p, mod_p, prime_test_rng, 1) == false)
+            continue;
+
+         /*
+         * Check if p - 1 and coprime are relatively prime.
+         */
+         if(gcd(p - 1, coprime) > 1)
+            continue;
+
+         if(p.bits() > bits)
+            break;
+
+         if(is_miller_rabin_probable_prime(p, mod_p, prime_test_rng, mr_trials) == true)
+            return p;
+         }
+      }
+   }
+
+/*
+* Generate a random safe prime
+*/
+BigInt random_safe_prime(RandomNumberGenerator& rng, size_t bits)
+   {
+   if(bits <= 64)
+      throw Invalid_Argument("random_safe_prime: Can't make a prime of " +
+                             std::to_string(bits) + " bits");
+
+   const size_t error_bound = 128;
+
+   BigInt q, p;
+   for(;;)
+      {
+      /*
+      Generate q == 2 (mod 3), since otherwise [in the case of q == 1 (mod 3)],
+      2*q+1 == 3 (mod 3) and so certainly not prime.
+      */
+      q = random_prime(rng, bits - 1, 0, 2, 3, error_bound);
+      p = (q << 1) + 1;
+
+      if(is_prime(p, rng, error_bound, true))
+         {
+         return p;
+         }
+      }
+   }
+
+}
+/*
+* (C) 1999-2011,2016,2018,2019,2020 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+Sets result to a^-1 * 2^k mod a
+with n <= k <= 2n
+Returns k
+
+"The Montgomery Modular Inverse - Revisited" Çetin Koç, E. Savas
+https://citeseerx.ist.psu.edu/viewdoc/citations?doi=10.1.1.75.8377
+
+A const time implementation of this algorithm is described in
+"Constant Time Modular Inversion" Joppe W. Bos
+http://www.joppebos.com/files/CTInversion.pdf
+*/
+size_t almost_montgomery_inverse(BigInt& result,
+                                 const BigInt& a,
+                                 const BigInt& p)
+   {
+   size_t k = 0;
+
+   BigInt u = p, v = a, r = 0, s = 1;
+
+   while(v > 0)
+      {
+      if(u.is_even())
+         {
+         u >>= 1;
+         s <<= 1;
+         }
+      else if(v.is_even())
+         {
+         v >>= 1;
+         r <<= 1;
+         }
+      else if(u > v)
+         {
+         u -= v;
+         u >>= 1;
+         r += s;
+         s <<= 1;
+         }
+      else
+         {
+         v -= u;
+         v >>= 1;
+         s += r;
+         r <<= 1;
+         }
+
+      ++k;
+      }
+
+   if(r >= p)
+      {
+      r -= p;
+      }
+
+   result = p - r;
+
+   return k;
+   }
+
+BigInt normalized_montgomery_inverse(const BigInt& a, const BigInt& p)
+   {
+   BigInt r;
+   size_t k = almost_montgomery_inverse(r, a, p);
+
+   for(size_t i = 0; i != k; ++i)
+      {
+      if(r.is_odd())
+         r += p;
+      r >>= 1;
+      }
+
+   return r;
+   }
+
+namespace {
+
+BigInt inverse_mod_odd_modulus(const BigInt& n, const BigInt& mod)
+   {
+   // Caller should assure these preconditions:
+   BOTAN_DEBUG_ASSERT(n.is_positive());
+   BOTAN_DEBUG_ASSERT(mod.is_positive());
+   BOTAN_DEBUG_ASSERT(n < mod);
+   BOTAN_DEBUG_ASSERT(mod >= 3 && mod.is_odd());
+
+   /*
+   This uses a modular inversion algorithm designed by Niels Möller
+   and implemented in Nettle. The same algorithm was later also
+   adapted to GMP in mpn_sec_invert.
+
+   It can be easily implemented in a way that does not depend on
+   secret branches or memory lookups, providing resistance against
+   some forms of side channel attack.
+
+   There is also a description of the algorithm in Appendix 5 of "Fast
+   Software Polynomial Multiplication on ARM Processors using the NEON Engine"
+   by Danilo Câmara, Conrado P. L. Gouvêa, Julio López, and Ricardo
+   Dahab in LNCS 8182
+      https://conradoplg.cryptoland.net/files/2010/12/mocrysen13.pdf
+
+   Thanks to Niels for creating the algorithm, explaining some things
+   about it, and the reference to the paper.
+   */
+
+   const size_t mod_words = mod.sig_words();
+   BOTAN_ASSERT(mod_words > 0, "Not empty");
+
+   secure_vector<word> tmp_mem(5*mod_words);
+
+   word* v_w = &tmp_mem[0];
+   word* u_w = &tmp_mem[1*mod_words];
+   word* b_w = &tmp_mem[2*mod_words];
+   word* a_w = &tmp_mem[3*mod_words];
+   word* mp1o2 = &tmp_mem[4*mod_words];
+
+   CT::poison(tmp_mem.data(), tmp_mem.size());
+
+   copy_mem(a_w, n.data(), std::min(n.size(), mod_words));
+   copy_mem(b_w, mod.data(), std::min(mod.size(), mod_words));
+   u_w[0] = 1;
+   // v_w = 0
+
+   // compute (mod + 1) / 2 which [because mod is odd] is equal to
+   // (mod / 2) + 1
+   copy_mem(mp1o2, mod.data(), std::min(mod.size(), mod_words));
+   bigint_shr1(mp1o2, mod_words, 0, 1);
+   word carry = bigint_add2_nc(mp1o2, mod_words, u_w, 1);
+   BOTAN_ASSERT_NOMSG(carry == 0);
+
+   // Only n.bits() + mod.bits() iterations are required, but avoid leaking the size of n
+   const size_t execs = 2 * mod.bits();
+
+   for(size_t i = 0; i != execs; ++i)
+      {
+      const word odd_a = a_w[0] & 1;
+
+      //if(odd_a) a -= b
+      word underflow = bigint_cnd_sub(odd_a, a_w, b_w, mod_words);
+
+      //if(underflow) { b -= a; a = abs(a); swap(u, v); }
+      bigint_cnd_add(underflow, b_w, a_w, mod_words);
+      bigint_cnd_abs(underflow, a_w, mod_words);
+      bigint_cnd_swap(underflow, u_w, v_w, mod_words);
+
+      // a >>= 1
+      bigint_shr1(a_w, mod_words, 0, 1);
+
+      //if(odd_a) u -= v;
+      word borrow = bigint_cnd_sub(odd_a, u_w, v_w, mod_words);
+
+      // if(borrow) u += p
+      bigint_cnd_add(borrow, u_w, mod.data(), mod_words);
+
+      const word odd_u = u_w[0] & 1;
+
+      // u >>= 1
+      bigint_shr1(u_w, mod_words, 0, 1);
+
+      //if(odd_u) u += mp1o2;
+      bigint_cnd_add(odd_u, u_w, mp1o2, mod_words);
+      }
+
+   auto a_is_0 = CT::Mask<word>::set();
+   for(size_t i = 0; i != mod_words; ++i)
+      a_is_0 &= CT::Mask<word>::is_zero(a_w[i]);
+
+   auto b_is_1 = CT::Mask<word>::is_equal(b_w[0], 1);
+   for(size_t i = 1; i != mod_words; ++i)
+      b_is_1 &= CT::Mask<word>::is_zero(b_w[i]);
+
+   BOTAN_ASSERT(a_is_0.is_set(), "A is zero");
+
+   // if b != 1 then gcd(n,mod) > 1 and inverse does not exist
+   // in which case zero out the result to indicate this
+   (~b_is_1).if_set_zero_out(v_w, mod_words);
+
+   /*
+   * We've placed the result in the lowest words of the temp buffer.
+   * So just clear out the other values and then give that buffer to a
+   * BigInt.
+   */
+   clear_mem(&tmp_mem[mod_words], 4*mod_words);
+
+   CT::unpoison(tmp_mem.data(), tmp_mem.size());
+
+   BigInt r;
+   r.swap_reg(tmp_mem);
+   return r;
+   }
+
+BigInt inverse_mod_pow2(const BigInt& a1, size_t k)
+   {
+   /*
+   * From "A New Algorithm for Inversion mod p^k" by Çetin Kaya Koç
+   * https://eprint.iacr.org/2017/411.pdf sections 5 and 7.
+   */
+
+   if(a1.is_even())
+      return 0;
+
+   BigInt a = a1;
+   a.mask_bits(k);
+
+   BigInt b = 1;
+   BigInt X = 0;
+   BigInt newb;
+
+   const size_t a_words = a.sig_words();
+
+   X.grow_to(round_up(k, BOTAN_MP_WORD_BITS) / BOTAN_MP_WORD_BITS);
+   b.grow_to(a_words);
+
+   /*
+   Hide the exact value of k. k is anyway known to word length
+   granularity because of the length of a, so no point in doing more
+   than this.
+   */
+   const size_t iter = round_up(k, BOTAN_MP_WORD_BITS);
+
+   for(size_t i = 0; i != iter; ++i)
+      {
+      const bool b0 = b.get_bit(0);
+      X.conditionally_set_bit(i, b0);
+      newb = b - a;
+      b.ct_cond_assign(b0, newb);
+      b >>= 1;
+      }
+
+   X.mask_bits(k);
+   X.const_time_unpoison();
+   return X;
+   }
+
+}
+
+BigInt inverse_mod(const BigInt& n, const BigInt& mod)
+   {
+   if(mod.is_zero())
+      throw BigInt::DivideByZero();
+   if(mod.is_negative() || n.is_negative())
+      throw Invalid_Argument("inverse_mod: arguments must be non-negative");
+   if(n.is_zero() || (n.is_even() && mod.is_even()))
+      return 0;
+
+   if(mod.is_odd())
+      {
+      /*
+      Fastpath for common case. This leaks information if n > mod
+      but we don't guarantee const time behavior in that case.
+      */
+      if(n < mod)
+         return inverse_mod_odd_modulus(n, mod);
+      else
+         return inverse_mod_odd_modulus(ct_modulo(n, mod), mod);
+      }
+
+   const size_t mod_lz = low_zero_bits(mod);
+   BOTAN_ASSERT_NOMSG(mod_lz > 0);
+   const size_t mod_bits = mod.bits();
+   BOTAN_ASSERT_NOMSG(mod_bits > mod_lz);
+
+   if(mod_lz == mod_bits - 1)
+      {
+      // In this case we are performing an inversion modulo 2^k
+      return inverse_mod_pow2(n, mod_lz);
+      }
+
+   /*
+   * In this case we are performing an inversion modulo 2^k*o for
+   * some k > 1 and some odd (not necessarily prime) integer.
+   * Compute the inversions modulo 2^k and modulo o, then combine them
+   * using CRT, which is possible because 2^k and o are relatively prime.
+   */
+
+   const BigInt o = mod >> mod_lz;
+   const BigInt n_redc = ct_modulo(n, o);
+   const BigInt inv_o = inverse_mod_odd_modulus(n_redc, o);
+   const BigInt inv_2k = inverse_mod_pow2(n, mod_lz);
+
+   // No modular inverse in this case:
+   if(inv_o == 0 || inv_2k == 0)
+      return 0;
+
+   const BigInt m2k = BigInt::power_of_2(mod_lz);
+   // Compute the CRT parameter
+   const BigInt c = inverse_mod_pow2(o, mod_lz);
+
+   // Compute h = c*(inv_2k-inv_o) mod 2^k
+   BigInt h = c * (inv_2k - inv_o);
+   const bool h_neg = h.is_negative();
+   h.set_sign(BigInt::Positive);
+   h.mask_bits(mod_lz);
+   const bool h_nonzero = h.is_nonzero();
+   h.ct_cond_assign(h_nonzero && h_neg, m2k - h);
+
+   // Return result inv_o + h * o
+   h *= o;
+   h += inv_o;
+   return h;
+   }
+
+// Deprecated forwarding functions:
+BigInt inverse_euclid(const BigInt& x, const BigInt& modulus)
+   {
+   return inverse_mod(x, modulus);
+   }
+
+BigInt ct_inverse_mod_odd_modulus(const BigInt& n, const BigInt& mod)
+   {
+   return inverse_mod_odd_modulus(n, mod);
+   }
+
+word monty_inverse(word a)
+   {
+   if(a % 2 == 0)
+      throw Invalid_Argument("monty_inverse only valid for odd integers");
+
+   /*
+   * From "A New Algorithm for Inversion mod p^k" by Çetin Kaya Koç
+   * https://eprint.iacr.org/2017/411.pdf sections 5 and 7.
+   */
+
+   word b = 1;
+   word r = 0;
+
+   for(size_t i = 0; i != BOTAN_MP_WORD_BITS; ++i)
+      {
+      const word bi = b % 2;
+      r >>= 1;
+      r += bi << (BOTAN_MP_WORD_BITS - 1);
+
+      b -= a * bi;
+      b >>= 1;
+      }
+
+   // Now invert in addition space
+   r = (MP_WORD_MAX - r) + 1;
+
+   return r;
+   }
+
+}
+/*
+* (C) 2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+Montgomery_Params::Montgomery_Params(const BigInt& p,
+                                     const Modular_Reducer& mod_p)
+   {
+   if(p.is_even() || p < 3)
+      throw Invalid_Argument("Montgomery_Params invalid modulus");
+
+   m_p = p;
+   m_p_words = m_p.sig_words();
+   m_p_dash = monty_inverse(m_p.word_at(0));
+
+   const BigInt r = BigInt::power_of_2(m_p_words * BOTAN_MP_WORD_BITS);
+
+   m_r1 = mod_p.reduce(r);
+   m_r2 = mod_p.square(m_r1);
+   m_r3 = mod_p.multiply(m_r1, m_r2);
+   }
+
+Montgomery_Params::Montgomery_Params(const BigInt& p)
+   {
+
+   if(p.is_negative() || p.is_even())
+      throw Invalid_Argument("Montgomery_Params invalid modulus");
+
+   m_p = p;
+   m_p_words = m_p.sig_words();
+   m_p_dash = monty_inverse(m_p.word_at(0));
+
+   const BigInt r = BigInt::power_of_2(m_p_words * BOTAN_MP_WORD_BITS);
+
+   // It might be faster to use ct_modulo here vs setting up Barrett reduction?
+   Modular_Reducer mod_p(p);
+
+   m_r1 = mod_p.reduce(r);
+   m_r2 = mod_p.square(m_r1);
+   m_r3 = mod_p.multiply(m_r1, m_r2);
+   }
+
+BigInt Montgomery_Params::inv_mod_p(const BigInt& x) const
+   {
+   // TODO use Montgomery inverse here?
+   return inverse_mod(x, p());
+   }
+
+BigInt Montgomery_Params::redc(const BigInt& x, secure_vector<word>& ws) const
+   {
+   const size_t output_size = 2*m_p_words + 2;
+
+   if(ws.size() < output_size)
+      ws.resize(output_size);
+
+   BigInt z = x;
+   z.grow_to(output_size);
+
+   bigint_monty_redc(z.mutable_data(),
+                     m_p.data(), m_p_words, m_p_dash,
+                     ws.data(), ws.size());
+
+   return z;
+   }
+
+BigInt Montgomery_Params::mul(const BigInt& x, const BigInt& y,
+                              secure_vector<word>& ws) const
+   {
+   const size_t output_size = 2*m_p_words + 2;
+
+   if(ws.size() < output_size)
+      ws.resize(output_size);
+
+   BOTAN_DEBUG_ASSERT(x.sig_words() <= m_p_words);
+   BOTAN_DEBUG_ASSERT(y.sig_words() <= m_p_words);
+
+   BigInt z(BigInt::Positive, output_size);
+   bigint_mul(z.mutable_data(), z.size(),
+              x.data(), x.size(), std::min(m_p_words, x.size()),
+              y.data(), y.size(), std::min(m_p_words, y.size()),
+              ws.data(), ws.size());
+
+   bigint_monty_redc(z.mutable_data(),
+                     m_p.data(), m_p_words, m_p_dash,
+                     ws.data(), ws.size());
+
+   return z;
+   }
+
+BigInt Montgomery_Params::mul(const BigInt& x,
+                              const secure_vector<word>& y,
+                              secure_vector<word>& ws) const
+   {
+   const size_t output_size = 2*m_p_words + 2;
+   if(ws.size() < output_size)
+      ws.resize(output_size);
+   BigInt z(BigInt::Positive, output_size);
+
+   BOTAN_DEBUG_ASSERT(x.sig_words() <= m_p_words);
+
+   bigint_mul(z.mutable_data(), z.size(),
+              x.data(), x.size(), std::min(m_p_words, x.size()),
+              y.data(), y.size(), std::min(m_p_words, y.size()),
+              ws.data(), ws.size());
+
+   bigint_monty_redc(z.mutable_data(),
+                     m_p.data(), m_p_words, m_p_dash,
+                     ws.data(), ws.size());
+
+   return z;
+   }
+
+void Montgomery_Params::mul_by(BigInt& x,
+                               const secure_vector<word>& y,
+                               secure_vector<word>& ws) const
+   {
+   const size_t output_size = 2*m_p_words + 2;
+
+   if(ws.size() < 2*output_size)
+      ws.resize(2*output_size);
+
+   word* z_data = &ws[0];
+   word* ws_data = &ws[output_size];
+
+   BOTAN_DEBUG_ASSERT(x.sig_words() <= m_p_words);
+
+   bigint_mul(z_data, output_size,
+              x.data(), x.size(), std::min(m_p_words, x.size()),
+              y.data(), y.size(), std::min(m_p_words, y.size()),
+              ws_data, output_size);
+
+   bigint_monty_redc(z_data,
+                     m_p.data(), m_p_words, m_p_dash,
+                     ws_data, output_size);
+
+   if(x.size() < output_size)
+      x.grow_to(output_size);
+   copy_mem(x.mutable_data(), z_data, output_size);
+   }
+
+void Montgomery_Params::mul_by(BigInt& x,
+                               const BigInt& y,
+                               secure_vector<word>& ws) const
+   {
+   const size_t output_size = 2*m_p_words + 2;
+
+   if(ws.size() < 2*output_size)
+      ws.resize(2*output_size);
+
+   word* z_data = &ws[0];
+   word* ws_data = &ws[output_size];
+
+   BOTAN_DEBUG_ASSERT(x.sig_words() <= m_p_words);
+
+   bigint_mul(z_data, output_size,
+              x.data(), x.size(), std::min(m_p_words, x.size()),
+              y.data(), y.size(), std::min(m_p_words, y.size()),
+              ws_data, output_size);
+
+   bigint_monty_redc(z_data,
+                     m_p.data(), m_p_words, m_p_dash,
+                     ws_data, output_size);
+
+   if(x.size() < output_size)
+      x.grow_to(output_size);
+   copy_mem(x.mutable_data(), z_data, output_size);
+   }
+
+BigInt Montgomery_Params::sqr(const BigInt& x, secure_vector<word>& ws) const
+   {
+   const size_t output_size = 2*m_p_words + 2;
+
+   if(ws.size() < output_size)
+      ws.resize(output_size);
+
+   BigInt z(BigInt::Positive, output_size);
+
+   BOTAN_DEBUG_ASSERT(x.sig_words() <= m_p_words);
+
+   bigint_sqr(z.mutable_data(), z.size(),
+              x.data(), x.size(), std::min(m_p_words, x.size()),
+              ws.data(), ws.size());
+
+   bigint_monty_redc(z.mutable_data(),
+                     m_p.data(), m_p_words, m_p_dash,
+                     ws.data(), ws.size());
+
+   return z;
+   }
+
+void Montgomery_Params::square_this(BigInt& x,
+                                    secure_vector<word>& ws) const
+   {
+   const size_t output_size = 2*m_p_words + 2;
+
+   if(ws.size() < 2*output_size)
+      ws.resize(2*output_size);
+
+   word* z_data = &ws[0];
+   word* ws_data = &ws[output_size];
+
+   BOTAN_DEBUG_ASSERT(x.sig_words() <= m_p_words);
+
+   bigint_sqr(z_data, output_size,
+              x.data(), x.size(), std::min(m_p_words, x.size()),
+              ws_data, output_size);
+
+   bigint_monty_redc(z_data,
+                     m_p.data(), m_p_words, m_p_dash,
+                     ws_data, output_size);
+
+   if(x.size() < output_size)
+      x.grow_to(output_size);
+   copy_mem(x.mutable_data(), z_data, output_size);
+   }
+
+Montgomery_Int::Montgomery_Int(const std::shared_ptr<const Montgomery_Params> params,
+                               const BigInt& v,
+                               bool redc_needed) :
+   m_params(params)
+   {
+   if(redc_needed == false)
+      {
+      m_v = v;
+      }
+   else
+      {
+      BOTAN_ASSERT_NOMSG(m_v < m_params->p());
+      secure_vector<word> ws;
+      m_v = m_params->mul(v, m_params->R2(), ws);
+      }
+   }
+
+Montgomery_Int::Montgomery_Int(std::shared_ptr<const Montgomery_Params> params,
+                               const uint8_t bits[], size_t len,
+                               bool redc_needed) :
+   m_params(params),
+   m_v(bits, len)
+   {
+   if(redc_needed)
+      {
+      BOTAN_ASSERT_NOMSG(m_v < m_params->p());
+      secure_vector<word> ws;
+      m_v = m_params->mul(m_v, m_params->R2(), ws);
+      }
+   }
+
+Montgomery_Int::Montgomery_Int(std::shared_ptr<const Montgomery_Params> params,
+                               const word words[], size_t len,
+                               bool redc_needed) :
+   m_params(params),
+   m_v(words, len)
+   {
+   if(redc_needed)
+      {
+      BOTAN_ASSERT_NOMSG(m_v < m_params->p());
+      secure_vector<word> ws;
+      m_v = m_params->mul(m_v, m_params->R2(), ws);
+      }
+   }
+
+void Montgomery_Int::fix_size()
+   {
+   const size_t p_words = m_params->p_words();
+
+   if(m_v.sig_words() > p_words)
+      throw Internal_Error("Montgomery_Int::fix_size v too large");
+
+   m_v.grow_to(p_words);
+   }
+
+bool Montgomery_Int::operator==(const Montgomery_Int& other) const
+   {
+   return m_v == other.m_v && m_params->p() == other.m_params->p();
+   }
+
+std::vector<uint8_t> Montgomery_Int::serialize() const
+   {
+   std::vector<uint8_t> v(size());
+   BigInt::encode_1363(v.data(), v.size(), value());
+   return v;
+   }
+
+size_t Montgomery_Int::size() const
+   {
+   return m_params->p().bytes();
+   }
+
+bool Montgomery_Int::is_one() const
+   {
+   return m_v == m_params->R1();
+   }
+
+bool Montgomery_Int::is_zero() const
+   {
+   return m_v.is_zero();
+   }
+
+BigInt Montgomery_Int::value() const
+   {
+   secure_vector<word> ws;
+   return m_params->redc(m_v, ws);
+   }
+
+Montgomery_Int Montgomery_Int::operator+(const Montgomery_Int& other) const
+   {
+   secure_vector<word> ws;
+   BigInt z = m_v;
+   z.mod_add(other.m_v, m_params->p(), ws);
+   return Montgomery_Int(m_params, z, false);
+   }
+
+Montgomery_Int Montgomery_Int::operator-(const Montgomery_Int& other) const
+   {
+   secure_vector<word> ws;
+   BigInt z = m_v;
+   z.mod_sub(other.m_v, m_params->p(), ws);
+   return Montgomery_Int(m_params, z, false);
+   }
+
+Montgomery_Int& Montgomery_Int::operator+=(const Montgomery_Int& other)
+   {
+   secure_vector<word> ws;
+   return this->add(other, ws);
+   }
+
+Montgomery_Int& Montgomery_Int::add(const Montgomery_Int& other, secure_vector<word>& ws)
+   {
+   m_v.mod_add(other.m_v, m_params->p(), ws);
+   return (*this);
+   }
+
+Montgomery_Int& Montgomery_Int::operator-=(const Montgomery_Int& other)
+   {
+   secure_vector<word> ws;
+   return this->sub(other, ws);
+   }
+
+Montgomery_Int& Montgomery_Int::sub(const Montgomery_Int& other, secure_vector<word>& ws)
+   {
+   m_v.mod_sub(other.m_v, m_params->p(), ws);
+   return (*this);
+   }
+
+Montgomery_Int Montgomery_Int::operator*(const Montgomery_Int& other) const
+   {
+   secure_vector<word> ws;
+   return Montgomery_Int(m_params, m_params->mul(m_v, other.m_v, ws), false);
+   }
+
+Montgomery_Int Montgomery_Int::mul(const Montgomery_Int& other,
+                                   secure_vector<word>& ws) const
+   {
+   return Montgomery_Int(m_params, m_params->mul(m_v, other.m_v, ws), false);
+   }
+
+Montgomery_Int& Montgomery_Int::mul_by(const Montgomery_Int& other,
+                                       secure_vector<word>& ws)
+   {
+   m_params->mul_by(m_v, other.m_v, ws);
+   return (*this);
+   }
+
+Montgomery_Int& Montgomery_Int::mul_by(const secure_vector<word>& other,
+                                       secure_vector<word>& ws)
+   {
+   m_params->mul_by(m_v, other, ws);
+   return (*this);
+   }
+
+Montgomery_Int& Montgomery_Int::operator*=(const Montgomery_Int& other)
+   {
+   secure_vector<word> ws;
+   return mul_by(other, ws);
+   }
+
+Montgomery_Int& Montgomery_Int::operator*=(const secure_vector<word>& other)
+   {
+   secure_vector<word> ws;
+   return mul_by(other, ws);
+   }
+
+Montgomery_Int& Montgomery_Int::square_this_n_times(secure_vector<word>& ws, size_t n)
+   {
+   for(size_t i = 0; i != n; ++i)
+      m_params->square_this(m_v, ws);
+   return (*this);
+   }
+
+Montgomery_Int& Montgomery_Int::square_this(secure_vector<word>& ws)
+   {
+   m_params->square_this(m_v, ws);
+   return (*this);
+   }
+
+Montgomery_Int Montgomery_Int::square(secure_vector<word>& ws) const
+   {
+   return Montgomery_Int(m_params, m_params->sqr(m_v, ws), false);
+   }
+
+Montgomery_Int Montgomery_Int::multiplicative_inverse() const
+   {
+   secure_vector<word> ws;
+   const BigInt iv = m_params->mul(m_params->inv_mod_p(m_v), m_params->R3(), ws);
+   return Montgomery_Int(m_params, iv, false);
+   }
+
+Montgomery_Int Montgomery_Int::additive_inverse() const
+   {
+   return Montgomery_Int(m_params, m_params->p()) - (*this);
+   }
+
+Montgomery_Int& Montgomery_Int::mul_by_2(secure_vector<word>& ws)
+   {
+   m_v.mod_mul(2, m_params->p(), ws);
+   return (*this);
+   }
+
+Montgomery_Int& Montgomery_Int::mul_by_3(secure_vector<word>& ws)
+   {
+   m_v.mod_mul(3, m_params->p(), ws);
+   return (*this);
+   }
+
+Montgomery_Int& Montgomery_Int::mul_by_4(secure_vector<word>& ws)
+   {
+   m_v.mod_mul(4, m_params->p(), ws);
+   return (*this);
+   }
+
+Montgomery_Int& Montgomery_Int::mul_by_8(secure_vector<word>& ws)
+   {
+   m_v.mod_mul(8, m_params->p(), ws);
+   return (*this);
+   }
+
+}
+/*
+* Montgomery Exponentiation
+* (C) 1999-2010,2012,2018 Jack Lloyd
+*     2016 Matthias Gierlings
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+class Montgomery_Exponentation_State
+   {
+   public:
+      Montgomery_Exponentation_State(std::shared_ptr<const Montgomery_Params> params,
+                                     const BigInt& g,
+                                     size_t window_bits,
+                                     bool const_time);
+
+      BigInt exponentiation(const BigInt& k, size_t max_k_bits) const;
+
+      BigInt exponentiation_vartime(const BigInt& k) const;
+   private:
+      std::shared_ptr<const Montgomery_Params> m_params;
+      std::vector<Montgomery_Int> m_g;
+      size_t m_window_bits;
+      bool m_const_time;
+   };
+
+Montgomery_Exponentation_State::Montgomery_Exponentation_State(std::shared_ptr<const Montgomery_Params> params,
+                                                               const BigInt& g,
+                                                               size_t window_bits,
+                                                               bool const_time) :
+   m_params(params),
+   m_window_bits(window_bits == 0 ? 4 : window_bits),
+   m_const_time(const_time)
+   {
+   BOTAN_ARG_CHECK(g < m_params->p(), "Montgomery base too big");
+
+   if(m_window_bits < 1 || m_window_bits > 12) // really even 8 is too large ...
+      throw Invalid_Argument("Invalid window bits for Montgomery exponentiation");
+
+   const size_t window_size = (static_cast<size_t>(1) << m_window_bits);
+
+   m_g.reserve(window_size);
+
+   m_g.push_back(Montgomery_Int(m_params, m_params->R1(), false));
+
+   m_g.push_back(Montgomery_Int(m_params, g));
+
+   for(size_t i = 2; i != window_size; ++i)
+      {
+      m_g.push_back(m_g[1] * m_g[i - 1]);
+      }
+
+   // Resize each element to exactly p words
+   for(size_t i = 0; i != window_size; ++i)
+      {
+      m_g[i].fix_size();
+      if(const_time)
+         m_g[i].const_time_poison();
+      }
+   }
+
+namespace {
+
+void const_time_lookup(secure_vector<word>& output,
+                       const std::vector<Montgomery_Int>& g,
+                       size_t nibble)
+   {
+   BOTAN_ASSERT_NOMSG(g.size() % 2 == 0); // actually a power of 2
+
+   const size_t words = output.size();
+
+   clear_mem(output.data(), output.size());
+
+   for(size_t i = 0; i != g.size(); i += 2)
+      {
+      const secure_vector<word>& vec_0 = g[i  ].repr().get_word_vector();
+      const secure_vector<word>& vec_1 = g[i+1].repr().get_word_vector();
+
+      BOTAN_ASSERT_NOMSG(vec_0.size() >= words && vec_1.size() >= words);
+
+      const auto mask_0 = CT::Mask<word>::is_equal(nibble, i);
+      const auto mask_1 = CT::Mask<word>::is_equal(nibble, i+1);
+
+      for(size_t w = 0; w != words; ++w)
+         {
+         output[w] |= mask_0.if_set_return(vec_0[w]);
+         output[w] |= mask_1.if_set_return(vec_1[w]);
+         }
+      }
+   }
+
+}
+
+BigInt Montgomery_Exponentation_State::exponentiation(const BigInt& scalar, size_t max_k_bits) const
+   {
+   BOTAN_DEBUG_ASSERT(scalar.bits() <= max_k_bits);
+   // TODO add a const-time implementation of above assert and use it in release builds
+
+   const size_t exp_nibbles = (max_k_bits + m_window_bits - 1) / m_window_bits;
+
+   if(exp_nibbles == 0)
+      return 1;
+
+   secure_vector<word> e_bits(m_params->p_words());
+   secure_vector<word> ws;
+
+   const_time_lookup(e_bits, m_g, scalar.get_substring(m_window_bits*(exp_nibbles-1), m_window_bits));
+   Montgomery_Int x(m_params, e_bits.data(), e_bits.size(), false);
+
+   for(size_t i = exp_nibbles - 1; i > 0; --i)
+      {
+      x.square_this_n_times(ws, m_window_bits);
+      const_time_lookup(e_bits, m_g, scalar.get_substring(m_window_bits*(i-1), m_window_bits));
+      x.mul_by(e_bits, ws);
+      }
+
+   x.const_time_unpoison();
+   return x.value();
+   }
+
+BigInt Montgomery_Exponentation_State::exponentiation_vartime(const BigInt& scalar) const
+   {
+   BOTAN_ASSERT_NOMSG(m_const_time == false);
+
+   const size_t exp_nibbles = (scalar.bits() + m_window_bits - 1) / m_window_bits;
+
+   secure_vector<word> ws;
+
+   if(exp_nibbles == 0)
+      return 1;
+
+   Montgomery_Int x = m_g[scalar.get_substring(m_window_bits*(exp_nibbles-1), m_window_bits)];
+
+   for(size_t i = exp_nibbles - 1; i > 0; --i)
+      {
+      x.square_this_n_times(ws, m_window_bits);
+
+      const uint32_t nibble = scalar.get_substring(m_window_bits*(i-1), m_window_bits);
+      if(nibble > 0)
+         x.mul_by(m_g[nibble], ws);
+      }
+
+   x.const_time_unpoison();
+   return x.value();
+   }
+
+std::shared_ptr<const Montgomery_Exponentation_State>
+monty_precompute(std::shared_ptr<const Montgomery_Params> params,
+                 const BigInt& g,
+                 size_t window_bits,
+                 bool const_time)
+   {
+   return std::make_shared<const Montgomery_Exponentation_State>(params, g, window_bits, const_time);
+   }
+
+BigInt monty_execute(const Montgomery_Exponentation_State& precomputed_state,
+                     const BigInt& k, size_t max_k_bits)
+   {
+   return precomputed_state.exponentiation(k, max_k_bits);
+   }
+
+BigInt monty_execute_vartime(const Montgomery_Exponentation_State& precomputed_state,
+                             const BigInt& k)
+   {
+   return precomputed_state.exponentiation_vartime(k);
+   }
+
+BigInt monty_multi_exp(std::shared_ptr<const Montgomery_Params> params_p,
+                       const BigInt& x_bn,
+                       const BigInt& z1,
+                       const BigInt& y_bn,
+                       const BigInt& z2)
+   {
+   if(z1.is_negative() || z2.is_negative())
+      throw Invalid_Argument("multi_exponentiate exponents must be positive");
+
+   const size_t z_bits = round_up(std::max(z1.bits(), z2.bits()), 2);
+
+   secure_vector<word> ws;
+
+   const Montgomery_Int one(params_p, params_p->R1(), false);
+   //const Montgomery_Int one(params_p, 1);
+
+   const Montgomery_Int x1(params_p, x_bn);
+   const Montgomery_Int x2 = x1.square(ws);
+   const Montgomery_Int x3 = x2.mul(x1, ws);
+
+   const Montgomery_Int y1(params_p, y_bn);
+   const Montgomery_Int y2 = y1.square(ws);
+   const Montgomery_Int y3 = y2.mul(y1, ws);
+
+   const Montgomery_Int y1x1 = y1.mul(x1, ws);
+   const Montgomery_Int y1x2 = y1.mul(x2, ws);
+   const Montgomery_Int y1x3 = y1.mul(x3, ws);
+
+   const Montgomery_Int y2x1 = y2.mul(x1, ws);
+   const Montgomery_Int y2x2 = y2.mul(x2, ws);
+   const Montgomery_Int y2x3 = y2.mul(x3, ws);
+
+   const Montgomery_Int y3x1 = y3.mul(x1, ws);
+   const Montgomery_Int y3x2 = y3.mul(x2, ws);
+   const Montgomery_Int y3x3 = y3.mul(x3, ws);
+
+   const Montgomery_Int* M[16] = {
+      &one,
+      &x1,                    // 0001
+      &x2,                    // 0010
+      &x3,                    // 0011
+      &y1,                    // 0100
+      &y1x1,
+      &y1x2,
+      &y1x3,
+      &y2,                    // 1000
+      &y2x1,
+      &y2x2,
+      &y2x3,
+      &y3,                    // 1100
+      &y3x1,
+      &y3x2,
+      &y3x3
+   };
+
+   Montgomery_Int H = one;
+
+   for(size_t i = 0; i != z_bits; i += 2)
+      {
+      if(i > 0)
+         {
+         H.square_this(ws);
+         H.square_this(ws);
+         }
+
+      const uint32_t z1_b = z1.get_substring(z_bits - i - 2, 2);
+      const uint32_t z2_b = z2.get_substring(z_bits - i - 2, 2);
+
+      const uint32_t z12 = (4*z2_b) + z1_b;
+
+      H.mul_by(*M[z12], ws);
+      }
+
+   return H.value();
+   }
+
+}
+
+/*
+* Fused and Important MP Algorithms
+* (C) 1999-2007 Jack Lloyd
+*     2016 Matthias Gierlings
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+* Square a BigInt
+*/
+BigInt square(const BigInt& x)
+   {
+   BigInt z = x;
+   secure_vector<word> ws;
+   z.square(ws);
+   return z;
+   }
+
+/*
+* Multiply-Add Operation
+*/
+BigInt mul_add(const BigInt& a, const BigInt& b, const BigInt& c)
+   {
+   if(c.is_negative())
+      throw Invalid_Argument("mul_add: Third argument must be > 0");
+
+   BigInt::Sign sign = BigInt::Positive;
+   if(a.sign() != b.sign())
+      sign = BigInt::Negative;
+
+   const size_t a_sw = a.sig_words();
+   const size_t b_sw = b.sig_words();
+   const size_t c_sw = c.sig_words();
+
+   BigInt r(sign, std::max(a_sw + b_sw, c_sw) + 1);
+   secure_vector<word> workspace(r.size());
+
+   bigint_mul(r.mutable_data(), r.size(),
+              a.data(), a.size(), a_sw,
+              b.data(), b.size(), b_sw,
+              workspace.data(), workspace.size());
+
+   const size_t r_size = std::max(r.sig_words(), c_sw);
+   bigint_add2(r.mutable_data(), r_size, c.data(), c_sw);
+   return r;
+   }
+
+/*
+* Subtract-Multiply Operation
+*/
+BigInt sub_mul(const BigInt& a, const BigInt& b, const BigInt& c)
+   {
+   if(a.is_negative() || b.is_negative())
+      throw Invalid_Argument("sub_mul: First two arguments must be >= 0");
+
+   BigInt r = a;
+   r -= b;
+   r *= c;
+   return r;
+   }
+
+/*
+* Multiply-Subtract Operation
+*/
+BigInt mul_sub(const BigInt& a, const BigInt& b, const BigInt& c)
+   {
+   if(c.is_negative() || c.is_zero())
+      throw Invalid_Argument("mul_sub: Third argument must be > 0");
+
+   BigInt r = a;
+   r *= b;
+   r -= c;
+   return r;
+   }
+
+}
+/*
+* NIST prime reductions
+* (C) 2014,2015,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+const BigInt& prime_p521()
+   {
+   static const BigInt p521("0x1FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                               "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+
+   return p521;
+   }
+
+void redc_p521(BigInt& x, secure_vector<word>& ws)
+   {
+   const size_t p_full_words = 521 / BOTAN_MP_WORD_BITS;
+   const size_t p_top_bits = 521 % BOTAN_MP_WORD_BITS;
+   const size_t p_words = p_full_words + 1;
+
+#if (BOTAN_MP_WORD_BITS == 64)
+   static const word p521_words[p_words] = {
+      0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+      0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+      0x1FF };
+#else
+   static const word p521_words[p_words] = {
+      0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+      0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+      0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+      0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+      0x1FF };
+#endif
+
+   if(ws.size() < p_words + 1)
+      ws.resize(p_words + 1);
+
+   clear_mem(ws.data(), ws.size());
+   bigint_shr2(ws.data(), x.data(), std::min(x.size(), 2*p_words), p_full_words, p_top_bits);
+
+   x.mask_bits(521);
+   x.grow_to(p_words);
+
+   // Word-level carry will be zero
+   word carry = bigint_add3_nc(x.mutable_data(), x.data(), p_words, ws.data(), p_words);
+   BOTAN_ASSERT_EQUAL(carry, 0, "Final carry in P-521 reduction");
+
+   const word top_word = x.word_at(p_full_words);
+
+   /*
+   * Check if we need to reduce modulo P
+   * There are two possible cases:
+   * - The result overflowed past 521 bits, in which case bit 522 will be set
+   * - The result is exactly 2**521 - 1
+   */
+   const auto bit_522_set = CT::Mask<word>::expand(top_word >> p_top_bits);
+
+   word and_512 = MP_WORD_MAX;
+   for(size_t i = 0; i != p_full_words; ++i)
+      and_512 &= x.word_at(i);
+   const auto all_512_low_bits_set = CT::Mask<word>::is_equal(and_512, MP_WORD_MAX);
+   const auto has_p521_top_word = CT::Mask<word>::is_equal(top_word, 0x1FF);
+   const auto is_p521 = all_512_low_bits_set & has_p521_top_word;
+
+   const auto needs_reduction = is_p521 | bit_522_set;
+
+   bigint_cnd_sub(needs_reduction.value(), x.mutable_data(), p521_words, p_words);
+   }
+
+namespace {
+
+/**
+* Treating this MPI as a sequence of 32-bit words in big-endian
+* order, return word i. The array is assumed to be large enough.
+*/
+inline uint32_t get_uint32(const word xw[], size_t i)
+   {
+#if (BOTAN_MP_WORD_BITS == 32)
+   return xw[i];
+#else
+   return static_cast<uint32_t>(xw[i/2] >> ((i % 2)*32));
+#endif
+   }
+
+inline void set_words(word x[], size_t i, uint32_t R0, uint32_t R1)
+   {
+#if (BOTAN_MP_WORD_BITS == 32)
+   x[i] = R0;
+   x[i+1] = R1;
+#else
+   x[i/2] = (static_cast<uint64_t>(R1) << 32) | R0;
+#endif
+   }
+
+}
+
+const BigInt& prime_p192()
+   {
+   static const BigInt p192("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF");
+   return p192;
+   }
+
+void redc_p192(BigInt& x, secure_vector<word>& ws)
+   {
+   BOTAN_UNUSED(ws);
+
+   static const size_t p192_limbs = 192 / BOTAN_MP_WORD_BITS;
+
+   x.grow_to(2*p192_limbs);
+   word* xw = x.mutable_data();
+
+   const uint64_t X00 = get_uint32(xw,  0);
+   const uint64_t X01 = get_uint32(xw,  1);
+   const uint64_t X02 = get_uint32(xw,  2);
+   const uint64_t X03 = get_uint32(xw,  3);
+   const uint64_t X04 = get_uint32(xw,  4);
+   const uint64_t X05 = get_uint32(xw,  5);
+   const uint64_t X06 = get_uint32(xw,  6);
+   const uint64_t X07 = get_uint32(xw,  7);
+   const uint64_t X08 = get_uint32(xw,  8);
+   const uint64_t X09 = get_uint32(xw,  9);
+   const uint64_t X10 = get_uint32(xw, 10);
+   const uint64_t X11 = get_uint32(xw, 11);
+
+   const uint64_t S0 = X00 + X06 + X10;
+   const uint64_t S1 = X01 + X07 + X11;
+   const uint64_t S2 = X02 + X06 + X08 + X10;
+   const uint64_t S3 = X03 + X07 + X09 + X11;
+   const uint64_t S4 = X04 + X08 + X10;
+   const uint64_t S5 = X05 + X09 + X11;
+
+   uint64_t S = 0;
+   uint32_t R0 = 0, R1 = 0;
+
+   S += S0;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S1;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 0, R0, R1);
+
+   S += S2;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S3;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 2, R0, R1);
+
+   S += S4;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S5;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 4, R0, R1);
+
+   // No underflow possible
+
+   /*
+   This is a table of (i*P-192) % 2**192 for i in 1...3
+   */
+   static const word p192_mults[3][p192_limbs] = {
+#if (BOTAN_MP_WORD_BITS == 64)
+      {0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF},
+      {0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFD, 0xFFFFFFFFFFFFFFFF},
+      {0xFFFFFFFFFFFFFFFD, 0xFFFFFFFFFFFFFFFC, 0xFFFFFFFFFFFFFFFF},
+#else
+      {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+      {0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFD, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+      {0xFFFFFFFD, 0xFFFFFFFF, 0xFFFFFFFC, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+#endif
+   };
+
+   CT::unpoison(S);
+   BOTAN_ASSERT(S <= 2, "Expected overflow");
+
+   BOTAN_ASSERT_NOMSG(x.size() >= p192_limbs + 1);
+   x.mask_bits(192);
+   word borrow = bigint_sub2(x.mutable_data(), p192_limbs + 1, p192_mults[S], p192_limbs);
+   BOTAN_DEBUG_ASSERT(borrow == 0 || borrow == 1);
+   bigint_cnd_add(borrow, x.mutable_data(), p192_limbs + 1, p192_mults[0], p192_limbs);
+   }
+
+const BigInt& prime_p224()
+   {
+   static const BigInt p224("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000000000000001");
+   return p224;
+   }
+
+void redc_p224(BigInt& x, secure_vector<word>& ws)
+   {
+   static const size_t p224_limbs = (BOTAN_MP_WORD_BITS == 32) ? 7 : 4;
+
+   BOTAN_UNUSED(ws);
+
+   x.grow_to(2*p224_limbs);
+   word* xw = x.mutable_data();
+
+   const int64_t X00 = get_uint32(xw,  0);
+   const int64_t X01 = get_uint32(xw,  1);
+   const int64_t X02 = get_uint32(xw,  2);
+   const int64_t X03 = get_uint32(xw,  3);
+   const int64_t X04 = get_uint32(xw,  4);
+   const int64_t X05 = get_uint32(xw,  5);
+   const int64_t X06 = get_uint32(xw,  6);
+   const int64_t X07 = get_uint32(xw,  7);
+   const int64_t X08 = get_uint32(xw,  8);
+   const int64_t X09 = get_uint32(xw,  9);
+   const int64_t X10 = get_uint32(xw, 10);
+   const int64_t X11 = get_uint32(xw, 11);
+   const int64_t X12 = get_uint32(xw, 12);
+   const int64_t X13 = get_uint32(xw, 13);
+
+   // One full copy of P224 is added, so the result is always positive
+
+   const int64_t S0 = 0x00000001 + X00 - X07 - X11;
+   const int64_t S1 = 0x00000000 + X01 - X08 - X12;
+   const int64_t S2 = 0x00000000 + X02 - X09 - X13;
+   const int64_t S3 = 0xFFFFFFFF + X03 + X07 + X11 - X10;
+   const int64_t S4 = 0xFFFFFFFF + X04 + X08 + X12 - X11;
+   const int64_t S5 = 0xFFFFFFFF + X05 + X09 + X13 - X12;
+   const int64_t S6 = 0xFFFFFFFF + X06 + X10 - X13;
+
+   int64_t S = 0;
+   uint32_t R0 = 0, R1 = 0;
+
+   S += S0;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S1;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 0, R0, R1);
+
+   S += S2;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S3;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 2, R0, R1);
+
+   S += S4;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S5;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 4, R0, R1);
+
+   S += S6;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 6, R0, 0);
+
+   static const word p224_mults[3][p224_limbs] = {
+#if (BOTAN_MP_WORD_BITS == 64)
+    {0x0000000000000001, 0xFFFFFFFF00000000, 0xFFFFFFFFFFFFFFFF, 0x00000000FFFFFFFF},
+    {0x0000000000000002, 0xFFFFFFFE00000000, 0xFFFFFFFFFFFFFFFF, 0x00000000FFFFFFFF},
+    {0x0000000000000003, 0xFFFFFFFD00000000, 0xFFFFFFFFFFFFFFFF, 0x00000000FFFFFFFF},
+#else
+    {0x00000001, 0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+    {0x00000002, 0x00000000, 0x00000000, 0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+    {0x00000003, 0x00000000, 0x00000000, 0xFFFFFFFD, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}
+#endif
+
+   };
+
+   CT::unpoison(S);
+   BOTAN_ASSERT(S >= 0 && S <= 2, "Expected overflow");
+
+   BOTAN_ASSERT_NOMSG(x.size() >= p224_limbs + 1);
+   x.mask_bits(224);
+   word borrow = bigint_sub2(x.mutable_data(), p224_limbs + 1, p224_mults[S], p224_limbs);
+   BOTAN_DEBUG_ASSERT(borrow == 0 || borrow == 1);
+   bigint_cnd_add(borrow, x.mutable_data(), p224_limbs + 1, p224_mults[0], p224_limbs);
+   }
+
+const BigInt& prime_p256()
+   {
+   static const BigInt p256("0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF");
+   return p256;
+   }
+
+void redc_p256(BigInt& x, secure_vector<word>& ws)
+   {
+   static const size_t p256_limbs = (BOTAN_MP_WORD_BITS == 32) ? 8 : 4;
+
+   BOTAN_UNUSED(ws);
+
+   x.grow_to(2*p256_limbs);
+   word* xw = x.mutable_data();
+
+   const int64_t X00 = get_uint32(xw,  0);
+   const int64_t X01 = get_uint32(xw,  1);
+   const int64_t X02 = get_uint32(xw,  2);
+   const int64_t X03 = get_uint32(xw,  3);
+   const int64_t X04 = get_uint32(xw,  4);
+   const int64_t X05 = get_uint32(xw,  5);
+   const int64_t X06 = get_uint32(xw,  6);
+   const int64_t X07 = get_uint32(xw,  7);
+   const int64_t X08 = get_uint32(xw,  8);
+   const int64_t X09 = get_uint32(xw,  9);
+   const int64_t X10 = get_uint32(xw, 10);
+   const int64_t X11 = get_uint32(xw, 11);
+   const int64_t X12 = get_uint32(xw, 12);
+   const int64_t X13 = get_uint32(xw, 13);
+   const int64_t X14 = get_uint32(xw, 14);
+   const int64_t X15 = get_uint32(xw, 15);
+
+   // Adds 6 * P-256 to prevent underflow
+   const int64_t S0 = 0xFFFFFFFA + X00 + X08 + X09 - (X11 + X12 + X13) - X14;
+   const int64_t S1 = 0xFFFFFFFF + X01 + X09 + X10 - X12 - (X13 + X14 + X15);
+   const int64_t S2 = 0xFFFFFFFF + X02 + X10 + X11 - (X13 + X14 + X15);
+   const int64_t S3 = 0x00000005 + X03 + (X11 + X12)*2 + X13 - X15 - X08 - X09;
+   const int64_t S4 = 0x00000000 + X04 + (X12 + X13)*2 + X14 - X09 - X10;
+   const int64_t S5 = 0x00000000 + X05 + (X13 + X14)*2 + X15 - X10 - X11;
+   const int64_t S6 = 0x00000006 + X06 + X13 + X14*3 + X15*2 - X08 - X09;
+   const int64_t S7 = 0xFFFFFFFA + X07 + X15*3 + X08 - X10 - (X11 + X12 + X13);
+
+   int64_t S = 0;
+
+   uint32_t R0 = 0, R1 = 0;
+
+   S += S0;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S1;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 0, R0, R1);
+
+   S += S2;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S3;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 2, R0, R1);
+
+   S += S4;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S5;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 4, R0, R1);
+
+   S += S6;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S7;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+   set_words(xw, 6, R0, R1);
+
+   S += 5; // the top digits of 6*P-256
+
+   /*
+   This is a table of (i*P-256) % 2**256 for i in 1...10
+   */
+   static const word p256_mults[11][p256_limbs] = {
+#if (BOTAN_MP_WORD_BITS == 64)
+      {0xFFFFFFFFFFFFFFFF, 0x00000000FFFFFFFF, 0x0000000000000000, 0xFFFFFFFF00000001},
+      {0xFFFFFFFFFFFFFFFE, 0x00000001FFFFFFFF, 0x0000000000000000, 0xFFFFFFFE00000002},
+      {0xFFFFFFFFFFFFFFFD, 0x00000002FFFFFFFF, 0x0000000000000000, 0xFFFFFFFD00000003},
+      {0xFFFFFFFFFFFFFFFC, 0x00000003FFFFFFFF, 0x0000000000000000, 0xFFFFFFFC00000004},
+      {0xFFFFFFFFFFFFFFFB, 0x00000004FFFFFFFF, 0x0000000000000000, 0xFFFFFFFB00000005},
+      {0xFFFFFFFFFFFFFFFA, 0x00000005FFFFFFFF, 0x0000000000000000, 0xFFFFFFFA00000006},
+      {0xFFFFFFFFFFFFFFF9, 0x00000006FFFFFFFF, 0x0000000000000000, 0xFFFFFFF900000007},
+      {0xFFFFFFFFFFFFFFF8, 0x00000007FFFFFFFF, 0x0000000000000000, 0xFFFFFFF800000008},
+      {0xFFFFFFFFFFFFFFF7, 0x00000008FFFFFFFF, 0x0000000000000000, 0xFFFFFFF700000009},
+      {0xFFFFFFFFFFFFFFF6, 0x00000009FFFFFFFF, 0x0000000000000000, 0xFFFFFFF60000000A},
+      {0xFFFFFFFFFFFFFFF5, 0x0000000AFFFFFFFF, 0x0000000000000000, 0xFFFFFFF50000000B},
+#else
+      {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0xFFFFFFFF},
+      {0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000001, 0x00000000, 0x00000000, 0x00000002, 0xFFFFFFFE},
+      {0xFFFFFFFD, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000002, 0x00000000, 0x00000000, 0x00000003, 0xFFFFFFFD},
+      {0xFFFFFFFC, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000003, 0x00000000, 0x00000000, 0x00000004, 0xFFFFFFFC},
+      {0xFFFFFFFB, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000004, 0x00000000, 0x00000000, 0x00000005, 0xFFFFFFFB},
+      {0xFFFFFFFA, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000005, 0x00000000, 0x00000000, 0x00000006, 0xFFFFFFFA},
+      {0xFFFFFFF9, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000006, 0x00000000, 0x00000000, 0x00000007, 0xFFFFFFF9},
+      {0xFFFFFFF8, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000007, 0x00000000, 0x00000000, 0x00000008, 0xFFFFFFF8},
+      {0xFFFFFFF7, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000008, 0x00000000, 0x00000000, 0x00000009, 0xFFFFFFF7},
+      {0xFFFFFFF6, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000009, 0x00000000, 0x00000000, 0x0000000A, 0xFFFFFFF6},
+      {0xFFFFFFF5, 0xFFFFFFFF, 0xFFFFFFFF, 0x0000000A, 0x00000000, 0x00000000, 0x0000000B, 0xFFFFFFF5},
+#endif
+   };
+
+   CT::unpoison(S);
+   BOTAN_ASSERT(S >= 0 && S <= 10, "Expected overflow");
+
+   BOTAN_ASSERT_NOMSG(x.size() >= p256_limbs + 1);
+   x.mask_bits(256);
+   word borrow = bigint_sub2(x.mutable_data(), p256_limbs + 1, p256_mults[S], p256_limbs);
+   BOTAN_DEBUG_ASSERT(borrow == 0 || borrow == 1);
+   bigint_cnd_add(borrow, x.mutable_data(), p256_limbs + 1, p256_mults[0], p256_limbs);
+   }
+
+const BigInt& prime_p384()
+   {
+   static const BigInt p384("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFF0000000000000000FFFFFFFF");
+   return p384;
+   }
+
+void redc_p384(BigInt& x, secure_vector<word>& ws)
+   {
+   BOTAN_UNUSED(ws);
+
+   static const size_t p384_limbs = (BOTAN_MP_WORD_BITS == 32) ? 12 : 6;
+
+   x.grow_to(2*p384_limbs);
+   word* xw = x.mutable_data();
+
+   const int64_t X00 = get_uint32(xw,  0);
+   const int64_t X01 = get_uint32(xw,  1);
+   const int64_t X02 = get_uint32(xw,  2);
+   const int64_t X03 = get_uint32(xw,  3);
+   const int64_t X04 = get_uint32(xw,  4);
+   const int64_t X05 = get_uint32(xw,  5);
+   const int64_t X06 = get_uint32(xw,  6);
+   const int64_t X07 = get_uint32(xw,  7);
+   const int64_t X08 = get_uint32(xw,  8);
+   const int64_t X09 = get_uint32(xw,  9);
+   const int64_t X10 = get_uint32(xw, 10);
+   const int64_t X11 = get_uint32(xw, 11);
+   const int64_t X12 = get_uint32(xw, 12);
+   const int64_t X13 = get_uint32(xw, 13);
+   const int64_t X14 = get_uint32(xw, 14);
+   const int64_t X15 = get_uint32(xw, 15);
+   const int64_t X16 = get_uint32(xw, 16);
+   const int64_t X17 = get_uint32(xw, 17);
+   const int64_t X18 = get_uint32(xw, 18);
+   const int64_t X19 = get_uint32(xw, 19);
+   const int64_t X20 = get_uint32(xw, 20);
+   const int64_t X21 = get_uint32(xw, 21);
+   const int64_t X22 = get_uint32(xw, 22);
+   const int64_t X23 = get_uint32(xw, 23);
+
+   // One copy of P-384 is added to prevent underflow
+   const int64_t S0 = 0xFFFFFFFF + X00 + X12 + X20 + X21 - X23;
+   const int64_t S1 = 0x00000000 + X01 + X13 + X22 + X23 - X12 - X20;
+   const int64_t S2 = 0x00000000 + X02 + X14 + X23 - X13 - X21;
+   const int64_t S3 = 0xFFFFFFFF + X03 + X12 + X15 + X20 + X21 - X14 - X22 - X23;
+   const int64_t S4 = 0xFFFFFFFE + X04 + X12 + X13 + X16 + X20 + X21*2 + X22 - X15 - X23*2;
+   const int64_t S5 = 0xFFFFFFFF + X05 + X13 + X14 + X17 + X21 + X22*2 + X23 - X16;
+   const int64_t S6 = 0xFFFFFFFF + X06 + X14 + X15 + X18 + X22 + X23*2 - X17;
+   const int64_t S7 = 0xFFFFFFFF + X07 + X15 + X16 + X19 + X23 - X18;
+   const int64_t S8 = 0xFFFFFFFF + X08 + X16 + X17 + X20 - X19;
+   const int64_t S9 = 0xFFFFFFFF + X09 + X17 + X18 + X21 - X20;
+   const int64_t SA = 0xFFFFFFFF + X10 + X18 + X19 + X22 - X21;
+   const int64_t SB = 0xFFFFFFFF + X11 + X19 + X20 + X23 - X22;
+
+   int64_t S = 0;
+
+   uint32_t R0 = 0, R1 = 0;
+
+   S += S0;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S1;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 0, R0, R1);
+
+   S += S2;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S3;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 2, R0, R1);
+
+   S += S4;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S5;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 4, R0, R1);
+
+   S += S6;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S7;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 6, R0, R1);
+
+   S += S8;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += S9;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 8, R0, R1);
+
+   S += SA;
+   R0 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   S += SB;
+   R1 = static_cast<uint32_t>(S);
+   S >>= 32;
+
+   set_words(xw, 10, R0, R1);
+
+   /*
+   This is a table of (i*P-384) % 2**384 for i in 1...4
+   */
+   static const word p384_mults[5][p384_limbs] = {
+#if (BOTAN_MP_WORD_BITS == 64)
+      {0x00000000FFFFFFFF, 0xFFFFFFFF00000000, 0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF},
+      {0x00000001FFFFFFFE, 0xFFFFFFFE00000000, 0xFFFFFFFFFFFFFFFD, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF},
+      {0x00000002FFFFFFFD, 0xFFFFFFFD00000000, 0xFFFFFFFFFFFFFFFC, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF},
+      {0x00000003FFFFFFFC, 0xFFFFFFFC00000000, 0xFFFFFFFFFFFFFFFB, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF},
+      {0x00000004FFFFFFFB, 0xFFFFFFFB00000000, 0xFFFFFFFFFFFFFFFA, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF},
+
+#else
+      {0xFFFFFFFF, 0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFE, 0xFFFFFFFF,
+       0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+      {0xFFFFFFFE, 0x00000001, 0x00000000, 0xFFFFFFFE, 0xFFFFFFFD, 0xFFFFFFFF,
+       0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+      {0xFFFFFFFD, 0x00000002, 0x00000000, 0xFFFFFFFD, 0xFFFFFFFC, 0xFFFFFFFF,
+       0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+      {0xFFFFFFFC, 0x00000003, 0x00000000, 0xFFFFFFFC, 0xFFFFFFFB, 0xFFFFFFFF,
+       0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+      {0xFFFFFFFB, 0x00000004, 0x00000000, 0xFFFFFFFB, 0xFFFFFFFA, 0xFFFFFFFF,
+       0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+#endif
+   };
+
+   CT::unpoison(S);
+   BOTAN_ASSERT(S >= 0 && S <= 4, "Expected overflow");
+
+   BOTAN_ASSERT_NOMSG(x.size() >= p384_limbs + 1);
+   x.mask_bits(384);
+   word borrow = bigint_sub2(x.mutable_data(), p384_limbs + 1, p384_mults[S], p384_limbs);
+   BOTAN_DEBUG_ASSERT(borrow == 0 || borrow == 1);
+   bigint_cnd_add(borrow, x.mutable_data(), p384_limbs + 1, p384_mults[0], p384_limbs);
+   }
+
+}
+/*
+* Number Theory Functions
+* (C) 1999-2011,2016,2018,2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+void sub_abs(BigInt& z, const BigInt& x, const BigInt& y)
+   {
+   const size_t x_sw = x.sig_words();
+   const size_t y_sw = y.sig_words();
+   z.resize(std::max(x_sw, y_sw));
+
+   bigint_sub_abs(z.mutable_data(),
+                  x.data(), x_sw,
+                  y.data(), y_sw);
+   }
+
+}
+
+/*
+* Return the number of 0 bits at the end of n
+*/
+size_t low_zero_bits(const BigInt& n)
+   {
+   size_t low_zero = 0;
+
+   auto seen_nonempty_word = CT::Mask<word>::cleared();
+
+   for(size_t i = 0; i != n.size(); ++i)
+      {
+      const word x = n.word_at(i);
+
+      // ctz(0) will return sizeof(word)
+      const size_t tz_x = ctz(x);
+
+      // if x > 0 we want to count tz_x in total but not any
+      // further words, so set the mask after the addition
+      low_zero += seen_nonempty_word.if_not_set_return(tz_x);
+
+      seen_nonempty_word |= CT::Mask<word>::expand(x);
+      }
+
+   // if we saw no words with x > 0 then n == 0 and the value we have
+   // computed is meaningless. Instead return 0 in that case.
+   return seen_nonempty_word.if_set_return(low_zero);
+   }
+
+namespace {
+
+size_t safegcd_loop_bound(size_t f_bits, size_t g_bits)
+   {
+   const size_t d = std::max(f_bits, g_bits);
+
+   if(d < 46)
+      return (49*d + 80) / 17;
+   else
+      return (49*d + 57) / 17;
+   }
+
+}
+
+/*
+* Calculate the GCD
+*/
+BigInt gcd(const BigInt& a, const BigInt& b)
+   {
+   if(a.is_zero())
+      return abs(b);
+   if(b.is_zero())
+      return abs(a);
+   if(a == 1 || b == 1)
+      return 1;
+
+   // See https://gcd.cr.yp.to/safegcd-20190413.pdf fig 1.2
+
+   BigInt f = a;
+   BigInt g = b;
+   f.const_time_poison();
+   g.const_time_poison();
+
+   f.set_sign(BigInt::Positive);
+   g.set_sign(BigInt::Positive);
+
+   const size_t common2s = std::min(low_zero_bits(f), low_zero_bits(g));
+   CT::unpoison(common2s);
+
+   f >>= common2s;
+   g >>= common2s;
+
+   f.ct_cond_swap(f.is_even(), g);
+
+   int32_t delta = 1;
+
+   const size_t loop_cnt = safegcd_loop_bound(f.bits(), g.bits());
+
+   BigInt newg, t;
+   for(size_t i = 0; i != loop_cnt; ++i)
+      {
+      sub_abs(newg, f, g);
+
+      const bool need_swap = (g.is_odd() && delta > 0);
+
+      // if(need_swap) { delta *= -1 } else { delta *= 1 }
+      delta *= CT::Mask<uint8_t>::expand(need_swap).if_not_set_return(2) - 1;
+      f.ct_cond_swap(need_swap, g);
+      g.ct_cond_swap(need_swap, newg);
+
+      delta += 1;
+
+      g.ct_cond_add(g.is_odd(), f);
+      g >>= 1;
+      }
+
+   f <<= common2s;
+
+   f.const_time_unpoison();
+   g.const_time_unpoison();
+
+   BOTAN_ASSERT_NOMSG(g.is_zero());
+
+   return f;
+   }
+
+/*
+* Calculate the LCM
+*/
+BigInt lcm(const BigInt& a, const BigInt& b)
+   {
+   return ct_divide(a * b, gcd(a, b));
+   }
+
+/*
+* Modular Exponentiation
+*/
+BigInt power_mod(const BigInt& base, const BigInt& exp, const BigInt& mod)
+   {
+   if(mod.is_negative() || mod == 1)
+      {
+      return 0;
+      }
+
+   if(base.is_zero() || mod.is_zero())
+      {
+      if(exp.is_zero())
+         return 1;
+      return 0;
+      }
+
+   Modular_Reducer reduce_mod(mod);
+
+   const size_t exp_bits = exp.bits();
+
+   if(mod.is_odd())
+      {
+      const size_t powm_window = 4;
+
+      auto monty_mod = std::make_shared<Montgomery_Params>(mod, reduce_mod);
+      auto powm_base_mod = monty_precompute(monty_mod, reduce_mod.reduce(base), powm_window);
+      return monty_execute(*powm_base_mod, exp, exp_bits);
+      }
+
+   /*
+   Support for even modulus is just a convenience and not considered
+   cryptographically important, so this implementation is slow ...
+   */
+   BigInt accum = 1;
+   BigInt g = reduce_mod.reduce(base);
+   BigInt t;
+
+   for(size_t i = 0; i != exp_bits; ++i)
+      {
+      t = reduce_mod.multiply(g, accum);
+      g = reduce_mod.square(g);
+      accum.ct_cond_assign(exp.get_bit(i), t);
+      }
+   return accum;
+   }
+
+
+BigInt is_perfect_square(const BigInt& C)
+   {
+   if(C < 1)
+      throw Invalid_Argument("is_perfect_square requires C >= 1");
+   if(C == 1)
+      return 1;
+
+   const size_t n = C.bits();
+   const size_t m = (n + 1) / 2;
+   const BigInt B = C + BigInt::power_of_2(m);
+
+   BigInt X = BigInt::power_of_2(m) - 1;
+   BigInt X2 = (X*X);
+
+   for(;;)
+      {
+      X = (X2 + C) / (2*X);
+      X2 = (X*X);
+
+      if(X2 < B)
+         break;
+      }
+
+   if(X2 == C)
+      return X;
+   else
+      return 0;
+   }
+
+/*
+* Test for primality using Miller-Rabin
+*/
+bool is_prime(const BigInt& n,
+              RandomNumberGenerator& rng,
+              size_t prob,
+              bool is_random)
+   {
+   if(n == 2)
+      return true;
+   if(n <= 1 || n.is_even())
+      return false;
+
+   const size_t n_bits = n.bits();
+
+   // Fast path testing for small numbers (<= 65521)
+   if(n_bits <= 16)
+      {
+      const uint16_t num = static_cast<uint16_t>(n.word_at(0));
+
+      return std::binary_search(PRIMES, PRIMES + PRIME_TABLE_SIZE, num);
+      }
+
+   Modular_Reducer mod_n(n);
+
+   if(rng.is_seeded())
+      {
+      const size_t t = miller_rabin_test_iterations(n_bits, prob, is_random);
+
+      if(is_miller_rabin_probable_prime(n, mod_n, rng, t) == false)
+         return false;
+
+      if(is_random)
+         return true;
+      else
+         return is_lucas_probable_prime(n, mod_n);
+      }
+   else
+      {
+      return is_bailie_psw_probable_prime(n, mod_n);
+      }
+   }
+
+}
+/*
+* Modular Exponentiation Proxy
+* (C) 1999-2007,2012,2018,2019 Jack Lloyd
+*     2016 Matthias Gierlings
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+#include <vector>
+
+namespace Botan {
+
+class Modular_Exponentiator
+   {
+   public:
+      virtual void set_base(const BigInt&) = 0;
+      virtual void set_exponent(const BigInt&) = 0;
+      virtual BigInt execute() const = 0;
+      virtual Modular_Exponentiator* copy() const = 0;
+
+      Modular_Exponentiator() = default;
+      Modular_Exponentiator(const Modular_Exponentiator&) = default;
+      Modular_Exponentiator & operator=(const Modular_Exponentiator&) = default;
+      virtual ~Modular_Exponentiator() = default;
+   };
+
+namespace {
+
+/**
+* Fixed Window Exponentiator
+*/
+class Fixed_Window_Exponentiator final : public Modular_Exponentiator
+   {
+   public:
+      void set_exponent(const BigInt& e) override { m_exp = e; }
+      void set_base(const BigInt&) override;
+      BigInt execute() const override;
+
+      Modular_Exponentiator* copy() const override
+         { return new Fixed_Window_Exponentiator(*this); }
+
+      Fixed_Window_Exponentiator(const BigInt&, Power_Mod::Usage_Hints);
+   private:
+      Modular_Reducer m_reducer;
+      BigInt m_exp;
+      size_t m_window_bits;
+      std::vector<BigInt> m_g;
+      Power_Mod::Usage_Hints m_hints;
+   };
+
+void Fixed_Window_Exponentiator::set_base(const BigInt& base)
+   {
+   m_window_bits = Power_Mod::window_bits(m_exp.bits(), base.bits(), m_hints);
+
+   m_g.resize(static_cast<size_t>(1) << m_window_bits);
+   m_g[0] = 1;
+   m_g[1] = m_reducer.reduce(base);
+
+   for(size_t i = 2; i != m_g.size(); ++i)
+      m_g[i] = m_reducer.multiply(m_g[i-1], m_g[1]);
+   }
+
+BigInt Fixed_Window_Exponentiator::execute() const
+   {
+   const size_t exp_nibbles = (m_exp.bits() + m_window_bits - 1) / m_window_bits;
+
+   BigInt x = 1;
+
+   for(size_t i = exp_nibbles; i > 0; --i)
+      {
+      for(size_t j = 0; j != m_window_bits; ++j)
+         x = m_reducer.square(x);
+
+      const uint32_t nibble = m_exp.get_substring(m_window_bits*(i-1), m_window_bits);
+
+      // not const time:
+      x = m_reducer.multiply(x, m_g[nibble]);
+      }
+   return x;
+   }
+
+/*
+* Fixed_Window_Exponentiator Constructor
+*/
+Fixed_Window_Exponentiator::Fixed_Window_Exponentiator(const BigInt& n,
+                                                       Power_Mod::Usage_Hints hints)
+   : m_reducer{Modular_Reducer(n)}, m_exp{}, m_window_bits{}, m_g{}, m_hints{hints}
+   {}
+
+class Montgomery_Exponentiator final : public Modular_Exponentiator
+   {
+   public:
+      void set_exponent(const BigInt& e) override { m_e = e; }
+      void set_base(const BigInt&) override;
+      BigInt execute() const override;
+
+      Modular_Exponentiator* copy() const override
+         { return new Montgomery_Exponentiator(*this); }
+
+      Montgomery_Exponentiator(const BigInt&, Power_Mod::Usage_Hints);
+   private:
+      BigInt m_p;
+      Modular_Reducer m_mod_p;
+      std::shared_ptr<const Montgomery_Params> m_monty_params;
+      std::shared_ptr<const Montgomery_Exponentation_State> m_monty;
+
+      BigInt m_e;
+      Power_Mod::Usage_Hints m_hints;
+   };
+
+void Montgomery_Exponentiator::set_base(const BigInt& base)
+   {
+   size_t window_bits = Power_Mod::window_bits(m_e.bits(), base.bits(), m_hints);
+   m_monty = monty_precompute(m_monty_params, m_mod_p.reduce(base), window_bits);
+   }
+
+BigInt Montgomery_Exponentiator::execute() const
+   {
+   /*
+   This leaks size of e via loop iterations, not possible to fix without
+   breaking this API. Round up to avoid leaking fine details.
+   */
+   return monty_execute(*m_monty, m_e, round_up(m_e.bits(), 8));
+   }
+
+Montgomery_Exponentiator::Montgomery_Exponentiator(const BigInt& mod,
+                                                   Power_Mod::Usage_Hints hints) :
+   m_p(mod),
+   m_mod_p(mod),
+   m_monty_params(std::make_shared<Montgomery_Params>(m_p, m_mod_p)),
+   m_hints(hints)
+   {
+   }
+
+}
+
+/*
+* Power_Mod Constructor
+*/
+Power_Mod::Power_Mod(const BigInt& n, Usage_Hints hints, bool disable_monty)
+   {
+   set_modulus(n, hints, disable_monty);
+   }
+
+Power_Mod::~Power_Mod() { /* for ~unique_ptr */ }
+
+/*
+* Power_Mod Copy Constructor
+*/
+Power_Mod::Power_Mod(const Power_Mod& other)
+   {
+   if(other.m_core.get())
+      m_core.reset(other.m_core->copy());
+   }
+
+/*
+* Power_Mod Assignment Operator
+*/
+Power_Mod& Power_Mod::operator=(const Power_Mod& other)
+   {
+   if(this != &other)
+      {
+      if(other.m_core)
+         m_core.reset(other.m_core->copy());
+      else
+         m_core.reset();
+      }
+   return (*this);
+   }
+
+/*
+* Set the modulus
+*/
+void Power_Mod::set_modulus(const BigInt& n, Usage_Hints hints, bool disable_monty) const
+   {
+   // Allow set_modulus(0) to mean "drop old state"
+
+   m_core.reset();
+
+   if(n != 0)
+      {
+      if(n.is_odd() && disable_monty == false)
+         m_core.reset(new Montgomery_Exponentiator(n, hints));
+      else
+         m_core.reset(new Fixed_Window_Exponentiator(n, hints));
+      }
+   }
+
+/*
+* Set the base
+*/
+void Power_Mod::set_base(const BigInt& b) const
+   {
+   if(b.is_negative())
+      throw Invalid_Argument("Power_Mod::set_base: arg must be non-negative");
+
+   if(!m_core)
+      throw Internal_Error("Power_Mod::set_base: m_core was NULL");
+   m_core->set_base(b);
+   }
+
+/*
+* Set the exponent
+*/
+void Power_Mod::set_exponent(const BigInt& e) const
+   {
+   if(e.is_negative())
+      throw Invalid_Argument("Power_Mod::set_exponent: arg must be > 0");
+
+   if(!m_core)
+      throw Internal_Error("Power_Mod::set_exponent: m_core was NULL");
+   m_core->set_exponent(e);
+   }
+
+/*
+* Compute the result
+*/
+BigInt Power_Mod::execute() const
+   {
+   if(!m_core)
+      throw Internal_Error("Power_Mod::execute: m_core was NULL");
+   return m_core->execute();
+   }
+
+/*
+* Try to choose a good window size
+*/
+size_t Power_Mod::window_bits(size_t exp_bits, size_t,
+                              Power_Mod::Usage_Hints hints)
+   {
+   static const size_t wsize[][2] = {
+      { 1434, 7 },
+      {  539, 6 },
+      {  197, 4 },
+      {   70, 3 },
+      {   17, 2 },
+      {    0, 0 }
+   };
+
+   size_t window_bits = 1;
+
+   if(exp_bits)
+      {
+      for(size_t j = 0; wsize[j][0]; ++j)
+         {
+         if(exp_bits >= wsize[j][0])
+            {
+            window_bits += wsize[j][1];
+            break;
+            }
+         }
+      }
+
+   if(hints & Power_Mod::BASE_IS_FIXED)
+      window_bits += 2;
+   if(hints & Power_Mod::EXP_IS_LARGE)
+      ++window_bits;
+
+   return window_bits;
+   }
+
+namespace {
+
+/*
+* Choose potentially useful hints
+*/
+Power_Mod::Usage_Hints choose_base_hints(const BigInt& b, const BigInt& n)
+   {
+   if(b == 2)
+      return Power_Mod::Usage_Hints(Power_Mod::BASE_IS_2 |
+                                    Power_Mod::BASE_IS_SMALL);
+
+   const size_t b_bits = b.bits();
+   const size_t n_bits = n.bits();
+
+   if(b_bits < n_bits / 32)
+      return Power_Mod::BASE_IS_SMALL;
+   if(b_bits > n_bits / 4)
+      return Power_Mod::BASE_IS_LARGE;
+
+   return Power_Mod::NO_HINTS;
+   }
+
+/*
+* Choose potentially useful hints
+*/
+Power_Mod::Usage_Hints choose_exp_hints(const BigInt& e, const BigInt& n)
+   {
+   const size_t e_bits = e.bits();
+   const size_t n_bits = n.bits();
+
+   if(e_bits < n_bits / 32)
+      return Power_Mod::BASE_IS_SMALL;
+   if(e_bits > n_bits / 4)
+      return Power_Mod::BASE_IS_LARGE;
+   return Power_Mod::NO_HINTS;
+   }
+
+}
+
+/*
+* Fixed_Exponent_Power_Mod Constructor
+*/
+Fixed_Exponent_Power_Mod::Fixed_Exponent_Power_Mod(const BigInt& e,
+                                                   const BigInt& n,
+                                                   Usage_Hints hints) :
+   Power_Mod(n, Usage_Hints(hints | EXP_IS_FIXED | choose_exp_hints(e, n)))
+   {
+   set_exponent(e);
+   }
+
+/*
+* Fixed_Base_Power_Mod Constructor
+*/
+Fixed_Base_Power_Mod::Fixed_Base_Power_Mod(const BigInt& b, const BigInt& n,
+                                           Usage_Hints hints) :
+   Power_Mod(n, Usage_Hints(hints | BASE_IS_FIXED | choose_base_hints(b, n)))
+   {
+   set_base(b);
+   }
+
+}
+/*
+* (C) 2016,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+bool is_lucas_probable_prime(const BigInt& C, const Modular_Reducer& mod_C)
+   {
+   if(C <= 1)
+      return false;
+   else if(C == 2)
+      return true;
+   else if(C.is_even())
+      return false;
+   else if(C == 3 || C == 5 || C == 7 || C == 11 || C == 13)
+      return true;
+
+   BigInt D = 5;
+
+   for(;;)
+      {
+      int32_t j = jacobi(D, C);
+      if(j == 0)
+         return false;
+
+      if(j == -1)
+         break;
+
+      // Check 5, -7, 9, -11, 13, -15, 17, ...
+      if(D.is_negative())
+         {
+         D.flip_sign();
+         D += 2;
+         }
+      else
+         {
+         D += 2;
+         D.flip_sign();
+         }
+
+      if(D == 17 && is_perfect_square(C).is_nonzero())
+         return false;
+      }
+
+   const BigInt K = C + 1;
+   const size_t K_bits = K.bits() - 1;
+
+   BigInt U = 1;
+   BigInt V = 1;
+
+   BigInt Ut, Vt, U2, V2;
+
+   for(size_t i = 0; i != K_bits; ++i)
+      {
+      const bool k_bit = K.get_bit(K_bits - 1 - i);
+
+      Ut = mod_C.multiply(U, V);
+
+      Vt = mod_C.reduce(mod_C.square(V) + mod_C.multiply(D, mod_C.square(U)));
+      Vt.ct_cond_add(Vt.is_odd(), C);
+      Vt >>= 1;
+      Vt = mod_C.reduce(Vt);
+
+      U = Ut;
+      V = Vt;
+
+      U2 = mod_C.reduce(Ut + Vt);
+      U2.ct_cond_add(U2.is_odd(), C);
+      U2 >>= 1;
+
+      V2 = mod_C.reduce(Vt + Ut*D);
+      V2.ct_cond_add(V2.is_odd(), C);
+      V2 >>= 1;
+
+      U.ct_cond_assign(k_bit, U2);
+      V.ct_cond_assign(k_bit, V2);
+      }
+
+   return (U == 0);
+   }
+
+bool is_bailie_psw_probable_prime(const BigInt& n, const Modular_Reducer& mod_n)
+   {
+   auto monty_n = std::make_shared<Montgomery_Params>(n, mod_n);
+   return passes_miller_rabin_test(n, mod_n, monty_n, 2) && is_lucas_probable_prime(n, mod_n);
+   }
+
+bool is_bailie_psw_probable_prime(const BigInt& n)
+   {
+   Modular_Reducer mod_n(n);
+   return is_bailie_psw_probable_prime(n, mod_n);
+   }
+
+bool passes_miller_rabin_test(const BigInt& n,
+                              const Modular_Reducer& mod_n,
+                              const std::shared_ptr<Montgomery_Params>& monty_n,
+                              const BigInt& a)
+   {
+   BOTAN_ASSERT_NOMSG(n > 1);
+
+   const BigInt n_minus_1 = n - 1;
+   const size_t s = low_zero_bits(n_minus_1);
+   const BigInt nm1_s = n_minus_1 >> s;
+   const size_t n_bits = n.bits();
+
+   const size_t powm_window = 4;
+
+   auto powm_a_n = monty_precompute(monty_n, a, powm_window);
+
+   BigInt y = monty_execute(*powm_a_n, nm1_s, n_bits);
+
+   if(y == 1 || y == n_minus_1)
+      return true;
+
+   for(size_t i = 1; i != s; ++i)
+      {
+      y = mod_n.square(y);
+
+      if(y == 1) // found a non-trivial square root
+         return false;
+
+      /*
+      -1 is the trivial square root of unity, so ``a`` is not a
+      witness for this number - give up
+      */
+      if(y == n_minus_1)
+         return true;
+      }
+
+   return false;
+   }
+
+bool is_miller_rabin_probable_prime(const BigInt& n,
+                                    const Modular_Reducer& mod_n,
+                                    RandomNumberGenerator& rng,
+                                    size_t test_iterations)
+   {
+   BOTAN_ASSERT_NOMSG(n > 1);
+
+   auto monty_n = std::make_shared<Montgomery_Params>(n, mod_n);
+
+   for(size_t i = 0; i != test_iterations; ++i)
+      {
+      const BigInt a = BigInt::random_integer(rng, 2, n);
+
+      if(!passes_miller_rabin_test(n, mod_n, monty_n, a))
+         return false;
+      }
+
+   // Failed to find a counterexample
+   return true;
+   }
+
+
+size_t miller_rabin_test_iterations(size_t n_bits, size_t prob, bool random)
+   {
+   const size_t base = (prob + 2) / 2; // worst case 4^-t error rate
+
+   /*
+   * If the candidate prime was maliciously constructed, we can't rely
+   * on arguments based on p being random.
+   */
+   if(random == false)
+      return base;
+
+   /*
+   * For randomly chosen numbers we can use the estimates from
+   * http://www.math.dartmouth.edu/~carlp/PDF/paper88.pdf
+   *
+   * These values are derived from the inequality for p(k,t) given on
+   * the second page.
+   */
+   if(prob <= 128)
+      {
+      if(n_bits >= 1536)
+         return 4; // < 2^-133
+      if(n_bits >= 1024)
+         return 6; // < 2^-133
+      if(n_bits >= 512)
+         return 12; // < 2^-129
+      if(n_bits >= 256)
+         return 29; // < 2^-128
+      }
+
+   /*
+   If the user desires a smaller error probability than we have
+   precomputed error estimates for, just fall back to using the worst
+   case error rate.
+   */
+   return base;
+   }
+
+}
+/*
+* Small Primes Table
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+const uint16_t PRIMES[PRIME_TABLE_SIZE+1] = {
+    3,     5,     7,    11,    13,    17,    19,    23,    29,    31,    37,
+   41,    43,    47,    53,    59,    61,    67,    71,    73,    79,    83,
+   89,    97,   101,   103,   107,   109,   113,   127,   131,   137,   139,
+  149,   151,   157,   163,   167,   173,   179,   181,   191,   193,   197,
+  199,   211,   223,   227,   229,   233,   239,   241,   251,   257,   263,
+  269,   271,   277,   281,   283,   293,   307,   311,   313,   317,   331,
+  337,   347,   349,   353,   359,   367,   373,   379,   383,   389,   397,
+  401,   409,   419,   421,   431,   433,   439,   443,   449,   457,   461,
+  463,   467,   479,   487,   491,   499,   503,   509,   521,   523,   541,
+  547,   557,   563,   569,   571,   577,   587,   593,   599,   601,   607,
+  613,   617,   619,   631,   641,   643,   647,   653,   659,   661,   673,
+  677,   683,   691,   701,   709,   719,   727,   733,   739,   743,   751,
+  757,   761,   769,   773,   787,   797,   809,   811,   821,   823,   827,
+  829,   839,   853,   857,   859,   863,   877,   881,   883,   887,   907,
+  911,   919,   929,   937,   941,   947,   953,   967,   971,   977,   983,
+  991,   997,  1009,  1013,  1019,  1021,  1031,  1033,  1039,  1049,  1051,
+ 1061,  1063,  1069,  1087,  1091,  1093,  1097,  1103,  1109,  1117,  1123,
+ 1129,  1151,  1153,  1163,  1171,  1181,  1187,  1193,  1201,  1213,  1217,
+ 1223,  1229,  1231,  1237,  1249,  1259,  1277,  1279,  1283,  1289,  1291,
+ 1297,  1301,  1303,  1307,  1319,  1321,  1327,  1361,  1367,  1373,  1381,
+ 1399,  1409,  1423,  1427,  1429,  1433,  1439,  1447,  1451,  1453,  1459,
+ 1471,  1481,  1483,  1487,  1489,  1493,  1499,  1511,  1523,  1531,  1543,
+ 1549,  1553,  1559,  1567,  1571,  1579,  1583,  1597,  1601,  1607,  1609,
+ 1613,  1619,  1621,  1627,  1637,  1657,  1663,  1667,  1669,  1693,  1697,
+ 1699,  1709,  1721,  1723,  1733,  1741,  1747,  1753,  1759,  1777,  1783,
+ 1787,  1789,  1801,  1811,  1823,  1831,  1847,  1861,  1867,  1871,  1873,
+ 1877,  1879,  1889,  1901,  1907,  1913,  1931,  1933,  1949,  1951,  1973,
+ 1979,  1987,  1993,  1997,  1999,  2003,  2011,  2017,  2027,  2029,  2039,
+ 2053,  2063,  2069,  2081,  2083,  2087,  2089,  2099,  2111,  2113,  2129,
+ 2131,  2137,  2141,  2143,  2153,  2161,  2179,  2203,  2207,  2213,  2221,
+ 2237,  2239,  2243,  2251,  2267,  2269,  2273,  2281,  2287,  2293,  2297,
+ 2309,  2311,  2333,  2339,  2341,  2347,  2351,  2357,  2371,  2377,  2381,
+ 2383,  2389,  2393,  2399,  2411,  2417,  2423,  2437,  2441,  2447,  2459,
+ 2467,  2473,  2477,  2503,  2521,  2531,  2539,  2543,  2549,  2551,  2557,
+ 2579,  2591,  2593,  2609,  2617,  2621,  2633,  2647,  2657,  2659,  2663,
+ 2671,  2677,  2683,  2687,  2689,  2693,  2699,  2707,  2711,  2713,  2719,
+ 2729,  2731,  2741,  2749,  2753,  2767,  2777,  2789,  2791,  2797,  2801,
+ 2803,  2819,  2833,  2837,  2843,  2851,  2857,  2861,  2879,  2887,  2897,
+ 2903,  2909,  2917,  2927,  2939,  2953,  2957,  2963,  2969,  2971,  2999,
+ 3001,  3011,  3019,  3023,  3037,  3041,  3049,  3061,  3067,  3079,  3083,
+ 3089,  3109,  3119,  3121,  3137,  3163,  3167,  3169,  3181,  3187,  3191,
+ 3203,  3209,  3217,  3221,  3229,  3251,  3253,  3257,  3259,  3271,  3299,
+ 3301,  3307,  3313,  3319,  3323,  3329,  3331,  3343,  3347,  3359,  3361,
+ 3371,  3373,  3389,  3391,  3407,  3413,  3433,  3449,  3457,  3461,  3463,
+ 3467,  3469,  3491,  3499,  3511,  3517,  3527,  3529,  3533,  3539,  3541,
+ 3547,  3557,  3559,  3571,  3581,  3583,  3593,  3607,  3613,  3617,  3623,
+ 3631,  3637,  3643,  3659,  3671,  3673,  3677,  3691,  3697,  3701,  3709,
+ 3719,  3727,  3733,  3739,  3761,  3767,  3769,  3779,  3793,  3797,  3803,
+ 3821,  3823,  3833,  3847,  3851,  3853,  3863,  3877,  3881,  3889,  3907,
+ 3911,  3917,  3919,  3923,  3929,  3931,  3943,  3947,  3967,  3989,  4001,
+ 4003,  4007,  4013,  4019,  4021,  4027,  4049,  4051,  4057,  4073,  4079,
+ 4091,  4093,  4099,  4111,  4127,  4129,  4133,  4139,  4153,  4157,  4159,
+ 4177,  4201,  4211,  4217,  4219,  4229,  4231,  4241,  4243,  4253,  4259,
+ 4261,  4271,  4273,  4283,  4289,  4297,  4327,  4337,  4339,  4349,  4357,
+ 4363,  4373,  4391,  4397,  4409,  4421,  4423,  4441,  4447,  4451,  4457,
+ 4463,  4481,  4483,  4493,  4507,  4513,  4517,  4519,  4523,  4547,  4549,
+ 4561,  4567,  4583,  4591,  4597,  4603,  4621,  4637,  4639,  4643,  4649,
+ 4651,  4657,  4663,  4673,  4679,  4691,  4703,  4721,  4723,  4729,  4733,
+ 4751,  4759,  4783,  4787,  4789,  4793,  4799,  4801,  4813,  4817,  4831,
+ 4861,  4871,  4877,  4889,  4903,  4909,  4919,  4931,  4933,  4937,  4943,
+ 4951,  4957,  4967,  4969,  4973,  4987,  4993,  4999,  5003,  5009,  5011,
+ 5021,  5023,  5039,  5051,  5059,  5077,  5081,  5087,  5099,  5101,  5107,
+ 5113,  5119,  5147,  5153,  5167,  5171,  5179,  5189,  5197,  5209,  5227,
+ 5231,  5233,  5237,  5261,  5273,  5279,  5281,  5297,  5303,  5309,  5323,
+ 5333,  5347,  5351,  5381,  5387,  5393,  5399,  5407,  5413,  5417,  5419,
+ 5431,  5437,  5441,  5443,  5449,  5471,  5477,  5479,  5483,  5501,  5503,
+ 5507,  5519,  5521,  5527,  5531,  5557,  5563,  5569,  5573,  5581,  5591,
+ 5623,  5639,  5641,  5647,  5651,  5653,  5657,  5659,  5669,  5683,  5689,
+ 5693,  5701,  5711,  5717,  5737,  5741,  5743,  5749,  5779,  5783,  5791,
+ 5801,  5807,  5813,  5821,  5827,  5839,  5843,  5849,  5851,  5857,  5861,
+ 5867,  5869,  5879,  5881,  5897,  5903,  5923,  5927,  5939,  5953,  5981,
+ 5987,  6007,  6011,  6029,  6037,  6043,  6047,  6053,  6067,  6073,  6079,
+ 6089,  6091,  6101,  6113,  6121,  6131,  6133,  6143,  6151,  6163,  6173,
+ 6197,  6199,  6203,  6211,  6217,  6221,  6229,  6247,  6257,  6263,  6269,
+ 6271,  6277,  6287,  6299,  6301,  6311,  6317,  6323,  6329,  6337,  6343,
+ 6353,  6359,  6361,  6367,  6373,  6379,  6389,  6397,  6421,  6427,  6449,
+ 6451,  6469,  6473,  6481,  6491,  6521,  6529,  6547,  6551,  6553,  6563,
+ 6569,  6571,  6577,  6581,  6599,  6607,  6619,  6637,  6653,  6659,  6661,
+ 6673,  6679,  6689,  6691,  6701,  6703,  6709,  6719,  6733,  6737,  6761,
+ 6763,  6779,  6781,  6791,  6793,  6803,  6823,  6827,  6829,  6833,  6841,
+ 6857,  6863,  6869,  6871,  6883,  6899,  6907,  6911,  6917,  6947,  6949,
+ 6959,  6961,  6967,  6971,  6977,  6983,  6991,  6997,  7001,  7013,  7019,
+ 7027,  7039,  7043,  7057,  7069,  7079,  7103,  7109,  7121,  7127,  7129,
+ 7151,  7159,  7177,  7187,  7193,  7207,  7211,  7213,  7219,  7229,  7237,
+ 7243,  7247,  7253,  7283,  7297,  7307,  7309,  7321,  7331,  7333,  7349,
+ 7351,  7369,  7393,  7411,  7417,  7433,  7451,  7457,  7459,  7477,  7481,
+ 7487,  7489,  7499,  7507,  7517,  7523,  7529,  7537,  7541,  7547,  7549,
+ 7559,  7561,  7573,  7577,  7583,  7589,  7591,  7603,  7607,  7621,  7639,
+ 7643,  7649,  7669,  7673,  7681,  7687,  7691,  7699,  7703,  7717,  7723,
+ 7727,  7741,  7753,  7757,  7759,  7789,  7793,  7817,  7823,  7829,  7841,
+ 7853,  7867,  7873,  7877,  7879,  7883,  7901,  7907,  7919,  7927,  7933,
+ 7937,  7949,  7951,  7963,  7993,  8009,  8011,  8017,  8039,  8053,  8059,
+ 8069,  8081,  8087,  8089,  8093,  8101,  8111,  8117,  8123,  8147,  8161,
+ 8167,  8171,  8179,  8191,  8209,  8219,  8221,  8231,  8233,  8237,  8243,
+ 8263,  8269,  8273,  8287,  8291,  8293,  8297,  8311,  8317,  8329,  8353,
+ 8363,  8369,  8377,  8387,  8389,  8419,  8423,  8429,  8431,  8443,  8447,
+ 8461,  8467,  8501,  8513,  8521,  8527,  8537,  8539,  8543,  8563,  8573,
+ 8581,  8597,  8599,  8609,  8623,  8627,  8629,  8641,  8647,  8663,  8669,
+ 8677,  8681,  8689,  8693,  8699,  8707,  8713,  8719,  8731,  8737,  8741,
+ 8747,  8753,  8761,  8779,  8783,  8803,  8807,  8819,  8821,  8831,  8837,
+ 8839,  8849,  8861,  8863,  8867,  8887,  8893,  8923,  8929,  8933,  8941,
+ 8951,  8963,  8969,  8971,  8999,  9001,  9007,  9011,  9013,  9029,  9041,
+ 9043,  9049,  9059,  9067,  9091,  9103,  9109,  9127,  9133,  9137,  9151,
+ 9157,  9161,  9173,  9181,  9187,  9199,  9203,  9209,  9221,  9227,  9239,
+ 9241,  9257,  9277,  9281,  9283,  9293,  9311,  9319,  9323,  9337,  9341,
+ 9343,  9349,  9371,  9377,  9391,  9397,  9403,  9413,  9419,  9421,  9431,
+ 9433,  9437,  9439,  9461,  9463,  9467,  9473,  9479,  9491,  9497,  9511,
+ 9521,  9533,  9539,  9547,  9551,  9587,  9601,  9613,  9619,  9623,  9629,
+ 9631,  9643,  9649,  9661,  9677,  9679,  9689,  9697,  9719,  9721,  9733,
+ 9739,  9743,  9749,  9767,  9769,  9781,  9787,  9791,  9803,  9811,  9817,
+ 9829,  9833,  9839,  9851,  9857,  9859,  9871,  9883,  9887,  9901,  9907,
+ 9923,  9929,  9931,  9941,  9949,  9967,  9973, 10007, 10009, 10037, 10039,
+10061, 10067, 10069, 10079, 10091, 10093, 10099, 10103, 10111, 10133, 10139,
+10141, 10151, 10159, 10163, 10169, 10177, 10181, 10193, 10211, 10223, 10243,
+10247, 10253, 10259, 10267, 10271, 10273, 10289, 10301, 10303, 10313, 10321,
+10331, 10333, 10337, 10343, 10357, 10369, 10391, 10399, 10427, 10429, 10433,
+10453, 10457, 10459, 10463, 10477, 10487, 10499, 10501, 10513, 10529, 10531,
+10559, 10567, 10589, 10597, 10601, 10607, 10613, 10627, 10631, 10639, 10651,
+10657, 10663, 10667, 10687, 10691, 10709, 10711, 10723, 10729, 10733, 10739,
+10753, 10771, 10781, 10789, 10799, 10831, 10837, 10847, 10853, 10859, 10861,
+10867, 10883, 10889, 10891, 10903, 10909, 10937, 10939, 10949, 10957, 10973,
+10979, 10987, 10993, 11003, 11027, 11047, 11057, 11059, 11069, 11071, 11083,
+11087, 11093, 11113, 11117, 11119, 11131, 11149, 11159, 11161, 11171, 11173,
+11177, 11197, 11213, 11239, 11243, 11251, 11257, 11261, 11273, 11279, 11287,
+11299, 11311, 11317, 11321, 11329, 11351, 11353, 11369, 11383, 11393, 11399,
+11411, 11423, 11437, 11443, 11447, 11467, 11471, 11483, 11489, 11491, 11497,
+11503, 11519, 11527, 11549, 11551, 11579, 11587, 11593, 11597, 11617, 11621,
+11633, 11657, 11677, 11681, 11689, 11699, 11701, 11717, 11719, 11731, 11743,
+11777, 11779, 11783, 11789, 11801, 11807, 11813, 11821, 11827, 11831, 11833,
+11839, 11863, 11867, 11887, 11897, 11903, 11909, 11923, 11927, 11933, 11939,
+11941, 11953, 11959, 11969, 11971, 11981, 11987, 12007, 12011, 12037, 12041,
+12043, 12049, 12071, 12073, 12097, 12101, 12107, 12109, 12113, 12119, 12143,
+12149, 12157, 12161, 12163, 12197, 12203, 12211, 12227, 12239, 12241, 12251,
+12253, 12263, 12269, 12277, 12281, 12289, 12301, 12323, 12329, 12343, 12347,
+12373, 12377, 12379, 12391, 12401, 12409, 12413, 12421, 12433, 12437, 12451,
+12457, 12473, 12479, 12487, 12491, 12497, 12503, 12511, 12517, 12527, 12539,
+12541, 12547, 12553, 12569, 12577, 12583, 12589, 12601, 12611, 12613, 12619,
+12637, 12641, 12647, 12653, 12659, 12671, 12689, 12697, 12703, 12713, 12721,
+12739, 12743, 12757, 12763, 12781, 12791, 12799, 12809, 12821, 12823, 12829,
+12841, 12853, 12889, 12893, 12899, 12907, 12911, 12917, 12919, 12923, 12941,
+12953, 12959, 12967, 12973, 12979, 12983, 13001, 13003, 13007, 13009, 13033,
+13037, 13043, 13049, 13063, 13093, 13099, 13103, 13109, 13121, 13127, 13147,
+13151, 13159, 13163, 13171, 13177, 13183, 13187, 13217, 13219, 13229, 13241,
+13249, 13259, 13267, 13291, 13297, 13309, 13313, 13327, 13331, 13337, 13339,
+13367, 13381, 13397, 13399, 13411, 13417, 13421, 13441, 13451, 13457, 13463,
+13469, 13477, 13487, 13499, 13513, 13523, 13537, 13553, 13567, 13577, 13591,
+13597, 13613, 13619, 13627, 13633, 13649, 13669, 13679, 13681, 13687, 13691,
+13693, 13697, 13709, 13711, 13721, 13723, 13729, 13751, 13757, 13759, 13763,
+13781, 13789, 13799, 13807, 13829, 13831, 13841, 13859, 13873, 13877, 13879,
+13883, 13901, 13903, 13907, 13913, 13921, 13931, 13933, 13963, 13967, 13997,
+13999, 14009, 14011, 14029, 14033, 14051, 14057, 14071, 14081, 14083, 14087,
+14107, 14143, 14149, 14153, 14159, 14173, 14177, 14197, 14207, 14221, 14243,
+14249, 14251, 14281, 14293, 14303, 14321, 14323, 14327, 14341, 14347, 14369,
+14387, 14389, 14401, 14407, 14411, 14419, 14423, 14431, 14437, 14447, 14449,
+14461, 14479, 14489, 14503, 14519, 14533, 14537, 14543, 14549, 14551, 14557,
+14561, 14563, 14591, 14593, 14621, 14627, 14629, 14633, 14639, 14653, 14657,
+14669, 14683, 14699, 14713, 14717, 14723, 14731, 14737, 14741, 14747, 14753,
+14759, 14767, 14771, 14779, 14783, 14797, 14813, 14821, 14827, 14831, 14843,
+14851, 14867, 14869, 14879, 14887, 14891, 14897, 14923, 14929, 14939, 14947,
+14951, 14957, 14969, 14983, 15013, 15017, 15031, 15053, 15061, 15073, 15077,
+15083, 15091, 15101, 15107, 15121, 15131, 15137, 15139, 15149, 15161, 15173,
+15187, 15193, 15199, 15217, 15227, 15233, 15241, 15259, 15263, 15269, 15271,
+15277, 15287, 15289, 15299, 15307, 15313, 15319, 15329, 15331, 15349, 15359,
+15361, 15373, 15377, 15383, 15391, 15401, 15413, 15427, 15439, 15443, 15451,
+15461, 15467, 15473, 15493, 15497, 15511, 15527, 15541, 15551, 15559, 15569,
+15581, 15583, 15601, 15607, 15619, 15629, 15641, 15643, 15647, 15649, 15661,
+15667, 15671, 15679, 15683, 15727, 15731, 15733, 15737, 15739, 15749, 15761,
+15767, 15773, 15787, 15791, 15797, 15803, 15809, 15817, 15823, 15859, 15877,
+15881, 15887, 15889, 15901, 15907, 15913, 15919, 15923, 15937, 15959, 15971,
+15973, 15991, 16001, 16007, 16033, 16057, 16061, 16063, 16067, 16069, 16073,
+16087, 16091, 16097, 16103, 16111, 16127, 16139, 16141, 16183, 16187, 16189,
+16193, 16217, 16223, 16229, 16231, 16249, 16253, 16267, 16273, 16301, 16319,
+16333, 16339, 16349, 16361, 16363, 16369, 16381, 16411, 16417, 16421, 16427,
+16433, 16447, 16451, 16453, 16477, 16481, 16487, 16493, 16519, 16529, 16547,
+16553, 16561, 16567, 16573, 16603, 16607, 16619, 16631, 16633, 16649, 16651,
+16657, 16661, 16673, 16691, 16693, 16699, 16703, 16729, 16741, 16747, 16759,
+16763, 16787, 16811, 16823, 16829, 16831, 16843, 16871, 16879, 16883, 16889,
+16901, 16903, 16921, 16927, 16931, 16937, 16943, 16963, 16979, 16981, 16987,
+16993, 17011, 17021, 17027, 17029, 17033, 17041, 17047, 17053, 17077, 17093,
+17099, 17107, 17117, 17123, 17137, 17159, 17167, 17183, 17189, 17191, 17203,
+17207, 17209, 17231, 17239, 17257, 17291, 17293, 17299, 17317, 17321, 17327,
+17333, 17341, 17351, 17359, 17377, 17383, 17387, 17389, 17393, 17401, 17417,
+17419, 17431, 17443, 17449, 17467, 17471, 17477, 17483, 17489, 17491, 17497,
+17509, 17519, 17539, 17551, 17569, 17573, 17579, 17581, 17597, 17599, 17609,
+17623, 17627, 17657, 17659, 17669, 17681, 17683, 17707, 17713, 17729, 17737,
+17747, 17749, 17761, 17783, 17789, 17791, 17807, 17827, 17837, 17839, 17851,
+17863, 17881, 17891, 17903, 17909, 17911, 17921, 17923, 17929, 17939, 17957,
+17959, 17971, 17977, 17981, 17987, 17989, 18013, 18041, 18043, 18047, 18049,
+18059, 18061, 18077, 18089, 18097, 18119, 18121, 18127, 18131, 18133, 18143,
+18149, 18169, 18181, 18191, 18199, 18211, 18217, 18223, 18229, 18233, 18251,
+18253, 18257, 18269, 18287, 18289, 18301, 18307, 18311, 18313, 18329, 18341,
+18353, 18367, 18371, 18379, 18397, 18401, 18413, 18427, 18433, 18439, 18443,
+18451, 18457, 18461, 18481, 18493, 18503, 18517, 18521, 18523, 18539, 18541,
+18553, 18583, 18587, 18593, 18617, 18637, 18661, 18671, 18679, 18691, 18701,
+18713, 18719, 18731, 18743, 18749, 18757, 18773, 18787, 18793, 18797, 18803,
+18839, 18859, 18869, 18899, 18911, 18913, 18917, 18919, 18947, 18959, 18973,
+18979, 19001, 19009, 19013, 19031, 19037, 19051, 19069, 19073, 19079, 19081,
+19087, 19121, 19139, 19141, 19157, 19163, 19181, 19183, 19207, 19211, 19213,
+19219, 19231, 19237, 19249, 19259, 19267, 19273, 19289, 19301, 19309, 19319,
+19333, 19373, 19379, 19381, 19387, 19391, 19403, 19417, 19421, 19423, 19427,
+19429, 19433, 19441, 19447, 19457, 19463, 19469, 19471, 19477, 19483, 19489,
+19501, 19507, 19531, 19541, 19543, 19553, 19559, 19571, 19577, 19583, 19597,
+19603, 19609, 19661, 19681, 19687, 19697, 19699, 19709, 19717, 19727, 19739,
+19751, 19753, 19759, 19763, 19777, 19793, 19801, 19813, 19819, 19841, 19843,
+19853, 19861, 19867, 19889, 19891, 19913, 19919, 19927, 19937, 19949, 19961,
+19963, 19973, 19979, 19991, 19993, 19997, 20011, 20021, 20023, 20029, 20047,
+20051, 20063, 20071, 20089, 20101, 20107, 20113, 20117, 20123, 20129, 20143,
+20147, 20149, 20161, 20173, 20177, 20183, 20201, 20219, 20231, 20233, 20249,
+20261, 20269, 20287, 20297, 20323, 20327, 20333, 20341, 20347, 20353, 20357,
+20359, 20369, 20389, 20393, 20399, 20407, 20411, 20431, 20441, 20443, 20477,
+20479, 20483, 20507, 20509, 20521, 20533, 20543, 20549, 20551, 20563, 20593,
+20599, 20611, 20627, 20639, 20641, 20663, 20681, 20693, 20707, 20717, 20719,
+20731, 20743, 20747, 20749, 20753, 20759, 20771, 20773, 20789, 20807, 20809,
+20849, 20857, 20873, 20879, 20887, 20897, 20899, 20903, 20921, 20929, 20939,
+20947, 20959, 20963, 20981, 20983, 21001, 21011, 21013, 21017, 21019, 21023,
+21031, 21059, 21061, 21067, 21089, 21101, 21107, 21121, 21139, 21143, 21149,
+21157, 21163, 21169, 21179, 21187, 21191, 21193, 21211, 21221, 21227, 21247,
+21269, 21277, 21283, 21313, 21317, 21319, 21323, 21341, 21347, 21377, 21379,
+21383, 21391, 21397, 21401, 21407, 21419, 21433, 21467, 21481, 21487, 21491,
+21493, 21499, 21503, 21517, 21521, 21523, 21529, 21557, 21559, 21563, 21569,
+21577, 21587, 21589, 21599, 21601, 21611, 21613, 21617, 21647, 21649, 21661,
+21673, 21683, 21701, 21713, 21727, 21737, 21739, 21751, 21757, 21767, 21773,
+21787, 21799, 21803, 21817, 21821, 21839, 21841, 21851, 21859, 21863, 21871,
+21881, 21893, 21911, 21929, 21937, 21943, 21961, 21977, 21991, 21997, 22003,
+22013, 22027, 22031, 22037, 22039, 22051, 22063, 22067, 22073, 22079, 22091,
+22093, 22109, 22111, 22123, 22129, 22133, 22147, 22153, 22157, 22159, 22171,
+22189, 22193, 22229, 22247, 22259, 22271, 22273, 22277, 22279, 22283, 22291,
+22303, 22307, 22343, 22349, 22367, 22369, 22381, 22391, 22397, 22409, 22433,
+22441, 22447, 22453, 22469, 22481, 22483, 22501, 22511, 22531, 22541, 22543,
+22549, 22567, 22571, 22573, 22613, 22619, 22621, 22637, 22639, 22643, 22651,
+22669, 22679, 22691, 22697, 22699, 22709, 22717, 22721, 22727, 22739, 22741,
+22751, 22769, 22777, 22783, 22787, 22807, 22811, 22817, 22853, 22859, 22861,
+22871, 22877, 22901, 22907, 22921, 22937, 22943, 22961, 22963, 22973, 22993,
+23003, 23011, 23017, 23021, 23027, 23029, 23039, 23041, 23053, 23057, 23059,
+23063, 23071, 23081, 23087, 23099, 23117, 23131, 23143, 23159, 23167, 23173,
+23189, 23197, 23201, 23203, 23209, 23227, 23251, 23269, 23279, 23291, 23293,
+23297, 23311, 23321, 23327, 23333, 23339, 23357, 23369, 23371, 23399, 23417,
+23431, 23447, 23459, 23473, 23497, 23509, 23531, 23537, 23539, 23549, 23557,
+23561, 23563, 23567, 23581, 23593, 23599, 23603, 23609, 23623, 23627, 23629,
+23633, 23663, 23669, 23671, 23677, 23687, 23689, 23719, 23741, 23743, 23747,
+23753, 23761, 23767, 23773, 23789, 23801, 23813, 23819, 23827, 23831, 23833,
+23857, 23869, 23873, 23879, 23887, 23893, 23899, 23909, 23911, 23917, 23929,
+23957, 23971, 23977, 23981, 23993, 24001, 24007, 24019, 24023, 24029, 24043,
+24049, 24061, 24071, 24077, 24083, 24091, 24097, 24103, 24107, 24109, 24113,
+24121, 24133, 24137, 24151, 24169, 24179, 24181, 24197, 24203, 24223, 24229,
+24239, 24247, 24251, 24281, 24317, 24329, 24337, 24359, 24371, 24373, 24379,
+24391, 24407, 24413, 24419, 24421, 24439, 24443, 24469, 24473, 24481, 24499,
+24509, 24517, 24527, 24533, 24547, 24551, 24571, 24593, 24611, 24623, 24631,
+24659, 24671, 24677, 24683, 24691, 24697, 24709, 24733, 24749, 24763, 24767,
+24781, 24793, 24799, 24809, 24821, 24841, 24847, 24851, 24859, 24877, 24889,
+24907, 24917, 24919, 24923, 24943, 24953, 24967, 24971, 24977, 24979, 24989,
+25013, 25031, 25033, 25037, 25057, 25073, 25087, 25097, 25111, 25117, 25121,
+25127, 25147, 25153, 25163, 25169, 25171, 25183, 25189, 25219, 25229, 25237,
+25243, 25247, 25253, 25261, 25301, 25303, 25307, 25309, 25321, 25339, 25343,
+25349, 25357, 25367, 25373, 25391, 25409, 25411, 25423, 25439, 25447, 25453,
+25457, 25463, 25469, 25471, 25523, 25537, 25541, 25561, 25577, 25579, 25583,
+25589, 25601, 25603, 25609, 25621, 25633, 25639, 25643, 25657, 25667, 25673,
+25679, 25693, 25703, 25717, 25733, 25741, 25747, 25759, 25763, 25771, 25793,
+25799, 25801, 25819, 25841, 25847, 25849, 25867, 25873, 25889, 25903, 25913,
+25919, 25931, 25933, 25939, 25943, 25951, 25969, 25981, 25997, 25999, 26003,
+26017, 26021, 26029, 26041, 26053, 26083, 26099, 26107, 26111, 26113, 26119,
+26141, 26153, 26161, 26171, 26177, 26183, 26189, 26203, 26209, 26227, 26237,
+26249, 26251, 26261, 26263, 26267, 26293, 26297, 26309, 26317, 26321, 26339,
+26347, 26357, 26371, 26387, 26393, 26399, 26407, 26417, 26423, 26431, 26437,
+26449, 26459, 26479, 26489, 26497, 26501, 26513, 26539, 26557, 26561, 26573,
+26591, 26597, 26627, 26633, 26641, 26647, 26669, 26681, 26683, 26687, 26693,
+26699, 26701, 26711, 26713, 26717, 26723, 26729, 26731, 26737, 26759, 26777,
+26783, 26801, 26813, 26821, 26833, 26839, 26849, 26861, 26863, 26879, 26881,
+26891, 26893, 26903, 26921, 26927, 26947, 26951, 26953, 26959, 26981, 26987,
+26993, 27011, 27017, 27031, 27043, 27059, 27061, 27067, 27073, 27077, 27091,
+27103, 27107, 27109, 27127, 27143, 27179, 27191, 27197, 27211, 27239, 27241,
+27253, 27259, 27271, 27277, 27281, 27283, 27299, 27329, 27337, 27361, 27367,
+27397, 27407, 27409, 27427, 27431, 27437, 27449, 27457, 27479, 27481, 27487,
+27509, 27527, 27529, 27539, 27541, 27551, 27581, 27583, 27611, 27617, 27631,
+27647, 27653, 27673, 27689, 27691, 27697, 27701, 27733, 27737, 27739, 27743,
+27749, 27751, 27763, 27767, 27773, 27779, 27791, 27793, 27799, 27803, 27809,
+27817, 27823, 27827, 27847, 27851, 27883, 27893, 27901, 27917, 27919, 27941,
+27943, 27947, 27953, 27961, 27967, 27983, 27997, 28001, 28019, 28027, 28031,
+28051, 28057, 28069, 28081, 28087, 28097, 28099, 28109, 28111, 28123, 28151,
+28163, 28181, 28183, 28201, 28211, 28219, 28229, 28277, 28279, 28283, 28289,
+28297, 28307, 28309, 28319, 28349, 28351, 28387, 28393, 28403, 28409, 28411,
+28429, 28433, 28439, 28447, 28463, 28477, 28493, 28499, 28513, 28517, 28537,
+28541, 28547, 28549, 28559, 28571, 28573, 28579, 28591, 28597, 28603, 28607,
+28619, 28621, 28627, 28631, 28643, 28649, 28657, 28661, 28663, 28669, 28687,
+28697, 28703, 28711, 28723, 28729, 28751, 28753, 28759, 28771, 28789, 28793,
+28807, 28813, 28817, 28837, 28843, 28859, 28867, 28871, 28879, 28901, 28909,
+28921, 28927, 28933, 28949, 28961, 28979, 29009, 29017, 29021, 29023, 29027,
+29033, 29059, 29063, 29077, 29101, 29123, 29129, 29131, 29137, 29147, 29153,
+29167, 29173, 29179, 29191, 29201, 29207, 29209, 29221, 29231, 29243, 29251,
+29269, 29287, 29297, 29303, 29311, 29327, 29333, 29339, 29347, 29363, 29383,
+29387, 29389, 29399, 29401, 29411, 29423, 29429, 29437, 29443, 29453, 29473,
+29483, 29501, 29527, 29531, 29537, 29567, 29569, 29573, 29581, 29587, 29599,
+29611, 29629, 29633, 29641, 29663, 29669, 29671, 29683, 29717, 29723, 29741,
+29753, 29759, 29761, 29789, 29803, 29819, 29833, 29837, 29851, 29863, 29867,
+29873, 29879, 29881, 29917, 29921, 29927, 29947, 29959, 29983, 29989, 30011,
+30013, 30029, 30047, 30059, 30071, 30089, 30091, 30097, 30103, 30109, 30113,
+30119, 30133, 30137, 30139, 30161, 30169, 30181, 30187, 30197, 30203, 30211,
+30223, 30241, 30253, 30259, 30269, 30271, 30293, 30307, 30313, 30319, 30323,
+30341, 30347, 30367, 30389, 30391, 30403, 30427, 30431, 30449, 30467, 30469,
+30491, 30493, 30497, 30509, 30517, 30529, 30539, 30553, 30557, 30559, 30577,
+30593, 30631, 30637, 30643, 30649, 30661, 30671, 30677, 30689, 30697, 30703,
+30707, 30713, 30727, 30757, 30763, 30773, 30781, 30803, 30809, 30817, 30829,
+30839, 30841, 30851, 30853, 30859, 30869, 30871, 30881, 30893, 30911, 30931,
+30937, 30941, 30949, 30971, 30977, 30983, 31013, 31019, 31033, 31039, 31051,
+31063, 31069, 31079, 31081, 31091, 31121, 31123, 31139, 31147, 31151, 31153,
+31159, 31177, 31181, 31183, 31189, 31193, 31219, 31223, 31231, 31237, 31247,
+31249, 31253, 31259, 31267, 31271, 31277, 31307, 31319, 31321, 31327, 31333,
+31337, 31357, 31379, 31387, 31391, 31393, 31397, 31469, 31477, 31481, 31489,
+31511, 31513, 31517, 31531, 31541, 31543, 31547, 31567, 31573, 31583, 31601,
+31607, 31627, 31643, 31649, 31657, 31663, 31667, 31687, 31699, 31721, 31723,
+31727, 31729, 31741, 31751, 31769, 31771, 31793, 31799, 31817, 31847, 31849,
+31859, 31873, 31883, 31891, 31907, 31957, 31963, 31973, 31981, 31991, 32003,
+32009, 32027, 32029, 32051, 32057, 32059, 32063, 32069, 32077, 32083, 32089,
+32099, 32117, 32119, 32141, 32143, 32159, 32173, 32183, 32189, 32191, 32203,
+32213, 32233, 32237, 32251, 32257, 32261, 32297, 32299, 32303, 32309, 32321,
+32323, 32327, 32341, 32353, 32359, 32363, 32369, 32371, 32377, 32381, 32401,
+32411, 32413, 32423, 32429, 32441, 32443, 32467, 32479, 32491, 32497, 32503,
+32507, 32531, 32533, 32537, 32561, 32563, 32569, 32573, 32579, 32587, 32603,
+32609, 32611, 32621, 32633, 32647, 32653, 32687, 32693, 32707, 32713, 32717,
+32719, 32749, 32771, 32779, 32783, 32789, 32797, 32801, 32803, 32831, 32833,
+32839, 32843, 32869, 32887, 32909, 32911, 32917, 32933, 32939, 32941, 32957,
+32969, 32971, 32983, 32987, 32993, 32999, 33013, 33023, 33029, 33037, 33049,
+33053, 33071, 33073, 33083, 33091, 33107, 33113, 33119, 33149, 33151, 33161,
+33179, 33181, 33191, 33199, 33203, 33211, 33223, 33247, 33287, 33289, 33301,
+33311, 33317, 33329, 33331, 33343, 33347, 33349, 33353, 33359, 33377, 33391,
+33403, 33409, 33413, 33427, 33457, 33461, 33469, 33479, 33487, 33493, 33503,
+33521, 33529, 33533, 33547, 33563, 33569, 33577, 33581, 33587, 33589, 33599,
+33601, 33613, 33617, 33619, 33623, 33629, 33637, 33641, 33647, 33679, 33703,
+33713, 33721, 33739, 33749, 33751, 33757, 33767, 33769, 33773, 33791, 33797,
+33809, 33811, 33827, 33829, 33851, 33857, 33863, 33871, 33889, 33893, 33911,
+33923, 33931, 33937, 33941, 33961, 33967, 33997, 34019, 34031, 34033, 34039,
+34057, 34061, 34123, 34127, 34129, 34141, 34147, 34157, 34159, 34171, 34183,
+34211, 34213, 34217, 34231, 34253, 34259, 34261, 34267, 34273, 34283, 34297,
+34301, 34303, 34313, 34319, 34327, 34337, 34351, 34361, 34367, 34369, 34381,
+34403, 34421, 34429, 34439, 34457, 34469, 34471, 34483, 34487, 34499, 34501,
+34511, 34513, 34519, 34537, 34543, 34549, 34583, 34589, 34591, 34603, 34607,
+34613, 34631, 34649, 34651, 34667, 34673, 34679, 34687, 34693, 34703, 34721,
+34729, 34739, 34747, 34757, 34759, 34763, 34781, 34807, 34819, 34841, 34843,
+34847, 34849, 34871, 34877, 34883, 34897, 34913, 34919, 34939, 34949, 34961,
+34963, 34981, 35023, 35027, 35051, 35053, 35059, 35069, 35081, 35083, 35089,
+35099, 35107, 35111, 35117, 35129, 35141, 35149, 35153, 35159, 35171, 35201,
+35221, 35227, 35251, 35257, 35267, 35279, 35281, 35291, 35311, 35317, 35323,
+35327, 35339, 35353, 35363, 35381, 35393, 35401, 35407, 35419, 35423, 35437,
+35447, 35449, 35461, 35491, 35507, 35509, 35521, 35527, 35531, 35533, 35537,
+35543, 35569, 35573, 35591, 35593, 35597, 35603, 35617, 35671, 35677, 35729,
+35731, 35747, 35753, 35759, 35771, 35797, 35801, 35803, 35809, 35831, 35837,
+35839, 35851, 35863, 35869, 35879, 35897, 35899, 35911, 35923, 35933, 35951,
+35963, 35969, 35977, 35983, 35993, 35999, 36007, 36011, 36013, 36017, 36037,
+36061, 36067, 36073, 36083, 36097, 36107, 36109, 36131, 36137, 36151, 36161,
+36187, 36191, 36209, 36217, 36229, 36241, 36251, 36263, 36269, 36277, 36293,
+36299, 36307, 36313, 36319, 36341, 36343, 36353, 36373, 36383, 36389, 36433,
+36451, 36457, 36467, 36469, 36473, 36479, 36493, 36497, 36523, 36527, 36529,
+36541, 36551, 36559, 36563, 36571, 36583, 36587, 36599, 36607, 36629, 36637,
+36643, 36653, 36671, 36677, 36683, 36691, 36697, 36709, 36713, 36721, 36739,
+36749, 36761, 36767, 36779, 36781, 36787, 36791, 36793, 36809, 36821, 36833,
+36847, 36857, 36871, 36877, 36887, 36899, 36901, 36913, 36919, 36923, 36929,
+36931, 36943, 36947, 36973, 36979, 36997, 37003, 37013, 37019, 37021, 37039,
+37049, 37057, 37061, 37087, 37097, 37117, 37123, 37139, 37159, 37171, 37181,
+37189, 37199, 37201, 37217, 37223, 37243, 37253, 37273, 37277, 37307, 37309,
+37313, 37321, 37337, 37339, 37357, 37361, 37363, 37369, 37379, 37397, 37409,
+37423, 37441, 37447, 37463, 37483, 37489, 37493, 37501, 37507, 37511, 37517,
+37529, 37537, 37547, 37549, 37561, 37567, 37571, 37573, 37579, 37589, 37591,
+37607, 37619, 37633, 37643, 37649, 37657, 37663, 37691, 37693, 37699, 37717,
+37747, 37781, 37783, 37799, 37811, 37813, 37831, 37847, 37853, 37861, 37871,
+37879, 37889, 37897, 37907, 37951, 37957, 37963, 37967, 37987, 37991, 37993,
+37997, 38011, 38039, 38047, 38053, 38069, 38083, 38113, 38119, 38149, 38153,
+38167, 38177, 38183, 38189, 38197, 38201, 38219, 38231, 38237, 38239, 38261,
+38273, 38281, 38287, 38299, 38303, 38317, 38321, 38327, 38329, 38333, 38351,
+38371, 38377, 38393, 38431, 38447, 38449, 38453, 38459, 38461, 38501, 38543,
+38557, 38561, 38567, 38569, 38593, 38603, 38609, 38611, 38629, 38639, 38651,
+38653, 38669, 38671, 38677, 38693, 38699, 38707, 38711, 38713, 38723, 38729,
+38737, 38747, 38749, 38767, 38783, 38791, 38803, 38821, 38833, 38839, 38851,
+38861, 38867, 38873, 38891, 38903, 38917, 38921, 38923, 38933, 38953, 38959,
+38971, 38977, 38993, 39019, 39023, 39041, 39043, 39047, 39079, 39089, 39097,
+39103, 39107, 39113, 39119, 39133, 39139, 39157, 39161, 39163, 39181, 39191,
+39199, 39209, 39217, 39227, 39229, 39233, 39239, 39241, 39251, 39293, 39301,
+39313, 39317, 39323, 39341, 39343, 39359, 39367, 39371, 39373, 39383, 39397,
+39409, 39419, 39439, 39443, 39451, 39461, 39499, 39503, 39509, 39511, 39521,
+39541, 39551, 39563, 39569, 39581, 39607, 39619, 39623, 39631, 39659, 39667,
+39671, 39679, 39703, 39709, 39719, 39727, 39733, 39749, 39761, 39769, 39779,
+39791, 39799, 39821, 39827, 39829, 39839, 39841, 39847, 39857, 39863, 39869,
+39877, 39883, 39887, 39901, 39929, 39937, 39953, 39971, 39979, 39983, 39989,
+40009, 40013, 40031, 40037, 40039, 40063, 40087, 40093, 40099, 40111, 40123,
+40127, 40129, 40151, 40153, 40163, 40169, 40177, 40189, 40193, 40213, 40231,
+40237, 40241, 40253, 40277, 40283, 40289, 40343, 40351, 40357, 40361, 40387,
+40423, 40427, 40429, 40433, 40459, 40471, 40483, 40487, 40493, 40499, 40507,
+40519, 40529, 40531, 40543, 40559, 40577, 40583, 40591, 40597, 40609, 40627,
+40637, 40639, 40693, 40697, 40699, 40709, 40739, 40751, 40759, 40763, 40771,
+40787, 40801, 40813, 40819, 40823, 40829, 40841, 40847, 40849, 40853, 40867,
+40879, 40883, 40897, 40903, 40927, 40933, 40939, 40949, 40961, 40973, 40993,
+41011, 41017, 41023, 41039, 41047, 41051, 41057, 41077, 41081, 41113, 41117,
+41131, 41141, 41143, 41149, 41161, 41177, 41179, 41183, 41189, 41201, 41203,
+41213, 41221, 41227, 41231, 41233, 41243, 41257, 41263, 41269, 41281, 41299,
+41333, 41341, 41351, 41357, 41381, 41387, 41389, 41399, 41411, 41413, 41443,
+41453, 41467, 41479, 41491, 41507, 41513, 41519, 41521, 41539, 41543, 41549,
+41579, 41593, 41597, 41603, 41609, 41611, 41617, 41621, 41627, 41641, 41647,
+41651, 41659, 41669, 41681, 41687, 41719, 41729, 41737, 41759, 41761, 41771,
+41777, 41801, 41809, 41813, 41843, 41849, 41851, 41863, 41879, 41887, 41893,
+41897, 41903, 41911, 41927, 41941, 41947, 41953, 41957, 41959, 41969, 41981,
+41983, 41999, 42013, 42017, 42019, 42023, 42043, 42061, 42071, 42073, 42083,
+42089, 42101, 42131, 42139, 42157, 42169, 42179, 42181, 42187, 42193, 42197,
+42209, 42221, 42223, 42227, 42239, 42257, 42281, 42283, 42293, 42299, 42307,
+42323, 42331, 42337, 42349, 42359, 42373, 42379, 42391, 42397, 42403, 42407,
+42409, 42433, 42437, 42443, 42451, 42457, 42461, 42463, 42467, 42473, 42487,
+42491, 42499, 42509, 42533, 42557, 42569, 42571, 42577, 42589, 42611, 42641,
+42643, 42649, 42667, 42677, 42683, 42689, 42697, 42701, 42703, 42709, 42719,
+42727, 42737, 42743, 42751, 42767, 42773, 42787, 42793, 42797, 42821, 42829,
+42839, 42841, 42853, 42859, 42863, 42899, 42901, 42923, 42929, 42937, 42943,
+42953, 42961, 42967, 42979, 42989, 43003, 43013, 43019, 43037, 43049, 43051,
+43063, 43067, 43093, 43103, 43117, 43133, 43151, 43159, 43177, 43189, 43201,
+43207, 43223, 43237, 43261, 43271, 43283, 43291, 43313, 43319, 43321, 43331,
+43391, 43397, 43399, 43403, 43411, 43427, 43441, 43451, 43457, 43481, 43487,
+43499, 43517, 43541, 43543, 43573, 43577, 43579, 43591, 43597, 43607, 43609,
+43613, 43627, 43633, 43649, 43651, 43661, 43669, 43691, 43711, 43717, 43721,
+43753, 43759, 43777, 43781, 43783, 43787, 43789, 43793, 43801, 43853, 43867,
+43889, 43891, 43913, 43933, 43943, 43951, 43961, 43963, 43969, 43973, 43987,
+43991, 43997, 44017, 44021, 44027, 44029, 44041, 44053, 44059, 44071, 44087,
+44089, 44101, 44111, 44119, 44123, 44129, 44131, 44159, 44171, 44179, 44189,
+44201, 44203, 44207, 44221, 44249, 44257, 44263, 44267, 44269, 44273, 44279,
+44281, 44293, 44351, 44357, 44371, 44381, 44383, 44389, 44417, 44449, 44453,
+44483, 44491, 44497, 44501, 44507, 44519, 44531, 44533, 44537, 44543, 44549,
+44563, 44579, 44587, 44617, 44621, 44623, 44633, 44641, 44647, 44651, 44657,
+44683, 44687, 44699, 44701, 44711, 44729, 44741, 44753, 44771, 44773, 44777,
+44789, 44797, 44809, 44819, 44839, 44843, 44851, 44867, 44879, 44887, 44893,
+44909, 44917, 44927, 44939, 44953, 44959, 44963, 44971, 44983, 44987, 45007,
+45013, 45053, 45061, 45077, 45083, 45119, 45121, 45127, 45131, 45137, 45139,
+45161, 45179, 45181, 45191, 45197, 45233, 45247, 45259, 45263, 45281, 45289,
+45293, 45307, 45317, 45319, 45329, 45337, 45341, 45343, 45361, 45377, 45389,
+45403, 45413, 45427, 45433, 45439, 45481, 45491, 45497, 45503, 45523, 45533,
+45541, 45553, 45557, 45569, 45587, 45589, 45599, 45613, 45631, 45641, 45659,
+45667, 45673, 45677, 45691, 45697, 45707, 45737, 45751, 45757, 45763, 45767,
+45779, 45817, 45821, 45823, 45827, 45833, 45841, 45853, 45863, 45869, 45887,
+45893, 45943, 45949, 45953, 45959, 45971, 45979, 45989, 46021, 46027, 46049,
+46051, 46061, 46073, 46091, 46093, 46099, 46103, 46133, 46141, 46147, 46153,
+46171, 46181, 46183, 46187, 46199, 46219, 46229, 46237, 46261, 46271, 46273,
+46279, 46301, 46307, 46309, 46327, 46337, 46349, 46351, 46381, 46399, 46411,
+46439, 46441, 46447, 46451, 46457, 46471, 46477, 46489, 46499, 46507, 46511,
+46523, 46549, 46559, 46567, 46573, 46589, 46591, 46601, 46619, 46633, 46639,
+46643, 46649, 46663, 46679, 46681, 46687, 46691, 46703, 46723, 46727, 46747,
+46751, 46757, 46769, 46771, 46807, 46811, 46817, 46819, 46829, 46831, 46853,
+46861, 46867, 46877, 46889, 46901, 46919, 46933, 46957, 46993, 46997, 47017,
+47041, 47051, 47057, 47059, 47087, 47093, 47111, 47119, 47123, 47129, 47137,
+47143, 47147, 47149, 47161, 47189, 47207, 47221, 47237, 47251, 47269, 47279,
+47287, 47293, 47297, 47303, 47309, 47317, 47339, 47351, 47353, 47363, 47381,
+47387, 47389, 47407, 47417, 47419, 47431, 47441, 47459, 47491, 47497, 47501,
+47507, 47513, 47521, 47527, 47533, 47543, 47563, 47569, 47581, 47591, 47599,
+47609, 47623, 47629, 47639, 47653, 47657, 47659, 47681, 47699, 47701, 47711,
+47713, 47717, 47737, 47741, 47743, 47777, 47779, 47791, 47797, 47807, 47809,
+47819, 47837, 47843, 47857, 47869, 47881, 47903, 47911, 47917, 47933, 47939,
+47947, 47951, 47963, 47969, 47977, 47981, 48017, 48023, 48029, 48049, 48073,
+48079, 48091, 48109, 48119, 48121, 48131, 48157, 48163, 48179, 48187, 48193,
+48197, 48221, 48239, 48247, 48259, 48271, 48281, 48299, 48311, 48313, 48337,
+48341, 48353, 48371, 48383, 48397, 48407, 48409, 48413, 48437, 48449, 48463,
+48473, 48479, 48481, 48487, 48491, 48497, 48523, 48527, 48533, 48539, 48541,
+48563, 48571, 48589, 48593, 48611, 48619, 48623, 48647, 48649, 48661, 48673,
+48677, 48679, 48731, 48733, 48751, 48757, 48761, 48767, 48779, 48781, 48787,
+48799, 48809, 48817, 48821, 48823, 48847, 48857, 48859, 48869, 48871, 48883,
+48889, 48907, 48947, 48953, 48973, 48989, 48991, 49003, 49009, 49019, 49031,
+49033, 49037, 49043, 49057, 49069, 49081, 49103, 49109, 49117, 49121, 49123,
+49139, 49157, 49169, 49171, 49177, 49193, 49199, 49201, 49207, 49211, 49223,
+49253, 49261, 49277, 49279, 49297, 49307, 49331, 49333, 49339, 49363, 49367,
+49369, 49391, 49393, 49409, 49411, 49417, 49429, 49433, 49451, 49459, 49463,
+49477, 49481, 49499, 49523, 49529, 49531, 49537, 49547, 49549, 49559, 49597,
+49603, 49613, 49627, 49633, 49639, 49663, 49667, 49669, 49681, 49697, 49711,
+49727, 49739, 49741, 49747, 49757, 49783, 49787, 49789, 49801, 49807, 49811,
+49823, 49831, 49843, 49853, 49871, 49877, 49891, 49919, 49921, 49927, 49937,
+49939, 49943, 49957, 49991, 49993, 49999, 50021, 50023, 50033, 50047, 50051,
+50053, 50069, 50077, 50087, 50093, 50101, 50111, 50119, 50123, 50129, 50131,
+50147, 50153, 50159, 50177, 50207, 50221, 50227, 50231, 50261, 50263, 50273,
+50287, 50291, 50311, 50321, 50329, 50333, 50341, 50359, 50363, 50377, 50383,
+50387, 50411, 50417, 50423, 50441, 50459, 50461, 50497, 50503, 50513, 50527,
+50539, 50543, 50549, 50551, 50581, 50587, 50591, 50593, 50599, 50627, 50647,
+50651, 50671, 50683, 50707, 50723, 50741, 50753, 50767, 50773, 50777, 50789,
+50821, 50833, 50839, 50849, 50857, 50867, 50873, 50891, 50893, 50909, 50923,
+50929, 50951, 50957, 50969, 50971, 50989, 50993, 51001, 51031, 51043, 51047,
+51059, 51061, 51071, 51109, 51131, 51133, 51137, 51151, 51157, 51169, 51193,
+51197, 51199, 51203, 51217, 51229, 51239, 51241, 51257, 51263, 51283, 51287,
+51307, 51329, 51341, 51343, 51347, 51349, 51361, 51383, 51407, 51413, 51419,
+51421, 51427, 51431, 51437, 51439, 51449, 51461, 51473, 51479, 51481, 51487,
+51503, 51511, 51517, 51521, 51539, 51551, 51563, 51577, 51581, 51593, 51599,
+51607, 51613, 51631, 51637, 51647, 51659, 51673, 51679, 51683, 51691, 51713,
+51719, 51721, 51749, 51767, 51769, 51787, 51797, 51803, 51817, 51827, 51829,
+51839, 51853, 51859, 51869, 51871, 51893, 51899, 51907, 51913, 51929, 51941,
+51949, 51971, 51973, 51977, 51991, 52009, 52021, 52027, 52051, 52057, 52067,
+52069, 52081, 52103, 52121, 52127, 52147, 52153, 52163, 52177, 52181, 52183,
+52189, 52201, 52223, 52237, 52249, 52253, 52259, 52267, 52289, 52291, 52301,
+52313, 52321, 52361, 52363, 52369, 52379, 52387, 52391, 52433, 52453, 52457,
+52489, 52501, 52511, 52517, 52529, 52541, 52543, 52553, 52561, 52567, 52571,
+52579, 52583, 52609, 52627, 52631, 52639, 52667, 52673, 52691, 52697, 52709,
+52711, 52721, 52727, 52733, 52747, 52757, 52769, 52783, 52807, 52813, 52817,
+52837, 52859, 52861, 52879, 52883, 52889, 52901, 52903, 52919, 52937, 52951,
+52957, 52963, 52967, 52973, 52981, 52999, 53003, 53017, 53047, 53051, 53069,
+53077, 53087, 53089, 53093, 53101, 53113, 53117, 53129, 53147, 53149, 53161,
+53171, 53173, 53189, 53197, 53201, 53231, 53233, 53239, 53267, 53269, 53279,
+53281, 53299, 53309, 53323, 53327, 53353, 53359, 53377, 53381, 53401, 53407,
+53411, 53419, 53437, 53441, 53453, 53479, 53503, 53507, 53527, 53549, 53551,
+53569, 53591, 53593, 53597, 53609, 53611, 53617, 53623, 53629, 53633, 53639,
+53653, 53657, 53681, 53693, 53699, 53717, 53719, 53731, 53759, 53773, 53777,
+53783, 53791, 53813, 53819, 53831, 53849, 53857, 53861, 53881, 53887, 53891,
+53897, 53899, 53917, 53923, 53927, 53939, 53951, 53959, 53987, 53993, 54001,
+54011, 54013, 54037, 54049, 54059, 54083, 54091, 54101, 54121, 54133, 54139,
+54151, 54163, 54167, 54181, 54193, 54217, 54251, 54269, 54277, 54287, 54293,
+54311, 54319, 54323, 54331, 54347, 54361, 54367, 54371, 54377, 54401, 54403,
+54409, 54413, 54419, 54421, 54437, 54443, 54449, 54469, 54493, 54497, 54499,
+54503, 54517, 54521, 54539, 54541, 54547, 54559, 54563, 54577, 54581, 54583,
+54601, 54617, 54623, 54629, 54631, 54647, 54667, 54673, 54679, 54709, 54713,
+54721, 54727, 54751, 54767, 54773, 54779, 54787, 54799, 54829, 54833, 54851,
+54869, 54877, 54881, 54907, 54917, 54919, 54941, 54949, 54959, 54973, 54979,
+54983, 55001, 55009, 55021, 55049, 55051, 55057, 55061, 55073, 55079, 55103,
+55109, 55117, 55127, 55147, 55163, 55171, 55201, 55207, 55213, 55217, 55219,
+55229, 55243, 55249, 55259, 55291, 55313, 55331, 55333, 55337, 55339, 55343,
+55351, 55373, 55381, 55399, 55411, 55439, 55441, 55457, 55469, 55487, 55501,
+55511, 55529, 55541, 55547, 55579, 55589, 55603, 55609, 55619, 55621, 55631,
+55633, 55639, 55661, 55663, 55667, 55673, 55681, 55691, 55697, 55711, 55717,
+55721, 55733, 55763, 55787, 55793, 55799, 55807, 55813, 55817, 55819, 55823,
+55829, 55837, 55843, 55849, 55871, 55889, 55897, 55901, 55903, 55921, 55927,
+55931, 55933, 55949, 55967, 55987, 55997, 56003, 56009, 56039, 56041, 56053,
+56081, 56087, 56093, 56099, 56101, 56113, 56123, 56131, 56149, 56167, 56171,
+56179, 56197, 56207, 56209, 56237, 56239, 56249, 56263, 56267, 56269, 56299,
+56311, 56333, 56359, 56369, 56377, 56383, 56393, 56401, 56417, 56431, 56437,
+56443, 56453, 56467, 56473, 56477, 56479, 56489, 56501, 56503, 56509, 56519,
+56527, 56531, 56533, 56543, 56569, 56591, 56597, 56599, 56611, 56629, 56633,
+56659, 56663, 56671, 56681, 56687, 56701, 56711, 56713, 56731, 56737, 56747,
+56767, 56773, 56779, 56783, 56807, 56809, 56813, 56821, 56827, 56843, 56857,
+56873, 56891, 56893, 56897, 56909, 56911, 56921, 56923, 56929, 56941, 56951,
+56957, 56963, 56983, 56989, 56993, 56999, 57037, 57041, 57047, 57059, 57073,
+57077, 57089, 57097, 57107, 57119, 57131, 57139, 57143, 57149, 57163, 57173,
+57179, 57191, 57193, 57203, 57221, 57223, 57241, 57251, 57259, 57269, 57271,
+57283, 57287, 57301, 57329, 57331, 57347, 57349, 57367, 57373, 57383, 57389,
+57397, 57413, 57427, 57457, 57467, 57487, 57493, 57503, 57527, 57529, 57557,
+57559, 57571, 57587, 57593, 57601, 57637, 57641, 57649, 57653, 57667, 57679,
+57689, 57697, 57709, 57713, 57719, 57727, 57731, 57737, 57751, 57773, 57781,
+57787, 57791, 57793, 57803, 57809, 57829, 57839, 57847, 57853, 57859, 57881,
+57899, 57901, 57917, 57923, 57943, 57947, 57973, 57977, 57991, 58013, 58027,
+58031, 58043, 58049, 58057, 58061, 58067, 58073, 58099, 58109, 58111, 58129,
+58147, 58151, 58153, 58169, 58171, 58189, 58193, 58199, 58207, 58211, 58217,
+58229, 58231, 58237, 58243, 58271, 58309, 58313, 58321, 58337, 58363, 58367,
+58369, 58379, 58391, 58393, 58403, 58411, 58417, 58427, 58439, 58441, 58451,
+58453, 58477, 58481, 58511, 58537, 58543, 58549, 58567, 58573, 58579, 58601,
+58603, 58613, 58631, 58657, 58661, 58679, 58687, 58693, 58699, 58711, 58727,
+58733, 58741, 58757, 58763, 58771, 58787, 58789, 58831, 58889, 58897, 58901,
+58907, 58909, 58913, 58921, 58937, 58943, 58963, 58967, 58979, 58991, 58997,
+59009, 59011, 59021, 59023, 59029, 59051, 59053, 59063, 59069, 59077, 59083,
+59093, 59107, 59113, 59119, 59123, 59141, 59149, 59159, 59167, 59183, 59197,
+59207, 59209, 59219, 59221, 59233, 59239, 59243, 59263, 59273, 59281, 59333,
+59341, 59351, 59357, 59359, 59369, 59377, 59387, 59393, 59399, 59407, 59417,
+59419, 59441, 59443, 59447, 59453, 59467, 59471, 59473, 59497, 59509, 59513,
+59539, 59557, 59561, 59567, 59581, 59611, 59617, 59621, 59627, 59629, 59651,
+59659, 59663, 59669, 59671, 59693, 59699, 59707, 59723, 59729, 59743, 59747,
+59753, 59771, 59779, 59791, 59797, 59809, 59833, 59863, 59879, 59887, 59921,
+59929, 59951, 59957, 59971, 59981, 59999, 60013, 60017, 60029, 60037, 60041,
+60077, 60083, 60089, 60091, 60101, 60103, 60107, 60127, 60133, 60139, 60149,
+60161, 60167, 60169, 60209, 60217, 60223, 60251, 60257, 60259, 60271, 60289,
+60293, 60317, 60331, 60337, 60343, 60353, 60373, 60383, 60397, 60413, 60427,
+60443, 60449, 60457, 60493, 60497, 60509, 60521, 60527, 60539, 60589, 60601,
+60607, 60611, 60617, 60623, 60631, 60637, 60647, 60649, 60659, 60661, 60679,
+60689, 60703, 60719, 60727, 60733, 60737, 60757, 60761, 60763, 60773, 60779,
+60793, 60811, 60821, 60859, 60869, 60887, 60889, 60899, 60901, 60913, 60917,
+60919, 60923, 60937, 60943, 60953, 60961, 61001, 61007, 61027, 61031, 61043,
+61051, 61057, 61091, 61099, 61121, 61129, 61141, 61151, 61153, 61169, 61211,
+61223, 61231, 61253, 61261, 61283, 61291, 61297, 61331, 61333, 61339, 61343,
+61357, 61363, 61379, 61381, 61403, 61409, 61417, 61441, 61463, 61469, 61471,
+61483, 61487, 61493, 61507, 61511, 61519, 61543, 61547, 61553, 61559, 61561,
+61583, 61603, 61609, 61613, 61627, 61631, 61637, 61643, 61651, 61657, 61667,
+61673, 61681, 61687, 61703, 61717, 61723, 61729, 61751, 61757, 61781, 61813,
+61819, 61837, 61843, 61861, 61871, 61879, 61909, 61927, 61933, 61949, 61961,
+61967, 61979, 61981, 61987, 61991, 62003, 62011, 62017, 62039, 62047, 62053,
+62057, 62071, 62081, 62099, 62119, 62129, 62131, 62137, 62141, 62143, 62171,
+62189, 62191, 62201, 62207, 62213, 62219, 62233, 62273, 62297, 62299, 62303,
+62311, 62323, 62327, 62347, 62351, 62383, 62401, 62417, 62423, 62459, 62467,
+62473, 62477, 62483, 62497, 62501, 62507, 62533, 62539, 62549, 62563, 62581,
+62591, 62597, 62603, 62617, 62627, 62633, 62639, 62653, 62659, 62683, 62687,
+62701, 62723, 62731, 62743, 62753, 62761, 62773, 62791, 62801, 62819, 62827,
+62851, 62861, 62869, 62873, 62897, 62903, 62921, 62927, 62929, 62939, 62969,
+62971, 62981, 62983, 62987, 62989, 63029, 63031, 63059, 63067, 63073, 63079,
+63097, 63103, 63113, 63127, 63131, 63149, 63179, 63197, 63199, 63211, 63241,
+63247, 63277, 63281, 63299, 63311, 63313, 63317, 63331, 63337, 63347, 63353,
+63361, 63367, 63377, 63389, 63391, 63397, 63409, 63419, 63421, 63439, 63443,
+63463, 63467, 63473, 63487, 63493, 63499, 63521, 63527, 63533, 63541, 63559,
+63577, 63587, 63589, 63599, 63601, 63607, 63611, 63617, 63629, 63647, 63649,
+63659, 63667, 63671, 63689, 63691, 63697, 63703, 63709, 63719, 63727, 63737,
+63743, 63761, 63773, 63781, 63793, 63799, 63803, 63809, 63823, 63839, 63841,
+63853, 63857, 63863, 63901, 63907, 63913, 63929, 63949, 63977, 63997, 64007,
+64013, 64019, 64033, 64037, 64063, 64067, 64081, 64091, 64109, 64123, 64151,
+64153, 64157, 64171, 64187, 64189, 64217, 64223, 64231, 64237, 64271, 64279,
+64283, 64301, 64303, 64319, 64327, 64333, 64373, 64381, 64399, 64403, 64433,
+64439, 64451, 64453, 64483, 64489, 64499, 64513, 64553, 64567, 64577, 64579,
+64591, 64601, 64609, 64613, 64621, 64627, 64633, 64661, 64663, 64667, 64679,
+64693, 64709, 64717, 64747, 64763, 64781, 64783, 64793, 64811, 64817, 64849,
+64853, 64871, 64877, 64879, 64891, 64901, 64919, 64921, 64927, 64937, 64951,
+64969, 64997, 65003, 65011, 65027, 65029, 65033, 65053, 65063, 65071, 65089,
+65099, 65101, 65111, 65119, 65123, 65129, 65141, 65147, 65167, 65171, 65173,
+65179, 65183, 65203, 65213, 65239, 65257, 65267, 65269, 65287, 65293, 65309,
+65323, 65327, 65353, 65357, 65371, 65381, 65393, 65407, 65413, 65419, 65423,
+65437, 65447, 65449, 65479, 65497, 65519, 65521, 0 };
+
+}
+/*
+* Modular Reducer
+* (C) 1999-2011,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+* Modular_Reducer Constructor
+*/
+Modular_Reducer::Modular_Reducer(const BigInt& mod)
+   {
+   if(mod < 0)
+      throw Invalid_Argument("Modular_Reducer: modulus must be positive");
+
+   // Left uninitialized if mod == 0
+   m_mod_words = 0;
+
+   if(mod > 0)
+      {
+      m_modulus = mod;
+      m_mod_words = m_modulus.sig_words();
+
+      // Compute mu = floor(2^{2k} / m)
+      m_mu.set_bit(2 * BOTAN_MP_WORD_BITS * m_mod_words);
+      m_mu = ct_divide(m_mu, m_modulus);
+      }
+   }
+
+BigInt Modular_Reducer::reduce(const BigInt& x) const
+   {
+   BigInt r;
+   secure_vector<word> ws;
+   reduce(r, x, ws);
+   return r;
+   }
+
+namespace {
+
+/*
+* Like if(cnd) x.rev_sub(...) but in const time
+*/
+void cnd_rev_sub(bool cnd, BigInt& x, const word y[], size_t y_sw, secure_vector<word>& ws)
+   {
+   if(x.sign() != BigInt::Positive)
+      throw Invalid_State("BigInt::sub_rev requires this is positive");
+
+   const size_t x_sw = x.sig_words();
+
+   const size_t max_words = std::max(x_sw, y_sw);
+   ws.resize(std::max(x_sw, y_sw));
+   clear_mem(ws.data(), ws.size());
+   x.grow_to(max_words);
+
+   const int32_t relative_size = bigint_sub_abs(ws.data(), x.data(), x_sw, y, y_sw);
+
+   x.cond_flip_sign((relative_size > 0) && cnd);
+   bigint_cnd_swap(cnd, x.mutable_data(), ws.data(), max_words);
+   }
+
+}
+
+void Modular_Reducer::reduce(BigInt& t1, const BigInt& x, secure_vector<word>& ws) const
+   {
+   if(&t1 == &x)
+      throw Invalid_State("Modular_Reducer arguments cannot alias");
+   if(m_mod_words == 0)
+      throw Invalid_State("Modular_Reducer: Never initalized");
+
+   const size_t x_sw = x.sig_words();
+
+   if(x_sw > 2*m_mod_words)
+      {
+      // too big, fall back to slow boat division
+      t1 = ct_modulo(x, m_modulus);
+      return;
+      }
+
+   t1 = x;
+   t1.set_sign(BigInt::Positive);
+   t1 >>= (BOTAN_MP_WORD_BITS * (m_mod_words - 1));
+
+   t1.mul(m_mu, ws);
+   t1 >>= (BOTAN_MP_WORD_BITS * (m_mod_words + 1));
+
+   // TODO add masked mul to avoid computing high bits
+   t1.mul(m_modulus, ws);
+   t1.mask_bits(BOTAN_MP_WORD_BITS * (m_mod_words + 1));
+
+   t1.rev_sub(x.data(), std::min(x_sw, m_mod_words + 1), ws);
+
+   /*
+   * If t1 < 0 then we must add b^(k+1) where b = 2^w. To avoid a
+   * side channel perform the addition unconditionally, with ws set
+   * to either b^(k+1) or else 0.
+   */
+   const word t1_neg = t1.is_negative();
+
+   if(ws.size() < m_mod_words + 2)
+      ws.resize(m_mod_words + 2);
+   clear_mem(ws.data(), ws.size());
+   ws[m_mod_words + 1] = t1_neg;
+
+   t1.add(ws.data(), m_mod_words + 2, BigInt::Positive);
+
+   // Per HAC this step requires at most 2 subtractions
+   t1.ct_reduce_below(m_modulus, ws, 2);
+
+   cnd_rev_sub(t1.is_nonzero() && x.is_negative(), t1, m_modulus.data(), m_modulus.size(), ws);
+   }
+
+}
+/*
+* (C) 2007,2008 Falko Strenzke, FlexSecure GmbH
+* (C) 2008 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+* Tonelli-Shanks algorithm
+*/
+BigInt ressol(const BigInt& a, const BigInt& p)
+   {
+   if(p <= 1 || p.is_even())
+      throw Invalid_Argument("ressol: invalid prime");
+
+   if(a == 0)
+      return 0;
+   else if(a < 0)
+      throw Invalid_Argument("ressol: value to solve for must be positive");
+   else if(a >= p)
+      throw Invalid_Argument("ressol: value to solve for must be less than p");
+
+   if(p == 2)
+      return a;
+
+   if(jacobi(a, p) != 1) // not a quadratic residue
+      return -BigInt(1);
+
+   if(p % 4 == 3) // The easy case
+      {
+      return power_mod(a, ((p+1) >> 2), p);
+      }
+
+   size_t s = low_zero_bits(p - 1);
+   BigInt q = p >> s;
+
+   q -= 1;
+   q >>= 1;
+
+   Modular_Reducer mod_p(p);
+
+   BigInt r = power_mod(a, q, p);
+   BigInt n = mod_p.multiply(a, mod_p.square(r));
+   r = mod_p.multiply(r, a);
+
+   if(n == 1)
+      return r;
+
+   // find random quadratic nonresidue z
+   word z = 2;
+   for(;;)
+      {
+      if(jacobi(z, p) == -1) // found one
+         break;
+
+      z += 1; // try next z
+
+      /*
+      * The expected number of tests to find a non-residue modulo a
+      * prime is 2. If we have not found one after 256 then almost
+      * certainly we have been given a non-prime p.
+      */
+      if(z >= 256)
+         return -BigInt(1);
+      }
+
+   BigInt c = power_mod(z, (q << 1) + 1, p);
+
+   while(n > 1)
+      {
+      q = n;
+
+      size_t i = 0;
+      while(q != 1)
+         {
+         q = mod_p.square(q);
+         ++i;
+
+         if(i >= s)
+            {
+            return -BigInt(1);
+            }
+         }
+
+      c = power_mod(c, BigInt::power_of_2(s-i-1), p);
+      r = mod_p.multiply(r, c);
+      c = mod_p.square(c);
+      n = mod_p.multiply(n, c);
+      s = i;
+      }
+
+   return r;
+   }
+
+}
+/*
 * PBKDF
 * (C) 2012 Jack Lloyd
 *
@@ -12600,6 +33034,496 @@ std::vector<std::string> PasswordHashFamily::providers(const std::string& algo_s
    return probe_providers_of<PasswordHashFamily>(algo_spec, { "base", "openssl" });
    }
 
+}
+/*
+* PEM Encoding/Decoding
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace PEM_Code {
+
+namespace {
+
+std::string linewrap(size_t width, const std::string& in)
+   {
+   std::string out;
+   for(size_t i = 0; i != in.size(); ++i)
+      {
+      if(i > 0 && i % width == 0)
+         {
+         out.push_back('\n');
+         }
+      out.push_back(in[i]);
+      }
+   if(out.size() > 0 && out[out.size()-1] != '\n')
+      {
+      out.push_back('\n');
+      }
+
+   return out;
+   }
+
+}
+
+/*
+* PEM encode BER/DER-encoded objects
+*/
+std::string encode(const uint8_t der[], size_t length, const std::string& label, size_t width)
+   {
+   const std::string PEM_HEADER = "-----BEGIN " + label + "-----\n";
+   const std::string PEM_TRAILER = "-----END " + label + "-----\n";
+
+   return (PEM_HEADER + linewrap(width, base64_encode(der, length)) + PEM_TRAILER);
+   }
+
+/*
+* Decode PEM down to raw BER/DER
+*/
+secure_vector<uint8_t> decode_check_label(DataSource& source,
+                                          const std::string& label_want)
+   {
+   std::string label_got;
+   secure_vector<uint8_t> ber = decode(source, label_got);
+   if(label_got != label_want)
+      throw Decoding_Error("PEM: Label mismatch, wanted " + label_want +
+                           ", got " + label_got);
+   return ber;
+   }
+
+/*
+* Decode PEM down to raw BER/DER
+*/
+secure_vector<uint8_t> decode(DataSource& source, std::string& label)
+   {
+   const size_t RANDOM_CHAR_LIMIT = 8;
+
+   label.clear();
+
+   const std::string PEM_HEADER1 = "-----BEGIN ";
+   const std::string PEM_HEADER2 = "-----";
+   size_t position = 0;
+
+   while(position != PEM_HEADER1.length())
+      {
+      uint8_t b;
+      if(!source.read_byte(b))
+         throw Decoding_Error("PEM: No PEM header found");
+      if(b == PEM_HEADER1[position])
+         ++position;
+      else if(position >= RANDOM_CHAR_LIMIT)
+         throw Decoding_Error("PEM: Malformed PEM header");
+      else
+         position = 0;
+      }
+   position = 0;
+   while(position != PEM_HEADER2.length())
+      {
+      uint8_t b;
+      if(!source.read_byte(b))
+         throw Decoding_Error("PEM: No PEM header found");
+      if(b == PEM_HEADER2[position])
+         ++position;
+      else if(position)
+         throw Decoding_Error("PEM: Malformed PEM header");
+
+      if(position == 0)
+         label += static_cast<char>(b);
+      }
+
+   std::vector<char> b64;
+
+   const std::string PEM_TRAILER = "-----END " + label + "-----";
+   position = 0;
+   while(position != PEM_TRAILER.length())
+      {
+      uint8_t b;
+      if(!source.read_byte(b))
+         throw Decoding_Error("PEM: No PEM trailer found");
+      if(b == PEM_TRAILER[position])
+         ++position;
+      else if(position)
+         throw Decoding_Error("PEM: Malformed PEM trailer");
+
+      if(position == 0)
+         b64.push_back(b);
+      }
+
+   return base64_decode(b64.data(), b64.size());
+   }
+
+secure_vector<uint8_t> decode_check_label(const std::string& pem,
+                                          const std::string& label_want)
+   {
+   DataSource_Memory src(pem);
+   return decode_check_label(src, label_want);
+   }
+
+secure_vector<uint8_t> decode(const std::string& pem, std::string& label)
+   {
+   DataSource_Memory src(pem);
+   return decode(src, label);
+   }
+
+/*
+* Search for a PEM signature
+*/
+bool matches(DataSource& source, const std::string& extra,
+             size_t search_range)
+   {
+   const std::string PEM_HEADER = "-----BEGIN " + extra;
+
+   secure_vector<uint8_t> search_buf(search_range);
+   size_t got = source.peek(search_buf.data(), search_buf.size(), 0);
+
+   if(got < PEM_HEADER.length())
+      return false;
+
+   size_t index = 0;
+
+   for(size_t j = 0; j != got; ++j)
+      {
+      if(search_buf[j] == PEM_HEADER[index])
+         ++index;
+      else
+         index = 0;
+      if(index == PEM_HEADER.size())
+         return true;
+      }
+   return false;
+   }
+
+}
+
+}
+/*
+* EME Base Class
+* (C) 1999-2008 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+#if defined(BOTAN_HAS_EME_OAEP)
+#endif
+
+#if defined(BOTAN_HAS_EME_PKCS1)
+#endif
+
+#if defined(BOTAN_HAS_EME_RAW)
+#endif
+
+namespace Botan {
+
+EME* get_eme(const std::string& algo_spec)
+   {
+#if defined(BOTAN_HAS_EME_RAW)
+   if(algo_spec == "Raw")
+      return new EME_Raw;
+#endif
+
+#if defined(BOTAN_HAS_EME_PKCS1)
+   if(algo_spec == "PKCS1v15" || algo_spec == "EME-PKCS1-v1_5")
+      return new EME_PKCS1v15;
+#endif
+
+#if defined(BOTAN_HAS_EME_OAEP)
+   SCAN_Name req(algo_spec);
+
+   if(req.algo_name() == "OAEP" ||
+      req.algo_name() == "EME-OAEP" ||
+      req.algo_name() == "EME1")
+      {
+      if(req.arg_count() == 1 ||
+         ((req.arg_count() == 2 || req.arg_count() == 3) && req.arg(1) == "MGF1"))
+         {
+         if(auto hash = HashFunction::create(req.arg(0)))
+            return new OAEP(hash.release(), req.arg(2, ""));
+         }
+      else if(req.arg_count() == 2 || req.arg_count() == 3)
+         {
+         auto mgf_params = parse_algorithm_name(req.arg(1));
+
+         if(mgf_params.size() == 2 && mgf_params[0] == "MGF1")
+            {
+            auto hash = HashFunction::create(req.arg(0));
+            auto mgf1_hash = HashFunction::create(mgf_params[1]);
+
+            if(hash && mgf1_hash)
+               {
+               return new OAEP(hash.release(), mgf1_hash.release(), req.arg(2, ""));
+               }
+            }
+         }
+      }
+#endif
+
+   throw Algorithm_Not_Found(algo_spec);
+   }
+
+/*
+* Encode a message
+*/
+secure_vector<uint8_t> EME::encode(const uint8_t msg[], size_t msg_len,
+                                size_t key_bits,
+                                RandomNumberGenerator& rng) const
+   {
+   return pad(msg, msg_len, key_bits, rng);
+   }
+
+/*
+* Encode a message
+*/
+secure_vector<uint8_t> EME::encode(const secure_vector<uint8_t>& msg,
+                                size_t key_bits,
+                                RandomNumberGenerator& rng) const
+   {
+   return pad(msg.data(), msg.size(), key_bits, rng);
+   }
+
+
+}
+/*
+* (C) 2015 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+#if defined(BOTAN_HAS_EMSA1)
+#endif
+
+#if defined(BOTAN_HAS_EMSA_X931)
+#endif
+
+#if defined(BOTAN_HAS_EMSA_PKCS1)
+#endif
+
+#if defined(BOTAN_HAS_EMSA_PSSR)
+#endif
+
+#if defined(BOTAN_HAS_EMSA_RAW)
+#endif
+
+#if defined(BOTAN_HAS_ISO_9796)
+#endif
+
+namespace Botan {
+
+AlgorithmIdentifier EMSA::config_for_x509(const Private_Key&,
+                                          const std::string&) const
+   {
+   throw Not_Implemented("Encoding " + name() + " not supported for signing X509 objects");
+   }
+
+EMSA* get_emsa(const std::string& algo_spec)
+   {
+   SCAN_Name req(algo_spec);
+
+#if defined(BOTAN_HAS_EMSA1)
+   if(req.algo_name() == "EMSA1" && req.arg_count() == 1)
+      {
+      if(auto hash = HashFunction::create(req.arg(0)))
+         return new EMSA1(hash.release());
+      }
+#endif
+
+#if defined(BOTAN_HAS_EMSA_PKCS1)
+   if(req.algo_name() == "EMSA_PKCS1" ||
+      req.algo_name() == "PKCS1v15" ||
+      req.algo_name() == "EMSA-PKCS1-v1_5" ||
+      req.algo_name() == "EMSA3")
+      {
+      if(req.arg_count() == 2 && req.arg(0) == "Raw")
+         {
+         return new EMSA_PKCS1v15_Raw(req.arg(1));
+         }
+      else if(req.arg_count() == 1)
+         {
+         if(req.arg(0) == "Raw")
+            {
+            return new EMSA_PKCS1v15_Raw;
+            }
+         else
+            {
+            if(auto hash = HashFunction::create(req.arg(0)))
+               {
+               return new EMSA_PKCS1v15(hash.release());
+               }
+            }
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_EMSA_PSSR)
+   if(req.algo_name() == "PSS_Raw" ||
+      req.algo_name() == "PSSR_Raw")
+      {
+      if(req.arg_count_between(1, 3) && req.arg(1, "MGF1") == "MGF1")
+         {
+         if(auto h = HashFunction::create(req.arg(0)))
+            {
+            if(req.arg_count() == 3)
+               {
+               const size_t salt_size = req.arg_as_integer(2, 0);
+               return new PSSR_Raw(h.release(), salt_size);
+               }
+            else
+               {
+               return new PSSR_Raw(h.release());
+               }
+            }
+         }
+      }
+
+   if(req.algo_name() == "PSS" ||
+      req.algo_name() == "PSSR" ||
+      req.algo_name() == "EMSA-PSS" ||
+      req.algo_name() == "PSS-MGF1" ||
+      req.algo_name() == "EMSA4")
+      {
+      if(req.arg_count_between(1, 3) && req.arg(1, "MGF1") == "MGF1")
+         {
+         if(auto h = HashFunction::create(req.arg(0)))
+            {
+            if(req.arg_count() == 3)
+               {
+               const size_t salt_size = req.arg_as_integer(2, 0);
+               return new PSSR(h.release(), salt_size);
+               }
+            else
+               {
+               return new PSSR(h.release());
+               }
+            }
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_ISO_9796)
+   if(req.algo_name() == "ISO_9796_DS2")
+      {
+      if(req.arg_count_between(1, 3))
+         {
+         if(auto h = HashFunction::create(req.arg(0)))
+            {
+            const size_t salt_size = req.arg_as_integer(2, h->output_length());
+            const bool implicit = req.arg(1, "exp") == "imp";
+            return new ISO_9796_DS2(h.release(), implicit, salt_size);
+            }
+         }
+      }
+   //ISO-9796-2 DS 3 is deterministic and DS2 without a salt
+   if(req.algo_name() == "ISO_9796_DS3")
+      {
+      if(req.arg_count_between(1, 2))
+         {
+         if(auto h = HashFunction::create(req.arg(0)))
+            {
+            const bool implicit = req.arg(1, "exp") == "imp";
+            return new ISO_9796_DS3(h.release(), implicit);
+            }
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_EMSA_X931)
+   if(req.algo_name() == "EMSA_X931" ||
+         req.algo_name() == "EMSA2" ||
+         req.algo_name() == "X9.31")
+      {
+      if(req.arg_count() == 1)
+         {
+         if(auto hash = HashFunction::create(req.arg(0)))
+            {
+            return new EMSA_X931(hash.release());
+            }
+         }
+      }
+#endif
+
+#if defined(BOTAN_HAS_EMSA_RAW)
+   if(req.algo_name() == "Raw")
+      {
+      if(req.arg_count() == 0)
+         {
+         return new EMSA_Raw;
+         }
+      else
+         {
+         auto hash = HashFunction::create(req.arg(0));
+         if(hash)
+            return new EMSA_Raw(hash->output_length());
+         }
+      }
+#endif
+
+   throw Algorithm_Not_Found(algo_spec);
+   }
+
+std::string hash_for_emsa(const std::string& algo_spec)
+   {
+   SCAN_Name emsa_name(algo_spec);
+
+   if(emsa_name.arg_count() > 0)
+      {
+      const std::string pos_hash = emsa_name.arg(0);
+      return pos_hash;
+      }
+
+   // If we don't understand what this is return a safe default
+#if defined(BOTAN_HAS_SHA2_64)
+   return "SHA-512";
+#else
+   return "SHA-256";
+#endif
+   }
+
+}
+/*
+* Sets of allowed padding schemes for public key types
+*
+* This file was automatically generated by ./src/scripts/oids.py on 2017-12-20
+*
+* All manual edits to this file will be lost. Edit the script
+* then regenerate this source file.
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+#include <map>
+#include <string>
+
+namespace Botan {
+
+const std::map<const std::string, std::vector<std::string>> allowed_signature_paddings =
+   {
+   { "DSA", {"EMSA1"} },
+   { "ECDSA", {"EMSA1"} },
+   { "ECGDSA", {"EMSA1"} },
+   { "ECKCDSA", {"EMSA1"} },
+   { "GOST-34.10", {"EMSA1"} },
+   { "GOST-34.10-2012-256", {"EMSA1"} },
+   { "GOST-34.10-2012-512", {"EMSA1"} },
+   { "RSA", {"EMSA4", "EMSA3"} },
+   };
+
+const std::vector<std::string> get_sig_paddings(const std::string algo)
+   {
+   if(allowed_signature_paddings.count(algo) > 0)
+      return allowed_signature_paddings.at(algo);
+   return {};
+   }
+
+bool sig_algo_and_pad_ok(const std::string algo, const std::string padding)
+   {
+   std::vector<std::string> pads = get_sig_paddings(algo);
+   return std::find(pads.begin(), pads.end(), padding) != pads.end();
+   }
 }
 /*
 * Derived from poly1305-donna-64.h by Andrew Moon <liquidsun@gmail.com>
@@ -12920,6 +33844,1812 @@ void poly_double_n_le(uint8_t out[], const uint8_t in[], size_t n)
 
 }
 /*
+* Blinding for public key operations
+* (C) 1999-2010,2015 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+Blinder::Blinder(const BigInt& modulus,
+                 RandomNumberGenerator& rng,
+                 std::function<BigInt (const BigInt&)> fwd,
+                 std::function<BigInt (const BigInt&)> inv) :
+      m_reducer(modulus),
+      m_rng(rng),
+      m_fwd_fn(fwd),
+      m_inv_fn(inv),
+      m_modulus_bits(modulus.bits()),
+      m_e{},
+      m_d{},
+      m_counter{}
+   {
+   const BigInt k = blinding_nonce();
+   m_e = m_fwd_fn(k);
+   m_d = m_inv_fn(k);
+   }
+
+BigInt Blinder::blinding_nonce() const
+   {
+   return BigInt(m_rng, m_modulus_bits - 1);
+   }
+
+BigInt Blinder::blind(const BigInt& i) const
+   {
+   if(!m_reducer.initialized())
+      throw Invalid_State("Blinder not initialized, cannot blind");
+
+   ++m_counter;
+
+   if((BOTAN_BLINDING_REINIT_INTERVAL > 0) && (m_counter > BOTAN_BLINDING_REINIT_INTERVAL))
+      {
+      const BigInt k = blinding_nonce();
+      m_e = m_fwd_fn(k);
+      m_d = m_inv_fn(k);
+      m_counter = 0;
+      }
+   else
+      {
+      m_e = m_reducer.square(m_e);
+      m_d = m_reducer.square(m_d);
+      }
+
+   return m_reducer.multiply(i, m_e);
+   }
+
+BigInt Blinder::unblind(const BigInt& i) const
+   {
+   if(!m_reducer.initialized())
+      throw Invalid_State("Blinder not initialized, cannot unblind");
+
+   return m_reducer.multiply(i, m_d);
+   }
+
+}
+/*
+* PK Key
+* (C) 1999-2010,2016 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+#if defined(BOTAN_HAS_RSA)
+#endif
+
+#if defined(BOTAN_HAS_DSA)
+#endif
+
+#if defined(BOTAN_HAS_DL_GROUP)
+#endif
+
+#if defined(BOTAN_HAS_DIFFIE_HELLMAN)
+#endif
+
+#if defined(BOTAN_HAS_ECC_PUBLIC_KEY_CRYPTO)
+#endif
+
+#if defined(BOTAN_HAS_ECDSA)
+#endif
+
+#if defined(BOTAN_HAS_ECGDSA)
+#endif
+
+#if defined(BOTAN_HAS_ECKCDSA)
+#endif
+
+#if defined(BOTAN_HAS_ED25519)
+#endif
+
+#if defined(BOTAN_HAS_GOST_34_10_2001)
+#endif
+
+#if defined(BOTAN_HAS_ELGAMAL)
+#endif
+
+#if defined(BOTAN_HAS_ECDH)
+#endif
+
+#if defined(BOTAN_HAS_CURVE_25519)
+#endif
+
+#if defined(BOTAN_HAS_MCELIECE)
+#endif
+
+#if defined(BOTAN_HAS_XMSS_RFC8391)
+#endif
+
+#if defined(BOTAN_HAS_SM2)
+#endif
+
+#if defined(BOTAN_HAS_OPENSSL)
+#endif
+
+namespace Botan {
+
+std::unique_ptr<Public_Key>
+load_public_key(const AlgorithmIdentifier& alg_id,
+                const std::vector<uint8_t>& key_bits)
+   {
+   const std::string oid_str = alg_id.get_oid().to_formatted_string();
+   const std::vector<std::string> alg_info = split_on(oid_str, '/');
+   const std::string alg_name = alg_info[0];
+
+#if defined(BOTAN_HAS_RSA)
+   if(alg_name == "RSA")
+      return std::unique_ptr<Public_Key>(new RSA_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_CURVE_25519)
+   if(alg_name == "Curve25519")
+      return std::unique_ptr<Public_Key>(new Curve25519_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_MCELIECE)
+   if(alg_name == "McEliece")
+      return std::unique_ptr<Public_Key>(new McEliece_PublicKey(key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ECDSA)
+   if(alg_name == "ECDSA")
+      return std::unique_ptr<Public_Key>(new ECDSA_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ECDH)
+   if(alg_name == "ECDH")
+      return std::unique_ptr<Public_Key>(new ECDH_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_DIFFIE_HELLMAN)
+   if(alg_name == "DH")
+      return std::unique_ptr<Public_Key>(new DH_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_DSA)
+   if(alg_name == "DSA")
+      return std::unique_ptr<Public_Key>(new DSA_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ELGAMAL)
+   if(alg_name == "ElGamal")
+      return std::unique_ptr<Public_Key>(new ElGamal_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ECGDSA)
+   if(alg_name == "ECGDSA")
+      return std::unique_ptr<Public_Key>(new ECGDSA_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ECKCDSA)
+   if(alg_name == "ECKCDSA")
+      return std::unique_ptr<Public_Key>(new ECKCDSA_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ED25519)
+   if(alg_name == "Ed25519")
+      return std::unique_ptr<Public_Key>(new Ed25519_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_GOST_34_10_2001)
+   if(alg_name == "GOST-34.10" || alg_name == "GOST-34.10-2012-256" || alg_name == "GOST-34.10-2012-512")
+      return std::unique_ptr<Public_Key>(new GOST_3410_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_SM2)
+   if(alg_name == "SM2" || alg_name == "SM2_Sig" || alg_name == "SM2_Enc")
+      return std::unique_ptr<Public_Key>(new SM2_PublicKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_XMSS_RFC8391)
+   if(alg_name == "XMSS")
+      return std::unique_ptr<Public_Key>(new XMSS_PublicKey(key_bits));
+#endif
+
+   throw Decoding_Error("Unknown or unavailable public key algorithm " + alg_name);
+   }
+
+std::unique_ptr<Private_Key>
+load_private_key(const AlgorithmIdentifier& alg_id,
+                 const secure_vector<uint8_t>& key_bits)
+   {
+   const std::string alg_name = alg_id.get_oid().to_formatted_string();
+
+#if defined(BOTAN_HAS_RSA)
+   if(alg_name == "RSA")
+      return std::unique_ptr<Private_Key>(new RSA_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_CURVE_25519)
+   if(alg_name == "Curve25519")
+      return std::unique_ptr<Private_Key>(new Curve25519_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ECDSA)
+   if(alg_name == "ECDSA")
+      return std::unique_ptr<Private_Key>(new ECDSA_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ECDH)
+   if(alg_name == "ECDH")
+      return std::unique_ptr<Private_Key>(new ECDH_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_DIFFIE_HELLMAN)
+   if(alg_name == "DH")
+      return std::unique_ptr<Private_Key>(new DH_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_DSA)
+   if(alg_name == "DSA")
+      return std::unique_ptr<Private_Key>(new DSA_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_MCELIECE)
+   if(alg_name == "McEliece")
+      return std::unique_ptr<Private_Key>(new McEliece_PrivateKey(key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ECGDSA)
+   if(alg_name == "ECGDSA")
+      return std::unique_ptr<Private_Key>(new ECGDSA_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ECKCDSA)
+   if(alg_name == "ECKCDSA")
+      return std::unique_ptr<Private_Key>(new ECKCDSA_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ED25519)
+   if(alg_name == "Ed25519")
+      return std::unique_ptr<Private_Key>(new Ed25519_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_GOST_34_10_2001)
+   if(alg_name == "GOST-34.10" || alg_name == "GOST-34.10-2012-256" || alg_name == "GOST-34.10-2012-512")
+      return std::unique_ptr<Private_Key>(new GOST_3410_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_SM2)
+   if(alg_name == "SM2" || alg_name == "SM2_Sig" || alg_name == "SM2_Enc")
+      return std::unique_ptr<Private_Key>(new SM2_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_ELGAMAL)
+   if(alg_name == "ElGamal")
+      return std::unique_ptr<Private_Key>(new ElGamal_PrivateKey(alg_id, key_bits));
+#endif
+
+#if defined(BOTAN_HAS_XMSS_RFC8391)
+   if(alg_name == "XMSS")
+      return std::unique_ptr<Private_Key>(new XMSS_PrivateKey(key_bits));
+#endif
+
+   throw Decoding_Error("Unknown or unavailable public key algorithm " + alg_name);
+   }
+
+#if defined(BOTAN_HAS_ECC_GROUP)
+
+namespace {
+
+std::string default_ec_group_for(const std::string& alg_name)
+   {
+   if(alg_name == "SM2" || alg_name == "SM2_Enc" || alg_name == "SM2_Sig")
+      return "sm2p256v1";
+   if(alg_name == "GOST-34.10" || alg_name == "GOST-34.10-2012-256")
+      return "gost_256A";
+   if(alg_name == "GOST-34.10-2012-512")
+      return "gost_512A";
+   if(alg_name == "ECGDSA")
+      return "brainpool256r1";
+   return "secp256r1";
+
+   }
+
+}
+
+#endif
+
+std::unique_ptr<Private_Key>
+create_private_key(const std::string& alg_name,
+                   RandomNumberGenerator& rng,
+                   const std::string& params,
+                   const std::string& provider)
+   {
+   /*
+   * Default paramaters are chosen for work factor > 2**128 where possible
+   */
+
+#if defined(BOTAN_HAS_CURVE_25519)
+   if(alg_name == "Curve25519")
+      return std::unique_ptr<Private_Key>(new Curve25519_PrivateKey(rng));
+#endif
+
+#if defined(BOTAN_HAS_RSA)
+   if(alg_name == "RSA")
+      {
+      const size_t rsa_bits = (params.empty() ? 3072 : to_u32bit(params));
+#if defined(BOTAN_HAS_OPENSSL)
+      if(provider.empty() || provider == "openssl")
+         {
+         std::unique_ptr<Botan::Private_Key> pk;
+         if((pk = make_openssl_rsa_private_key(rng, rsa_bits)))
+            return pk;
+
+         if(!provider.empty())
+            return nullptr;
+         }
+#endif
+      return std::unique_ptr<Private_Key>(new RSA_PrivateKey(rng, rsa_bits));
+      }
+#endif
+
+#if defined(BOTAN_HAS_MCELIECE)
+   if(alg_name == "McEliece")
+      {
+      std::vector<std::string> mce_param =
+         Botan::split_on(params.empty() ? "2960,57" : params, ',');
+
+      if(mce_param.size() != 2)
+         throw Invalid_Argument("create_private_key bad McEliece parameters " + params);
+
+      size_t mce_n = Botan::to_u32bit(mce_param[0]);
+      size_t mce_t = Botan::to_u32bit(mce_param[1]);
+
+      return std::unique_ptr<Botan::Private_Key>(new Botan::McEliece_PrivateKey(rng, mce_n, mce_t));
+      }
+#endif
+
+#if defined(BOTAN_HAS_XMSS_RFC8391)
+   if(alg_name == "XMSS")
+      {
+      return std::unique_ptr<Private_Key>(
+         new XMSS_PrivateKey(XMSS_Parameters(params.empty() ? "XMSS-SHA2_10_512" : params).oid(), rng));
+      }
+#endif
+
+#if defined(BOTAN_HAS_ED25519)
+   if(alg_name == "Ed25519")
+      {
+      return std::unique_ptr<Private_Key>(new Ed25519_PrivateKey(rng));
+      }
+#endif
+
+   // ECC crypto
+#if defined(BOTAN_HAS_ECC_PUBLIC_KEY_CRYPTO)
+
+   if(alg_name == "ECDSA" ||
+      alg_name == "ECDH" ||
+      alg_name == "ECKCDSA" ||
+      alg_name == "ECGDSA" ||
+      alg_name == "SM2" ||
+      alg_name == "SM2_Sig" ||
+      alg_name == "SM2_Enc" ||
+      alg_name == "GOST-34.10" ||
+      alg_name == "GOST-34.10-2012-256" ||
+      alg_name == "GOST-34.10-2012-512")
+      {
+      const EC_Group ec_group(params.empty() ? default_ec_group_for(alg_name) : params);
+
+#if defined(BOTAN_HAS_ECDSA)
+      if(alg_name == "ECDSA")
+         return std::unique_ptr<Private_Key>(new ECDSA_PrivateKey(rng, ec_group));
+#endif
+
+#if defined(BOTAN_HAS_ECDH)
+      if(alg_name == "ECDH")
+         return std::unique_ptr<Private_Key>(new ECDH_PrivateKey(rng, ec_group));
+#endif
+
+#if defined(BOTAN_HAS_ECKCDSA)
+      if(alg_name == "ECKCDSA")
+         return std::unique_ptr<Private_Key>(new ECKCDSA_PrivateKey(rng, ec_group));
+#endif
+
+#if defined(BOTAN_HAS_GOST_34_10_2001)
+      if(alg_name == "GOST-34.10" || alg_name == "GOST-34.10-2012-256" || alg_name == "GOST-34.10-2012-512")
+         return std::unique_ptr<Private_Key>(new GOST_3410_PrivateKey(rng, ec_group));
+#endif
+
+#if defined(BOTAN_HAS_SM2)
+      if(alg_name == "SM2" || alg_name == "SM2_Sig" || alg_name == "SM2_Enc")
+         return std::unique_ptr<Private_Key>(new SM2_PrivateKey(rng, ec_group));
+#endif
+
+#if defined(BOTAN_HAS_ECGDSA)
+      if(alg_name == "ECGDSA")
+         return std::unique_ptr<Private_Key>(new ECGDSA_PrivateKey(rng, ec_group));
+#endif
+      }
+#endif
+
+   // DL crypto
+#if defined(BOTAN_HAS_DL_GROUP)
+   if(alg_name == "DH" || alg_name == "DSA" || alg_name == "ElGamal")
+      {
+      std::string default_group = (alg_name == "DSA") ? "dsa/botan/2048" : "modp/ietf/2048";
+      DL_Group modp_group(params.empty() ? default_group : params);
+
+#if defined(BOTAN_HAS_DIFFIE_HELLMAN)
+      if(alg_name == "DH")
+         return std::unique_ptr<Private_Key>(new DH_PrivateKey(rng, modp_group));
+#endif
+
+#if defined(BOTAN_HAS_DSA)
+      if(alg_name == "DSA")
+         return std::unique_ptr<Private_Key>(new DSA_PrivateKey(rng, modp_group));
+#endif
+
+#if defined(BOTAN_HAS_ELGAMAL)
+      if(alg_name == "ElGamal")
+         return std::unique_ptr<Private_Key>(new ElGamal_PrivateKey(rng, modp_group));
+#endif
+      }
+#endif
+
+   BOTAN_UNUSED(alg_name, rng, params, provider);
+
+   return std::unique_ptr<Private_Key>();
+   }
+
+std::vector<std::string>
+probe_provider_private_key(const std::string& alg_name,
+                           const std::vector<std::string> possible)
+   {
+   std::vector<std::string> providers;
+   for(auto&& prov : possible)
+      {
+      if(prov == "base" ||
+#if defined(BOTAN_HAS_OPENSSL)
+         (prov == "openssl" && alg_name == "RSA") ||
+#endif
+         0)
+         {
+         providers.push_back(prov); // available
+         }
+      }
+
+   BOTAN_UNUSED(alg_name);
+
+   return providers;
+   }
+}
+/*
+* PK Key Types
+* (C) 1999-2007 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+std::string create_hex_fingerprint(const uint8_t bits[],
+                                   size_t bits_len,
+                                   const std::string& hash_name)
+   {
+   std::unique_ptr<HashFunction> hash_fn(HashFunction::create_or_throw(hash_name));
+   const std::string hex_hash = hex_encode(hash_fn->process(bits, bits_len));
+
+   std::string fprint;
+
+   for(size_t i = 0; i != hex_hash.size(); i += 2)
+      {
+      if(i != 0)
+         fprint.push_back(':');
+
+      fprint.push_back(hex_hash[i]);
+      fprint.push_back(hex_hash[i+1]);
+      }
+
+   return fprint;
+   }
+
+std::vector<uint8_t> Public_Key::subject_public_key() const
+   {
+   std::vector<uint8_t> output;
+
+   DER_Encoder(output).start_cons(SEQUENCE)
+         .encode(algorithm_identifier())
+         .encode(public_key_bits(), BIT_STRING)
+      .end_cons();
+
+   return output;
+   }
+
+/*
+* Default OID access
+*/
+OID Public_Key::get_oid() const
+   {
+   const OID o = OIDS::str2oid_or_empty(algo_name());
+   if(o.empty())
+      throw Lookup_Error("PK algo " + algo_name() + " has no defined OIDs");
+   return o;
+   }
+
+secure_vector<uint8_t> Private_Key::private_key_info() const
+   {
+   const size_t PKCS8_VERSION = 0;
+
+   return DER_Encoder()
+         .start_cons(SEQUENCE)
+            .encode(PKCS8_VERSION)
+            .encode(pkcs8_algorithm_identifier())
+            .encode(private_key_bits(), OCTET_STRING)
+         .end_cons()
+      .get_contents();
+   }
+
+/*
+* Hash of the X.509 subjectPublicKey encoding
+*/
+std::string Public_Key::fingerprint_public(const std::string& hash_algo) const
+   {
+   return create_hex_fingerprint(subject_public_key(), hash_algo);
+   }
+
+/*
+* Hash of the PKCS #8 encoding for this key object
+*/
+std::string Private_Key::fingerprint_private(const std::string& hash_algo) const
+   {
+   return create_hex_fingerprint(private_key_bits(), hash_algo);
+   }
+
+std::unique_ptr<PK_Ops::Encryption>
+Public_Key::create_encryption_op(RandomNumberGenerator& /*rng*/,
+                                 const std::string& /*params*/,
+                                 const std::string& /*provider*/) const
+   {
+   throw Lookup_Error(algo_name() + " does not support encryption");
+   }
+
+std::unique_ptr<PK_Ops::KEM_Encryption>
+Public_Key::create_kem_encryption_op(RandomNumberGenerator& /*rng*/,
+                                     const std::string& /*params*/,
+                                     const std::string& /*provider*/) const
+   {
+   throw Lookup_Error(algo_name() + " does not support KEM encryption");
+   }
+
+std::unique_ptr<PK_Ops::Verification>
+Public_Key::create_verification_op(const std::string& /*params*/,
+                                   const std::string& /*provider*/) const
+   {
+   throw Lookup_Error(algo_name() + " does not support verification");
+   }
+
+std::unique_ptr<PK_Ops::Decryption>
+Private_Key::create_decryption_op(RandomNumberGenerator& /*rng*/,
+                                  const std::string& /*params*/,
+                                  const std::string& /*provider*/) const
+   {
+   throw Lookup_Error(algo_name() + " does not support decryption");
+   }
+
+std::unique_ptr<PK_Ops::KEM_Decryption>
+Private_Key::create_kem_decryption_op(RandomNumberGenerator& /*rng*/,
+                                      const std::string& /*params*/,
+                                      const std::string& /*provider*/) const
+   {
+   throw Lookup_Error(algo_name() + " does not support KEM decryption");
+   }
+
+std::unique_ptr<PK_Ops::Signature>
+Private_Key::create_signature_op(RandomNumberGenerator& /*rng*/,
+                                 const std::string& /*params*/,
+                                 const std::string& /*provider*/) const
+   {
+   throw Lookup_Error(algo_name() + " does not support signatures");
+   }
+
+std::unique_ptr<PK_Ops::Key_Agreement>
+Private_Key::create_key_agreement_op(RandomNumberGenerator& /*rng*/,
+                                     const std::string& /*params*/,
+                                     const std::string& /*provider*/) const
+   {
+   throw Lookup_Error(algo_name() + " does not support key agreement");
+   }
+
+}
+/*
+* PK Operation Types
+* (C) 2010,2015 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+PK_Ops::Encryption_with_EME::Encryption_with_EME(const std::string& eme)
+   {
+   m_eme.reset(get_eme(eme));
+   if(!m_eme.get())
+      throw Algorithm_Not_Found(eme);
+   }
+
+size_t PK_Ops::Encryption_with_EME::max_input_bits() const
+   {
+   return 8 * m_eme->maximum_input_size(max_raw_input_bits());
+   }
+
+secure_vector<uint8_t> PK_Ops::Encryption_with_EME::encrypt(const uint8_t msg[], size_t msg_len,
+                                                         RandomNumberGenerator& rng)
+   {
+   const size_t max_raw = max_raw_input_bits();
+   const std::vector<uint8_t> encoded = unlock(m_eme->encode(msg, msg_len, max_raw, rng));
+   return raw_encrypt(encoded.data(), encoded.size(), rng);
+   }
+
+PK_Ops::Decryption_with_EME::Decryption_with_EME(const std::string& eme)
+   {
+   m_eme.reset(get_eme(eme));
+   if(!m_eme.get())
+      throw Algorithm_Not_Found(eme);
+   }
+
+secure_vector<uint8_t>
+PK_Ops::Decryption_with_EME::decrypt(uint8_t& valid_mask,
+                                     const uint8_t ciphertext[],
+                                     size_t ciphertext_len)
+   {
+   const secure_vector<uint8_t> raw = raw_decrypt(ciphertext, ciphertext_len);
+   return m_eme->unpad(valid_mask, raw.data(), raw.size());
+   }
+
+PK_Ops::Key_Agreement_with_KDF::Key_Agreement_with_KDF(const std::string& kdf)
+   {
+   if(kdf != "Raw")
+      m_kdf.reset(get_kdf(kdf));
+   }
+
+secure_vector<uint8_t> PK_Ops::Key_Agreement_with_KDF::agree(size_t key_len,
+                                                          const uint8_t w[], size_t w_len,
+                                                          const uint8_t salt[], size_t salt_len)
+   {
+   secure_vector<uint8_t> z = raw_agree(w, w_len);
+   if(m_kdf)
+      return m_kdf->derive_key(key_len, z, salt, salt_len);
+   return z;
+  }
+
+PK_Ops::Signature_with_EMSA::Signature_with_EMSA(const std::string& emsa) :
+   Signature(),
+   m_emsa(get_emsa(emsa)),
+   m_hash(hash_for_emsa(emsa)),
+   m_prefix_used(false)
+   {
+   if(!m_emsa)
+      throw Algorithm_Not_Found(emsa);
+   }
+
+void PK_Ops::Signature_with_EMSA::update(const uint8_t msg[], size_t msg_len)
+   {
+   if(has_prefix() && !m_prefix_used)
+      {
+      m_prefix_used = true;
+      secure_vector<uint8_t> prefix = message_prefix();
+      m_emsa->update(prefix.data(), prefix.size());
+      }
+   m_emsa->update(msg, msg_len);
+   }
+
+secure_vector<uint8_t> PK_Ops::Signature_with_EMSA::sign(RandomNumberGenerator& rng)
+   {
+   m_prefix_used = false;
+   const secure_vector<uint8_t> msg = m_emsa->raw_data();
+   const auto padded = m_emsa->encoding_of(msg, this->max_input_bits(), rng);
+   return raw_sign(padded.data(), padded.size(), rng);
+   }
+
+PK_Ops::Verification_with_EMSA::Verification_with_EMSA(const std::string& emsa) :
+   Verification(),
+   m_emsa(get_emsa(emsa)),
+   m_hash(hash_for_emsa(emsa)),
+   m_prefix_used(false)
+   {
+   if(!m_emsa)
+      throw Algorithm_Not_Found(emsa);
+   }
+
+void PK_Ops::Verification_with_EMSA::update(const uint8_t msg[], size_t msg_len)
+   {
+   if(has_prefix() && !m_prefix_used)
+      {
+      m_prefix_used = true;
+      secure_vector<uint8_t> prefix = message_prefix();
+      m_emsa->update(prefix.data(), prefix.size());
+      }
+   m_emsa->update(msg, msg_len);
+   }
+
+bool PK_Ops::Verification_with_EMSA::is_valid_signature(const uint8_t sig[], size_t sig_len)
+   {
+   m_prefix_used = false;
+   const secure_vector<uint8_t> msg = m_emsa->raw_data();
+
+   if(with_recovery())
+      {
+      secure_vector<uint8_t> output_of_key = verify_mr(sig, sig_len);
+      return m_emsa->verify(output_of_key, msg, max_input_bits());
+      }
+   else
+      {
+      Null_RNG rng;
+      secure_vector<uint8_t> encoded = m_emsa->encoding_of(msg, max_input_bits(), rng);
+      return verify(encoded.data(), encoded.size(), sig, sig_len);
+      }
+   }
+
+void PK_Ops::KEM_Encryption_with_KDF::kem_encrypt(secure_vector<uint8_t>& out_encapsulated_key,
+                                                  secure_vector<uint8_t>& out_shared_key,
+                                                  size_t desired_shared_key_len,
+                                                  Botan::RandomNumberGenerator& rng,
+                                                  const uint8_t salt[],
+                                                  size_t salt_len)
+   {
+   secure_vector<uint8_t> raw_shared;
+   this->raw_kem_encrypt(out_encapsulated_key, raw_shared, rng);
+
+   out_shared_key = m_kdf->derive_key(desired_shared_key_len,
+                                      raw_shared.data(), raw_shared.size(),
+                                      salt, salt_len);
+   }
+
+PK_Ops::KEM_Encryption_with_KDF::KEM_Encryption_with_KDF(const std::string& kdf)
+   {
+   m_kdf.reset(get_kdf(kdf));
+   }
+
+secure_vector<uint8_t>
+PK_Ops::KEM_Decryption_with_KDF::kem_decrypt(const uint8_t encap_key[],
+                                             size_t len,
+                                             size_t desired_shared_key_len,
+                                             const uint8_t salt[],
+                                             size_t salt_len)
+   {
+   secure_vector<uint8_t> raw_shared = this->raw_kem_decrypt(encap_key, len);
+
+   return m_kdf->derive_key(desired_shared_key_len,
+                            raw_shared.data(), raw_shared.size(),
+                            salt, salt_len);
+   }
+
+PK_Ops::KEM_Decryption_with_KDF::KEM_Decryption_with_KDF(const std::string& kdf)
+   {
+   m_kdf.reset(get_kdf(kdf));
+   }
+
+}
+/*
+* PKCS #8
+* (C) 1999-2010,2014,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+#if defined(BOTAN_HAS_PKCS5_PBES2)
+#endif
+
+namespace Botan {
+
+namespace PKCS8 {
+
+namespace {
+
+/*
+* Get info from an EncryptedPrivateKeyInfo
+*/
+secure_vector<uint8_t> PKCS8_extract(DataSource& source,
+                                  AlgorithmIdentifier& pbe_alg_id)
+   {
+   secure_vector<uint8_t> key_data;
+
+   BER_Decoder(source)
+      .start_cons(SEQUENCE)
+         .decode(pbe_alg_id)
+         .decode(key_data, OCTET_STRING)
+      .verify_end();
+
+   return key_data;
+   }
+
+/*
+* PEM decode and/or decrypt a private key
+*/
+secure_vector<uint8_t> PKCS8_decode(
+   DataSource& source,
+   std::function<std::string ()> get_passphrase,
+   AlgorithmIdentifier& pk_alg_id,
+   bool is_encrypted)
+   {
+   AlgorithmIdentifier pbe_alg_id;
+   secure_vector<uint8_t> key_data, key;
+
+   try {
+      if(ASN1::maybe_BER(source) && !PEM_Code::matches(source))
+         {
+         if(is_encrypted)
+            {
+            key_data = PKCS8_extract(source, pbe_alg_id);
+            }
+         else
+            {
+            // todo read more efficiently
+            while(!source.end_of_data())
+               {
+               uint8_t b;
+               size_t read = source.read_byte(b);
+               if(read)
+                  {
+                  key_data.push_back(b);
+                  }
+               }
+            }
+         }
+      else
+         {
+         std::string label;
+         key_data = PEM_Code::decode(source, label);
+
+         // todo remove autodetect for pem as well?
+         if(label == "PRIVATE KEY")
+            is_encrypted = false;
+         else if(label == "ENCRYPTED PRIVATE KEY")
+            {
+            DataSource_Memory key_source(key_data);
+            key_data = PKCS8_extract(key_source, pbe_alg_id);
+            }
+         else
+            throw PKCS8_Exception("Unknown PEM label " + label);
+         }
+
+      if(key_data.empty())
+         throw PKCS8_Exception("No key data found");
+      }
+   catch(Decoding_Error& e)
+      {
+      throw Decoding_Error("PKCS #8 private key decoding", e);
+      }
+
+   try
+      {
+      if(is_encrypted)
+         {
+         if(OIDS::oid2str_or_throw(pbe_alg_id.get_oid()) != "PBE-PKCS5v20")
+            throw PKCS8_Exception("Unknown PBE type " + pbe_alg_id.get_oid().to_string());
+#if defined(BOTAN_HAS_PKCS5_PBES2)
+         key = pbes2_decrypt(key_data, get_passphrase(), pbe_alg_id.get_parameters());
+#else
+         BOTAN_UNUSED(get_passphrase);
+         throw Decoding_Error("Private key is encrypted but PBES2 was disabled in build");
+#endif
+         }
+      else
+         key = key_data;
+
+      BER_Decoder(key)
+         .start_cons(SEQUENCE)
+            .decode_and_check<size_t>(0, "Unknown PKCS #8 version number")
+            .decode(pk_alg_id)
+            .decode(key, OCTET_STRING)
+            .discard_remaining()
+         .end_cons();
+      }
+   catch(std::exception& e)
+      {
+      throw Decoding_Error("PKCS #8 private key decoding", e);
+      }
+   return key;
+   }
+
+}
+
+/*
+* BER encode a PKCS #8 private key, unencrypted
+*/
+secure_vector<uint8_t> BER_encode(const Private_Key& key)
+   {
+   // keeping around for compat
+   return key.private_key_info();
+   }
+
+/*
+* PEM encode a PKCS #8 private key, unencrypted
+*/
+std::string PEM_encode(const Private_Key& key)
+   {
+   return PEM_Code::encode(PKCS8::BER_encode(key), "PRIVATE KEY");
+   }
+
+#if defined(BOTAN_HAS_PKCS5_PBES2)
+
+namespace {
+
+std::pair<std::string, std::string>
+choose_pbe_params(const std::string& pbe_algo, const std::string& key_algo)
+   {
+   if(pbe_algo.empty())
+      {
+      /*
+      * For algorithms where we are using a non-RFC format anyway, default to
+      * SIV or GCM. For others (RSA, ECDSA, ...) default to something widely
+      * compatible.
+      */
+      const bool nonstandard_pk = (key_algo == "McEliece" || key_algo == "XMSS");
+
+      if(nonstandard_pk)
+         {
+#if defined(BOTAN_HAS_AEAD_SIV) && defined(BOTAN_HAS_SHA2_64)
+         return std::make_pair("AES-256/SIV", "SHA-512");
+#elif defined(BOTAN_HAS_AEAD_GCM) && defined(BOTAN_HAS_SHA2_64)
+         return std::make_pair("AES-256/GCM", "SHA-512");
+#endif
+         }
+
+      // Default is something compatible with everyone else
+      return std::make_pair("AES-256/CBC", "SHA-256");
+      }
+
+   SCAN_Name request(pbe_algo);
+
+   if(request.arg_count() != 2 ||
+      (request.algo_name() != "PBE-PKCS5v20" && request.algo_name() != "PBES2"))
+      {
+      throw Invalid_Argument("Unsupported PBE " + pbe_algo);
+      }
+
+   return std::make_pair(request.arg(0), request.arg(1));
+   }
+
+}
+
+#endif
+
+/*
+* BER encode a PKCS #8 private key, encrypted
+*/
+std::vector<uint8_t> BER_encode(const Private_Key& key,
+                             RandomNumberGenerator& rng,
+                             const std::string& pass,
+                             std::chrono::milliseconds msec,
+                             const std::string& pbe_algo)
+   {
+#if defined(BOTAN_HAS_PKCS5_PBES2)
+   const auto pbe_params = choose_pbe_params(pbe_algo, key.algo_name());
+
+   const std::pair<AlgorithmIdentifier, std::vector<uint8_t>> pbe_info =
+      pbes2_encrypt_msec(PKCS8::BER_encode(key), pass, msec, nullptr,
+                         pbe_params.first, pbe_params.second, rng);
+
+   std::vector<uint8_t> output;
+   DER_Encoder der(output);
+   der.start_cons(SEQUENCE)
+         .encode(pbe_info.first)
+         .encode(pbe_info.second, OCTET_STRING)
+      .end_cons();
+
+   return output;
+#else
+   BOTAN_UNUSED(key, rng, pass, msec, pbe_algo);
+   throw Encoding_Error("PKCS8::BER_encode cannot encrypt because PBES2 was disabled in build");
+#endif
+   }
+
+/*
+* PEM encode a PKCS #8 private key, encrypted
+*/
+std::string PEM_encode(const Private_Key& key,
+                       RandomNumberGenerator& rng,
+                       const std::string& pass,
+                       std::chrono::milliseconds msec,
+                       const std::string& pbe_algo)
+   {
+   if(pass.empty())
+      return PEM_encode(key);
+
+   return PEM_Code::encode(PKCS8::BER_encode(key, rng, pass, msec, pbe_algo),
+                           "ENCRYPTED PRIVATE KEY");
+   }
+
+/*
+* BER encode a PKCS #8 private key, encrypted
+*/
+std::vector<uint8_t> BER_encode_encrypted_pbkdf_iter(const Private_Key& key,
+                                                     RandomNumberGenerator& rng,
+                                                     const std::string& pass,
+                                                     size_t pbkdf_iterations,
+                                                     const std::string& cipher,
+                                                     const std::string& pbkdf_hash)
+   {
+#if defined(BOTAN_HAS_PKCS5_PBES2)
+   const std::pair<AlgorithmIdentifier, std::vector<uint8_t>> pbe_info =
+      pbes2_encrypt_iter(key.private_key_info(),
+                         pass, pbkdf_iterations,
+                         cipher.empty() ? "AES-256/CBC" : cipher,
+                         pbkdf_hash.empty() ? "SHA-256" : pbkdf_hash,
+                         rng);
+
+   std::vector<uint8_t> output;
+   DER_Encoder der(output);
+   der.start_cons(SEQUENCE)
+         .encode(pbe_info.first)
+         .encode(pbe_info.second, OCTET_STRING)
+      .end_cons();
+
+   return output;
+
+#else
+   BOTAN_UNUSED(key, rng, pass, pbkdf_iterations, cipher, pbkdf_hash);
+   throw Encoding_Error("PKCS8::BER_encode_encrypted_pbkdf_iter cannot encrypt because PBES2 disabled in build");
+#endif
+   }
+
+/*
+* PEM encode a PKCS #8 private key, encrypted
+*/
+std::string PEM_encode_encrypted_pbkdf_iter(const Private_Key& key,
+                                            RandomNumberGenerator& rng,
+                                            const std::string& pass,
+                                            size_t pbkdf_iterations,
+                                            const std::string& cipher,
+                                            const std::string& pbkdf_hash)
+   {
+   return PEM_Code::encode(
+      PKCS8::BER_encode_encrypted_pbkdf_iter(key, rng, pass, pbkdf_iterations, cipher, pbkdf_hash),
+      "ENCRYPTED PRIVATE KEY");
+   }
+
+/*
+* BER encode a PKCS #8 private key, encrypted
+*/
+std::vector<uint8_t> BER_encode_encrypted_pbkdf_msec(const Private_Key& key,
+                                                     RandomNumberGenerator& rng,
+                                                     const std::string& pass,
+                                                     std::chrono::milliseconds pbkdf_msec,
+                                                     size_t* pbkdf_iterations,
+                                                     const std::string& cipher,
+                                                     const std::string& pbkdf_hash)
+   {
+#if defined(BOTAN_HAS_PKCS5_PBES2)
+   const std::pair<AlgorithmIdentifier, std::vector<uint8_t>> pbe_info =
+      pbes2_encrypt_msec(key.private_key_info(), pass,
+                         pbkdf_msec, pbkdf_iterations,
+                         cipher.empty() ? "AES-256/CBC" : cipher,
+                         pbkdf_hash.empty() ? "SHA-256" : pbkdf_hash,
+                         rng);
+
+   std::vector<uint8_t> output;
+   DER_Encoder(output)
+      .start_cons(SEQUENCE)
+         .encode(pbe_info.first)
+         .encode(pbe_info.second, OCTET_STRING)
+      .end_cons();
+
+   return output;
+#else
+   BOTAN_UNUSED(key, rng, pass, pbkdf_msec, pbkdf_iterations, cipher, pbkdf_hash);
+   throw Encoding_Error("BER_encode_encrypted_pbkdf_msec cannot encrypt because PBES2 disabled in build");
+#endif
+   }
+
+/*
+* PEM encode a PKCS #8 private key, encrypted
+*/
+std::string PEM_encode_encrypted_pbkdf_msec(const Private_Key& key,
+                                            RandomNumberGenerator& rng,
+                                            const std::string& pass,
+                                            std::chrono::milliseconds pbkdf_msec,
+                                            size_t* pbkdf_iterations,
+                                            const std::string& cipher,
+                                            const std::string& pbkdf_hash)
+   {
+   return PEM_Code::encode(
+      PKCS8::BER_encode_encrypted_pbkdf_msec(key, rng, pass, pbkdf_msec, pbkdf_iterations, cipher, pbkdf_hash),
+      "ENCRYPTED PRIVATE KEY");
+   }
+
+namespace {
+
+/*
+* Extract a private key (encrypted/unencrypted) and return it
+*/
+std::unique_ptr<Private_Key>
+load_key(DataSource& source,
+         std::function<std::string ()> get_pass,
+         bool is_encrypted)
+   {
+   AlgorithmIdentifier alg_id;
+   secure_vector<uint8_t> pkcs8_key = PKCS8_decode(source, get_pass, alg_id, is_encrypted);
+
+   const std::string alg_name = OIDS::oid2str_or_empty(alg_id.get_oid());
+   if(alg_name.empty())
+      throw PKCS8_Exception("Unknown algorithm OID: " +
+                            alg_id.get_oid().to_string());
+
+   return load_private_key(alg_id, pkcs8_key);
+   }
+
+}
+
+/*
+* Extract an encrypted private key and return it
+*/
+std::unique_ptr<Private_Key> load_key(DataSource& source,
+                      std::function<std::string ()> get_pass)
+   {
+   return load_key(source, get_pass, true);
+   }
+
+/*
+* Extract an encrypted private key and return it
+*/
+std::unique_ptr<Private_Key> load_key(DataSource& source,
+                      const std::string& pass)
+   {
+   // We need to use bind rather than a lambda capturing `pass` here in order to avoid a Clang 8 bug.
+   // See https://github.com/randombit/botan/issues/2255.
+   return load_key(source, std::bind([](const std::string p) { return p; }, pass), true);
+   }
+
+/*
+* Extract an unencrypted private key and return it
+*/
+std::unique_ptr<Private_Key> load_key(DataSource& source)
+   {
+   auto fail_fn = []() -> std::string {
+      throw PKCS8_Exception("Internal error: Attempt to read password for unencrypted key");
+   };
+
+   return load_key(source, fail_fn, false);
+   }
+
+/*
+* Make a copy of this private key
+*/
+std::unique_ptr<Private_Key> copy_key(const Private_Key& key)
+   {
+   DataSource_Memory source(PEM_encode(key));
+   return PKCS8::load_key(source);
+   }
+
+/*
+* Extract an encrypted private key and return it
+*/
+Private_Key* load_key(DataSource& source,
+                      RandomNumberGenerator& rng,
+                      std::function<std::string ()> get_pass)
+   {
+   BOTAN_UNUSED(rng);
+   return PKCS8::load_key(source, get_pass).release();
+   }
+
+/*
+* Extract an encrypted private key and return it
+*/
+Private_Key* load_key(DataSource& source,
+                      RandomNumberGenerator& rng,
+                      const std::string& pass)
+   {
+   BOTAN_UNUSED(rng);
+   return PKCS8::load_key(source, pass).release();
+   }
+
+/*
+* Extract an unencrypted private key and return it
+*/
+Private_Key* load_key(DataSource& source,
+                      RandomNumberGenerator& rng)
+   {
+   BOTAN_UNUSED(rng);
+   return PKCS8::load_key(source).release();
+   }
+
+#if defined(BOTAN_TARGET_OS_HAS_FILESYSTEM)
+
+/*
+* Extract an encrypted private key and return it
+*/
+Private_Key* load_key(const std::string& fsname,
+                      RandomNumberGenerator& rng,
+                      std::function<std::string ()> get_pass)
+   {
+   BOTAN_UNUSED(rng);
+   DataSource_Stream in(fsname);
+   return PKCS8::load_key(in, get_pass).release();
+   }
+
+/*
+* Extract an encrypted private key and return it
+*/
+Private_Key* load_key(const std::string& fsname,
+                      RandomNumberGenerator& rng,
+                      const std::string& pass)
+   {
+   BOTAN_UNUSED(rng);
+   DataSource_Stream in(fsname);
+   // We need to use bind rather than a lambda capturing `pass` here in order to avoid a Clang 8 bug.
+   // See https://github.com/randombit/botan/issues/2255.
+   return PKCS8::load_key(in, std::bind([](const std::string p) { return p; }, pass)).release();
+   }
+
+/*
+* Extract an unencrypted private key and return it
+*/
+Private_Key* load_key(const std::string& fsname,
+                      RandomNumberGenerator& rng)
+   {
+   BOTAN_UNUSED(rng);
+   DataSource_Stream in(fsname);
+   return PKCS8::load_key(in).release();
+   }
+#endif
+
+/*
+* Make a copy of this private key
+*/
+Private_Key* copy_key(const Private_Key& key,
+                      RandomNumberGenerator& rng)
+   {
+   BOTAN_UNUSED(rng);
+   return PKCS8::copy_key(key).release();
+   }
+
+
+
+}
+
+}
+/*
+* (C) 1999-2010,2015,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+secure_vector<uint8_t> PK_Decryptor::decrypt(const uint8_t in[], size_t length) const
+   {
+   uint8_t valid_mask = 0;
+
+   secure_vector<uint8_t> decoded = do_decrypt(valid_mask, in, length);
+
+   if(valid_mask == 0)
+      throw Decoding_Error("Invalid public key ciphertext, cannot decrypt");
+
+   return decoded;
+   }
+
+secure_vector<uint8_t>
+PK_Decryptor::decrypt_or_random(const uint8_t in[],
+                                size_t length,
+                                size_t expected_pt_len,
+                                RandomNumberGenerator& rng,
+                                const uint8_t required_content_bytes[],
+                                const uint8_t required_content_offsets[],
+                                size_t required_contents_length) const
+   {
+   const secure_vector<uint8_t> fake_pms = rng.random_vec(expected_pt_len);
+
+   uint8_t decrypt_valid = 0;
+   secure_vector<uint8_t> decoded = do_decrypt(decrypt_valid, in, length);
+
+   auto valid_mask = CT::Mask<uint8_t>::is_equal(decrypt_valid, 0xFF);
+   valid_mask &= CT::Mask<uint8_t>(CT::Mask<size_t>::is_zero(decoded.size() ^ expected_pt_len));
+
+   decoded.resize(expected_pt_len);
+
+   for(size_t i = 0; i != required_contents_length; ++i)
+      {
+      /*
+      These values are chosen by the application and for TLS are constants,
+      so this early failure via assert is fine since we know 0,1 < 48
+
+      If there is a protocol that has content checks on the key where
+      the expected offsets are controllable by the attacker this could
+      still leak.
+
+      Alternately could always reduce the offset modulo the length?
+      */
+
+      const uint8_t exp = required_content_bytes[i];
+      const uint8_t off = required_content_offsets[i];
+
+      BOTAN_ASSERT(off < expected_pt_len, "Offset in range of plaintext");
+
+      auto eq = CT::Mask<uint8_t>::is_equal(decoded[off], exp);
+
+      valid_mask &= eq;
+      }
+
+   // If valid_mask is false, assign fake pre master instead
+   valid_mask.select_n(decoded.data(), decoded.data(), fake_pms.data(), expected_pt_len);
+
+   return decoded;
+   }
+
+secure_vector<uint8_t>
+PK_Decryptor::decrypt_or_random(const uint8_t in[],
+                                size_t length,
+                                size_t expected_pt_len,
+                                RandomNumberGenerator& rng) const
+   {
+   return decrypt_or_random(in, length, expected_pt_len, rng,
+                            nullptr, nullptr, 0);
+   }
+
+PK_Encryptor_EME::PK_Encryptor_EME(const Public_Key& key,
+                                   RandomNumberGenerator& rng,
+                                   const std::string& padding,
+                                   const std::string& provider)
+   {
+   m_op = key.create_encryption_op(rng, padding, provider);
+   if(!m_op)
+      throw Invalid_Argument("Key type " + key.algo_name() + " does not support encryption");
+   }
+
+PK_Encryptor_EME::~PK_Encryptor_EME() { /* for unique_ptr */ }
+
+size_t PK_Encryptor_EME::ciphertext_length(size_t ptext_len) const
+   {
+   return m_op->ciphertext_length(ptext_len);
+   }
+
+std::vector<uint8_t>
+PK_Encryptor_EME::enc(const uint8_t in[], size_t length, RandomNumberGenerator& rng) const
+   {
+   return unlock(m_op->encrypt(in, length, rng));
+   }
+
+size_t PK_Encryptor_EME::maximum_input_size() const
+   {
+   return m_op->max_input_bits() / 8;
+   }
+
+PK_Decryptor_EME::PK_Decryptor_EME(const Private_Key& key,
+                                   RandomNumberGenerator& rng,
+                                   const std::string& padding,
+                                   const std::string& provider)
+   {
+   m_op = key.create_decryption_op(rng, padding, provider);
+   if(!m_op)
+      throw Invalid_Argument("Key type " + key.algo_name() + " does not support decryption");
+   }
+
+PK_Decryptor_EME::~PK_Decryptor_EME() { /* for unique_ptr */ }
+
+size_t PK_Decryptor_EME::plaintext_length(size_t ctext_len) const
+   {
+   return m_op->plaintext_length(ctext_len);
+   }
+
+secure_vector<uint8_t> PK_Decryptor_EME::do_decrypt(uint8_t& valid_mask,
+                                                 const uint8_t in[], size_t in_len) const
+   {
+   return m_op->decrypt(valid_mask, in, in_len);
+   }
+
+PK_KEM_Encryptor::PK_KEM_Encryptor(const Public_Key& key,
+                                   RandomNumberGenerator& rng,
+                                   const std::string& param,
+                                   const std::string& provider)
+   {
+   m_op = key.create_kem_encryption_op(rng, param, provider);
+   if(!m_op)
+      throw Invalid_Argument("Key type " + key.algo_name() + " does not support KEM encryption");
+   }
+
+PK_KEM_Encryptor::~PK_KEM_Encryptor() { /* for unique_ptr */ }
+
+void PK_KEM_Encryptor::encrypt(secure_vector<uint8_t>& out_encapsulated_key,
+                               secure_vector<uint8_t>& out_shared_key,
+                               size_t desired_shared_key_len,
+                               Botan::RandomNumberGenerator& rng,
+                               const uint8_t salt[],
+                               size_t salt_len)
+   {
+   m_op->kem_encrypt(out_encapsulated_key,
+                     out_shared_key,
+                     desired_shared_key_len,
+                     rng,
+                     salt,
+                     salt_len);
+   }
+
+PK_KEM_Decryptor::PK_KEM_Decryptor(const Private_Key& key,
+                                   RandomNumberGenerator& rng,
+                                   const std::string& param,
+                                   const std::string& provider)
+   {
+   m_op = key.create_kem_decryption_op(rng, param, provider);
+   if(!m_op)
+      throw Invalid_Argument("Key type " + key.algo_name() + " does not support KEM decryption");
+   }
+
+PK_KEM_Decryptor::~PK_KEM_Decryptor() { /* for unique_ptr */ }
+
+secure_vector<uint8_t> PK_KEM_Decryptor::decrypt(const uint8_t encap_key[],
+                                              size_t encap_key_len,
+                                              size_t desired_shared_key_len,
+                                              const uint8_t salt[],
+                                              size_t salt_len)
+   {
+   return m_op->kem_decrypt(encap_key, encap_key_len,
+                            desired_shared_key_len,
+                            salt, salt_len);
+   }
+
+PK_Key_Agreement::PK_Key_Agreement(const Private_Key& key,
+                                   RandomNumberGenerator& rng,
+                                   const std::string& kdf,
+                                   const std::string& provider)
+   {
+   m_op = key.create_key_agreement_op(rng, kdf, provider);
+   if(!m_op)
+      throw Invalid_Argument("Key type " + key.algo_name() + " does not support key agreement");
+   }
+
+PK_Key_Agreement::~PK_Key_Agreement() { /* for unique_ptr */ }
+
+PK_Key_Agreement& PK_Key_Agreement::operator=(PK_Key_Agreement&& other)
+   {
+   if(this != &other)
+      {
+      m_op = std::move(other.m_op);
+      }
+   return (*this);
+   }
+
+PK_Key_Agreement::PK_Key_Agreement(PK_Key_Agreement&& other) :
+   m_op(std::move(other.m_op))
+   {}
+
+size_t PK_Key_Agreement::agreed_value_size() const
+   {
+   return m_op->agreed_value_size();
+   }
+
+SymmetricKey PK_Key_Agreement::derive_key(size_t key_len,
+                                          const uint8_t in[], size_t in_len,
+                                          const uint8_t salt[],
+                                          size_t salt_len) const
+   {
+   return m_op->agree(key_len, in, in_len, salt, salt_len);
+   }
+
+static void check_der_format_supported(Signature_Format format, size_t parts)
+   {
+      if(format != IEEE_1363 && parts == 1)
+         throw Invalid_Argument("PK: This algorithm does not support DER encoding");
+   }
+
+PK_Signer::PK_Signer(const Private_Key& key,
+                     RandomNumberGenerator& rng,
+                     const std::string& emsa,
+                     Signature_Format format,
+                     const std::string& provider)
+   {
+   m_op = key.create_signature_op(rng, emsa, provider);
+   if(!m_op)
+      throw Invalid_Argument("Key type " + key.algo_name() + " does not support signature generation");
+   m_sig_format = format;
+   m_parts = key.message_parts();
+   m_part_size = key.message_part_size();
+   check_der_format_supported(format, m_parts);
+   }
+
+PK_Signer::~PK_Signer() { /* for unique_ptr */ }
+
+void PK_Signer::update(const uint8_t in[], size_t length)
+   {
+   m_op->update(in, length);
+   }
+
+namespace {
+
+std::vector<uint8_t> der_encode_signature(const std::vector<uint8_t>& sig,
+                                          size_t parts,
+                                          size_t part_size)
+   {
+   if(sig.size() % parts != 0 || sig.size() != parts * part_size)
+      throw Encoding_Error("Unexpected size for DER signature");
+
+   std::vector<BigInt> sig_parts(parts);
+   for(size_t i = 0; i != sig_parts.size(); ++i)
+      sig_parts[i].binary_decode(&sig[part_size*i], part_size);
+
+   std::vector<uint8_t> output;
+   DER_Encoder(output)
+      .start_cons(SEQUENCE)
+      .encode_list(sig_parts)
+      .end_cons();
+   return output;
+   }
+
+}
+
+size_t PK_Signer::signature_length() const
+   {
+   if(m_sig_format == IEEE_1363)
+      {
+      return m_op->signature_length();
+      }
+   else if(m_sig_format == DER_SEQUENCE)
+      {
+      // This is a large over-estimate but its easier than computing
+      // the exact value
+      return m_op->signature_length() + (8 + 4*m_parts);
+      }
+   else
+      throw Internal_Error("PK_Signer: Invalid signature format enum");
+   }
+
+std::vector<uint8_t> PK_Signer::signature(RandomNumberGenerator& rng)
+   {
+   const std::vector<uint8_t> sig = unlock(m_op->sign(rng));
+
+   if(m_sig_format == IEEE_1363)
+      {
+      return sig;
+      }
+   else if(m_sig_format == DER_SEQUENCE)
+      {
+      return der_encode_signature(sig, m_parts, m_part_size);
+      }
+   else
+      throw Internal_Error("PK_Signer: Invalid signature format enum");
+   }
+
+PK_Verifier::PK_Verifier(const Public_Key& key,
+                         const std::string& emsa,
+                         Signature_Format format,
+                         const std::string& provider)
+   {
+   m_op = key.create_verification_op(emsa, provider);
+   if(!m_op)
+      throw Invalid_Argument("Key type " + key.algo_name() + " does not support signature verification");
+   m_sig_format = format;
+   m_parts = key.message_parts();
+   m_part_size = key.message_part_size();
+   check_der_format_supported(format, m_parts);
+   }
+
+PK_Verifier::~PK_Verifier() { /* for unique_ptr */ }
+
+void PK_Verifier::set_input_format(Signature_Format format)
+   {
+   check_der_format_supported(format, m_parts);
+   m_sig_format = format;
+   }
+
+bool PK_Verifier::verify_message(const uint8_t msg[], size_t msg_length,
+                                 const uint8_t sig[], size_t sig_length)
+   {
+   update(msg, msg_length);
+   return check_signature(sig, sig_length);
+   }
+
+void PK_Verifier::update(const uint8_t in[], size_t length)
+   {
+   m_op->update(in, length);
+   }
+
+bool PK_Verifier::check_signature(const uint8_t sig[], size_t length)
+   {
+   try {
+      if(m_sig_format == IEEE_1363)
+         {
+         return m_op->is_valid_signature(sig, length);
+         }
+      else if(m_sig_format == DER_SEQUENCE)
+         {
+         std::vector<uint8_t> real_sig;
+         BER_Decoder decoder(sig, length);
+         BER_Decoder ber_sig = decoder.start_cons(SEQUENCE);
+
+         BOTAN_ASSERT_NOMSG(m_parts != 0 && m_part_size != 0);
+
+         size_t count = 0;
+
+         while(ber_sig.more_items())
+            {
+            BigInt sig_part;
+            ber_sig.decode(sig_part);
+            real_sig += BigInt::encode_1363(sig_part, m_part_size);
+            ++count;
+            }
+
+         if(count != m_parts)
+            throw Decoding_Error("PK_Verifier: signature size invalid");
+
+         const std::vector<uint8_t> reencoded =
+            der_encode_signature(real_sig, m_parts, m_part_size);
+
+         if(reencoded.size() != length ||
+            same_mem(reencoded.data(), sig, reencoded.size()) == false)
+            {
+            throw Decoding_Error("PK_Verifier: signature is not the canonical DER encoding");
+            }
+
+         return m_op->is_valid_signature(real_sig.data(), real_sig.size());
+         }
+      else
+         throw Internal_Error("PK_Verifier: Invalid signature format enum");
+      }
+   catch(Invalid_Argument&) { return false; }
+   }
+
+}
+/*
+* Public Key Work Factor Functions
+* (C) 1999-2007,2012 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+#include <cmath>
+
+namespace Botan {
+
+size_t ecp_work_factor(size_t bits)
+   {
+   return bits / 2;
+   }
+
+namespace {
+
+size_t nfs_workfactor(size_t bits, double log2_k)
+   {
+   // approximates natural logarithm of an integer of given bitsize
+   const double log2_e = 1.44269504088896340736;
+   const double log_p = bits / log2_e;
+
+   const double log_log_p = std::log(log_p);
+
+   // RFC 3766: k * e^((1.92 + o(1)) * cubrt(ln(n) * (ln(ln(n)))^2))
+   const double est = 1.92 * std::pow(log_p * log_log_p * log_log_p, 1.0/3.0);
+
+   // return log2 of the workfactor
+   return static_cast<size_t>(log2_k + log2_e * est);
+   }
+
+}
+
+size_t if_work_factor(size_t bits)
+   {
+   // RFC 3766 estimates k at .02 and o(1) to be effectively zero for sizes of interest
+
+   const double log2_k = -5.6438; // log2(.02)
+   return nfs_workfactor(bits, log2_k);
+   }
+
+size_t dl_work_factor(size_t bits)
+   {
+   // Lacking better estimates...
+   return if_work_factor(bits);
+   }
+
+size_t dl_exponent_size(size_t bits)
+   {
+   /*
+   This uses a slightly tweaked version of the standard work factor
+   function above. It assumes k is 1 (thus overestimating the strength
+   of the prime group by 5-6 bits), and always returns at least 128 bits
+   (this only matters for very small primes).
+   */
+   const size_t min_workfactor = 64;
+   const double log2_k = 0;
+
+   return 2 * std::max<size_t>(min_workfactor, nfs_workfactor(bits, log2_k));
+   }
+
+}
+/*
+* X.509 Public Key
+* (C) 1999-2010 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace X509 {
+
+std::vector<uint8_t> BER_encode(const Public_Key& key)
+   {
+   // keeping it around for compat
+   return key.subject_public_key();
+   }
+
+/*
+* PEM encode a X.509 public key
+*/
+std::string PEM_encode(const Public_Key& key)
+   {
+   return PEM_Code::encode(key.subject_public_key(),
+                           "PUBLIC KEY");
+   }
+
+/*
+* Extract a public key and return it
+*/
+Public_Key* load_key(DataSource& source)
+   {
+   try {
+      AlgorithmIdentifier alg_id;
+      std::vector<uint8_t> key_bits;
+
+      if(ASN1::maybe_BER(source) && !PEM_Code::matches(source))
+         {
+         BER_Decoder(source)
+            .start_cons(SEQUENCE)
+            .decode(alg_id)
+            .decode(key_bits, BIT_STRING)
+         .end_cons();
+         }
+      else
+         {
+         DataSource_Memory ber(
+            PEM_Code::decode_check_label(source, "PUBLIC KEY")
+            );
+
+         BER_Decoder(ber)
+            .start_cons(SEQUENCE)
+            .decode(alg_id)
+            .decode(key_bits, BIT_STRING)
+         .end_cons();
+         }
+
+      if(key_bits.empty())
+         throw Decoding_Error("X.509 public key decoding");
+
+      return load_public_key(alg_id, key_bits).release();
+      }
+   catch(Decoding_Error& e)
+      {
+      throw Decoding_Error("X.509 public key decoding", e);
+      }
+   }
+
+#if defined(BOTAN_TARGET_OS_HAS_FILESYSTEM)
+/*
+* Extract a public key and return it
+*/
+Public_Key* load_key(const std::string& fsname)
+   {
+   DataSource_Stream source(fsname, true);
+   return X509::load_key(source);
+   }
+#endif
+
+/*
+* Extract a public key and return it
+*/
+Public_Key* load_key(const std::vector<uint8_t>& mem)
+   {
+   DataSource_Memory source(mem);
+   return X509::load_key(source);
+   }
+
+/*
+* Make a copy of this public key
+*/
+Public_Key* copy_key(const Public_Key& key)
+   {
+   DataSource_Memory source(PEM_encode(key));
+   return X509::load_key(source);
+   }
+
+}
+
+}
+/*
 * RIPEMD-160
 * (C) 1999-2007 Jack Lloyd
 *
@@ -13222,6 +35952,304 @@ Serialized_RNG::Serialized_RNG()
 
 #endif
 
+}
+/*
+* Salsa20 / XSalsa20
+* (C) 1999-2010,2014 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+#define SALSA20_QUARTER_ROUND(x1, x2, x3, x4)    \
+   do {                                          \
+      x2 ^= rotl<7>(x1 + x4);                    \
+      x3 ^= rotl<9>(x2 + x1);                    \
+      x4 ^= rotl<13>(x3 + x2);                   \
+      x1 ^= rotl<18>(x4 + x3);                   \
+   } while(0)
+
+/*
+* Generate HSalsa20 cipher stream (for XSalsa20 IV setup)
+*/
+//static
+void Salsa20::hsalsa20(uint32_t output[8], const uint32_t input[16])
+   {
+   uint32_t x00 = input[ 0], x01 = input[ 1], x02 = input[ 2], x03 = input[ 3],
+            x04 = input[ 4], x05 = input[ 5], x06 = input[ 6], x07 = input[ 7],
+            x08 = input[ 8], x09 = input[ 9], x10 = input[10], x11 = input[11],
+            x12 = input[12], x13 = input[13], x14 = input[14], x15 = input[15];
+
+   for(size_t i = 0; i != 10; ++i)
+      {
+      SALSA20_QUARTER_ROUND(x00, x04, x08, x12);
+      SALSA20_QUARTER_ROUND(x05, x09, x13, x01);
+      SALSA20_QUARTER_ROUND(x10, x14, x02, x06);
+      SALSA20_QUARTER_ROUND(x15, x03, x07, x11);
+
+      SALSA20_QUARTER_ROUND(x00, x01, x02, x03);
+      SALSA20_QUARTER_ROUND(x05, x06, x07, x04);
+      SALSA20_QUARTER_ROUND(x10, x11, x08, x09);
+      SALSA20_QUARTER_ROUND(x15, x12, x13, x14);
+      }
+
+   output[0] = x00;
+   output[1] = x05;
+   output[2] = x10;
+   output[3] = x15;
+   output[4] = x06;
+   output[5] = x07;
+   output[6] = x08;
+   output[7] = x09;
+   }
+
+/*
+* Generate Salsa20 cipher stream
+*/
+//static
+void Salsa20::salsa_core(uint8_t output[64], const uint32_t input[16], size_t rounds)
+   {
+   BOTAN_ASSERT_NOMSG(rounds % 2 == 0);
+
+   uint32_t x00 = input[ 0], x01 = input[ 1], x02 = input[ 2], x03 = input[ 3],
+            x04 = input[ 4], x05 = input[ 5], x06 = input[ 6], x07 = input[ 7],
+            x08 = input[ 8], x09 = input[ 9], x10 = input[10], x11 = input[11],
+            x12 = input[12], x13 = input[13], x14 = input[14], x15 = input[15];
+
+   for(size_t i = 0; i != rounds / 2; ++i)
+      {
+      SALSA20_QUARTER_ROUND(x00, x04, x08, x12);
+      SALSA20_QUARTER_ROUND(x05, x09, x13, x01);
+      SALSA20_QUARTER_ROUND(x10, x14, x02, x06);
+      SALSA20_QUARTER_ROUND(x15, x03, x07, x11);
+
+      SALSA20_QUARTER_ROUND(x00, x01, x02, x03);
+      SALSA20_QUARTER_ROUND(x05, x06, x07, x04);
+      SALSA20_QUARTER_ROUND(x10, x11, x08, x09);
+      SALSA20_QUARTER_ROUND(x15, x12, x13, x14);
+      }
+
+   store_le(x00 + input[ 0], output + 4 *  0);
+   store_le(x01 + input[ 1], output + 4 *  1);
+   store_le(x02 + input[ 2], output + 4 *  2);
+   store_le(x03 + input[ 3], output + 4 *  3);
+   store_le(x04 + input[ 4], output + 4 *  4);
+   store_le(x05 + input[ 5], output + 4 *  5);
+   store_le(x06 + input[ 6], output + 4 *  6);
+   store_le(x07 + input[ 7], output + 4 *  7);
+   store_le(x08 + input[ 8], output + 4 *  8);
+   store_le(x09 + input[ 9], output + 4 *  9);
+   store_le(x10 + input[10], output + 4 * 10);
+   store_le(x11 + input[11], output + 4 * 11);
+   store_le(x12 + input[12], output + 4 * 12);
+   store_le(x13 + input[13], output + 4 * 13);
+   store_le(x14 + input[14], output + 4 * 14);
+   store_le(x15 + input[15], output + 4 * 15);
+   }
+
+#undef SALSA20_QUARTER_ROUND
+
+/*
+* Combine cipher stream with message
+*/
+void Salsa20::cipher(const uint8_t in[], uint8_t out[], size_t length)
+   {
+   verify_key_set(m_state.empty() == false);
+
+   while(length >= m_buffer.size() - m_position)
+      {
+      const size_t available = m_buffer.size() - m_position;
+
+      xor_buf(out, in, &m_buffer[m_position], available);
+      salsa_core(m_buffer.data(), m_state.data(), 20);
+
+      ++m_state[8];
+      m_state[9] += (m_state[8] == 0);
+
+      length -= available;
+      in += available;
+      out += available;
+
+      m_position = 0;
+      }
+
+   xor_buf(out, in, &m_buffer[m_position], length);
+
+   m_position += length;
+   }
+
+void Salsa20::initialize_state()
+   {
+   static const uint32_t TAU[] =
+      { 0x61707865, 0x3120646e, 0x79622d36, 0x6b206574 };
+
+   static const uint32_t SIGMA[] =
+      { 0x61707865, 0x3320646e, 0x79622d32, 0x6b206574 };
+
+   m_state[1] = m_key[0];
+   m_state[2] = m_key[1];
+   m_state[3] = m_key[2];
+   m_state[4] = m_key[3];
+
+   if(m_key.size() == 4)
+      {
+      m_state[0] = TAU[0];
+      m_state[5] = TAU[1];
+      m_state[10] = TAU[2];
+      m_state[15] = TAU[3];
+      m_state[11] = m_key[0];
+      m_state[12] = m_key[1];
+      m_state[13] = m_key[2];
+      m_state[14] = m_key[3];
+      }
+   else
+      {
+      m_state[0] = SIGMA[0];
+      m_state[5] = SIGMA[1];
+      m_state[10] = SIGMA[2];
+      m_state[15] = SIGMA[3];
+      m_state[11] = m_key[4];
+      m_state[12] = m_key[5];
+      m_state[13] = m_key[6];
+      m_state[14] = m_key[7];
+      }
+
+   m_state[6] = 0;
+   m_state[7] = 0;
+   m_state[8] = 0;
+   m_state[9] = 0;
+
+   m_position = 0;
+   }
+
+/*
+* Salsa20 Key Schedule
+*/
+void Salsa20::key_schedule(const uint8_t key[], size_t length)
+   {
+   m_key.resize(length / 4);
+   load_le<uint32_t>(m_key.data(), key, m_key.size());
+
+   m_state.resize(16);
+   m_buffer.resize(64);
+
+   set_iv(nullptr, 0);
+   }
+
+/*
+* Set the Salsa IV
+*/
+void Salsa20::set_iv(const uint8_t iv[], size_t length)
+   {
+   verify_key_set(m_state.empty() == false);
+
+   if(!valid_iv_length(length))
+      throw Invalid_IV_Length(name(), length);
+
+   initialize_state();
+
+   if(length == 0)
+      {
+      // Salsa20 null IV
+      m_state[6] = 0;
+      m_state[7] = 0;
+      }
+   else if(length == 8)
+      {
+      // Salsa20
+      m_state[6] = load_le<uint32_t>(iv, 0);
+      m_state[7] = load_le<uint32_t>(iv, 1);
+      }
+   else
+      {
+      // XSalsa20
+      m_state[6] = load_le<uint32_t>(iv, 0);
+      m_state[7] = load_le<uint32_t>(iv, 1);
+      m_state[8] = load_le<uint32_t>(iv, 2);
+      m_state[9] = load_le<uint32_t>(iv, 3);
+
+      secure_vector<uint32_t> hsalsa(8);
+      hsalsa20(hsalsa.data(), m_state.data());
+
+      m_state[ 1] = hsalsa[0];
+      m_state[ 2] = hsalsa[1];
+      m_state[ 3] = hsalsa[2];
+      m_state[ 4] = hsalsa[3];
+      m_state[ 6] = load_le<uint32_t>(iv, 4);
+      m_state[ 7] = load_le<uint32_t>(iv, 5);
+      m_state[11] = hsalsa[4];
+      m_state[12] = hsalsa[5];
+      m_state[13] = hsalsa[6];
+      m_state[14] = hsalsa[7];
+      }
+
+   m_state[8] = 0;
+   m_state[9] = 0;
+
+   salsa_core(m_buffer.data(), m_state.data(), 20);
+   ++m_state[8];
+   m_state[9] += (m_state[8] == 0);
+
+   m_position = 0;
+   }
+
+bool Salsa20::valid_iv_length(size_t iv_len) const
+   {
+   return (iv_len == 0 || iv_len == 8 || iv_len == 24);
+   }
+
+size_t Salsa20::default_iv_length() const
+   {
+   return 24;
+   }
+
+Key_Length_Specification Salsa20::key_spec() const
+   {
+   return Key_Length_Specification(16, 32, 16);
+   }
+
+StreamCipher* Salsa20::clone() const
+   {
+   return new Salsa20;
+   }
+
+std::string Salsa20::name() const
+   {
+   return "Salsa20";
+   }
+
+/*
+* Clear memory of sensitive data
+*/
+void Salsa20::clear()
+   {
+   zap(m_key);
+   zap(m_state);
+   zap(m_buffer);
+   m_position = 0;
+   }
+
+void Salsa20::seek(uint64_t offset)
+   {
+   verify_key_set(m_state.empty() == false);
+
+   // Find the block offset
+   const uint64_t counter = offset / 64;
+   uint8_t counter8[8];
+   store_le(counter, counter8);
+
+   m_state[8]  = load_le<uint32_t>(counter8, 0);
+   m_state[9] += load_le<uint32_t>(counter8, 1);
+
+   salsa_core(m_buffer.data(), m_state.data(), 20);
+
+   ++m_state[8];
+   m_state[9] += (m_state[8] == 0);
+
+   m_position = offset % 64;
+   }
 }
 /*
 * Serpent
@@ -15038,6 +38066,139 @@ void SHAKE_256::final_result(uint8_t output[])
 
 }
 /*
+* SipHash
+* (C) 2014,2015 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+void SipRounds(uint64_t M, secure_vector<uint64_t>& V, size_t r)
+   {
+   uint64_t V0 = V[0], V1 = V[1], V2 = V[2], V3 = V[3];
+
+   V3 ^= M;
+   for(size_t i = 0; i != r; ++i)
+      {
+      V0 += V1; V2 += V3;
+      V1 = rotl<13>(V1);
+      V3 = rotl<16>(V3);
+      V1 ^= V0; V3 ^= V2;
+      V0 = rotl<32>(V0);
+
+      V2 += V1; V0 += V3;
+      V1 = rotl<17>(V1);
+      V3 = rotl<21>(V3);
+      V1 ^= V2; V3 ^= V0;
+      V2 = rotl<32>(V2);
+      }
+   V0 ^= M;
+
+   V[0] = V0; V[1] = V1; V[2] = V2; V[3] = V3;
+   }
+
+}
+
+void SipHash::add_data(const uint8_t input[], size_t length)
+   {
+   verify_key_set(m_V.empty() == false);
+
+   // SipHash counts the message length mod 256
+   m_words += static_cast<uint8_t>(length);
+
+   if(m_mbuf_pos)
+      {
+      while(length && m_mbuf_pos != 8)
+         {
+         m_mbuf = (m_mbuf >> 8) | (static_cast<uint64_t>(input[0]) << 56);
+         ++m_mbuf_pos;
+         ++input;
+         length--;
+         }
+
+      if(m_mbuf_pos == 8)
+         {
+         SipRounds(m_mbuf, m_V, m_C);
+         m_mbuf_pos = 0;
+         m_mbuf = 0;
+         }
+      }
+
+   while(length >= 8)
+      {
+      SipRounds(load_le<uint64_t>(input, 0), m_V, m_C);
+      input += 8;
+      length -= 8;
+      }
+
+   for(size_t i = 0; i != length; ++i)
+      {
+      m_mbuf = (m_mbuf >> 8) | (static_cast<uint64_t>(input[i]) << 56);
+      m_mbuf_pos++;
+      }
+   }
+
+void SipHash::final_result(uint8_t mac[])
+   {
+   verify_key_set(m_V.empty() == false);
+
+   if(m_mbuf_pos == 0)
+      {
+      m_mbuf = (static_cast<uint64_t>(m_words) << 56);
+      }
+   else if(m_mbuf_pos < 8)
+      {
+      m_mbuf = (m_mbuf >> (64-m_mbuf_pos*8)) | (static_cast<uint64_t>(m_words) << 56);
+      }
+
+   SipRounds(m_mbuf, m_V, m_C);
+
+   m_V[2] ^= 0xFF;
+   SipRounds(0, m_V, m_D);
+
+   const uint64_t X = m_V[0] ^ m_V[1] ^ m_V[2] ^ m_V[3];
+
+   store_le(X, mac);
+
+   clear();
+   }
+
+void SipHash::key_schedule(const uint8_t key[], size_t)
+   {
+   const uint64_t K0 = load_le<uint64_t>(key, 0);
+   const uint64_t K1 = load_le<uint64_t>(key, 1);
+
+   m_V.resize(4);
+   m_V[0] = K0 ^ 0x736F6D6570736575;
+   m_V[1] = K1 ^ 0x646F72616E646F6D;
+   m_V[2] = K0 ^ 0x6C7967656E657261;
+   m_V[3] = K1 ^ 0x7465646279746573;
+   }
+
+void SipHash::clear()
+   {
+   zap(m_V);
+   m_mbuf = 0;
+   m_mbuf_pos = 0;
+   m_words = 0;
+   }
+
+std::string SipHash::name() const
+   {
+   return "SipHash(" + std::to_string(m_C) + "," + std::to_string(m_D) + ")";
+   }
+
+MessageAuthenticationCode* SipHash::clone() const
+   {
+   return new SipHash(m_C, m_D);
+   }
+
+}
+/*
 * SIV Mode Encryption
 * (C) 2013,2017 Jack Lloyd
 * (C) 2016 Daniel Neus, Rohde & Schwarz Cybersecurity
@@ -15670,6 +38831,1147 @@ void SM3::clear()
    {
    MDx_HashFunction::clear();
    std::copy(std::begin(SM3_IV), std::end(SM3_IV), m_digest.begin());
+   }
+
+}
+/*
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+int Sodium::crypto_scalarmult_curve25519(uint8_t out[32], const uint8_t scalar[32], const uint8_t point[32])
+   {
+   curve25519_donna(out, scalar, point);
+   return 0;
+   }
+
+int Sodium::crypto_scalarmult_curve25519_base(uint8_t out[32], const uint8_t scalar[32])
+   {
+   curve25519_basepoint(out, scalar);
+   return 0;
+   }
+int Sodium::crypto_sign_ed25519_detached(uint8_t sig[],
+                                         unsigned long long* sig_len,
+                                         const uint8_t msg[],
+                                         size_t msg_len,
+                                         const uint8_t sk[32])
+   {
+   ed25519_sign(sig, msg, msg_len, sk, nullptr, 0);
+
+   if(sig_len)
+      *sig_len = 64;
+   return 0;
+   }
+
+int Sodium::crypto_sign_ed25519_verify_detached(const uint8_t sig[],
+                                                const uint8_t msg[],
+                                                size_t msg_len,
+                                                const uint8_t pk[32])
+   {
+   const bool ok = ed25519_verify(msg, msg_len, sig, pk, nullptr, 0);
+   return ok ? 0 : -1;
+   }
+
+int Sodium::crypto_sign_ed25519_keypair(uint8_t pk[32], uint8_t sk[64])
+   {
+   secure_vector<uint8_t> seed(32);
+   randombytes_buf(seed.data(), seed.size());
+   return crypto_sign_ed25519_seed_keypair(pk, sk, seed.data());
+   }
+
+int Sodium::crypto_sign_ed25519_seed_keypair(uint8_t pk[], uint8_t sk[],
+                                             const uint8_t seed[])
+   {
+   ed25519_gen_keypair(pk, sk, seed);
+   return 0;
+   }
+
+}
+/*
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+namespace {
+
+int sodium_aead_chacha20poly1305_encrypt(uint8_t ctext[],
+                                         unsigned long long* ctext_len,
+                                         const uint8_t ptext[],
+                                         size_t ptext_len,
+                                         const uint8_t ad[],
+                                         size_t ad_len,
+                                         const uint8_t nonce[],
+                                         size_t nonce_len,
+                                         const uint8_t key[])
+   {
+   auto chacha20poly1305 = AEAD_Mode::create_or_throw("ChaCha20Poly1305", ENCRYPTION);
+
+   chacha20poly1305->set_key(key, 32);
+   chacha20poly1305->set_associated_data(ad, ad_len);
+   chacha20poly1305->start(nonce, nonce_len);
+
+   // FIXME do this in-place
+   secure_vector<uint8_t> buf;
+   buf.reserve(ptext_len + 16);
+   buf.assign(ptext, ptext + ptext_len);
+
+   chacha20poly1305->finish(buf);
+
+   copy_mem(ctext, buf.data(), buf.size());
+   if(ctext_len)
+      *ctext_len = buf.size();
+   return 0;
+   }
+
+int sodium_aead_chacha20poly1305_decrypt(uint8_t ptext[],
+                                         unsigned long long* ptext_len,
+                                         const uint8_t ctext[],
+                                         size_t ctext_len,
+                                         const uint8_t ad[],
+                                         size_t ad_len,
+                                         const uint8_t nonce[],
+                                         size_t nonce_len,
+                                         const uint8_t key[])
+   {
+   if(ctext_len < 16)
+      return -1;
+
+   *ptext_len = 0;
+
+   auto chacha20poly1305 = AEAD_Mode::create_or_throw("ChaCha20Poly1305", DECRYPTION);
+
+   chacha20poly1305->set_key(key, 32);
+   chacha20poly1305->set_associated_data(ad, ad_len);
+   chacha20poly1305->start(nonce, nonce_len);
+
+   // FIXME do this in-place
+   secure_vector<uint8_t> buf;
+   buf.assign(ctext, ctext + ctext_len);
+
+   try
+      {
+      chacha20poly1305->finish(buf);
+      }
+   catch(Invalid_Authentication_Tag&)
+      {
+      return -1;
+      }
+
+   *ptext_len = ctext_len - 16;
+
+   copy_mem(ptext, buf.data(), buf.size());
+   return 0;
+   }
+
+int sodium_aead_chacha20poly1305_encrypt_detached(uint8_t ctext[],
+                                                  uint8_t mac[],
+                                                  const uint8_t ptext[],
+                                                  size_t ptext_len,
+                                                  const uint8_t ad[],
+                                                  size_t ad_len,
+                                                  const uint8_t nonce[],
+                                                  size_t nonce_len,
+                                                  const uint8_t key[])
+   {
+   auto chacha20poly1305 = AEAD_Mode::create_or_throw("ChaCha20Poly1305", ENCRYPTION);
+
+   chacha20poly1305->set_key(key, 32);
+   chacha20poly1305->set_associated_data(ad, ad_len);
+   chacha20poly1305->start(nonce, nonce_len);
+
+   // FIXME do this in-place
+   secure_vector<uint8_t> buf;
+   buf.reserve(ptext_len + 16);
+   buf.assign(ptext, ptext + ptext_len);
+
+   chacha20poly1305->finish(buf);
+
+   copy_mem(ctext, buf.data(), ptext_len);
+   copy_mem(mac, buf.data() + ptext_len, 16);
+   return 0;
+   }
+
+int sodium_aead_chacha20poly1305_decrypt_detached(uint8_t ptext[],
+                                                  const uint8_t ctext[],
+                                                  size_t ctext_len,
+                                                  const uint8_t mac[],
+                                                  const uint8_t ad[],
+                                                  size_t ad_len,
+                                                  const uint8_t nonce[],
+                                                  size_t nonce_len,
+                                                  const uint8_t key[])
+   {
+   auto chacha20poly1305 = AEAD_Mode::create_or_throw("ChaCha20Poly1305", DECRYPTION);
+
+   chacha20poly1305->set_key(key, 32);
+   chacha20poly1305->set_associated_data(ad, ad_len);
+   chacha20poly1305->start(nonce, nonce_len);
+
+   // FIXME do this in-place
+   secure_vector<uint8_t> buf;
+   buf.reserve(ctext_len + 16);
+   buf.assign(ctext, ctext + ctext_len);
+   buf.insert(buf.end(), mac, mac + 16);
+
+   try
+      {
+      chacha20poly1305->finish(buf);
+      }
+   catch(Invalid_Authentication_Tag&)
+      {
+      return -1;
+      }
+
+   copy_mem(ptext, buf.data(), buf.size());
+   return 0;
+   }
+
+}
+
+int Sodium::crypto_aead_chacha20poly1305_ietf_encrypt(uint8_t ctext[],
+                                                      unsigned long long* ctext_len,
+                                                      const uint8_t ptext[],
+                                                      size_t ptext_len,
+                                                      const uint8_t ad[],
+                                                      size_t ad_len,
+                                                      const uint8_t unused_secret_nonce[],
+                                                      const uint8_t nonce[],
+                                                      const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+
+   return sodium_aead_chacha20poly1305_encrypt(
+      ctext, ctext_len, ptext, ptext_len,
+      ad, ad_len, nonce, crypto_aead_chacha20poly1305_ietf_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_chacha20poly1305_ietf_decrypt(uint8_t ptext[],
+                                                      unsigned long long* ptext_len,
+                                                      uint8_t unused_secret_nonce[],
+                                                      const uint8_t ctext[],
+                                                      size_t ctext_len,
+                                                      const uint8_t ad[],
+                                                      size_t ad_len,
+                                                      const uint8_t nonce[],
+                                                      const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+
+   return sodium_aead_chacha20poly1305_decrypt(
+      ptext, ptext_len, ctext, ctext_len,
+      ad, ad_len, nonce, crypto_aead_chacha20poly1305_ietf_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_chacha20poly1305_ietf_encrypt_detached(uint8_t ctext[],
+                                                               uint8_t mac[],
+                                                               unsigned long long* mac_len,
+                                                               const uint8_t ptext[],
+                                                               size_t ptext_len,
+                                                               const uint8_t ad[],
+                                                               size_t ad_len,
+                                                               const uint8_t unused_secret_nonce[],
+                                                               const uint8_t nonce[],
+                                                               const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+
+   if(mac_len)
+      *mac_len = 16;
+
+   return sodium_aead_chacha20poly1305_encrypt_detached(
+      ctext, mac, ptext, ptext_len,
+      ad, ad_len, nonce, crypto_aead_chacha20poly1305_ietf_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_chacha20poly1305_ietf_decrypt_detached(uint8_t ptext[],
+                                                               uint8_t unused_secret_nonce[],
+                                                               const uint8_t ctext[],
+                                                               size_t ctext_len,
+                                                               const uint8_t mac[],
+                                                               const uint8_t ad[],
+                                                               size_t ad_len,
+                                                               const uint8_t nonce[],
+                                                               const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+
+   return sodium_aead_chacha20poly1305_decrypt_detached(
+      ptext, ctext, ctext_len, mac,
+      ad, ad_len, nonce, crypto_aead_chacha20poly1305_ietf_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_chacha20poly1305_encrypt(uint8_t ctext[],
+                                                 unsigned long long* ctext_len,
+                                                 const uint8_t ptext[],
+                                                 size_t ptext_len,
+                                                 const uint8_t ad[],
+                                                 size_t ad_len,
+                                                 const uint8_t unused_secret_nonce[],
+                                                 const uint8_t nonce[],
+                                                 const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+   return sodium_aead_chacha20poly1305_encrypt(
+      ctext, ctext_len, ptext, ptext_len,
+      ad, ad_len, nonce, crypto_aead_chacha20poly1305_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_chacha20poly1305_decrypt(uint8_t ptext[],
+                                                 unsigned long long* ptext_len,
+                                                 uint8_t unused_secret_nonce[],
+                                                 const uint8_t ctext[],
+                                                 size_t ctext_len,
+                                                 const uint8_t ad[],
+                                                 size_t ad_len,
+                                                 const uint8_t nonce[],
+                                                 const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+   return sodium_aead_chacha20poly1305_decrypt(
+      ptext, ptext_len, ctext, ctext_len,
+      ad, ad_len, nonce, crypto_aead_chacha20poly1305_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_chacha20poly1305_encrypt_detached(uint8_t ctext[],
+                                                          uint8_t mac[],
+                                                          unsigned long long* mac_len,
+                                                          const uint8_t ptext[],
+                                                          size_t ptext_len,
+                                                          const uint8_t ad[],
+                                                          size_t ad_len,
+                                                          const uint8_t unused_secret_nonce[],
+                                                          const uint8_t nonce[],
+                                                          const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+   if(mac_len)
+      *mac_len = 16;
+
+   return sodium_aead_chacha20poly1305_encrypt_detached(
+      ctext, mac, ptext, ptext_len,
+      ad, ad_len, nonce, crypto_aead_chacha20poly1305_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_chacha20poly1305_decrypt_detached(uint8_t ptext[],
+                                                          uint8_t unused_secret_nonce[],
+                                                          const uint8_t ctext[],
+                                                          size_t ctext_len,
+                                                          const uint8_t mac[],
+                                                          const uint8_t ad[],
+                                                          size_t ad_len,
+                                                          const uint8_t nonce[],
+                                                          const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+
+   return sodium_aead_chacha20poly1305_decrypt_detached(
+      ptext, ctext, ctext_len, mac,
+      ad, ad_len, nonce, crypto_aead_chacha20poly1305_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_xchacha20poly1305_ietf_encrypt(uint8_t ctext[],
+                                                       unsigned long long* ctext_len,
+                                                       const uint8_t ptext[],
+                                                       size_t ptext_len,
+                                                       const uint8_t ad[],
+                                                       size_t ad_len,
+                                                       const uint8_t unused_secret_nonce[],
+                                                       const uint8_t nonce[],
+                                                       const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+
+   return sodium_aead_chacha20poly1305_encrypt(
+      ctext, ctext_len, ptext, ptext_len,
+      ad, ad_len, nonce, crypto_aead_xchacha20poly1305_ietf_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_xchacha20poly1305_ietf_decrypt(uint8_t ptext[],
+                                                       unsigned long long* ptext_len,
+                                                       uint8_t unused_secret_nonce[],
+                                                       const uint8_t ctext[],
+                                                       size_t ctext_len,
+                                                       const uint8_t ad[],
+                                                       size_t ad_len,
+                                                       const uint8_t nonce[],
+                                                       const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+
+   return sodium_aead_chacha20poly1305_decrypt(
+      ptext, ptext_len, ctext, ctext_len,
+      ad, ad_len, nonce, crypto_aead_xchacha20poly1305_ietf_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_xchacha20poly1305_ietf_encrypt_detached(uint8_t ctext[],
+                                                                uint8_t mac[],
+                                                                unsigned long long* mac_len,
+                                                                const uint8_t ptext[],
+                                                                size_t ptext_len,
+                                                                const uint8_t ad[],
+                                                                size_t ad_len,
+                                                                const uint8_t unused_secret_nonce[],
+                                                                const uint8_t nonce[],
+                                                                const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+   if(mac_len)
+      *mac_len = 16;
+
+   return sodium_aead_chacha20poly1305_encrypt_detached(
+      ctext, mac, ptext, ptext_len,
+      ad, ad_len, nonce, crypto_aead_xchacha20poly1305_ietf_npubbytes(), key);
+   }
+
+int Sodium::crypto_aead_xchacha20poly1305_ietf_decrypt_detached(uint8_t ptext[],
+                                                                uint8_t unused_secret_nonce[],
+                                                                const uint8_t ctext[],
+                                                                size_t ctext_len,
+                                                                const uint8_t mac[],
+                                                                const uint8_t ad[],
+                                                                size_t ad_len,
+                                                                const uint8_t nonce[],
+                                                                const uint8_t key[])
+   {
+   BOTAN_UNUSED(unused_secret_nonce);
+   return sodium_aead_chacha20poly1305_decrypt_detached(
+      ptext, ctext, ctext_len, mac,
+      ad, ad_len, nonce, crypto_aead_xchacha20poly1305_ietf_npubbytes(), key);
+   }
+
+}
+/*
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+int Sodium::crypto_hash_sha512(uint8_t out[64], const uint8_t in[], size_t in_len)
+   {
+   auto sha512 = HashFunction::create_or_throw("SHA-512");
+   sha512->update(in, in_len);
+   sha512->final(out);
+   return 0;
+   }
+
+int Sodium::crypto_hash_sha256(uint8_t out[], const uint8_t in[], size_t in_len)
+   {
+   auto sha256 = HashFunction::create_or_throw("SHA-256");
+   sha256->update(in, in_len);
+   sha256->final(out);
+   return 0;
+   }
+
+int Sodium::crypto_shorthash_siphash24(uint8_t out[8], const uint8_t in[],
+                                       size_t in_len, const uint8_t key[16])
+   {
+   auto mac = MessageAuthenticationCode::create_or_throw("SipHash(2,4)");
+   mac->set_key(key, crypto_shorthash_siphash24_KEYBYTES);
+   mac->update(in, in_len);
+   mac->final(out);
+   return 0;
+   }
+
+int Sodium::crypto_onetimeauth_poly1305(uint8_t out[],
+                                        const uint8_t in[],
+                                        size_t in_len,
+                                        const uint8_t key[])
+   {
+   auto mac = MessageAuthenticationCode::create_or_throw("Poly1305");
+   mac->set_key(key, crypto_onetimeauth_poly1305_KEYBYTES);
+   mac->update(in, in_len);
+   mac->final(out);
+   return 0;
+   }
+
+int Sodium::crypto_onetimeauth_poly1305_verify(const uint8_t mac[],
+                                               const uint8_t in[],
+                                               size_t in_len,
+                                               const uint8_t key[])
+   {
+   secure_vector<uint8_t> computed(crypto_onetimeauth_poly1305_BYTES);
+   crypto_onetimeauth_poly1305(computed.data(), in, in_len, key);
+   return crypto_verify_16(computed.data(), mac) ? 0 : -1;
+   }
+
+int Sodium::crypto_auth_hmacsha512(uint8_t out[],
+                                   const uint8_t in[],
+                                   size_t in_len,
+                                   const uint8_t key[])
+   {
+   auto mac = MessageAuthenticationCode::create_or_throw("HMAC(SHA-512)");
+   mac->set_key(key, crypto_auth_hmacsha512_KEYBYTES);
+   mac->update(in, in_len);
+   mac->final(out);
+   return 0;
+   }
+
+int Sodium::crypto_auth_hmacsha512_verify(const uint8_t mac[],
+                                          const uint8_t in[],
+                                          size_t in_len,
+                                          const uint8_t key[])
+   {
+   secure_vector<uint8_t> computed(crypto_auth_hmacsha512_BYTES);
+   crypto_auth_hmacsha512(computed.data(), in, in_len, key);
+   return crypto_verify_64(computed.data(), mac) ? 0 : -1;
+   }
+
+int Sodium::crypto_auth_hmacsha512256(uint8_t out[],
+                                      const uint8_t in[],
+                                      size_t in_len,
+                                      const uint8_t key[])
+   {
+   auto mac = MessageAuthenticationCode::create_or_throw("HMAC(SHA-512)");
+   mac->set_key(key, crypto_auth_hmacsha512256_KEYBYTES);
+   mac->update(in, in_len);
+
+   secure_vector<uint8_t> buf(64);
+   mac->final(buf);
+
+   copy_mem(out, buf.data(), crypto_auth_hmacsha512256_BYTES);
+   return 0;
+   }
+
+int Sodium::crypto_auth_hmacsha512256_verify(const uint8_t mac[],
+                                             const uint8_t in[],
+                                             size_t in_len,
+                                             const uint8_t key[])
+   {
+   secure_vector<uint8_t> computed(crypto_auth_hmacsha512256_BYTES);
+   crypto_auth_hmacsha512256(computed.data(), in, in_len, key);
+   return crypto_verify_32(computed.data(), mac) ? 0 : -1;
+   }
+
+int Sodium::crypto_auth_hmacsha256(uint8_t out[],
+                                   const uint8_t in[],
+                                   size_t in_len,
+                                   const uint8_t key[])
+   {
+   auto mac = MessageAuthenticationCode::create_or_throw("HMAC(SHA-256)");
+   mac->set_key(key, crypto_auth_hmacsha256_KEYBYTES);
+   mac->update(in, in_len);
+   mac->final(out);
+   return 0;
+   }
+
+int Sodium::crypto_auth_hmacsha256_verify(const uint8_t mac[],
+                                          const uint8_t in[],
+                                          size_t in_len,
+                                          const uint8_t key[])
+   {
+   secure_vector<uint8_t> computed(crypto_auth_hmacsha256_BYTES);
+   crypto_auth_hmacsha256(computed.data(), in, in_len, key);
+   return crypto_verify_32(computed.data(), mac) ? 0 : -1;
+   }
+
+}
+/*
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+int Sodium::crypto_box_curve25519xsalsa20poly1305_seed_keypair(uint8_t pk[32],
+                                                               uint8_t sk[32],
+                                                               const uint8_t seed[32])
+   {
+   secure_vector<uint8_t> digest(64);
+   crypto_hash_sha512(digest.data(), seed, 32);
+   copy_mem(sk, digest.data(), 32);
+   return crypto_scalarmult_curve25519_base(pk, sk);
+   }
+
+int Sodium::crypto_box_curve25519xsalsa20poly1305_keypair(uint8_t pk[32],
+                                                          uint8_t sk[32])
+   {
+   randombytes_buf(sk, 32);
+   return crypto_scalarmult_curve25519_base(pk, sk);
+   }
+
+int Sodium::crypto_box_curve25519xsalsa20poly1305_beforenm(uint8_t key[],
+                                                           const uint8_t pk[32],
+                                                           const uint8_t sk[32])
+   {
+   const uint8_t zero[16] = { 0 };
+   secure_vector<uint8_t> shared(32);
+
+   if(crypto_scalarmult_curve25519(shared.data(), sk, pk) != 0)
+      return -1;
+
+   return crypto_core_hsalsa20(key, zero, shared.data(), nullptr);
+   }
+
+int Sodium::crypto_box_curve25519xsalsa20poly1305(uint8_t ctext[],
+                                                  const uint8_t ptext[],
+                                                  size_t ptext_len,
+                                                  const uint8_t nonce[],
+                                                  const uint8_t pk[32],
+                                                  const uint8_t sk[32])
+   {
+   secure_vector<uint8_t> shared(32);
+
+   if(crypto_box_curve25519xsalsa20poly1305_beforenm(shared.data(), pk, sk) != 0)
+      return -1;
+
+   return crypto_box_curve25519xsalsa20poly1305_afternm(ctext, ptext, ptext_len, nonce, shared.data());
+   }
+
+int Sodium::crypto_box_curve25519xsalsa20poly1305_open(uint8_t ptext[],
+                                                       const uint8_t ctext[],
+                                                       size_t ctext_len,
+                                                       const uint8_t nonce[],
+                                                       const uint8_t pk[32],
+                                                       const uint8_t sk[32])
+   {
+   secure_vector<uint8_t> shared(32);
+
+   if(crypto_box_curve25519xsalsa20poly1305_beforenm(shared.data(), pk, sk) != 0)
+      return -1;
+
+   return crypto_box_curve25519xsalsa20poly1305_open_afternm(ptext, ctext, ctext_len, nonce, shared.data());
+   }
+
+int Sodium::crypto_box_detached(uint8_t ctext[], uint8_t mac[],
+                                const uint8_t ptext[], size_t ptext_len,
+                                const uint8_t nonce[], const uint8_t pk[32],
+                                const uint8_t sk[32])
+   {
+   secure_vector<uint8_t> shared(32);
+
+   if(crypto_box_beforenm(shared.data(), pk, sk) != 0)
+      return -1;
+
+   return crypto_box_detached_afternm(ctext, mac, ptext, ptext_len, nonce, shared.data());
+   }
+
+int Sodium::crypto_box_open_detached(uint8_t ptext[], const uint8_t ctext[],
+                                     const uint8_t mac[],
+                                     size_t ctext_len,
+                                     const uint8_t nonce[],
+                                     const uint8_t pk[32],
+                                     const uint8_t sk[32])
+   {
+   secure_vector<uint8_t> shared(32);
+
+   if(crypto_box_beforenm(shared.data(), pk, sk) != 0)
+      return -1;
+
+   return crypto_box_open_detached_afternm(ptext, ctext, mac, ctext_len, nonce, shared.data());
+   }
+
+}
+/*
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+int Sodium::crypto_stream_chacha20(uint8_t out[], size_t out_len,
+                                   const uint8_t nonce[], const uint8_t key[])
+   {
+   auto chacha = StreamCipher::create_or_throw("ChaCha(20)");
+   chacha->set_key(key, crypto_stream_chacha20_KEYBYTES);
+   chacha->set_iv(nonce, crypto_stream_chacha20_NONCEBYTES);
+   chacha->write_keystream(out, out_len);
+   return 0;
+   }
+
+int Sodium::crypto_stream_chacha20_xor(uint8_t out[], const uint8_t in[],
+                                       size_t in_len, const uint8_t nonce[],
+                                       const uint8_t key[])
+   {
+   return crypto_stream_chacha20_xor_ic(out, in, in_len, nonce, 0, key);
+   }
+
+int Sodium::crypto_stream_chacha20_xor_ic(uint8_t out[], const uint8_t in[],
+                                          size_t in_len,
+                                          const uint8_t nonce[], uint64_t ic,
+                                          const uint8_t key[])
+   {
+   if((ic >> 6) != 0) // otherwise multiply overflows
+      return -1;
+
+   auto chacha = StreamCipher::create_or_throw("ChaCha(20)");
+   chacha->set_key(key, crypto_stream_chacha20_KEYBYTES);
+   chacha->set_iv(nonce, crypto_stream_chacha20_NONCEBYTES);
+   chacha->seek(ic * 64);
+   chacha->cipher(in, out, in_len);
+   return 0;
+   }
+
+int Sodium::crypto_stream_chacha20_ietf(uint8_t out[], size_t out_len,
+                                        const uint8_t nonce[], const uint8_t key[])
+   {
+   auto chacha = StreamCipher::create_or_throw("ChaCha(20)");
+   chacha->set_key(key, crypto_stream_chacha20_ietf_KEYBYTES);
+   chacha->set_iv(nonce, crypto_stream_chacha20_ietf_NONCEBYTES);
+   chacha->write_keystream(out, out_len);
+   return 0;
+   }
+
+int Sodium::crypto_stream_chacha20_ietf_xor(uint8_t out[],
+                                            const uint8_t in[], size_t in_len,
+                                            const uint8_t nonce[],
+                                            const uint8_t key[])
+   {
+   return crypto_stream_chacha20_ietf_xor_ic(out, in, in_len, nonce, 0, key);
+   }
+
+int Sodium::crypto_stream_chacha20_ietf_xor_ic(uint8_t out[],
+                                               const uint8_t in[], size_t in_len,
+                                               const uint8_t nonce[], uint32_t ic,
+                                               const uint8_t key[])
+   {
+   auto chacha = StreamCipher::create_or_throw("ChaCha(20)");
+   chacha->set_key(key, crypto_stream_chacha20_ietf_KEYBYTES);
+   chacha->set_iv(nonce, crypto_stream_chacha20_ietf_NONCEBYTES);
+   chacha->seek(static_cast<uint64_t>(ic) * 64);
+   chacha->cipher(in, out, in_len);
+   return 0;
+   }
+
+int Sodium::crypto_stream_xchacha20(uint8_t out[], size_t out_len,
+                                    const uint8_t nonce[], const uint8_t key[])
+   {
+   auto chacha = StreamCipher::create_or_throw("ChaCha(20)");
+   chacha->set_key(key, crypto_stream_xchacha20_KEYBYTES);
+   chacha->set_iv(nonce, crypto_stream_xchacha20_NONCEBYTES);
+   chacha->write_keystream(out, out_len);
+   return 0;
+   }
+
+int Sodium::crypto_stream_xchacha20_xor(uint8_t out[], const uint8_t in[],
+                                       size_t in_len, const uint8_t nonce[],
+                                       const uint8_t key[])
+   {
+   return crypto_stream_xchacha20_xor_ic(out, in, in_len, nonce, 0, key);
+   }
+
+int Sodium::crypto_stream_xchacha20_xor_ic(uint8_t out[], const uint8_t in[],
+                                           size_t in_len,
+                                           const uint8_t nonce[], uint64_t ic,
+                                           const uint8_t key[])
+   {
+   if((ic >> 6) != 0) // otherwise multiply overflows
+      return -1;
+
+   auto chacha = StreamCipher::create_or_throw("ChaCha(20)");
+   chacha->set_key(key, crypto_stream_xchacha20_KEYBYTES);
+   chacha->set_iv(nonce, crypto_stream_xchacha20_NONCEBYTES);
+   chacha->seek(ic * 64);
+   chacha->cipher(in, out, in_len);
+   return 0;
+   }
+
+}
+/*
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+int Sodium::crypto_core_hsalsa20(uint8_t out[], const uint8_t in[],
+                                 const uint8_t key[], const uint8_t c[])
+   {
+   uint32_t in32[16] = { 0 };
+
+   static const uint32_t SIGMA[] =
+      { 0x61707865, 0x3320646e, 0x79622d32, 0x6b206574 };
+
+   if(c == nullptr)
+      {
+      in32[0] = SIGMA[0];
+      in32[5] = SIGMA[1];
+      in32[10] = SIGMA[2];
+      in32[15] = SIGMA[3];
+      }
+   else
+      {
+      in32[0] = load_le<uint32_t>(c, 0);
+      in32[5] = load_le<uint32_t>(c, 1);
+      in32[10] = load_le<uint32_t>(c, 2);
+      in32[15] = load_le<uint32_t>(c, 3);
+      }
+
+   in32[1] = load_le<uint32_t>(key, 0);
+   in32[2] = load_le<uint32_t>(key, 1);
+   in32[3] = load_le<uint32_t>(key, 2);
+   in32[4] = load_le<uint32_t>(key, 3);
+
+   in32[6] = load_le<uint32_t>(in, 0);
+   in32[7] = load_le<uint32_t>(in, 1);
+   in32[8] = load_le<uint32_t>(in, 2);
+   in32[9] = load_le<uint32_t>(in, 3);
+
+   in32[11] = load_le<uint32_t>(key, 4);
+   in32[12] = load_le<uint32_t>(key, 5);
+   in32[13] = load_le<uint32_t>(key, 6);
+   in32[14] = load_le<uint32_t>(key, 7);
+
+   uint32_t out32[8] = { 0 };
+   Salsa20::hsalsa20(out32, in32);
+
+   copy_out_le(out, 32, out32);
+   return 0;
+   }
+
+int Sodium::crypto_stream_salsa20(uint8_t out[], size_t out_len,
+                                  const uint8_t nonce[], const uint8_t key[])
+   {
+   Salsa20 salsa;
+   salsa.set_key(key, crypto_stream_salsa20_KEYBYTES);
+   salsa.set_iv(nonce, crypto_stream_salsa20_NONCEBYTES);
+   salsa.write_keystream(out, out_len);
+   return 0;
+   }
+
+int Sodium::crypto_stream_salsa20_xor(uint8_t out[], const uint8_t in[],
+                                      size_t in_len, const uint8_t nonce[],
+                                      const uint8_t key[])
+   {
+   return crypto_stream_salsa20_xor_ic(out, in, in_len, nonce, 0, key);
+   }
+
+int Sodium::crypto_stream_salsa20_xor_ic(uint8_t out[], const uint8_t in[],
+                                         size_t in_len,
+                                         const uint8_t nonce[], uint64_t ic,
+                                         const uint8_t key[])
+   {
+   if((ic >> 6) != 0) // otherwise multiply overflows
+      return -1;
+
+   Salsa20 salsa;
+   salsa.set_key(key, crypto_stream_salsa20_KEYBYTES);
+   salsa.set_iv(nonce, crypto_stream_salsa20_NONCEBYTES);
+   salsa.seek(ic * 64);
+   salsa.cipher(in, out, in_len);
+   return 0;
+   }
+
+int Sodium::crypto_stream_xsalsa20(uint8_t out[], size_t out_len,
+                                   const uint8_t nonce[], const uint8_t key[])
+   {
+   Salsa20 salsa;
+   salsa.set_key(key, crypto_stream_xsalsa20_KEYBYTES);
+   salsa.set_iv(nonce, crypto_stream_xsalsa20_NONCEBYTES);
+   salsa.write_keystream(out, out_len);
+   return 0;
+   }
+
+int Sodium::crypto_stream_xsalsa20_xor(uint8_t out[], const uint8_t in[],
+                                       size_t in_len, const uint8_t nonce[],
+                                       const uint8_t key[])
+   {
+   return crypto_stream_xsalsa20_xor_ic(out, in, in_len, nonce, 0, key);
+   }
+
+int Sodium::crypto_stream_xsalsa20_xor_ic(uint8_t out[], const uint8_t in[],
+                                          size_t in_len,
+                                          const uint8_t nonce[], uint64_t ic,
+                                          const uint8_t key[])
+   {
+   if((ic >> 6) != 0) // otherwise multiply overflows
+      return -1;
+
+   Salsa20 salsa;
+   salsa.set_key(key, crypto_stream_xsalsa20_KEYBYTES);
+   salsa.set_iv(nonce, crypto_stream_xsalsa20_NONCEBYTES);
+   salsa.seek(ic * 64);
+   salsa.cipher(in, out, in_len);
+   return 0;
+   }
+
+}
+/*
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+int Sodium::crypto_secretbox_xsalsa20poly1305(uint8_t ctext[],
+                                              const uint8_t ptext[],
+                                              size_t ptext_len,
+                                              const uint8_t nonce[],
+                                              const uint8_t key[])
+   {
+   if(ptext_len < 32)
+      return -1;
+
+   auto salsa = StreamCipher::create_or_throw("Salsa20");
+   salsa->set_key(key, crypto_secretbox_KEYBYTES);
+   salsa->set_iv(nonce, crypto_secretbox_NONCEBYTES);
+
+   secure_vector<uint8_t> auth_key(32);
+   salsa->write_keystream(auth_key.data(), auth_key.size());
+
+   salsa->cipher(ptext + 32, ctext + 32, ptext_len - 32);
+
+   auto poly1305 = MessageAuthenticationCode::create_or_throw("Poly1305");
+   poly1305->set_key(auth_key);
+   poly1305->update(ctext + 32, ptext_len - 32);
+   poly1305->final(ctext + 16);
+
+   clear_mem(ctext, 16);
+   return 0;
+   }
+
+int Sodium::crypto_secretbox_xsalsa20poly1305_open(uint8_t ptext[],
+                                                   const uint8_t ctext[],
+                                                   size_t ctext_len,
+                                                   const uint8_t nonce[],
+                                                   const uint8_t key[])
+   {
+   if(ctext_len < crypto_box_curve25519xsalsa20poly1305_ZEROBYTES)
+      {
+      return -1;
+      }
+
+   auto salsa = StreamCipher::create_or_throw("Salsa20");
+   salsa->set_key(key, crypto_secretbox_KEYBYTES);
+   salsa->set_iv(nonce, crypto_secretbox_NONCEBYTES);
+
+   secure_vector<uint8_t> auth_key(32);
+   salsa->write_keystream(auth_key.data(), auth_key.size());
+
+   auto poly1305 = MessageAuthenticationCode::create_or_throw("Poly1305");
+   poly1305->set_key(auth_key);
+   poly1305->update(ctext + 32, ctext_len - 32);
+   secure_vector<uint8_t> computed = poly1305->final();
+
+   if(!constant_time_compare(computed.data(), ctext + 16, 16))
+      return -1;
+
+   salsa->cipher(ctext + 32, ptext + 32, ctext_len - 32);
+
+   clear_mem(ptext, 32);
+   return 0;
+   }
+
+int Sodium::crypto_secretbox_detached(uint8_t ctext[], uint8_t mac[],
+                                      const uint8_t ptext[],
+                                      size_t ptext_len,
+                                      const uint8_t nonce[],
+                                      const uint8_t key[])
+   {
+   auto salsa = StreamCipher::create_or_throw("Salsa20");
+   salsa->set_key(key, crypto_secretbox_KEYBYTES);
+   salsa->set_iv(nonce, crypto_secretbox_NONCEBYTES);
+
+   secure_vector<uint8_t> auth_key(32);
+   salsa->write_keystream(auth_key.data(), auth_key.size());
+
+   salsa->cipher(ptext, ctext, ptext_len);
+
+   auto poly1305 = MessageAuthenticationCode::create_or_throw("Poly1305");
+   poly1305->set_key(auth_key);
+   poly1305->update(ctext, ptext_len);
+   poly1305->final(mac);
+
+   return 0;
+   }
+
+int Sodium::crypto_secretbox_open_detached(uint8_t ptext[],
+                                           const uint8_t ctext[],
+                                           const uint8_t mac[],
+                                           size_t ctext_len,
+                                           const uint8_t nonce[],
+                                           const uint8_t key[])
+   {
+   auto salsa = StreamCipher::create_or_throw("Salsa20");
+   salsa->set_key(key, crypto_secretbox_KEYBYTES);
+   salsa->set_iv(nonce, crypto_secretbox_NONCEBYTES);
+
+   secure_vector<uint8_t> auth_key(32);
+   salsa->write_keystream(auth_key.data(), auth_key.size());
+
+   auto poly1305 = MessageAuthenticationCode::create_or_throw("Poly1305");
+   poly1305->set_key(auth_key);
+   poly1305->update(ctext, ctext_len);
+   secure_vector<uint8_t> computed_mac = poly1305->final();
+
+   if(!constant_time_compare(mac, computed_mac.data(), computed_mac.size()))
+      return -1;
+
+   salsa->cipher(ctext, ptext, ctext_len);
+
+   return 0;
+   }
+
+}
+/*
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+#include <cstdlib>
+
+namespace Botan {
+
+void Sodium::randombytes_buf(void* buf, size_t len)
+   {
+   system_rng().randomize(static_cast<uint8_t*>(buf), len);
+   }
+
+uint32_t Sodium::randombytes_uniform(uint32_t upper_bound)
+   {
+   if(upper_bound <= 1)
+      return 0;
+
+   // Not completely uniform
+   uint64_t x;
+   randombytes_buf(&x, sizeof(x));
+   return x % upper_bound;
+   }
+
+void Sodium::randombytes_buf_deterministic(void* buf, size_t size, const uint8_t seed[randombytes_SEEDBYTES])
+   {
+   const unsigned char nonce[12] = {
+      'L', 'i', 'b', 's', 'o', 'd', 'i', 'u', 'm', 'D', 'R', 'G'
+   };
+
+   ChaCha chacha(20);
+   chacha.set_key(seed, randombytes_SEEDBYTES);
+   chacha.set_iv(nonce, sizeof(nonce));
+   chacha.write_keystream(static_cast<uint8_t*>(buf), size);
+   }
+
+int Sodium::crypto_verify_16(const uint8_t x[16], const uint8_t y[16])
+   {
+   return same_mem(x, y, 16);
+   }
+
+int Sodium::crypto_verify_32(const uint8_t x[32], const uint8_t y[32])
+   {
+   return same_mem(x, y, 32);
+   }
+
+int Sodium::crypto_verify_64(const uint8_t x[64], const uint8_t y[64])
+   {
+   return same_mem(x, y, 64);
+   }
+
+void Sodium::sodium_memzero(void* ptr, size_t len)
+   {
+   secure_scrub_memory(ptr, len);
+   }
+
+int Sodium::sodium_memcmp(const void* x, const void* y, size_t len)
+   {
+   const bool same = constant_time_compare(static_cast<const uint8_t*>(x), static_cast<const uint8_t*>(y), len);
+   return same ? 0 : -1;
+   }
+
+int Sodium::sodium_compare(const uint8_t x[], const uint8_t y[], size_t len)
+   {
+   const uint8_t LT = static_cast<uint8_t>(-1);
+   const uint8_t EQ = 0;
+   const uint8_t GT = 1;
+
+   uint8_t result = EQ; // until found otherwise
+
+   for(size_t i = 0; i != len; ++i)
+      {
+      const auto is_eq = CT::Mask<uint8_t>::is_equal(x[i], y[i]);
+      const auto is_lt = CT::Mask<uint8_t>::is_lt(x[i], y[i]);
+      result = is_eq.select(result, is_lt.select(LT, GT));
+      }
+
+   return static_cast<int8_t>(result);
+   }
+
+int Sodium::sodium_is_zero(const uint8_t b[], size_t len)
+   {
+   uint8_t sum = 0;
+   for(size_t i = 0; i != len; ++i)
+      sum |= b[i];
+   return static_cast<int>(CT::Mask<uint8_t>::expand(sum).if_not_set_return(1));
+   }
+
+void Sodium::sodium_increment(uint8_t b[], size_t len)
+   {
+   uint8_t carry = 1;
+   for(size_t i = 0; i != len; ++i)
+      {
+      b[i] += carry;
+      carry &= (b[i] == 0);
+      }
+   }
+
+void Sodium::sodium_add(uint8_t a[], const uint8_t b[], size_t len)
+   {
+   uint8_t carry = 0;
+   for(size_t i = 0; i != len; ++i)
+      {
+      a[i] += b[i] + carry;
+      carry = (a[i] < b[i]);
+      }
+   }
+
+void* Sodium::sodium_malloc(size_t size)
+   {
+   const uint64_t len = size;
+
+   if(size + sizeof(len) < size)
+      return nullptr;
+
+   uint8_t* p = static_cast<uint8_t*>(std::calloc(size + sizeof(len), 1));
+   store_le(len, p);
+   return p + 8;
+   }
+
+void Sodium::sodium_free(void* ptr)
+   {
+   if(ptr == nullptr)
+      return;
+
+   uint8_t* p = static_cast<uint8_t*>(ptr) - 8;
+   const uint64_t len = load_le<uint64_t>(p, 0);
+   secure_scrub_memory(ptr, static_cast<size_t>(len));
+   std::free(p);
+   }
+
+void* Sodium::sodium_allocarray(size_t count, size_t size)
+   {
+   const size_t bytes = count * size;
+   if(bytes < count || bytes < size)
+      return nullptr;
+   return sodium_malloc(bytes);
+   }
+
+int Sodium::sodium_mprotect_noaccess(void* ptr)
+   {
+   OS::page_prohibit_access(ptr);
+   return 0;
+   }
+
+int Sodium::sodium_mprotect_readwrite(void* ptr)
+   {
+   OS::page_allow_access(ptr);
+   return 0;
    }
 
 }
@@ -17068,6 +41370,293 @@ extern const uint64_t STREEBOG_C[12][8] =
 
 }
 /*
+* System RNG
+* (C) 2014,2015,2017,2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+#if defined(BOTAN_TARGET_OS_HAS_RTLGENRANDOM)
+  #define NOMINMAX 1
+  #define _WINSOCKAPI_ // stop windows.h including winsock.h
+  #include <windows.h>
+
+#elif defined(BOTAN_TARGET_OS_HAS_CRYPTO_NG)
+  #include <bcrypt.h>
+
+#elif defined(BOTAN_TARGET_OS_HAS_ARC4RANDOM)
+  #include <stdlib.h>
+
+#elif defined(BOTAN_TARGET_OS_HAS_GETRANDOM)
+  #include <sys/random.h>
+  #include <errno.h>
+
+#elif defined(BOTAN_TARGET_OS_HAS_DEV_RANDOM)
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <errno.h>
+#endif
+
+namespace Botan {
+
+namespace {
+
+#if defined(BOTAN_TARGET_OS_HAS_RTLGENRANDOM)
+
+class System_RNG_Impl final : public RandomNumberGenerator
+   {
+   public:
+      System_RNG_Impl() : m_advapi("advapi32.dll")
+         {
+         // This throws if the function is not found
+         m_rtlgenrandom = m_advapi.resolve<RtlGenRandom_fptr>("SystemFunction036");
+         }
+
+      void randomize(uint8_t buf[], size_t len) override
+         {
+         bool success = m_rtlgenrandom(buf, ULONG(len)) == TRUE;
+         if(!success)
+            throw System_Error("RtlGenRandom failed");
+         }
+
+      void add_entropy(const uint8_t[], size_t) override { /* ignored */ }
+      bool is_seeded() const override { return true; }
+      bool accepts_input() const override { return false; }
+      void clear() override { /* not possible */ }
+      std::string name() const override { return "RtlGenRandom"; }
+   private:
+      // Use type BYTE instead of BOOLEAN because of a naming conflict
+      // https://msdn.microsoft.com/en-us/library/windows/desktop/aa387694(v=vs.85).aspx
+      // https://msdn.microsoft.com/en-us/library/windows/desktop/aa383751(v=vs.85).aspx
+      using RtlGenRandom_fptr = BYTE (NTAPI *)(PVOID, ULONG);
+
+      Dynamically_Loaded_Library m_advapi;
+      RtlGenRandom_fptr m_rtlgenrandom;
+   };
+
+#elif defined(BOTAN_TARGET_OS_HAS_CRYPTO_NG)
+
+class System_RNG_Impl final : public RandomNumberGenerator
+   {
+   public:
+      System_RNG_Impl()
+         {
+         NTSTATUS ret = ::BCryptOpenAlgorithmProvider(&m_prov,
+                                                      BCRYPT_RNG_ALGORITHM,
+                                                      MS_PRIMITIVE_PROVIDER, 0);
+         if(ret != STATUS_SUCCESS)
+            throw System_Error("System_RNG failed to acquire crypto provider", ret);
+         }
+
+      ~System_RNG_Impl()
+         {
+         ::BCryptCloseAlgorithmProvider(m_prov, 0);
+         }
+
+      void randomize(uint8_t buf[], size_t len) override
+         {
+         NTSTATUS ret = ::BCryptGenRandom(m_prov, static_cast<PUCHAR>(buf), static_cast<ULONG>(len), 0);
+         if(ret != STATUS_SUCCESS)
+            throw System_Error("System_RNG call to BCryptGenRandom failed", ret);
+         }
+
+      void add_entropy(const uint8_t in[], size_t length) override
+         {
+         /*
+         There is a flag BCRYPT_RNG_USE_ENTROPY_IN_BUFFER to provide
+         entropy inputs, but it is ignored in Windows 8 and later.
+         */
+         }
+
+      bool is_seeded() const override { return true; }
+      bool accepts_input() const override { return false; }
+      void clear() override { /* not possible */ }
+      std::string name() const override { return "crypto_ng"; }
+   private:
+      BCRYPT_ALG_HANDLE m_prov;
+   };
+
+#elif defined(BOTAN_TARGET_OS_HAS_ARC4RANDOM)
+
+class System_RNG_Impl final : public RandomNumberGenerator
+   {
+   public:
+      // No constructor or destructor needed as no userland state maintained
+
+      void randomize(uint8_t buf[], size_t len) override
+         {
+         // macOS 10.15 arc4random crashes if called with buf == nullptr && len == 0
+         if(len > 0)
+            {
+            ::arc4random_buf(buf, len);
+            }
+         }
+
+      bool accepts_input() const override { return false; }
+      void add_entropy(const uint8_t[], size_t) override { /* ignored */ }
+      bool is_seeded() const override { return true; }
+      void clear() override { /* not possible */ }
+      std::string name() const override { return "arc4random"; }
+   };
+
+#elif defined(BOTAN_TARGET_OS_HAS_GETRANDOM)
+
+class System_RNG_Impl final : public RandomNumberGenerator
+   {
+   public:
+      // No constructor or destructor needed as no userland state maintained
+
+      void randomize(uint8_t buf[], size_t len) override
+         {
+         const unsigned int flags = 0;
+
+         while(len > 0)
+            {
+            const ssize_t got = ::getrandom(buf, len, flags);
+
+            if(got < 0)
+               {
+               if(errno == EINTR)
+                  continue;
+               throw System_Error("System_RNG getrandom failed", errno);
+               }
+
+            buf += got;
+            len -= got;
+            }
+         }
+
+      bool accepts_input() const override { return false; }
+      void add_entropy(const uint8_t[], size_t) override { /* ignored */ }
+      bool is_seeded() const override { return true; }
+      void clear() override { /* not possible */ }
+      std::string name() const override { return "getrandom"; }
+   };
+
+
+#elif defined(BOTAN_TARGET_OS_HAS_DEV_RANDOM)
+
+// Read a random device
+
+class System_RNG_Impl final : public RandomNumberGenerator
+   {
+   public:
+      System_RNG_Impl()
+         {
+#ifndef O_NOCTTY
+#define O_NOCTTY 0
+#endif
+
+         m_fd = ::open(BOTAN_SYSTEM_RNG_DEVICE, O_RDWR | O_NOCTTY);
+
+         if(m_fd >= 0)
+            {
+            m_writable = true;
+            }
+         else
+            {
+            /*
+            Cannot open in read-write mode. Fall back to read-only,
+            calls to add_entropy will fail, but randomize will work
+            */
+            m_fd = ::open(BOTAN_SYSTEM_RNG_DEVICE, O_RDONLY | O_NOCTTY);
+            m_writable = false;
+            }
+
+         if(m_fd < 0)
+            throw System_Error("System_RNG failed to open RNG device", errno);
+         }
+
+      ~System_RNG_Impl()
+         {
+         ::close(m_fd);
+         m_fd = -1;
+         }
+
+      void randomize(uint8_t buf[], size_t len) override;
+      void add_entropy(const uint8_t in[], size_t length) override;
+      bool is_seeded() const override { return true; }
+      bool accepts_input() const override { return m_writable; }
+      void clear() override { /* not possible */ }
+      std::string name() const override { return BOTAN_SYSTEM_RNG_DEVICE; }
+   private:
+      int m_fd;
+      bool m_writable;
+   };
+
+void System_RNG_Impl::randomize(uint8_t buf[], size_t len)
+   {
+   while(len)
+      {
+      ssize_t got = ::read(m_fd, buf, len);
+
+      if(got < 0)
+         {
+         if(errno == EINTR)
+            continue;
+         throw System_Error("System_RNG read failed", errno);
+         }
+      if(got == 0)
+         throw System_Error("System_RNG EOF on device"); // ?!?
+
+      buf += got;
+      len -= got;
+      }
+   }
+
+void System_RNG_Impl::add_entropy(const uint8_t input[], size_t len)
+   {
+   if(!m_writable)
+      return;
+
+   while(len)
+      {
+      ssize_t got = ::write(m_fd, input, len);
+
+      if(got < 0)
+         {
+         if(errno == EINTR)
+            continue;
+
+         /*
+         * This is seen on OS X CI, despite the fact that the man page
+         * for macOS urandom explicitly states that writing to it is
+         * supported, and write(2) does not document EPERM at all.
+         * But in any case EPERM seems indicative of a policy decision
+         * by the OS or sysadmin that additional entropy is not wanted
+         * in the system pool, so we accept that and return here,
+         * since there is no corrective action possible.
+         *
+         * In Linux EBADF or EPERM is returned if m_fd is not opened for
+         * writing.
+         */
+         if(errno == EPERM || errno == EBADF)
+            return;
+
+         // maybe just ignore any failure here and return?
+         throw System_Error("System_RNG write failed", errno);
+         }
+
+      input += got;
+      len -= got;
+      }
+   }
+
+#endif
+
+}
+
+RandomNumberGenerator& system_rng()
+   {
+   static System_RNG_Impl g_system_rng;
+   return g_system_rng;
+   }
+
+}
+/*
 * Threefish-512
 * (C) 2013,2014,2016 Jack Lloyd
 *
@@ -17947,7 +42536,6 @@ void assertion_failure(const char* expr_str,
 */
 
 #include <ctime>
-#include <iomanip>
 #include <stdlib.h>
 
 namespace Botan {
@@ -18066,7 +42654,6 @@ calendar_point calendar_value(
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <cctype>
 
 namespace Botan {
 
@@ -18429,7 +43016,6 @@ secure_vector<uint8_t> strip_leading_zeros(const uint8_t in[], size_t length)
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <istream>
 
 #if defined(BOTAN_TARGET_OS_HAS_FILESYSTEM)
   #include <fstream>
@@ -18961,7 +43547,6 @@ std::vector<std::string> get_files_recursive(const std::string& dir)
 * Botan is released under the Simplified BSD License (see license.txt)
 */
 
-#include <cstdlib>
 #include <new>
 
 #if defined(BOTAN_HAS_LOCKING_ALLOCATOR)
