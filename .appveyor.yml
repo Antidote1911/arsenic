@@ -17,5 +17,5 @@ install:
 build_script:
     - echo %arch%
     - echo %APPVEYOR_BUILD_WORKER_IMAGE%
-    - qmake -arsenic.pro
+    - qmake arsenic.pro
     - nmake
