@@ -35,7 +35,7 @@
 * Build configuration for Botan 2.19.1
 *
 * Automatically generated from
-* 'configure.py --cpu=x86_64 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11'
+* 'configure.py --cpu=x86_64 --cc=gcc --os=mingw --amalgamation --disable-shared --disable-modules=pkcs11,certstor_system_windows,certstor_sql,certstor_sqlite3,certstor_system,certstor_system_macos,certstor_system_windows'
 *
 * Target
 *  - Compiler: g++ -m64 -pthread -std=c++11 -D_REENTRANT -O3
@@ -62,7 +62,7 @@
 #define BOTAN_INSTALL_PREFIX R"(/mingw)"
 #define BOTAN_INSTALL_HEADER_DIR R"(include/botan-2)"
 #define BOTAN_INSTALL_LIB_DIR R"(/mingw/lib)"
-#define BOTAN_LIB_LINK "-lcrypt32 -lws2_32"
+#define BOTAN_LIB_LINK "-lws2_32"
 #define BOTAN_LINK_FLAGS "-m64 -pthread"
 
 #define BOTAN_SYSTEM_CERT_BUNDLE "/etc/ssl/certs/ca-certificates.crt"
@@ -148,9 +148,6 @@
 #define BOTAN_HAS_CBC_MAC 20131128
 #define BOTAN_HAS_CECPQ1 20161116
 #define BOTAN_HAS_CERTSTOR_FLATFILE 20190410
-#define BOTAN_HAS_CERTSTOR_SQL 20160818
-#define BOTAN_HAS_CERTSTOR_SYSTEM 20190411
-#define BOTAN_HAS_CERTSTOR_WINDOWS 20190430
 #define BOTAN_HAS_CHACHA 20180807
 #define BOTAN_HAS_CHACHA_AVX2 20180418
 #define BOTAN_HAS_CHACHA_RNG 20170728
@@ -9076,266 +9073,6 @@ class BOTAN_PUBLIC_API(2, 11) Flatfile_Certificate_Store final : public Certific
    };
 }
 
-namespace Botan {
-
-class BOTAN_PUBLIC_API(2,0) SQL_Database
-   {
-   public:
-
-      class BOTAN_PUBLIC_API(2,0) SQL_DB_Error final : public Exception
-         {
-         public:
-            explicit SQL_DB_Error(const std::string& what) :
-               Exception("SQL database", what),
-               m_rc(0)
-               {}
-
-            SQL_DB_Error(const std::string& what, int rc) :
-               Exception("SQL database", what),
-               m_rc(rc)
-               {}
-
-            ErrorType error_type() const noexcept override { return Botan::ErrorType::DatabaseError; }
-
-            int error_code() const noexcept override { return m_rc; }
-         private:
-            int m_rc;
-         };
-
-      class BOTAN_PUBLIC_API(2,0) Statement
-         {
-         public:
-            /* Bind statement parameters */
-            virtual void bind(int column, const std::string& str) = 0;
-
-            virtual void bind(int column, size_t i) = 0;
-
-            virtual void bind(int column, std::chrono::system_clock::time_point time) = 0;
-
-            virtual void bind(int column, const std::vector<uint8_t>& blob) = 0;
-
-            virtual void bind(int column, const uint8_t* data, size_t len) = 0;
-
-            /* Get output */
-            virtual std::pair<const uint8_t*, size_t> get_blob(int column) = 0;
-
-            virtual std::string get_str(int column) = 0;
-
-            virtual size_t get_size_t(int column) = 0;
-
-            /* Run to completion */
-            virtual size_t spin() = 0;
-
-            /* Maybe update */
-            virtual bool step() = 0;
-
-            virtual ~Statement() = default;
-         };
-
-      /*
-      * Create a new statement for execution.
-      * Use ?1, ?2, ?3, etc for parameters to set later with bind
-      */
-      virtual std::shared_ptr<Statement> new_statement(const std::string& base_sql) const = 0;
-
-      virtual size_t row_count(const std::string& table_name) = 0;
-
-      virtual void create_table(const std::string& table_schema) = 0;
-
-      virtual ~SQL_Database() = default;
-};
-
-}
-
-namespace Botan {
-
-class Private_Key;
-class RandomNumberGenerator;
-
-/**
- * Certificate and private key store backed by an SQL database.
- */
-class BOTAN_PUBLIC_API(2,0) Certificate_Store_In_SQL : public Certificate_Store
-   {
-   public:
-      /**
-      * Create/open a certificate store.
-      * @param db underlying database storage
-      * @param passwd password to encrypt private keys in the database
-      * @param rng used for encrypting keys
-      * @param table_prefix optional prefix for db table names
-      */
-      explicit Certificate_Store_In_SQL(const std::shared_ptr<SQL_Database> db,
-                                        const std::string& passwd,
-                                        RandomNumberGenerator& rng,
-                                        const std::string& table_prefix = "");
-
-      /**
-      * Returns the first certificate with matching subject DN and optional key ID.
-      */
-      std::shared_ptr<const X509_Certificate>
-         find_cert(const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const override;
-
-      /*
-      * Find all certificates with a given Subject DN.
-      * Subject DN and even the key identifier might not be unique.
-      */
-      std::vector<std::shared_ptr<const X509_Certificate>> find_all_certs(
-         const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const override;
-
-      std::shared_ptr<const X509_Certificate>
-         find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const override;
-
-      std::shared_ptr<const X509_Certificate>
-         find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& subject_hash) const override;
-
-      /**
-      * Returns all subject DNs known to the store instance.
-      */
-      std::vector<X509_DN> all_subjects() const override;
-
-      /**
-      * Inserts "cert" into the store, returns false if the certificate is
-      * already known and true if insertion was successful.
-      */
-      bool insert_cert(const X509_Certificate& cert);
-
-      /**
-      * Removes "cert" from the store. Returns false if the certificate could not
-      * be found and true if removal was successful.
-      */
-      bool remove_cert(const X509_Certificate& cert);
-
-      /// Returns the private key for "cert" or an empty shared_ptr if none was found.
-      std::shared_ptr<const Private_Key> find_key(const X509_Certificate&) const;
-
-      /// Returns all certificates for private key "key".
-      std::vector<std::shared_ptr<const X509_Certificate>>
-         find_certs_for_key(const Private_Key& key) const;
-
-      /**
-      * Inserts "key" for "cert" into the store, returns false if the key is
-      * already known and true if insertion was successful.
-      */
-      bool insert_key(const X509_Certificate& cert, const Private_Key& key);
-
-      /// Removes "key" from the store.
-      void remove_key(const Private_Key& key);
-
-      /// Marks "cert" as revoked starting from "time".
-      void revoke_cert(const X509_Certificate&, CRL_Code, const X509_Time& time = X509_Time());
-
-      /// Reverses the revokation for "cert".
-      void affirm_cert(const X509_Certificate&);
-
-      /**
-      * Generates Certificate Revocation Lists for all certificates marked as revoked.
-      * A CRL is returned for each unique issuer DN.
-      */
-      std::vector<X509_CRL> generate_crls() const;
-
-      /**
-      * Generates a CRL for all certificates issued by the given issuer.
-      */
-      std::shared_ptr<const X509_CRL>
-         find_crl_for(const X509_Certificate& issuer) const override;
-
-   private:
-      RandomNumberGenerator& m_rng;
-      std::shared_ptr<SQL_Database> m_database;
-      std::string m_prefix;
-      std::string m_password;
-      mutex_type m_mutex;
-   };
-
-}
-
-namespace Botan {
-
-class BOTAN_PUBLIC_API(2,11) System_Certificate_Store final : public Certificate_Store
-   {
-   public:
-
-      System_Certificate_Store();
-
-      std::shared_ptr<const X509_Certificate>
-         find_cert(const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const override;
-
-      std::vector<std::shared_ptr<const X509_Certificate>>
-         find_all_certs(const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const override;
-
-      std::shared_ptr<const X509_Certificate>
-         find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const override;
-
-      std::shared_ptr<const X509_Certificate>
-         find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& subject_hash) const override;
-
-      std::shared_ptr<const X509_CRL> find_crl_for(const X509_Certificate& subject) const override;
-
-      std::vector<X509_DN> all_subjects() const override;
-
-   private:
-      std::shared_ptr<Certificate_Store> m_system_store;
-   };
-
-}
-
-namespace Botan {
-/**
-* Certificate Store that is backed by the system trust store on Windows.
-*/
-class BOTAN_PUBLIC_API(2, 11) Certificate_Store_Windows final : public Certificate_Store
-   {
-   public:
-      Certificate_Store_Windows();
-
-      Certificate_Store_Windows(const Certificate_Store_Windows&) = default;
-      Certificate_Store_Windows(Certificate_Store_Windows&&) = default;
-      Certificate_Store_Windows& operator=(const Certificate_Store_Windows&) = default;
-      Certificate_Store_Windows& operator=(Certificate_Store_Windows&&) = default;
-
-      /**
-      * @return DNs for all certificates managed by the store
-      */
-      std::vector<X509_DN> all_subjects() const override;
-
-      /**
-      * Find a certificate by Subject DN and (optionally) key identifier
-      * @return the first certificate that matches
-      */
-      std::shared_ptr<const X509_Certificate> find_cert(
-         const X509_DN& subject_dn,
-         const std::vector<uint8_t>& key_id) const override;
-
-      /**
-      * Find all certificates with a given Subject DN.
-      * Subject DN and even the key identifier might not be unique.
-      */
-      std::vector<std::shared_ptr<const X509_Certificate>> find_all_certs(
-               const X509_DN& subject_dn, const std::vector<uint8_t>& key_id) const override;
-
-      /**
-      * Find a certificate by searching for one with a matching SHA-1 hash of
-      * public key.
-      * @return a matching certificate or nullptr otherwise
-      */
-      std::shared_ptr<const X509_Certificate>
-      find_cert_by_pubkey_sha1(const std::vector<uint8_t>& key_hash) const override;
-
-      /**
-       * @throws Botan::Not_Implemented
-       */
-      std::shared_ptr<const X509_Certificate>
-      find_cert_by_raw_subject_dn_sha256(const std::vector<uint8_t>& subject_hash) const override;
-
-      /**
-       * Not Yet Implemented
-       * @return nullptr;
-       */
-      std::shared_ptr<const X509_CRL> find_crl_for(const X509_Certificate& subject) const override;
-   };
-}
-
 BOTAN_FUTURE_INTERNAL_HEADER(cfb.h)
 
 namespace Botan {
@@ -11901,6 +11638,77 @@ class BOTAN_PUBLIC_API(2,0) DataSink_Stream final : public DataSink
       std::unique_ptr<std::ostream> m_sink_memory;
       std::ostream& m_sink;
    };
+
+}
+
+namespace Botan {
+
+class BOTAN_PUBLIC_API(2,0) SQL_Database
+   {
+   public:
+
+      class BOTAN_PUBLIC_API(2,0) SQL_DB_Error final : public Exception
+         {
+         public:
+            explicit SQL_DB_Error(const std::string& what) :
+               Exception("SQL database", what),
+               m_rc(0)
+               {}
+
+            SQL_DB_Error(const std::string& what, int rc) :
+               Exception("SQL database", what),
+               m_rc(rc)
+               {}
+
+            ErrorType error_type() const noexcept override { return Botan::ErrorType::DatabaseError; }
+
+            int error_code() const noexcept override { return m_rc; }
+         private:
+            int m_rc;
+         };
+
+      class BOTAN_PUBLIC_API(2,0) Statement
+         {
+         public:
+            /* Bind statement parameters */
+            virtual void bind(int column, const std::string& str) = 0;
+
+            virtual void bind(int column, size_t i) = 0;
+
+            virtual void bind(int column, std::chrono::system_clock::time_point time) = 0;
+
+            virtual void bind(int column, const std::vector<uint8_t>& blob) = 0;
+
+            virtual void bind(int column, const uint8_t* data, size_t len) = 0;
+
+            /* Get output */
+            virtual std::pair<const uint8_t*, size_t> get_blob(int column) = 0;
+
+            virtual std::string get_str(int column) = 0;
+
+            virtual size_t get_size_t(int column) = 0;
+
+            /* Run to completion */
+            virtual size_t spin() = 0;
+
+            /* Maybe update */
+            virtual bool step() = 0;
+
+            virtual ~Statement() = default;
+         };
+
+      /*
+      * Create a new statement for execution.
+      * Use ?1, ?2, ?3, etc for parameters to set later with bind
+      */
+      virtual std::shared_ptr<Statement> new_statement(const std::string& base_sql) const = 0;
+
+      virtual size_t row_count(const std::string& table_name) = 0;
+
+      virtual void create_table(const std::string& table_schema) = 0;
+
+      virtual ~SQL_Database() = default;
+};
 
 }
 
