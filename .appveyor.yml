@@ -1,41 +1,21 @@
-version: 1.0.{build}
+version: 1.0.0.{build}
 
-branches:
-  only:
-    - master
-
-skip_tags: true
-
-image: Visual Studio 2022
+image: Visual Studio 2019
 
 configuration: Release
 
 environment:
-  QTDIR: C:\Qt\6.2.2\mingw_64
+  global:
+    TARGET: x86_64-pc-windows-msvc
 
 
 install:
-    - set PATH=%QTDIR%\bin;%MINGWDIR%\bin;%PATH%
-
-before_build:
-    - set PATH=%QTDIR%\bin;%QTDIR%\..\..\Tools\mingw810_64\bin;C:\Program Files (x86)\NSIS\;%PATH%
+    - set QTDIR=C:\Qt\6.3.0
+    - set PATH=%PATH%;%QTDIR%\bin;C:\Qt\6.3.0\msvc2019_64\bin
+    - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
 
 build_script:
-    - qmake CONFIG+=release arsenic.pro
-    - mingw32-make
-    
-after_build:   
-    - cd %APPVEYOR_BUILD_FOLDER%
-    - mkdir arsenic_win_x64
-    - cd arsenic_win_x64
-    - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
-    - xcopy %APPVEYOR_BUILD_FOLDER%\tests\release\tests.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
-    - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\release\arsenic_gui.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
-    - xcopy %APPVEYOR_BUILD_FOLDER%\arscore\build\arscore.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
-    - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
-    - windeployqt arsenic_gui.exe
-    
-
-artifacts:
-    - path: arsenic_win_x64
-      type: zip
+    - echo %arch%
+    - echo %APPVEYOR_BUILD_WORKER_IMAGE%
+    - qmake -arsenic.pro
+    - nmake
