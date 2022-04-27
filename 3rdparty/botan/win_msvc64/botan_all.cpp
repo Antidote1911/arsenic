@@ -10329,6 +10329,630 @@ void AES_256::aesni_key_schedule(const uint8_t key[], size_t)
 
 }
 /*
+* AES using vector permutes (SSSE3, NEON)
+* (C) 2010,2016,2019 Jack Lloyd
+*
+* Based on public domain x86-64 assembly written by Mike Hamburg,
+* described in "Accelerating AES with Vector Permute Instructions"
+* (CHES 2009). His original code is available at
+* https://crypto.stanford.edu/vpaes/
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+#if defined(BOTAN_SIMD_USE_SSE2)
+  #include <tmmintrin.h>
+#endif
+
+namespace Botan {
+
+namespace {
+
+inline SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) shuffle(SIMD_4x32 a, SIMD_4x32 b)
+   {
+#if defined(BOTAN_SIMD_USE_SSE2)
+   return SIMD_4x32(_mm_shuffle_epi8(a.raw(), b.raw()));
+#elif defined(BOTAN_SIMD_USE_NEON)
+   const uint8x16_t tbl = vreinterpretq_u8_u32(a.raw());
+   const uint8x16_t idx = vreinterpretq_u8_u32(b.raw());
+
+#if defined(BOTAN_TARGET_ARCH_IS_ARM32)
+   const uint8x8x2_t tbl2 = { vget_low_u8(tbl), vget_high_u8(tbl) };
+
+   return SIMD_4x32(vreinterpretq_u32_u8(
+                       vcombine_u8(vtbl2_u8(tbl2, vget_low_u8(idx)),
+                                   vtbl2_u8(tbl2, vget_high_u8(idx)))));
+
+#else
+   return SIMD_4x32(vreinterpretq_u32_u8(vqtbl1q_u8(tbl, idx)));
+#endif
+
+#elif defined(BOTAN_SIMD_USE_ALTIVEC)
+
+   const auto zero = vec_splat_s8(0x00);
+   const auto mask = vec_cmplt((__vector signed char)b.raw(), zero);
+   const auto r = vec_perm((__vector signed char)a.raw(), (__vector signed char)a.raw(), (__vector unsigned char)b.raw());
+   return SIMD_4x32((__vector unsigned int)vec_sel(r, zero, mask));
+
+#else
+   #error "No shuffle implementation available"
+#endif
+   }
+
+inline SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) alignr8(SIMD_4x32 a, SIMD_4x32 b)
+   {
+#if defined(BOTAN_SIMD_USE_SSE2)
+   return SIMD_4x32(_mm_alignr_epi8(a.raw(), b.raw(), 8));
+#elif defined(BOTAN_SIMD_USE_NEON)
+   return SIMD_4x32(vextq_u32(b.raw(), a.raw(), 2));
+#elif defined(BOTAN_SIMD_USE_ALTIVEC)
+   const __vector unsigned char mask = {8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23};
+   return SIMD_4x32(vec_perm(b.raw(), a.raw(), mask));
+#else
+   #error "No alignr8 implementation available"
+#endif
+   }
+
+const SIMD_4x32 k_ipt1 = SIMD_4x32(0x5A2A7000, 0xC2B2E898, 0x52227808, 0xCABAE090);
+const SIMD_4x32 k_ipt2 = SIMD_4x32(0x317C4D00, 0x4C01307D, 0xB0FDCC81, 0xCD80B1FC);
+
+const SIMD_4x32 k_inv1 = SIMD_4x32(0x0D080180, 0x0E05060F, 0x0A0B0C02, 0x04070309);
+const SIMD_4x32 k_inv2 = SIMD_4x32(0x0F0B0780, 0x01040A06, 0x02050809, 0x030D0E0C);
+
+const SIMD_4x32 sb1u = SIMD_4x32(0xCB503E00, 0xB19BE18F, 0x142AF544, 0xA5DF7A6E);
+const SIMD_4x32 sb1t = SIMD_4x32(0xFAE22300, 0x3618D415, 0x0D2ED9EF, 0x3BF7CCC1);
+const SIMD_4x32 sbou = SIMD_4x32(0x6FBDC700, 0xD0D26D17, 0xC502A878, 0x15AABF7A);
+const SIMD_4x32 sbot = SIMD_4x32(0x5FBB6A00, 0xCFE474A5, 0x412B35FA, 0x8E1E90D1);
+
+const SIMD_4x32 sboud = SIMD_4x32(0x7EF94000, 0x1387EA53, 0xD4943E2D, 0xC7AA6DB9);
+const SIMD_4x32 sbotd = SIMD_4x32(0x93441D00, 0x12D7560F, 0xD8C58E9C, 0xCA4B8159);
+
+const SIMD_4x32 mc_forward[4] = {
+   SIMD_4x32(0x00030201, 0x04070605, 0x080B0A09, 0x0C0F0E0D),
+   SIMD_4x32(0x04070605, 0x080B0A09, 0x0C0F0E0D, 0x00030201),
+   SIMD_4x32(0x080B0A09, 0x0C0F0E0D, 0x00030201, 0x04070605),
+   SIMD_4x32(0x0C0F0E0D, 0x00030201, 0x04070605, 0x080B0A09)
+};
+
+const SIMD_4x32 vperm_sr[4] = {
+   SIMD_4x32(0x03020100, 0x07060504, 0x0B0A0908, 0x0F0E0D0C),
+   SIMD_4x32(0x0F0A0500, 0x030E0904, 0x07020D08, 0x0B06010C),
+   SIMD_4x32(0x0B020900, 0x0F060D04, 0x030A0108, 0x070E050C),
+   SIMD_4x32(0x070A0D00, 0x0B0E0104, 0x0F020508, 0x0306090C),
+};
+
+const SIMD_4x32 rcon[10] = {
+   SIMD_4x32(0x00000070, 0x00000000, 0x00000000, 0x00000000),
+   SIMD_4x32(0x0000002A, 0x00000000, 0x00000000, 0x00000000),
+   SIMD_4x32(0x00000098, 0x00000000, 0x00000000, 0x00000000),
+   SIMD_4x32(0x00000008, 0x00000000, 0x00000000, 0x00000000),
+   SIMD_4x32(0x0000004D, 0x00000000, 0x00000000, 0x00000000),
+   SIMD_4x32(0x0000007C, 0x00000000, 0x00000000, 0x00000000),
+   SIMD_4x32(0x0000007D, 0x00000000, 0x00000000, 0x00000000),
+   SIMD_4x32(0x00000081, 0x00000000, 0x00000000, 0x00000000),
+   SIMD_4x32(0x0000001F, 0x00000000, 0x00000000, 0x00000000),
+   SIMD_4x32(0x00000083, 0x00000000, 0x00000000, 0x00000000),
+};
+
+const SIMD_4x32 sb2u = SIMD_4x32(0x0B712400, 0xE27A93C6, 0xBC982FCD, 0x5EB7E955);
+const SIMD_4x32 sb2t = SIMD_4x32(0x0AE12900, 0x69EB8840, 0xAB82234A, 0xC2A163C8);
+
+const SIMD_4x32 k_dipt1 = SIMD_4x32(0x0B545F00, 0x0F505B04, 0x114E451A, 0x154A411E);
+const SIMD_4x32 k_dipt2 = SIMD_4x32(0x60056500, 0x86E383E6, 0xF491F194, 0x12771772);
+
+const SIMD_4x32 sb9u = SIMD_4x32(0x9A86D600, 0x851C0353, 0x4F994CC9, 0xCAD51F50);
+const SIMD_4x32 sb9t = SIMD_4x32(0xECD74900, 0xC03B1789, 0xB2FBA565, 0x725E2C9E);
+
+const SIMD_4x32 sbeu = SIMD_4x32(0x26D4D000, 0x46F29296, 0x64B4F6B0, 0x22426004);
+const SIMD_4x32 sbet = SIMD_4x32(0xFFAAC100, 0x0C55A6CD, 0x98593E32, 0x9467F36B);
+
+const SIMD_4x32 sbdu = SIMD_4x32(0xE6B1A200, 0x7D57CCDF, 0x882A4439, 0xF56E9B13);
+const SIMD_4x32 sbdt = SIMD_4x32(0x24C6CB00, 0x3CE2FAF7, 0x15DEEFD3, 0x2931180D);
+
+const SIMD_4x32 sbbu = SIMD_4x32(0x96B44200, 0xD0226492, 0xB0F2D404, 0x602646F6);
+const SIMD_4x32 sbbt = SIMD_4x32(0xCD596700, 0xC19498A6, 0x3255AA6B, 0xF3FF0C3E);
+
+const SIMD_4x32 mcx[4] = {
+   SIMD_4x32(0x0C0F0E0D, 0x00030201, 0x04070605, 0x080B0A09),
+   SIMD_4x32(0x080B0A09, 0x0C0F0E0D, 0x00030201, 0x04070605),
+   SIMD_4x32(0x04070605, 0x080B0A09, 0x0C0F0E0D, 0x00030201),
+   SIMD_4x32(0x00030201, 0x04070605, 0x080B0A09, 0x0C0F0E0D),
+};
+
+const SIMD_4x32 mc_backward[4] = {
+   SIMD_4x32(0x02010003, 0x06050407, 0x0A09080B, 0x0E0D0C0F),
+   SIMD_4x32(0x0E0D0C0F, 0x02010003, 0x06050407, 0x0A09080B),
+   SIMD_4x32(0x0A09080B, 0x0E0D0C0F, 0x02010003, 0x06050407),
+   SIMD_4x32(0x06050407, 0x0A09080B, 0x0E0D0C0F, 0x02010003),
+};
+
+const SIMD_4x32 lo_nibs_mask = SIMD_4x32::splat_u8(0x0F);
+
+inline SIMD_4x32 low_nibs(SIMD_4x32 x)
+   {
+   return lo_nibs_mask & x;
+   }
+
+inline SIMD_4x32 high_nibs(SIMD_4x32 x)
+   {
+   return (x.shr<4>() & lo_nibs_mask);
+   }
+
+inline SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_enc_first_round(SIMD_4x32 B, SIMD_4x32 K)
+   {
+   return shuffle(k_ipt1, low_nibs(B)) ^ shuffle(k_ipt2, high_nibs(B)) ^ K;
+   }
+
+inline SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_enc_round(SIMD_4x32 B, SIMD_4x32 K, size_t r)
+   {
+   const SIMD_4x32 Bh = high_nibs(B);
+   SIMD_4x32 Bl = low_nibs(B);
+   const SIMD_4x32 t2 = shuffle(k_inv2, Bl);
+   Bl ^= Bh;
+
+   const SIMD_4x32 t5 = Bl ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, Bh));
+   const SIMD_4x32 t6 = Bh ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, Bl));
+
+   const SIMD_4x32 t7 = shuffle(sb1t, t6) ^ shuffle(sb1u, t5) ^ K;
+   const SIMD_4x32 t8 = shuffle(sb2t, t6) ^ shuffle(sb2u, t5) ^ shuffle(t7, mc_forward[r % 4]);
+
+   return shuffle(t8, mc_forward[r % 4]) ^ shuffle(t7, mc_backward[r % 4]) ^ t8;
+   }
+
+inline SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_enc_last_round(SIMD_4x32 B, SIMD_4x32 K, size_t r)
+   {
+   const SIMD_4x32 Bh = high_nibs(B);
+   SIMD_4x32 Bl = low_nibs(B);
+   const SIMD_4x32 t2 = shuffle(k_inv2, Bl);
+   Bl ^= Bh;
+
+   const SIMD_4x32 t5 = Bl ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, Bh));
+   const SIMD_4x32 t6 = Bh ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, Bl));
+
+   return shuffle(shuffle(sbou, t5) ^ shuffle(sbot, t6) ^ K, vperm_sr[r % 4]);
+   }
+
+inline SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_dec_first_round(SIMD_4x32 B, SIMD_4x32 K)
+   {
+   return shuffle(k_dipt1, low_nibs(B)) ^ shuffle(k_dipt2, high_nibs(B)) ^ K;
+   }
+
+inline SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_dec_round(SIMD_4x32 B, SIMD_4x32 K, size_t r)
+   {
+   const SIMD_4x32 Bh = high_nibs(B);
+   B = low_nibs(B);
+   const SIMD_4x32 t2 = shuffle(k_inv2, B);
+
+   B ^= Bh;
+
+   const SIMD_4x32 t5 = B ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, Bh));
+   const SIMD_4x32 t6 = Bh ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, B));
+
+   const SIMD_4x32 mc = mcx[(r-1)%4];
+
+   const SIMD_4x32 t8 = shuffle(sb9t, t6) ^ shuffle(sb9u, t5) ^ K;
+   const SIMD_4x32 t9 = shuffle(t8, mc) ^ shuffle(sbdu, t5) ^ shuffle(sbdt, t6);
+   const SIMD_4x32 t12 = shuffle(t9, mc) ^ shuffle(sbbu, t5) ^ shuffle(sbbt, t6);
+   return shuffle(t12, mc) ^ shuffle(sbeu, t5) ^ shuffle(sbet, t6);
+   }
+
+inline SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_dec_last_round(SIMD_4x32 B, SIMD_4x32 K, size_t r)
+   {
+   const uint32_t which_sr = ((((r - 1) << 4) ^ 48) & 48) / 16;
+
+   const SIMD_4x32 Bh = high_nibs(B);
+   B = low_nibs(B);
+   const SIMD_4x32 t2 = shuffle(k_inv2, B);
+
+   B ^= Bh;
+
+   const SIMD_4x32 t5 = B ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, Bh));
+   const SIMD_4x32 t6 = Bh ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, B));
+
+   const SIMD_4x32 x = shuffle(sboud, t5) ^ shuffle(sbotd, t6) ^ K;
+   return shuffle(x, vperm_sr[which_sr]);
+   }
+
+void BOTAN_FUNC_ISA(BOTAN_VPERM_ISA)
+   vperm_encrypt_blocks(const uint8_t in[], uint8_t out[], size_t blocks,
+                        const SIMD_4x32 K[], size_t rounds)
+   {
+   CT::poison(in, blocks * 16);
+
+   const size_t blocks2 = blocks - (blocks % 2);
+
+   for(size_t i = 0; i != blocks2; i += 2)
+      {
+      SIMD_4x32 B0 = SIMD_4x32::load_le(in + i*16);
+      SIMD_4x32 B1 = SIMD_4x32::load_le(in + (i+1)*16);
+
+      B0 = aes_enc_first_round(B0, K[0]);
+      B1 = aes_enc_first_round(B1, K[0]);
+
+      for(size_t r = 1; r != rounds; ++r)
+         {
+         B0 = aes_enc_round(B0, K[r], r);
+         B1 = aes_enc_round(B1, K[r], r);
+         }
+
+      B0 = aes_enc_last_round(B0, K[rounds], rounds);
+      B1 = aes_enc_last_round(B1, K[rounds], rounds);
+
+      B0.store_le(out + i*16);
+      B1.store_le(out + (i+1)*16);
+      }
+
+   for(size_t i = blocks2; i < blocks; ++i)
+      {
+      SIMD_4x32 B = SIMD_4x32::load_le(in + i*16); // ???
+
+      B = aes_enc_first_round(B, K[0]);
+
+      for(size_t r = 1; r != rounds; ++r)
+         {
+         B = aes_enc_round(B, K[r], r);
+         }
+
+      B = aes_enc_last_round(B, K[rounds], rounds);
+      B.store_le(out + i*16);
+      }
+
+   CT::unpoison(in,  blocks * 16);
+   CT::unpoison(out, blocks * 16);
+   }
+
+void BOTAN_FUNC_ISA(BOTAN_VPERM_ISA)
+   vperm_decrypt_blocks(const uint8_t in[], uint8_t out[], size_t blocks,
+                        const SIMD_4x32 K[], size_t rounds)
+   {
+   CT::poison(in, blocks * 16);
+
+   const size_t blocks2 = blocks - (blocks % 2);
+
+   for(size_t i = 0; i != blocks2; i += 2)
+      {
+      SIMD_4x32 B0 = SIMD_4x32::load_le(in + i*16);
+      SIMD_4x32 B1 = SIMD_4x32::load_le(in + (i+1)*16);
+
+      B0 = aes_dec_first_round(B0, K[0]);
+      B1 = aes_dec_first_round(B1, K[0]);
+
+      for(size_t r = 1; r != rounds; ++r)
+         {
+         B0 = aes_dec_round(B0, K[r], r);
+         B1 = aes_dec_round(B1, K[r], r);
+         }
+
+      B0 = aes_dec_last_round(B0, K[rounds], rounds);
+      B1 = aes_dec_last_round(B1, K[rounds], rounds);
+
+      B0.store_le(out + i*16);
+      B1.store_le(out + (i+1)*16);
+      }
+
+   for(size_t i = blocks2; i < blocks; ++i)
+      {
+      SIMD_4x32 B = SIMD_4x32::load_le(in + i*16); // ???
+
+      B = aes_dec_first_round(B, K[0]);
+
+      for(size_t r = 1; r != rounds; ++r)
+         {
+         B = aes_dec_round(B, K[r], r);
+         }
+
+      B = aes_dec_last_round(B, K[rounds], rounds);
+      B.store_le(out + i*16);
+      }
+
+   CT::unpoison(in,  blocks * 16);
+   CT::unpoison(out, blocks * 16);
+   }
+
+}
+
+void AES_128::vperm_encrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) const
+   {
+   const SIMD_4x32 K[11] = {
+      SIMD_4x32(&m_EK[4* 0]), SIMD_4x32(&m_EK[4* 1]), SIMD_4x32(&m_EK[4* 2]),
+      SIMD_4x32(&m_EK[4* 3]), SIMD_4x32(&m_EK[4* 4]), SIMD_4x32(&m_EK[4* 5]),
+      SIMD_4x32(&m_EK[4* 6]), SIMD_4x32(&m_EK[4* 7]), SIMD_4x32(&m_EK[4* 8]),
+      SIMD_4x32(&m_EK[4* 9]), SIMD_4x32(&m_EK[4*10]),
+   };
+
+   return vperm_encrypt_blocks(in, out, blocks, K, 10);
+   }
+
+void AES_128::vperm_decrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) const
+   {
+   const SIMD_4x32 K[11] = {
+      SIMD_4x32(&m_DK[4* 0]), SIMD_4x32(&m_DK[4* 1]), SIMD_4x32(&m_DK[4* 2]),
+      SIMD_4x32(&m_DK[4* 3]), SIMD_4x32(&m_DK[4* 4]), SIMD_4x32(&m_DK[4* 5]),
+      SIMD_4x32(&m_DK[4* 6]), SIMD_4x32(&m_DK[4* 7]), SIMD_4x32(&m_DK[4* 8]),
+      SIMD_4x32(&m_DK[4* 9]), SIMD_4x32(&m_DK[4*10]),
+   };
+
+   return vperm_decrypt_blocks(in, out, blocks, K, 10);
+   }
+
+void AES_192::vperm_encrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) const
+   {
+   const SIMD_4x32 K[13] = {
+      SIMD_4x32(&m_EK[4* 0]), SIMD_4x32(&m_EK[4* 1]), SIMD_4x32(&m_EK[4* 2]),
+      SIMD_4x32(&m_EK[4* 3]), SIMD_4x32(&m_EK[4* 4]), SIMD_4x32(&m_EK[4* 5]),
+      SIMD_4x32(&m_EK[4* 6]), SIMD_4x32(&m_EK[4* 7]), SIMD_4x32(&m_EK[4* 8]),
+      SIMD_4x32(&m_EK[4* 9]), SIMD_4x32(&m_EK[4*10]), SIMD_4x32(&m_EK[4*11]),
+      SIMD_4x32(&m_EK[4*12]),
+   };
+
+   return vperm_encrypt_blocks(in, out, blocks, K, 12);
+   }
+
+void AES_192::vperm_decrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) const
+   {
+   const SIMD_4x32 K[13] = {
+      SIMD_4x32(&m_DK[4* 0]), SIMD_4x32(&m_DK[4* 1]), SIMD_4x32(&m_DK[4* 2]),
+      SIMD_4x32(&m_DK[4* 3]), SIMD_4x32(&m_DK[4* 4]), SIMD_4x32(&m_DK[4* 5]),
+      SIMD_4x32(&m_DK[4* 6]), SIMD_4x32(&m_DK[4* 7]), SIMD_4x32(&m_DK[4* 8]),
+      SIMD_4x32(&m_DK[4* 9]), SIMD_4x32(&m_DK[4*10]), SIMD_4x32(&m_DK[4*11]),
+      SIMD_4x32(&m_DK[4*12]),
+   };
+
+   return vperm_decrypt_blocks(in, out, blocks, K, 12);
+   }
+
+void AES_256::vperm_encrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) const
+   {
+   const SIMD_4x32 K[15] = {
+      SIMD_4x32(&m_EK[4* 0]), SIMD_4x32(&m_EK[4* 1]), SIMD_4x32(&m_EK[4* 2]),
+      SIMD_4x32(&m_EK[4* 3]), SIMD_4x32(&m_EK[4* 4]), SIMD_4x32(&m_EK[4* 5]),
+      SIMD_4x32(&m_EK[4* 6]), SIMD_4x32(&m_EK[4* 7]), SIMD_4x32(&m_EK[4* 8]),
+      SIMD_4x32(&m_EK[4* 9]), SIMD_4x32(&m_EK[4*10]), SIMD_4x32(&m_EK[4*11]),
+      SIMD_4x32(&m_EK[4*12]), SIMD_4x32(&m_EK[4*13]), SIMD_4x32(&m_EK[4*14]),
+   };
+
+   return vperm_encrypt_blocks(in, out, blocks, K, 14);
+   }
+
+void AES_256::vperm_decrypt_n(const uint8_t in[], uint8_t out[], size_t blocks) const
+   {
+   const SIMD_4x32 K[15] = {
+      SIMD_4x32(&m_DK[4* 0]), SIMD_4x32(&m_DK[4* 1]), SIMD_4x32(&m_DK[4* 2]),
+      SIMD_4x32(&m_DK[4* 3]), SIMD_4x32(&m_DK[4* 4]), SIMD_4x32(&m_DK[4* 5]),
+      SIMD_4x32(&m_DK[4* 6]), SIMD_4x32(&m_DK[4* 7]), SIMD_4x32(&m_DK[4* 8]),
+      SIMD_4x32(&m_DK[4* 9]), SIMD_4x32(&m_DK[4*10]), SIMD_4x32(&m_DK[4*11]),
+      SIMD_4x32(&m_DK[4*12]), SIMD_4x32(&m_DK[4*13]), SIMD_4x32(&m_DK[4*14]),
+   };
+
+   return vperm_decrypt_blocks(in, out, blocks, K, 14);
+   }
+
+namespace {
+
+inline SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA)
+   aes_schedule_transform(SIMD_4x32 input,
+                          SIMD_4x32 table_1,
+                          SIMD_4x32 table_2)
+   {
+   return shuffle(table_1, low_nibs(input)) ^ shuffle(table_2, high_nibs(input));
+   }
+
+SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_schedule_mangle(SIMD_4x32 k, uint8_t round_no)
+   {
+   const SIMD_4x32 mc_forward0(0x00030201, 0x04070605, 0x080B0A09, 0x0C0F0E0D);
+
+   SIMD_4x32 t = shuffle(k ^ SIMD_4x32::splat_u8(0x5B), mc_forward0);
+   SIMD_4x32 t2 = t;
+   t = shuffle(t, mc_forward0);
+   t2 = t ^ t2 ^ shuffle(t, mc_forward0);
+   return shuffle(t2, vperm_sr[round_no % 4]);
+   }
+
+SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_schedule_mangle_dec(SIMD_4x32 k, uint8_t round_no)
+   {
+   const SIMD_4x32 mc_forward0(0x00030201, 0x04070605, 0x080B0A09, 0x0C0F0E0D);
+
+   const SIMD_4x32 dsk[8] = {
+      SIMD_4x32(0x7ED9A700, 0xB6116FC8, 0x82255BFC, 0x4AED9334),
+      SIMD_4x32(0x27143300, 0x45765162, 0xE9DAFDCE, 0x8BB89FAC),
+      SIMD_4x32(0xCCA86400, 0x27438FEB, 0xADC90561, 0x4622EE8A),
+      SIMD_4x32(0x4F92DD00, 0x815C13CE, 0xBD602FF2, 0x73AEE13C),
+      SIMD_4x32(0x01C6C700, 0x03C4C502, 0xFA3D3CFB, 0xF83F3EF9),
+      SIMD_4x32(0x38CFF700, 0xEE1921D6, 0x7384BC4B, 0xA5526A9D),
+      SIMD_4x32(0x53732000, 0xE3C390B0, 0x10306343, 0xA080D3F3),
+      SIMD_4x32(0x036982E8, 0xA0CA214B, 0x8CE60D67, 0x2F45AEC4),
+   };
+
+   SIMD_4x32 t = aes_schedule_transform(k, dsk[0], dsk[1]);
+   SIMD_4x32 output = shuffle(t, mc_forward0);
+
+   t = aes_schedule_transform(t, dsk[2], dsk[3]);
+   output = shuffle(t ^ output, mc_forward0);
+
+   t = aes_schedule_transform(t, dsk[4], dsk[5]);
+   output = shuffle(t ^ output, mc_forward0);
+
+   t = aes_schedule_transform(t, dsk[6], dsk[7]);
+   output = shuffle(t ^ output, mc_forward0);
+
+   return shuffle(output, vperm_sr[round_no % 4]);
+   }
+
+SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_schedule_mangle_last(SIMD_4x32 k, uint8_t round_no)
+   {
+   const SIMD_4x32 out_tr1(0xD6B66000, 0xFF9F4929, 0xDEBE6808, 0xF7974121);
+   const SIMD_4x32 out_tr2(0x50BCEC00, 0x01EDBD51, 0xB05C0CE0, 0xE10D5DB1);
+
+   k = shuffle(k, vperm_sr[round_no % 4]);
+   k ^= SIMD_4x32::splat_u8(0x5B);
+   return aes_schedule_transform(k, out_tr1, out_tr2);
+   }
+
+SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_schedule_mangle_last_dec(SIMD_4x32 k)
+   {
+   const SIMD_4x32 deskew1(0x47A4E300, 0x07E4A340, 0x5DBEF91A, 0x1DFEB95A);
+   const SIMD_4x32 deskew2(0x83EA6900, 0x5F36B5DC, 0xF49D1E77, 0x2841C2AB);
+
+   k ^= SIMD_4x32::splat_u8(0x5B);
+   return aes_schedule_transform(k, deskew1, deskew2);
+   }
+
+SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_schedule_round(SIMD_4x32 input1, SIMD_4x32 input2)
+   {
+   SIMD_4x32 smeared = input2 ^ input2.shift_elems_left<1>();
+   smeared ^= smeared.shift_elems_left<2>();
+   smeared ^= SIMD_4x32::splat_u8(0x5B);
+
+   const SIMD_4x32 Bh = high_nibs(input1);
+   SIMD_4x32 Bl = low_nibs(input1);
+
+   const SIMD_4x32 t2 = shuffle(k_inv2, Bl);
+
+   Bl ^= Bh;
+
+   SIMD_4x32 t5 = Bl ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, Bh));
+   SIMD_4x32 t6 = Bh ^ shuffle(k_inv1, t2 ^ shuffle(k_inv1, Bl));
+
+   return smeared ^ shuffle(sb1u, t5) ^ shuffle(sb1t, t6);
+   }
+
+SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_schedule_round(SIMD_4x32 rc, SIMD_4x32 input1, SIMD_4x32 input2)
+   {
+   // This byte shuffle is equivalent to alignr<1>(shuffle32(input1, (3,3,3,3)));
+   const SIMD_4x32 shuffle3333_15 = SIMD_4x32::splat(0x0C0F0E0D);
+   return aes_schedule_round(shuffle(input1, shuffle3333_15), input2 ^ rc);
+   }
+
+SIMD_4x32 BOTAN_FUNC_ISA(BOTAN_VPERM_ISA) aes_schedule_192_smear(SIMD_4x32 x, SIMD_4x32 y)
+   {
+   const SIMD_4x32 shuffle3332 =
+      SIMD_4x32(0x0B0A0908, 0x0F0E0D0C, 0x0F0E0D0C, 0x0F0E0D0C);
+   const SIMD_4x32 shuffle2000 =
+      SIMD_4x32(0x03020100, 0x03020100, 0x03020100, 0x0B0A0908);
+
+   const SIMD_4x32 zero_top_half(0, 0, 0xFFFFFFFF, 0xFFFFFFFF);
+   y &= zero_top_half;
+   return y ^ shuffle(x, shuffle3332) ^ shuffle(y, shuffle2000);
+   }
+
+}
+
+void AES_128::vperm_key_schedule(const uint8_t keyb[], size_t)
+   {
+   m_EK.resize(11*4);
+   m_DK.resize(11*4);
+
+   SIMD_4x32 key = SIMD_4x32::load_le(keyb);
+
+   shuffle(key, vperm_sr[2]).store_le(&m_DK[4*10]);
+
+   key = aes_schedule_transform(key, k_ipt1, k_ipt2);
+   key.store_le(&m_EK[0]);
+
+   for(size_t i = 1; i != 10; ++i)
+      {
+      key = aes_schedule_round(rcon[i-1], key, key);
+
+      aes_schedule_mangle(key, (12-i) % 4).store_le(&m_EK[4*i]);
+
+      aes_schedule_mangle_dec(key, (10-i)%4).store_le(&m_DK[4*(10-i)]);
+      }
+
+   key = aes_schedule_round(rcon[9], key, key);
+   aes_schedule_mangle_last(key, 2).store_le(&m_EK[4*10]);
+   aes_schedule_mangle_last_dec(key).store_le(&m_DK[0]);
+   }
+
+void AES_192::vperm_key_schedule(const uint8_t keyb[], size_t)
+   {
+   m_EK.resize(13*4);
+   m_DK.resize(13*4);
+
+   SIMD_4x32 key1 = SIMD_4x32::load_le(keyb);
+   SIMD_4x32 key2 = SIMD_4x32::load_le(keyb + 8);
+
+   shuffle(key1, vperm_sr[0]).store_le(&m_DK[12*4]);
+
+   key1 = aes_schedule_transform(key1, k_ipt1, k_ipt2);
+   key2 = aes_schedule_transform(key2, k_ipt1, k_ipt2);
+
+   key1.store_le(&m_EK[0]);
+
+   for(size_t i = 0; i != 4; ++i)
+      {
+      // key2 with 8 high bytes masked off
+      SIMD_4x32 t = key2;
+      key2 = aes_schedule_round(rcon[2*i], key2, key1);
+      const SIMD_4x32 key2t = alignr8(key2, t);
+      aes_schedule_mangle(key2t, (i+3)%4).store_le(&m_EK[4*(3*i+1)]);
+      aes_schedule_mangle_dec(key2t, (i+3)%4).store_le(&m_DK[4*(11-3*i)]);
+
+      t = aes_schedule_192_smear(key2, t);
+
+      aes_schedule_mangle(t, (i+2)%4).store_le(&m_EK[4*(3*i+2)]);
+      aes_schedule_mangle_dec(t, (i+2)%4).store_le(&m_DK[4*(10-3*i)]);
+
+      key2 = aes_schedule_round(rcon[2*i+1], t, key2);
+
+      if(i == 3)
+         {
+         aes_schedule_mangle_last(key2, (i+1)%4).store_le(&m_EK[4*(3*i+3)]);
+         aes_schedule_mangle_last_dec(key2).store_le(&m_DK[4*(9-3*i)]);
+         }
+      else
+         {
+         aes_schedule_mangle(key2, (i+1)%4).store_le(&m_EK[4*(3*i+3)]);
+         aes_schedule_mangle_dec(key2, (i+1)%4).store_le(&m_DK[4*(9-3*i)]);
+         }
+
+      key1 = key2;
+      key2 = aes_schedule_192_smear(key2, t);
+      }
+   }
+
+void AES_256::vperm_key_schedule(const uint8_t keyb[], size_t)
+   {
+   m_EK.resize(15*4);
+   m_DK.resize(15*4);
+
+   SIMD_4x32 key1 = SIMD_4x32::load_le(keyb);
+   SIMD_4x32 key2 = SIMD_4x32::load_le(keyb + 16);
+
+   shuffle(key1, vperm_sr[2]).store_le(&m_DK[4*14]);
+
+   key1 = aes_schedule_transform(key1, k_ipt1, k_ipt2);
+   key2 = aes_schedule_transform(key2, k_ipt1, k_ipt2);
+
+   key1.store_le(&m_EK[0]);
+   aes_schedule_mangle(key2, 3).store_le(&m_EK[4]);
+
+   aes_schedule_mangle_dec(key2, 1).store_le(&m_DK[4*13]);
+
+   const SIMD_4x32 shuffle3333 = SIMD_4x32::splat(0x0F0E0D0C);
+
+   for(size_t i = 2; i != 14; i += 2)
+      {
+      const SIMD_4x32 k_t = key2;
+      key1 = key2 = aes_schedule_round(rcon[(i/2)-1], key2, key1);
+
+      aes_schedule_mangle(key2, i % 4).store_le(&m_EK[4*i]);
+      aes_schedule_mangle_dec(key2, (i+2)%4).store_le(&m_DK[4*(14-i)]);
+
+      key2 = aes_schedule_round(shuffle(key2, shuffle3333), k_t);
+
+      aes_schedule_mangle(key2, (i-1)%4).store_le(&m_EK[4*(i+1)]);
+      aes_schedule_mangle_dec(key2, (i+1)%4).store_le(&m_DK[4*(13-i)]);
+      }
+
+   key2 = aes_schedule_round(rcon[6], key2, key1);
+
+   aes_schedule_mangle_last(key2, 2).store_le(&m_EK[4*14]);
+   aes_schedule_mangle_last_dec(key2).store_le(&m_DK[0]);
+   }
+
+}
+/*
 * Rivest's Package Tranform
 *
 * (C) 2009 Jack Lloyd
@@ -71033,6 +71657,172 @@ std::string Serpent::provider() const
 
 }
 /*
+* (C) 2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+
+#define key_xor(round, B0, B1, B2, B3)                             \
+   do {                                                            \
+      B0 ^= SIMD_8x32::splat(m_round_key[4*round  ]);              \
+      B1 ^= SIMD_8x32::splat(m_round_key[4*round+1]);              \
+      B2 ^= SIMD_8x32::splat(m_round_key[4*round+2]);              \
+      B3 ^= SIMD_8x32::splat(m_round_key[4*round+3]);              \
+   } while(0)
+
+/*
+* Serpent's linear transformations
+*/
+#define transform(B0, B1, B2, B3)                                  \
+   do {                                                            \
+      B0 = B0.rotl<13>();                                          \
+      B2 = B2.rotl<3>();                                           \
+      B1 ^= B0 ^ B2;                                               \
+      B3 ^= B2 ^ B0.shl<3>();                                      \
+      B1 = B1.rotl<1>();                                           \
+      B3 = B3.rotl<7>();                                           \
+      B0 ^= B1 ^ B3;                                               \
+      B2 ^= B3 ^ B1.shl<7>();                                      \
+      B0 = B0.rotl<5>();                                           \
+      B2 = B2.rotl<22>();                                          \
+   } while(0)
+
+#define i_transform(B0, B1, B2, B3)                                \
+   do {                                                            \
+      B2 = B2.rotr<22>();                                          \
+      B0 = B0.rotr<5>();                                           \
+      B2 ^= B3 ^ B1.shl<7>();                                      \
+      B0 ^= B1 ^ B3;                                               \
+      B3 = B3.rotr<7>();                                           \
+      B1 = B1.rotr<1>();                                           \
+      B3 ^= B2 ^ B0.shl<3>();                                      \
+      B1 ^= B0 ^ B2;                                               \
+      B2 = B2.rotr<3>();                                           \
+      B0 = B0.rotr<13>();                                          \
+   } while(0)
+
+BOTAN_FUNC_ISA("avx2")
+void Serpent::avx2_encrypt_8(const uint8_t in[128], uint8_t out[128]) const
+   {
+   SIMD_8x32::reset_registers();
+
+   SIMD_8x32 B0 = SIMD_8x32::load_le(in);
+   SIMD_8x32 B1 = SIMD_8x32::load_le(in + 32);
+   SIMD_8x32 B2 = SIMD_8x32::load_le(in + 64);
+   SIMD_8x32 B3 = SIMD_8x32::load_le(in + 96);
+
+   SIMD_8x32::transpose(B0, B1, B2, B3);
+
+   key_xor( 0,B0,B1,B2,B3); SBoxE0(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor( 1,B0,B1,B2,B3); SBoxE1(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor( 2,B0,B1,B2,B3); SBoxE2(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor( 3,B0,B1,B2,B3); SBoxE3(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor( 4,B0,B1,B2,B3); SBoxE4(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor( 5,B0,B1,B2,B3); SBoxE5(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor( 6,B0,B1,B2,B3); SBoxE6(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor( 7,B0,B1,B2,B3); SBoxE7(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor( 8,B0,B1,B2,B3); SBoxE0(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor( 9,B0,B1,B2,B3); SBoxE1(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(10,B0,B1,B2,B3); SBoxE2(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(11,B0,B1,B2,B3); SBoxE3(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(12,B0,B1,B2,B3); SBoxE4(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(13,B0,B1,B2,B3); SBoxE5(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(14,B0,B1,B2,B3); SBoxE6(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(15,B0,B1,B2,B3); SBoxE7(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(16,B0,B1,B2,B3); SBoxE0(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(17,B0,B1,B2,B3); SBoxE1(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(18,B0,B1,B2,B3); SBoxE2(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(19,B0,B1,B2,B3); SBoxE3(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(20,B0,B1,B2,B3); SBoxE4(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(21,B0,B1,B2,B3); SBoxE5(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(22,B0,B1,B2,B3); SBoxE6(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(23,B0,B1,B2,B3); SBoxE7(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(24,B0,B1,B2,B3); SBoxE0(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(25,B0,B1,B2,B3); SBoxE1(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(26,B0,B1,B2,B3); SBoxE2(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(27,B0,B1,B2,B3); SBoxE3(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(28,B0,B1,B2,B3); SBoxE4(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(29,B0,B1,B2,B3); SBoxE5(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(30,B0,B1,B2,B3); SBoxE6(B0,B1,B2,B3); transform(B0,B1,B2,B3);
+   key_xor(31,B0,B1,B2,B3); SBoxE7(B0,B1,B2,B3); key_xor(32,B0,B1,B2,B3);
+
+   SIMD_8x32::transpose(B0, B1, B2, B3);
+   B0.store_le(out);
+   B1.store_le(out + 32);
+   B2.store_le(out + 64);
+   B3.store_le(out + 96);
+
+   SIMD_8x32::zero_registers();
+   }
+
+BOTAN_FUNC_ISA("avx2")
+void Serpent::avx2_decrypt_8(const uint8_t in[128], uint8_t out[128]) const
+   {
+   SIMD_8x32::reset_registers();
+
+   SIMD_8x32 B0 = SIMD_8x32::load_le(in);
+   SIMD_8x32 B1 = SIMD_8x32::load_le(in + 32);
+   SIMD_8x32 B2 = SIMD_8x32::load_le(in + 64);
+   SIMD_8x32 B3 = SIMD_8x32::load_le(in + 96);
+
+   SIMD_8x32::transpose(B0, B1, B2, B3);
+
+   key_xor(32,B0,B1,B2,B3);  SBoxD7(B0,B1,B2,B3); key_xor(31,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD6(B0,B1,B2,B3); key_xor(30,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD5(B0,B1,B2,B3); key_xor(29,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD4(B0,B1,B2,B3); key_xor(28,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD3(B0,B1,B2,B3); key_xor(27,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD2(B0,B1,B2,B3); key_xor(26,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD1(B0,B1,B2,B3); key_xor(25,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD0(B0,B1,B2,B3); key_xor(24,B0,B1,B2,B3);
+
+   i_transform(B0,B1,B2,B3); SBoxD7(B0,B1,B2,B3); key_xor(23,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD6(B0,B1,B2,B3); key_xor(22,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD5(B0,B1,B2,B3); key_xor(21,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD4(B0,B1,B2,B3); key_xor(20,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD3(B0,B1,B2,B3); key_xor(19,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD2(B0,B1,B2,B3); key_xor(18,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD1(B0,B1,B2,B3); key_xor(17,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD0(B0,B1,B2,B3); key_xor(16,B0,B1,B2,B3);
+
+   i_transform(B0,B1,B2,B3); SBoxD7(B0,B1,B2,B3); key_xor(15,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD6(B0,B1,B2,B3); key_xor(14,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD5(B0,B1,B2,B3); key_xor(13,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD4(B0,B1,B2,B3); key_xor(12,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD3(B0,B1,B2,B3); key_xor(11,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD2(B0,B1,B2,B3); key_xor(10,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD1(B0,B1,B2,B3); key_xor( 9,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD0(B0,B1,B2,B3); key_xor( 8,B0,B1,B2,B3);
+
+   i_transform(B0,B1,B2,B3); SBoxD7(B0,B1,B2,B3); key_xor( 7,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD6(B0,B1,B2,B3); key_xor( 6,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD5(B0,B1,B2,B3); key_xor( 5,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD4(B0,B1,B2,B3); key_xor( 4,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD3(B0,B1,B2,B3); key_xor( 3,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD2(B0,B1,B2,B3); key_xor( 2,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD1(B0,B1,B2,B3); key_xor( 1,B0,B1,B2,B3);
+   i_transform(B0,B1,B2,B3); SBoxD0(B0,B1,B2,B3); key_xor( 0,B0,B1,B2,B3);
+
+   SIMD_8x32::transpose(B0, B1, B2, B3);
+
+   B0.store_le(out);
+   B1.store_le(out + 32);
+   B2.store_le(out + 64);
+   B3.store_le(out + 96);
+
+   SIMD_8x32::zero_registers();
+   }
+
+#undef key_xor
+#undef transform
+#undef i_transform
+
+}
+/*
 * Serpent (SIMD)
 * (C) 2009,2013 Jack Lloyd
 *
@@ -71925,6 +72715,220 @@ void SHA_160::sse2_compress_n(secure_vector<uint32_t>& digest, const uint8_t inp
 
 }
 /*
+* SHA-1 using Intel SHA intrinsic
+*
+* Based on public domain code by Sean Gulley
+* (https://github.com/mitls/hacl-star/tree/master/experimental/hash)
+* Adapted to Botan by Jeffrey Walton.
+*
+* Further changes
+*
+* (C) 2017 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+#if defined(BOTAN_HAS_SHA1_X86_SHA_NI)
+BOTAN_FUNC_ISA("sha,ssse3,sse4.1")
+void SHA_160::sha1_compress_x86(secure_vector<uint32_t>& digest,
+                                const uint8_t input[],
+                                size_t blocks)
+   {
+   const __m128i MASK = _mm_set_epi64x(0x0001020304050607ULL, 0x08090a0b0c0d0e0fULL);
+   const __m128i* input_mm = reinterpret_cast<const __m128i*>(input);
+
+   uint32_t* state = digest.data();
+
+   // Load initial values
+   __m128i ABCD = _mm_loadu_si128(reinterpret_cast<__m128i*>(state));
+   __m128i E0 = _mm_set_epi32(state[4], 0, 0, 0);
+   ABCD = _mm_shuffle_epi32(ABCD, 0x1B);
+
+   while (blocks)
+      {
+      // Save current hash
+      const __m128i ABCD_SAVE = ABCD;
+      const __m128i E0_SAVE = E0;
+
+      __m128i MSG0, MSG1, MSG2, MSG3;
+      __m128i E1;
+
+      // Rounds 0-3
+      MSG0 = _mm_loadu_si128(input_mm+0);
+      MSG0 = _mm_shuffle_epi8(MSG0, MASK);
+      E0 = _mm_add_epi32(E0, MSG0);
+      E1 = ABCD;
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 0);
+
+      // Rounds 4-7
+      MSG1 = _mm_loadu_si128(input_mm+1);
+      MSG1 = _mm_shuffle_epi8(MSG1, MASK);
+      E1 = _mm_sha1nexte_epu32(E1, MSG1);
+      E0 = ABCD;
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 0);
+      MSG0 = _mm_sha1msg1_epu32(MSG0, MSG1);
+
+      // Rounds 8-11
+      MSG2 = _mm_loadu_si128(input_mm+2);
+      MSG2 = _mm_shuffle_epi8(MSG2, MASK);
+      E0 = _mm_sha1nexte_epu32(E0, MSG2);
+      E1 = ABCD;
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 0);
+      MSG1 = _mm_sha1msg1_epu32(MSG1, MSG2);
+      MSG0 = _mm_xor_si128(MSG0, MSG2);
+
+      // Rounds 12-15
+      MSG3 = _mm_loadu_si128(input_mm+3);
+      MSG3 = _mm_shuffle_epi8(MSG3, MASK);
+      E1 = _mm_sha1nexte_epu32(E1, MSG3);
+      E0 = ABCD;
+      MSG0 = _mm_sha1msg2_epu32(MSG0, MSG3);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 0);
+      MSG2 = _mm_sha1msg1_epu32(MSG2, MSG3);
+      MSG1 = _mm_xor_si128(MSG1, MSG3);
+
+      // Rounds 16-19
+      E0 = _mm_sha1nexte_epu32(E0, MSG0);
+      E1 = ABCD;
+      MSG1 = _mm_sha1msg2_epu32(MSG1, MSG0);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 0);
+      MSG3 = _mm_sha1msg1_epu32(MSG3, MSG0);
+      MSG2 = _mm_xor_si128(MSG2, MSG0);
+
+      // Rounds 20-23
+      E1 = _mm_sha1nexte_epu32(E1, MSG1);
+      E0 = ABCD;
+      MSG2 = _mm_sha1msg2_epu32(MSG2, MSG1);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 1);
+      MSG0 = _mm_sha1msg1_epu32(MSG0, MSG1);
+      MSG3 = _mm_xor_si128(MSG3, MSG1);
+
+      // Rounds 24-27
+      E0 = _mm_sha1nexte_epu32(E0, MSG2);
+      E1 = ABCD;
+      MSG3 = _mm_sha1msg2_epu32(MSG3, MSG2);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 1);
+      MSG1 = _mm_sha1msg1_epu32(MSG1, MSG2);
+      MSG0 = _mm_xor_si128(MSG0, MSG2);
+
+      // Rounds 28-31
+      E1 = _mm_sha1nexte_epu32(E1, MSG3);
+      E0 = ABCD;
+      MSG0 = _mm_sha1msg2_epu32(MSG0, MSG3);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 1);
+      MSG2 = _mm_sha1msg1_epu32(MSG2, MSG3);
+      MSG1 = _mm_xor_si128(MSG1, MSG3);
+
+      // Rounds 32-35
+      E0 = _mm_sha1nexte_epu32(E0, MSG0);
+      E1 = ABCD;
+      MSG1 = _mm_sha1msg2_epu32(MSG1, MSG0);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 1);
+      MSG3 = _mm_sha1msg1_epu32(MSG3, MSG0);
+      MSG2 = _mm_xor_si128(MSG2, MSG0);
+
+      // Rounds 36-39
+      E1 = _mm_sha1nexte_epu32(E1, MSG1);
+      E0 = ABCD;
+      MSG2 = _mm_sha1msg2_epu32(MSG2, MSG1);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 1);
+      MSG0 = _mm_sha1msg1_epu32(MSG0, MSG1);
+      MSG3 = _mm_xor_si128(MSG3, MSG1);
+
+      // Rounds 40-43
+      E0 = _mm_sha1nexte_epu32(E0, MSG2);
+      E1 = ABCD;
+      MSG3 = _mm_sha1msg2_epu32(MSG3, MSG2);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 2);
+      MSG1 = _mm_sha1msg1_epu32(MSG1, MSG2);
+      MSG0 = _mm_xor_si128(MSG0, MSG2);
+
+      // Rounds 44-47
+      E1 = _mm_sha1nexte_epu32(E1, MSG3);
+      E0 = ABCD;
+      MSG0 = _mm_sha1msg2_epu32(MSG0, MSG3);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 2);
+      MSG2 = _mm_sha1msg1_epu32(MSG2, MSG3);
+      MSG1 = _mm_xor_si128(MSG1, MSG3);
+
+      // Rounds 48-51
+      E0 = _mm_sha1nexte_epu32(E0, MSG0);
+      E1 = ABCD;
+      MSG1 = _mm_sha1msg2_epu32(MSG1, MSG0);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 2);
+      MSG3 = _mm_sha1msg1_epu32(MSG3, MSG0);
+      MSG2 = _mm_xor_si128(MSG2, MSG0);
+
+      // Rounds 52-55
+      E1 = _mm_sha1nexte_epu32(E1, MSG1);
+      E0 = ABCD;
+      MSG2 = _mm_sha1msg2_epu32(MSG2, MSG1);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 2);
+      MSG0 = _mm_sha1msg1_epu32(MSG0, MSG1);
+      MSG3 = _mm_xor_si128(MSG3, MSG1);
+
+      // Rounds 56-59
+      E0 = _mm_sha1nexte_epu32(E0, MSG2);
+      E1 = ABCD;
+      MSG3 = _mm_sha1msg2_epu32(MSG3, MSG2);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 2);
+      MSG1 = _mm_sha1msg1_epu32(MSG1, MSG2);
+      MSG0 = _mm_xor_si128(MSG0, MSG2);
+
+      // Rounds 60-63
+      E1 = _mm_sha1nexte_epu32(E1, MSG3);
+      E0 = ABCD;
+      MSG0 = _mm_sha1msg2_epu32(MSG0, MSG3);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 3);
+      MSG2 = _mm_sha1msg1_epu32(MSG2, MSG3);
+      MSG1 = _mm_xor_si128(MSG1, MSG3);
+
+      // Rounds 64-67
+      E0 = _mm_sha1nexte_epu32(E0, MSG0);
+      E1 = ABCD;
+      MSG1 = _mm_sha1msg2_epu32(MSG1, MSG0);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 3);
+      MSG3 = _mm_sha1msg1_epu32(MSG3, MSG0);
+      MSG2 = _mm_xor_si128(MSG2, MSG0);
+
+      // Rounds 68-71
+      E1 = _mm_sha1nexte_epu32(E1, MSG1);
+      E0 = ABCD;
+      MSG2 = _mm_sha1msg2_epu32(MSG2, MSG1);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 3);
+      MSG3 = _mm_xor_si128(MSG3, MSG1);
+
+      // Rounds 72-75
+      E0 = _mm_sha1nexte_epu32(E0, MSG2);
+      E1 = ABCD;
+      MSG3 = _mm_sha1msg2_epu32(MSG3, MSG2);
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E0, 3);
+
+      // Rounds 76-79
+      E1 = _mm_sha1nexte_epu32(E1, MSG3);
+      E0 = ABCD;
+      ABCD = _mm_sha1rnds4_epu32(ABCD, E1, 3);
+
+      // Add values back to state
+      E0 = _mm_sha1nexte_epu32(E0, E0_SAVE);
+      ABCD = _mm_add_epi32(ABCD, ABCD_SAVE);
+
+      input_mm += 4;
+      blocks--;
+      }
+
+   // Save state
+   ABCD = _mm_shuffle_epi32(ABCD, 0x1B);
+   _mm_storeu_si128(reinterpret_cast<__m128i*>(state), ABCD);
+   state[4] = _mm_extract_epi32(E0, 3);
+   }
+#endif
+
+}
+/*
 * SHA-{224,256}
 * (C) 1999-2010,2017 Jack Lloyd
 *     2007 FlexSecure GmbH
@@ -72196,6 +73200,356 @@ void SHA_256::clear()
    m_digest[6] = 0x1F83D9AB;
    m_digest[7] = 0x5BE0CD19;
    }
+
+}
+/*
+* (C) 2018 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+Your eyes do not decieve you; this is currently just a copy of the
+baseline SHA-256 implementation. Because we compile it with BMI2
+flags, GCC and Clang use the BMI2 instructions without further help.
+
+Likely instruction scheduling could be improved by using inline asm.
+*/
+
+#define SHA2_32_F(A, B, C, D, E, F, G, H, M1, M2, M3, M4, magic) do {   \
+   uint32_t A_rho = rotr<2>(A) ^ rotr<13>(A) ^ rotr<22>(A);             \
+   uint32_t E_rho = rotr<6>(E) ^ rotr<11>(E) ^ rotr<25>(E);             \
+   uint32_t M2_sigma = rotr<17>(M2) ^ rotr<19>(M2) ^ (M2 >> 10);        \
+   uint32_t M4_sigma = rotr<7>(M4) ^ rotr<18>(M4) ^ (M4 >> 3);          \
+   H += magic + E_rho + ((E & F) ^ (~E & G)) + M1;                      \
+   D += H;                                                              \
+   H += A_rho + ((A & B) | ((A | B) & C));                              \
+   M1 += M2_sigma + M3 + M4_sigma;                                      \
+   } while(0);
+
+void SHA_256::compress_digest_x86_bmi2(secure_vector<uint32_t>& digest,
+                                       const uint8_t input[],
+                                       size_t blocks)
+   {
+   uint32_t A = digest[0], B = digest[1], C = digest[2],
+            D = digest[3], E = digest[4], F = digest[5],
+            G = digest[6], H = digest[7];
+
+   for(size_t i = 0; i != blocks; ++i)
+      {
+      uint32_t W00 = load_be<uint32_t>(input,  0);
+      uint32_t W01 = load_be<uint32_t>(input,  1);
+      uint32_t W02 = load_be<uint32_t>(input,  2);
+      uint32_t W03 = load_be<uint32_t>(input,  3);
+      uint32_t W04 = load_be<uint32_t>(input,  4);
+      uint32_t W05 = load_be<uint32_t>(input,  5);
+      uint32_t W06 = load_be<uint32_t>(input,  6);
+      uint32_t W07 = load_be<uint32_t>(input,  7);
+      uint32_t W08 = load_be<uint32_t>(input,  8);
+      uint32_t W09 = load_be<uint32_t>(input,  9);
+      uint32_t W10 = load_be<uint32_t>(input, 10);
+      uint32_t W11 = load_be<uint32_t>(input, 11);
+      uint32_t W12 = load_be<uint32_t>(input, 12);
+      uint32_t W13 = load_be<uint32_t>(input, 13);
+      uint32_t W14 = load_be<uint32_t>(input, 14);
+      uint32_t W15 = load_be<uint32_t>(input, 15);
+
+      SHA2_32_F(A, B, C, D, E, F, G, H, W00, W14, W09, W01, 0x428A2F98);
+      SHA2_32_F(H, A, B, C, D, E, F, G, W01, W15, W10, W02, 0x71374491);
+      SHA2_32_F(G, H, A, B, C, D, E, F, W02, W00, W11, W03, 0xB5C0FBCF);
+      SHA2_32_F(F, G, H, A, B, C, D, E, W03, W01, W12, W04, 0xE9B5DBA5);
+      SHA2_32_F(E, F, G, H, A, B, C, D, W04, W02, W13, W05, 0x3956C25B);
+      SHA2_32_F(D, E, F, G, H, A, B, C, W05, W03, W14, W06, 0x59F111F1);
+      SHA2_32_F(C, D, E, F, G, H, A, B, W06, W04, W15, W07, 0x923F82A4);
+      SHA2_32_F(B, C, D, E, F, G, H, A, W07, W05, W00, W08, 0xAB1C5ED5);
+      SHA2_32_F(A, B, C, D, E, F, G, H, W08, W06, W01, W09, 0xD807AA98);
+      SHA2_32_F(H, A, B, C, D, E, F, G, W09, W07, W02, W10, 0x12835B01);
+      SHA2_32_F(G, H, A, B, C, D, E, F, W10, W08, W03, W11, 0x243185BE);
+      SHA2_32_F(F, G, H, A, B, C, D, E, W11, W09, W04, W12, 0x550C7DC3);
+      SHA2_32_F(E, F, G, H, A, B, C, D, W12, W10, W05, W13, 0x72BE5D74);
+      SHA2_32_F(D, E, F, G, H, A, B, C, W13, W11, W06, W14, 0x80DEB1FE);
+      SHA2_32_F(C, D, E, F, G, H, A, B, W14, W12, W07, W15, 0x9BDC06A7);
+      SHA2_32_F(B, C, D, E, F, G, H, A, W15, W13, W08, W00, 0xC19BF174);
+
+      SHA2_32_F(A, B, C, D, E, F, G, H, W00, W14, W09, W01, 0xE49B69C1);
+      SHA2_32_F(H, A, B, C, D, E, F, G, W01, W15, W10, W02, 0xEFBE4786);
+      SHA2_32_F(G, H, A, B, C, D, E, F, W02, W00, W11, W03, 0x0FC19DC6);
+      SHA2_32_F(F, G, H, A, B, C, D, E, W03, W01, W12, W04, 0x240CA1CC);
+      SHA2_32_F(E, F, G, H, A, B, C, D, W04, W02, W13, W05, 0x2DE92C6F);
+      SHA2_32_F(D, E, F, G, H, A, B, C, W05, W03, W14, W06, 0x4A7484AA);
+      SHA2_32_F(C, D, E, F, G, H, A, B, W06, W04, W15, W07, 0x5CB0A9DC);
+      SHA2_32_F(B, C, D, E, F, G, H, A, W07, W05, W00, W08, 0x76F988DA);
+      SHA2_32_F(A, B, C, D, E, F, G, H, W08, W06, W01, W09, 0x983E5152);
+      SHA2_32_F(H, A, B, C, D, E, F, G, W09, W07, W02, W10, 0xA831C66D);
+      SHA2_32_F(G, H, A, B, C, D, E, F, W10, W08, W03, W11, 0xB00327C8);
+      SHA2_32_F(F, G, H, A, B, C, D, E, W11, W09, W04, W12, 0xBF597FC7);
+      SHA2_32_F(E, F, G, H, A, B, C, D, W12, W10, W05, W13, 0xC6E00BF3);
+      SHA2_32_F(D, E, F, G, H, A, B, C, W13, W11, W06, W14, 0xD5A79147);
+      SHA2_32_F(C, D, E, F, G, H, A, B, W14, W12, W07, W15, 0x06CA6351);
+      SHA2_32_F(B, C, D, E, F, G, H, A, W15, W13, W08, W00, 0x14292967);
+
+      SHA2_32_F(A, B, C, D, E, F, G, H, W00, W14, W09, W01, 0x27B70A85);
+      SHA2_32_F(H, A, B, C, D, E, F, G, W01, W15, W10, W02, 0x2E1B2138);
+      SHA2_32_F(G, H, A, B, C, D, E, F, W02, W00, W11, W03, 0x4D2C6DFC);
+      SHA2_32_F(F, G, H, A, B, C, D, E, W03, W01, W12, W04, 0x53380D13);
+      SHA2_32_F(E, F, G, H, A, B, C, D, W04, W02, W13, W05, 0x650A7354);
+      SHA2_32_F(D, E, F, G, H, A, B, C, W05, W03, W14, W06, 0x766A0ABB);
+      SHA2_32_F(C, D, E, F, G, H, A, B, W06, W04, W15, W07, 0x81C2C92E);
+      SHA2_32_F(B, C, D, E, F, G, H, A, W07, W05, W00, W08, 0x92722C85);
+      SHA2_32_F(A, B, C, D, E, F, G, H, W08, W06, W01, W09, 0xA2BFE8A1);
+      SHA2_32_F(H, A, B, C, D, E, F, G, W09, W07, W02, W10, 0xA81A664B);
+      SHA2_32_F(G, H, A, B, C, D, E, F, W10, W08, W03, W11, 0xC24B8B70);
+      SHA2_32_F(F, G, H, A, B, C, D, E, W11, W09, W04, W12, 0xC76C51A3);
+      SHA2_32_F(E, F, G, H, A, B, C, D, W12, W10, W05, W13, 0xD192E819);
+      SHA2_32_F(D, E, F, G, H, A, B, C, W13, W11, W06, W14, 0xD6990624);
+      SHA2_32_F(C, D, E, F, G, H, A, B, W14, W12, W07, W15, 0xF40E3585);
+      SHA2_32_F(B, C, D, E, F, G, H, A, W15, W13, W08, W00, 0x106AA070);
+
+      SHA2_32_F(A, B, C, D, E, F, G, H, W00, W14, W09, W01, 0x19A4C116);
+      SHA2_32_F(H, A, B, C, D, E, F, G, W01, W15, W10, W02, 0x1E376C08);
+      SHA2_32_F(G, H, A, B, C, D, E, F, W02, W00, W11, W03, 0x2748774C);
+      SHA2_32_F(F, G, H, A, B, C, D, E, W03, W01, W12, W04, 0x34B0BCB5);
+      SHA2_32_F(E, F, G, H, A, B, C, D, W04, W02, W13, W05, 0x391C0CB3);
+      SHA2_32_F(D, E, F, G, H, A, B, C, W05, W03, W14, W06, 0x4ED8AA4A);
+      SHA2_32_F(C, D, E, F, G, H, A, B, W06, W04, W15, W07, 0x5B9CCA4F);
+      SHA2_32_F(B, C, D, E, F, G, H, A, W07, W05, W00, W08, 0x682E6FF3);
+      SHA2_32_F(A, B, C, D, E, F, G, H, W08, W06, W01, W09, 0x748F82EE);
+      SHA2_32_F(H, A, B, C, D, E, F, G, W09, W07, W02, W10, 0x78A5636F);
+      SHA2_32_F(G, H, A, B, C, D, E, F, W10, W08, W03, W11, 0x84C87814);
+      SHA2_32_F(F, G, H, A, B, C, D, E, W11, W09, W04, W12, 0x8CC70208);
+      SHA2_32_F(E, F, G, H, A, B, C, D, W12, W10, W05, W13, 0x90BEFFFA);
+      SHA2_32_F(D, E, F, G, H, A, B, C, W13, W11, W06, W14, 0xA4506CEB);
+      SHA2_32_F(C, D, E, F, G, H, A, B, W14, W12, W07, W15, 0xBEF9A3F7);
+      SHA2_32_F(B, C, D, E, F, G, H, A, W15, W13, W08, W00, 0xC67178F2);
+
+      A = (digest[0] += A);
+      B = (digest[1] += B);
+      C = (digest[2] += C);
+      D = (digest[3] += D);
+      E = (digest[4] += E);
+      F = (digest[5] += F);
+      G = (digest[6] += G);
+      H = (digest[7] += H);
+
+      input += 64;
+      }
+   }
+
+}
+/*
+* Support for SHA-256 x86 instrinsic
+* Based on public domain code by Sean Gulley
+*    (https://github.com/mitls/hacl-star/tree/master/experimental/hash)
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+// called from sha2_32.cpp
+#if defined(BOTAN_HAS_SHA2_32_X86)
+BOTAN_FUNC_ISA("sha,sse4.1,ssse3")
+void SHA_256::compress_digest_x86(secure_vector<uint32_t>& digest, const uint8_t input[], size_t blocks)
+   {
+   __m128i STATE0, STATE1;
+   __m128i MSG, TMP, MASK;
+   __m128i TMSG0, TMSG1, TMSG2, TMSG3;
+   __m128i ABEF_SAVE, CDGH_SAVE;
+
+   uint32_t* state = &digest[0];
+
+   const __m128i* input_mm = reinterpret_cast<const __m128i*>(input);
+
+   // Load initial values
+   TMP = _mm_loadu_si128(reinterpret_cast<__m128i*>(&state[0]));
+   STATE1 = _mm_loadu_si128(reinterpret_cast<__m128i*>(&state[4]));
+   MASK = _mm_set_epi64x(0x0c0d0e0f08090a0bULL, 0x0405060700010203ULL);
+
+   TMP = _mm_shuffle_epi32(TMP, 0xB1); // CDAB
+   STATE1 = _mm_shuffle_epi32(STATE1, 0x1B); // EFGH
+   STATE0 = _mm_alignr_epi8(TMP, STATE1, 8); // ABEF
+   STATE1 = _mm_blend_epi16(STATE1, TMP, 0xF0); // CDGH
+
+   while (blocks)
+      {
+      // Save current hash
+      ABEF_SAVE = STATE0;
+      CDGH_SAVE = STATE1;
+
+      // Rounds 0-3
+      MSG = _mm_loadu_si128(input_mm);
+      TMSG0 = _mm_shuffle_epi8(MSG, MASK);
+      MSG = _mm_add_epi32(TMSG0, _mm_set_epi64x(0xE9B5DBA5B5C0FBCFULL, 0x71374491428A2F98ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+
+      // Rounds 4-7
+      TMSG1 = _mm_loadu_si128(input_mm + 1);
+      TMSG1 = _mm_shuffle_epi8(TMSG1, MASK);
+      MSG = _mm_add_epi32(TMSG1, _mm_set_epi64x(0xAB1C5ED5923F82A4ULL, 0x59F111F13956C25BULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG0 = _mm_sha256msg1_epu32(TMSG0, TMSG1);
+
+      // Rounds 8-11
+      TMSG2 = _mm_loadu_si128(input_mm + 2);
+      TMSG2 = _mm_shuffle_epi8(TMSG2, MASK);
+      MSG = _mm_add_epi32(TMSG2, _mm_set_epi64x(0x550C7DC3243185BEULL, 0x12835B01D807AA98ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG1 = _mm_sha256msg1_epu32(TMSG1, TMSG2);
+
+      // Rounds 12-15
+      TMSG3 = _mm_loadu_si128(input_mm + 3);
+      TMSG3 = _mm_shuffle_epi8(TMSG3, MASK);
+      MSG = _mm_add_epi32(TMSG3, _mm_set_epi64x(0xC19BF1749BDC06A7ULL, 0x80DEB1FE72BE5D74ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG3, TMSG2, 4);
+      TMSG0 = _mm_add_epi32(TMSG0, TMP);
+      TMSG0 = _mm_sha256msg2_epu32(TMSG0, TMSG3);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG2 = _mm_sha256msg1_epu32(TMSG2, TMSG3);
+
+      // Rounds 16-19
+      MSG = _mm_add_epi32(TMSG0, _mm_set_epi64x(0x240CA1CC0FC19DC6ULL, 0xEFBE4786E49B69C1ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG0, TMSG3, 4);
+      TMSG1 = _mm_add_epi32(TMSG1, TMP);
+      TMSG1 = _mm_sha256msg2_epu32(TMSG1, TMSG0);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG3 = _mm_sha256msg1_epu32(TMSG3, TMSG0);
+
+      // Rounds 20-23
+      MSG = _mm_add_epi32(TMSG1, _mm_set_epi64x(0x76F988DA5CB0A9DCULL, 0x4A7484AA2DE92C6FULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG1, TMSG0, 4);
+      TMSG2 = _mm_add_epi32(TMSG2, TMP);
+      TMSG2 = _mm_sha256msg2_epu32(TMSG2, TMSG1);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG0 = _mm_sha256msg1_epu32(TMSG0, TMSG1);
+
+      // Rounds 24-27
+      MSG = _mm_add_epi32(TMSG2, _mm_set_epi64x(0xBF597FC7B00327C8ULL, 0xA831C66D983E5152ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG2, TMSG1, 4);
+      TMSG3 = _mm_add_epi32(TMSG3, TMP);
+      TMSG3 = _mm_sha256msg2_epu32(TMSG3, TMSG2);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG1 = _mm_sha256msg1_epu32(TMSG1, TMSG2);
+
+      // Rounds 28-31
+      MSG = _mm_add_epi32(TMSG3, _mm_set_epi64x(0x1429296706CA6351ULL,  0xD5A79147C6E00BF3ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG3, TMSG2, 4);
+      TMSG0 = _mm_add_epi32(TMSG0, TMP);
+      TMSG0 = _mm_sha256msg2_epu32(TMSG0, TMSG3);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG2 = _mm_sha256msg1_epu32(TMSG2, TMSG3);
+
+      // Rounds 32-35
+      MSG = _mm_add_epi32(TMSG0, _mm_set_epi64x(0x53380D134D2C6DFCULL, 0x2E1B213827B70A85ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG0, TMSG3, 4);
+      TMSG1 = _mm_add_epi32(TMSG1, TMP);
+      TMSG1 = _mm_sha256msg2_epu32(TMSG1, TMSG0);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG3 = _mm_sha256msg1_epu32(TMSG3, TMSG0);
+
+      // Rounds 36-39
+      MSG = _mm_add_epi32(TMSG1, _mm_set_epi64x(0x92722C8581C2C92EULL, 0x766A0ABB650A7354ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG1, TMSG0, 4);
+      TMSG2 = _mm_add_epi32(TMSG2, TMP);
+      TMSG2 = _mm_sha256msg2_epu32(TMSG2, TMSG1);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG0 = _mm_sha256msg1_epu32(TMSG0, TMSG1);
+
+      // Rounds 40-43
+      MSG = _mm_add_epi32(TMSG2, _mm_set_epi64x(0xC76C51A3C24B8B70ULL, 0xA81A664BA2BFE8A1ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG2, TMSG1, 4);
+      TMSG3 = _mm_add_epi32(TMSG3, TMP);
+      TMSG3 = _mm_sha256msg2_epu32(TMSG3, TMSG2);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG1 = _mm_sha256msg1_epu32(TMSG1, TMSG2);
+
+      // Rounds 44-47
+      MSG = _mm_add_epi32(TMSG3, _mm_set_epi64x(0x106AA070F40E3585ULL, 0xD6990624D192E819ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG3, TMSG2, 4);
+      TMSG0 = _mm_add_epi32(TMSG0, TMP);
+      TMSG0 = _mm_sha256msg2_epu32(TMSG0, TMSG3);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG2 = _mm_sha256msg1_epu32(TMSG2, TMSG3);
+
+      // Rounds 48-51
+      MSG = _mm_add_epi32(TMSG0, _mm_set_epi64x(0x34B0BCB52748774CULL, 0x1E376C0819A4C116ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG0, TMSG3, 4);
+      TMSG1 = _mm_add_epi32(TMSG1, TMP);
+      TMSG1 = _mm_sha256msg2_epu32(TMSG1, TMSG0);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+      TMSG3 = _mm_sha256msg1_epu32(TMSG3, TMSG0);
+
+      // Rounds 52-55
+      MSG = _mm_add_epi32(TMSG1, _mm_set_epi64x(0x682E6FF35B9CCA4FULL, 0x4ED8AA4A391C0CB3ULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG1, TMSG0, 4);
+      TMSG2 = _mm_add_epi32(TMSG2, TMP);
+      TMSG2 = _mm_sha256msg2_epu32(TMSG2, TMSG1);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+
+      // Rounds 56-59
+      MSG = _mm_add_epi32(TMSG2, _mm_set_epi64x(0x8CC7020884C87814ULL, 0x78A5636F748F82EEULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      TMP = _mm_alignr_epi8(TMSG2, TMSG1, 4);
+      TMSG3 = _mm_add_epi32(TMSG3, TMP);
+      TMSG3 = _mm_sha256msg2_epu32(TMSG3, TMSG2);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+
+      // Rounds 60-63
+      MSG = _mm_add_epi32(TMSG3, _mm_set_epi64x(0xC67178F2BEF9A3F7ULL, 0xA4506CEB90BEFFFAULL));
+      STATE1 = _mm_sha256rnds2_epu32(STATE1, STATE0, MSG);
+      MSG = _mm_shuffle_epi32(MSG, 0x0E);
+      STATE0 = _mm_sha256rnds2_epu32(STATE0, STATE1, MSG);
+
+      // Add values back to state
+      STATE0 = _mm_add_epi32(STATE0, ABEF_SAVE);
+      STATE1 = _mm_add_epi32(STATE1, CDGH_SAVE);
+
+      input_mm += 4;
+      blocks--;
+      }
+
+   TMP = _mm_shuffle_epi32(STATE0, 0x1B); // FEBA
+   STATE1 = _mm_shuffle_epi32(STATE1, 0xB1); // DCHG
+   STATE0 = _mm_blend_epi16(TMP, STATE1, 0xF0); // DCBA
+   STATE1 = _mm_alignr_epi8(STATE1, TMP, 8); // ABEF
+
+   // Save state
+   _mm_storeu_si128(reinterpret_cast<__m128i*>(&state[0]), STATE0);
+   _mm_storeu_si128(reinterpret_cast<__m128i*>(&state[4]), STATE1);
+   }
+#endif
 
 }
 /*
@@ -72476,6 +73830,156 @@ void SHA_512::clear()
 
 }
 /*
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+* SHA-512 F1 Function
+*
+* Use a macro as many compilers won't inline a function this big,
+* even though it is much faster if inlined.
+*/
+#define SHA2_64_F(A, B, C, D, E, F, G, H, M1, M2, M3, M4, magic)         \
+   do {                                                                  \
+      const uint64_t E_rho = rotr<14>(E) ^ rotr<18>(E) ^ rotr<41>(E);    \
+      const uint64_t A_rho = rotr<28>(A) ^ rotr<34>(A) ^ rotr<39>(A);    \
+      const uint64_t M2_sigma = rotr<19>(M2) ^ rotr<61>(M2) ^ (M2 >> 6); \
+      const uint64_t M4_sigma = rotr<1>(M4) ^ rotr<8>(M4) ^ (M4 >> 7);   \
+      H += magic + E_rho + ((E & F) ^ (~E & G)) + M1;                    \
+      D += H;                                                            \
+      H += A_rho + ((A & B) | ((A | B) & C));                            \
+      M1 += M2_sigma + M3 + M4_sigma;                                    \
+   } while(0);
+
+void SHA_512::compress_digest_bmi2(secure_vector<uint64_t>& digest,
+                                   const uint8_t input[], size_t blocks)
+   {
+   uint64_t A = digest[0], B = digest[1], C = digest[2],
+          D = digest[3], E = digest[4], F = digest[5],
+          G = digest[6], H = digest[7];
+
+   for(size_t i = 0; i != blocks; ++i)
+      {
+      uint64_t W00 = load_be<uint64_t>(input,  0);
+      uint64_t W01 = load_be<uint64_t>(input,  1);
+      uint64_t W02 = load_be<uint64_t>(input,  2);
+      uint64_t W03 = load_be<uint64_t>(input,  3);
+      uint64_t W04 = load_be<uint64_t>(input,  4);
+      uint64_t W05 = load_be<uint64_t>(input,  5);
+      uint64_t W06 = load_be<uint64_t>(input,  6);
+      uint64_t W07 = load_be<uint64_t>(input,  7);
+      uint64_t W08 = load_be<uint64_t>(input,  8);
+      uint64_t W09 = load_be<uint64_t>(input,  9);
+      uint64_t W10 = load_be<uint64_t>(input, 10);
+      uint64_t W11 = load_be<uint64_t>(input, 11);
+      uint64_t W12 = load_be<uint64_t>(input, 12);
+      uint64_t W13 = load_be<uint64_t>(input, 13);
+      uint64_t W14 = load_be<uint64_t>(input, 14);
+      uint64_t W15 = load_be<uint64_t>(input, 15);
+
+      SHA2_64_F(A, B, C, D, E, F, G, H, W00, W14, W09, W01, 0x428A2F98D728AE22);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W01, W15, W10, W02, 0x7137449123EF65CD);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W02, W00, W11, W03, 0xB5C0FBCFEC4D3B2F);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W03, W01, W12, W04, 0xE9B5DBA58189DBBC);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W04, W02, W13, W05, 0x3956C25BF348B538);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W05, W03, W14, W06, 0x59F111F1B605D019);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W06, W04, W15, W07, 0x923F82A4AF194F9B);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W07, W05, W00, W08, 0xAB1C5ED5DA6D8118);
+      SHA2_64_F(A, B, C, D, E, F, G, H, W08, W06, W01, W09, 0xD807AA98A3030242);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W09, W07, W02, W10, 0x12835B0145706FBE);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W10, W08, W03, W11, 0x243185BE4EE4B28C);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W11, W09, W04, W12, 0x550C7DC3D5FFB4E2);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W12, W10, W05, W13, 0x72BE5D74F27B896F);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W13, W11, W06, W14, 0x80DEB1FE3B1696B1);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W14, W12, W07, W15, 0x9BDC06A725C71235);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W15, W13, W08, W00, 0xC19BF174CF692694);
+      SHA2_64_F(A, B, C, D, E, F, G, H, W00, W14, W09, W01, 0xE49B69C19EF14AD2);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W01, W15, W10, W02, 0xEFBE4786384F25E3);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W02, W00, W11, W03, 0x0FC19DC68B8CD5B5);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W03, W01, W12, W04, 0x240CA1CC77AC9C65);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W04, W02, W13, W05, 0x2DE92C6F592B0275);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W05, W03, W14, W06, 0x4A7484AA6EA6E483);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W06, W04, W15, W07, 0x5CB0A9DCBD41FBD4);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W07, W05, W00, W08, 0x76F988DA831153B5);
+      SHA2_64_F(A, B, C, D, E, F, G, H, W08, W06, W01, W09, 0x983E5152EE66DFAB);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W09, W07, W02, W10, 0xA831C66D2DB43210);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W10, W08, W03, W11, 0xB00327C898FB213F);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W11, W09, W04, W12, 0xBF597FC7BEEF0EE4);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W12, W10, W05, W13, 0xC6E00BF33DA88FC2);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W13, W11, W06, W14, 0xD5A79147930AA725);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W14, W12, W07, W15, 0x06CA6351E003826F);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W15, W13, W08, W00, 0x142929670A0E6E70);
+      SHA2_64_F(A, B, C, D, E, F, G, H, W00, W14, W09, W01, 0x27B70A8546D22FFC);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W01, W15, W10, W02, 0x2E1B21385C26C926);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W02, W00, W11, W03, 0x4D2C6DFC5AC42AED);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W03, W01, W12, W04, 0x53380D139D95B3DF);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W04, W02, W13, W05, 0x650A73548BAF63DE);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W05, W03, W14, W06, 0x766A0ABB3C77B2A8);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W06, W04, W15, W07, 0x81C2C92E47EDAEE6);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W07, W05, W00, W08, 0x92722C851482353B);
+      SHA2_64_F(A, B, C, D, E, F, G, H, W08, W06, W01, W09, 0xA2BFE8A14CF10364);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W09, W07, W02, W10, 0xA81A664BBC423001);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W10, W08, W03, W11, 0xC24B8B70D0F89791);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W11, W09, W04, W12, 0xC76C51A30654BE30);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W12, W10, W05, W13, 0xD192E819D6EF5218);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W13, W11, W06, W14, 0xD69906245565A910);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W14, W12, W07, W15, 0xF40E35855771202A);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W15, W13, W08, W00, 0x106AA07032BBD1B8);
+      SHA2_64_F(A, B, C, D, E, F, G, H, W00, W14, W09, W01, 0x19A4C116B8D2D0C8);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W01, W15, W10, W02, 0x1E376C085141AB53);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W02, W00, W11, W03, 0x2748774CDF8EEB99);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W03, W01, W12, W04, 0x34B0BCB5E19B48A8);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W04, W02, W13, W05, 0x391C0CB3C5C95A63);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W05, W03, W14, W06, 0x4ED8AA4AE3418ACB);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W06, W04, W15, W07, 0x5B9CCA4F7763E373);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W07, W05, W00, W08, 0x682E6FF3D6B2B8A3);
+      SHA2_64_F(A, B, C, D, E, F, G, H, W08, W06, W01, W09, 0x748F82EE5DEFB2FC);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W09, W07, W02, W10, 0x78A5636F43172F60);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W10, W08, W03, W11, 0x84C87814A1F0AB72);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W11, W09, W04, W12, 0x8CC702081A6439EC);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W12, W10, W05, W13, 0x90BEFFFA23631E28);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W13, W11, W06, W14, 0xA4506CEBDE82BDE9);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W14, W12, W07, W15, 0xBEF9A3F7B2C67915);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W15, W13, W08, W00, 0xC67178F2E372532B);
+      SHA2_64_F(A, B, C, D, E, F, G, H, W00, W14, W09, W01, 0xCA273ECEEA26619C);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W01, W15, W10, W02, 0xD186B8C721C0C207);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W02, W00, W11, W03, 0xEADA7DD6CDE0EB1E);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W03, W01, W12, W04, 0xF57D4F7FEE6ED178);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W04, W02, W13, W05, 0x06F067AA72176FBA);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W05, W03, W14, W06, 0x0A637DC5A2C898A6);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W06, W04, W15, W07, 0x113F9804BEF90DAE);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W07, W05, W00, W08, 0x1B710B35131C471B);
+      SHA2_64_F(A, B, C, D, E, F, G, H, W08, W06, W01, W09, 0x28DB77F523047D84);
+      SHA2_64_F(H, A, B, C, D, E, F, G, W09, W07, W02, W10, 0x32CAAB7B40C72493);
+      SHA2_64_F(G, H, A, B, C, D, E, F, W10, W08, W03, W11, 0x3C9EBE0A15C9BEBC);
+      SHA2_64_F(F, G, H, A, B, C, D, E, W11, W09, W04, W12, 0x431D67C49C100D4C);
+      SHA2_64_F(E, F, G, H, A, B, C, D, W12, W10, W05, W13, 0x4CC5D4BECB3E42B6);
+      SHA2_64_F(D, E, F, G, H, A, B, C, W13, W11, W06, W14, 0x597F299CFC657E2A);
+      SHA2_64_F(C, D, E, F, G, H, A, B, W14, W12, W07, W15, 0x5FCB6FAB3AD6FAEC);
+      SHA2_64_F(B, C, D, E, F, G, H, A, W15, W13, W08, W00, 0x6C44198C4A475817);
+
+      A = (digest[0] += A);
+      B = (digest[1] += B);
+      C = (digest[2] += C);
+      D = (digest[3] += D);
+      E = (digest[4] += E);
+      F = (digest[5] += F);
+      G = (digest[6] += G);
+      H = (digest[7] += H);
+
+      input += 128;
+      }
+   }
+
+#undef SHA2_64_F
+
+}
+/*
 * SHA-3
 * (C) 2010,2016 Jack Lloyd
 *
@@ -72661,6 +74165,39 @@ void SHA_3::final_result(uint8_t output[])
    copy_out_vec_le(output, m_output_bits/8, m_S);
 
    clear();
+   }
+
+}
+/*
+* SHA-3
+* (C) 2019 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+void SHA_3::permute_bmi2(uint64_t A[25])
+   {
+   static const uint64_t RC[24] = {
+      0x0000000000000001, 0x0000000000008082, 0x800000000000808A,
+      0x8000000080008000, 0x000000000000808B, 0x0000000080000001,
+      0x8000000080008081, 0x8000000000008009, 0x000000000000008A,
+      0x0000000000000088, 0x0000000080008009, 0x000000008000000A,
+      0x000000008000808B, 0x800000000000008B, 0x8000000000008089,
+      0x8000000000008003, 0x8000000000008002, 0x8000000000000080,
+      0x000000000000800A, 0x800000008000000A, 0x8000000080008081,
+      0x8000000000008080, 0x0000000080000001, 0x8000000080008008
+   };
+
+   uint64_t T[25];
+
+   for(size_t i = 0; i != 24; i += 2)
+      {
+      SHA3_round(T, A, RC[i+0]);
+      SHA3_round(A, T, RC[i+1]);
+      }
    }
 
 }
@@ -73174,6 +74711,122 @@ void SHACAL2::simd_decrypt_4(const uint8_t in[], uint8_t out[]) const
    G.store_be(out+80);
    D.store_be(out+96);
    H.store_be(out+112);
+   }
+
+}
+/*
+* SHACAL-2 using x86 SHA extensions
+* (C) 2017 Jack Lloyd
+*
+* Botan is released under the Simplified BSD License (see license.txt)
+*/
+
+
+namespace Botan {
+
+/*
+Only encryption is supported since the inverse round function would
+require a different instruction
+*/
+
+BOTAN_FUNC_ISA("sha,ssse3")
+void SHACAL2::x86_encrypt_blocks(const uint8_t in[], uint8_t out[], size_t blocks) const
+   {
+   const __m128i MASK1 = _mm_set_epi8(8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7);
+   const __m128i MASK2 = _mm_set_epi8(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
+
+   const __m128i* RK_mm = reinterpret_cast<const __m128i*>(m_RK.data());
+   const __m128i* in_mm = reinterpret_cast<const __m128i*>(in);
+   __m128i* out_mm = reinterpret_cast<__m128i*>(out);
+
+   while(blocks >= 2)
+      {
+      __m128i B0_0 = _mm_loadu_si128(in_mm);
+      __m128i B0_1 = _mm_loadu_si128(in_mm+1);
+      __m128i B1_0 = _mm_loadu_si128(in_mm+2);
+      __m128i B1_1 = _mm_loadu_si128(in_mm+3);
+
+      __m128i TMP = _mm_shuffle_epi8(_mm_unpacklo_epi64(B0_0, B0_1), MASK2);
+      B0_1 = _mm_shuffle_epi8(_mm_unpackhi_epi64(B0_0, B0_1), MASK2);
+      B0_0 = TMP;
+
+      TMP = _mm_shuffle_epi8(_mm_unpacklo_epi64(B1_0, B1_1), MASK2);
+      B1_1 = _mm_shuffle_epi8(_mm_unpackhi_epi64(B1_0, B1_1), MASK2);
+      B1_0 = TMP;
+
+      for(size_t i = 0; i != 8; ++i)
+         {
+         const __m128i RK0 = _mm_loadu_si128(RK_mm + 2*i);
+         const __m128i RK2 = _mm_loadu_si128(RK_mm + 2*i+1);
+         const __m128i RK1 = _mm_srli_si128(RK0, 8);
+         const __m128i RK3 = _mm_srli_si128(RK2, 8);
+
+         B0_1 = _mm_sha256rnds2_epu32(B0_1, B0_0, RK0);
+         B1_1 = _mm_sha256rnds2_epu32(B1_1, B1_0, RK0);
+
+         B0_0 = _mm_sha256rnds2_epu32(B0_0, B0_1, RK1);
+         B1_0 = _mm_sha256rnds2_epu32(B1_0, B1_1, RK1);
+
+         B0_1 = _mm_sha256rnds2_epu32(B0_1, B0_0, RK2);
+         B1_1 = _mm_sha256rnds2_epu32(B1_1, B1_0, RK2);
+
+         B0_0 = _mm_sha256rnds2_epu32(B0_0, B0_1, RK3);
+         B1_0 = _mm_sha256rnds2_epu32(B1_0, B1_1, RK3);
+         }
+
+      TMP = _mm_shuffle_epi8(_mm_unpackhi_epi64(B0_0, B0_1), MASK1);
+      B0_1 = _mm_shuffle_epi8(_mm_unpacklo_epi64(B0_0, B0_1), MASK1);
+      B0_0 = TMP;
+
+      TMP = _mm_shuffle_epi8(_mm_unpackhi_epi64(B1_0, B1_1), MASK1);
+      B1_1 = _mm_shuffle_epi8(_mm_unpacklo_epi64(B1_0, B1_1), MASK1);
+      B1_0 = TMP;
+
+      // Save state
+      _mm_storeu_si128(out_mm + 0, B0_0);
+      _mm_storeu_si128(out_mm + 1, B0_1);
+      _mm_storeu_si128(out_mm + 2, B1_0);
+      _mm_storeu_si128(out_mm + 3, B1_1);
+
+      blocks -= 2;
+      in_mm += 4;
+      out_mm += 4;
+      }
+
+   while(blocks)
+      {
+      __m128i B0 = _mm_loadu_si128(in_mm);
+      __m128i B1 = _mm_loadu_si128(in_mm+1);
+
+      __m128i TMP = _mm_shuffle_epi8(_mm_unpacklo_epi64(B0, B1), MASK2);
+      B1 = _mm_shuffle_epi8(_mm_unpackhi_epi64(B0, B1), MASK2);
+      B0 = TMP;
+
+      for(size_t i = 0; i != 8; ++i)
+         {
+         const __m128i RK0 = _mm_loadu_si128(RK_mm + 2*i);
+         const __m128i RK2 = _mm_loadu_si128(RK_mm + 2*i+1);
+         const __m128i RK1 = _mm_srli_si128(RK0, 8);
+         const __m128i RK3 = _mm_srli_si128(RK2, 8);
+
+         B1 = _mm_sha256rnds2_epu32(B1, B0, RK0);
+         B0 = _mm_sha256rnds2_epu32(B0, B1, RK1);
+         B1 = _mm_sha256rnds2_epu32(B1, B0, RK2);
+         B0 = _mm_sha256rnds2_epu32(B0, B1, RK3);
+         }
+
+      TMP = _mm_shuffle_epi8(_mm_unpackhi_epi64(B0, B1), MASK1);
+      B1 = _mm_shuffle_epi8(_mm_unpacklo_epi64(B0, B1), MASK1);
+      B0 = TMP;
+
+      // Save state
+      _mm_storeu_si128(out_mm, B0);
+      _mm_storeu_si128(out_mm + 1, B1);
+
+      blocks--;
+      in_mm += 2;
+      out_mm += 2;
+      }
    }
 
 }
