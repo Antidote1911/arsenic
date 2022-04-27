@@ -24,15 +24,12 @@ win32-g++ {
     QMAKE_CXXFLAGS += -Wa,-mbig-obj
 }
 
+
 # core
 LIBS += -L$$OUT_PWD/../arscore/build/ -larscore
 INCLUDEPATH += $$PWD/../arscore
 DEPENDPATH += $$OUT_PWD/../arscore
 
-# Botan
-LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
-INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
-DEPENDPATH += $$OUT_PWD/../3rdparty/botan/build
 
 # INSTALL Linux
 target.path = /usr/bin/

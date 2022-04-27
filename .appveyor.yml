@@ -19,9 +19,6 @@ before_build:
     - qmake arsenic.pro
     - nmake
 
-build_script:
-    - mingw32-make
-
 after_build:
     - cd %APPVEYOR_BUILD_FOLDER%
     - mkdir arsenic_win_x64

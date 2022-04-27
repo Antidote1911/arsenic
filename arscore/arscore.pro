@@ -16,7 +16,8 @@ HEADERS += \
     utils.h \
     consts.h \
     messages.h \
-    zxcvbn.h
+    zxcvbn.h \
+
 
 SOURCES += \
     CryptoThread.cpp \
@@ -26,12 +27,11 @@ SOURCES += \
     utils.cpp \
     consts.cpp \
     messages.cpp \
-    zxcvbn.c
+    zxcvbn.c \
 
-# Botan
-LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
-INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
-DEPENDPATH += $$OUT_PWD/../3rdparty/botan/build
+
+
+
 
 DESTDIR = build
 
