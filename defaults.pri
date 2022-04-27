@@ -38,7 +38,7 @@ linux {
 
 win32 {
     message(win 32)
-    LIBS += -ladvapi32 -luser32 -lws2_32
+    LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
     QMAKE_CXXFLAGS += -bigobj -arch:AVX2
     INCLUDEPATH += ../3rdparty/botan/win_msvc64/
     DEPENDPATH += ../3rdparty/botan/win_msvc64/
