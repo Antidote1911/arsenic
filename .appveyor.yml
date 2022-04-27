@@ -6,22 +6,24 @@ branches:
 
 skip_tags: true
 
-image: Visual Studio 2019
+image: Visual Studio 2022
 
 configuration: Release
 
 environment:
-  QTDIR: C:\Qt\6.3.0\mingw_64
+  QTDIR: C:\Qt\6.2.2\mingw_64
   MINGWDIR: C:\Qt\Tools\mingw810_64
 
 install:
-    - set PATH=%QTDIR%\bin;%MINGWDIR%\bin;%PATH%
+    - cmd: appveyor DownloadFile http://tripleboot.org/Uploads/windeployqt64releaseonly.zip
+    - cmd: 7z e windeployqt64releaseonly.zip -o%QTDIR%\..\..\Tools\mingw810_64\bin
 
 before_build:
-    - qmake arsenic.pro
+    - cmd: set PATH=%QTDIR%\bin;%QTDIR%\..\..\Tools\mingw810_64\bin;C:\Program Files (x86)\NSIS\;%PATH%
+    - cmd: echo PATH=%PATH%    
 
 build_script:
-    - qmake CONFIG+=release arsenic.pro
+    - qmake CONFIG+=release arsenic.pro -spec win32-g++
     - mingw32-make
     
 after_build:   
