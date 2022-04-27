@@ -32,7 +32,7 @@
 * Build configuration for Botan 2.19.1
 *
 * Automatically generated from
-* 'configure.py --cpu=x86_64 --cc=msvc --os=windows --amalgamation --minimized-build --disable-shared --enable-modules=ed25519,ctr,rmd160,streebog,sm3,gost_3411,shake,whirlpool,eax,siv,gcm,adler32,aead,aes,aes_ni,argon2,auto_rng,base64,chacha20poly1305,chacha_avx2,chacha_simd32,crc24,crc32,hex,keccak,md4,md5,rng,serpent,serpent_avx2,serpent_simd,sha1,sha1_armv8,sha1_sse2,sha1_x86,sha2_32,sha2_32_armv8,sha2_32_bmi2,sha2_32_x86,sha2_64,sha2_64_bmi2,sha3,sha3_bmi2,tiger,skein,sodium'
+* 'configure.py --cpu=x86_64 --cc=msvc --os=windows --amalgamation --minimized-build --disable-shared --enable-modules=curve25519,ctr,rmd160,streebog,sm3,gost_3411,shake,whirlpool,eax,siv,gcm,adler32,aead,aes,aes_ni,argon2,auto_rng,base64,chacha20poly1305,chacha_avx2,chacha_simd32,crc24,crc32,hex,keccak,md4,md5,rng,serpent,serpent_avx2,serpent_simd,sha1,sha1_armv8,sha1_sse2,sha1_x86,sha2_32,sha2_32_armv8,sha2_32_bmi2,sha2_32_x86,sha2_64,sha2_64_bmi2,sha3,sha3_bmi2,tiger,skein,sodium'
 *
 * Target
 *  - Compiler: cl  /EHs /GR /MD /bigobj /O2 /Oi
