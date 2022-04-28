@@ -1,19 +1,43 @@
-version: 1.0.0.{build}
+image: Visual Studio 2017
 
-image: Visual Studio 2019
-
-configuration: Release
+version: 0.9.{build}
 
 environment:
-  global:
-    TARGET: x86_64-pc-windows-msvc
+  matrix:
+    - QTDIR: C:\Qt\5.13.2\mingw73_64
+      cname: mingw
 
+configuration:
+  #- debug
+   - release
 
 install:
-    - set QTDIR=C:\Qt\6.3.0
-    - set PATH=%PATH%;%QTDIR%\bin;C:\Qt\6.3.0\msvc2019_64\bin
-    - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
+  # Setup the build toolchains
+  - cmd: vcpkg integrate install
+  - cmd: vcpkg install gsl:x64-windows
+  - cmd: cd C:/Tools/vcpkg/packages/gsl_x64-windows/share/
+  - cmd: dir
+  - cmd: cd C:/Tools/vcpkg/packages/gsl_x64-windows/bin/
+  - cmd: dir
+  - cmd: cd C:/Tools/vcpkg/packages/gsl_x64-windows/lib/
+  - cmd: dir
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - '%QTDIR%\bin\qtenv2.bat'
+  - qmake -v
+  - if %QTDIR:_64=%==%QTDIR% ( set ARCH=x86 ) else set ARCH=x64
+  - if %cname%==mingw set make=mingw32-make.exe
+  - if %cname%==mingw g++ --version
+  - if %cname%==mingw %make% --version
+  - if not %cname%==mingw call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" %ARCH%
+  - if not %cname%==mingw set make=nmake.exe
+  - if not %cname%==mingw %make% /? > nul
+  - if %cname%==mingw set PATH=%PATH%;%QTDIR%\bin;C:\MinGW\bin;C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\shared
+
+before_build:
+    # Prepare the out-of-source build directory.
+    - cd %APPVEYOR_BUILD_FOLDER%
+    - qmake arsenic.pro
 
 build_script:
-    - qmake arsenic.pro -spec win32-msvc "CONFIG+=release"
-    - nmake
+  - '%make%'
+
