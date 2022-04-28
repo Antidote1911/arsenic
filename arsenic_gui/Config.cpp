@@ -88,7 +88,8 @@ static const QHash<Config::ConfigKey, ConfigDirective> configStrings = {
     {Config::PasswordGenerator_WordSeparator, {QS("PasswordGenerator/WordSeparator"), Roaming, QS(" ")}},
     {Config::PasswordGenerator_WordList, {QS("PasswordGenerator/WordList"), Roaming, QS("eff_large.wordlist")}},
     {Config::PasswordGenerator_WordCase, {QS("PasswordGenerator/WordCase"), Roaming, 0}},
-    {Config::PasswordGenerator_Type, {QS("PasswordGenerator/Type"), Roaming, 0}}};
+    {Config::PasswordGenerator_Type, {QS("PasswordGenerator/Type"), Roaming, 0}},
+    {Config::PasswordGenerator_ViewPassword, {QS("PasswordGenerator/ViewPassword"), Roaming, false}}};
 
 // clang-format on
 

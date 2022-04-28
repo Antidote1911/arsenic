@@ -37,7 +37,6 @@ arsenic.pro.user
 build
 
 # Qt
-
 /.qmake.cache
 /.qmake.stash
 *.pro.user

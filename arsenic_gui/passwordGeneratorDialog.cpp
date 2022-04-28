@@ -99,6 +99,9 @@ void PasswordGeneratorDialog::loadSettings()
     m_ui->checkBoxExcludeAlike->setChecked(config()->get(Config::PasswordGenerator_ExcludeAlike).toBool());
     m_ui->checkBoxEnsureEvery->setChecked(config()->get(Config::PasswordGenerator_EnsureEvery).toBool());
     m_ui->spinBoxLength->setValue(config()->get(Config::PasswordGenerator_Length).toInt());
+    m_ui->togglePasswordButton->setChecked(config()->get(Config::PasswordGenerator_ViewPassword).toBool());
+    setPasswordVisible(config()->get(Config::PasswordGenerator_ViewPassword).toBool());
+
 }
 
 void PasswordGeneratorDialog::saveSettings()
@@ -128,6 +131,7 @@ void PasswordGeneratorDialog::saveSettings()
     config()->set(Config::PasswordGenerator_ExcludeAlike, m_ui->checkBoxExcludeAlike->isChecked());
     config()->set(Config::PasswordGenerator_EnsureEvery, m_ui->checkBoxEnsureEvery->isChecked());
     config()->set(Config::PasswordGenerator_Length, m_ui->spinBoxLength->value());
+    config()->set(Config::PasswordGenerator_ViewPassword, m_ui->togglePasswordButton->isChecked());
 }
 
 void PasswordGeneratorDialog::reset(int length)
@@ -139,7 +143,6 @@ void PasswordGeneratorDialog::reset(int length)
         m_ui->spinBoxLength->setValue(config()->get(Config::PasswordGenerator_Length).toInt());
 
     setStandaloneMode(false);
-    setPasswordVisible(config()->get(Config::GUI_showPassword).toBool());
     updateGenerator();
 }
 
@@ -148,7 +151,6 @@ void PasswordGeneratorDialog::setStandaloneMode(bool standalone)
     m_standalone = standalone;
     if (standalone) {
         m_ui->buttonApply->setText(tr("Close"));
-        setPasswordVisible(true);
     }
     else
         m_ui->buttonApply->setText(tr("Accept"));
@@ -236,16 +238,13 @@ void PasswordGeneratorDialog::setPasswordVisible(bool visible)
     if (visible) {
         m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-on.svg"));
         m_ui->editNewPassword->setEchoMode(QLineEdit::Normal);
+        m_passwordVisible=true;
     }
     else {
         m_ui->togglePasswordButton->setIcon(QIcon(":/pixmaps/password-show-off.svg"));
         m_ui->editNewPassword->setEchoMode(QLineEdit::Password);
+        m_passwordVisible=false;
     }
-}
-
-bool PasswordGeneratorDialog::isPasswordVisible() const
-{
-    return (m_ui->togglePasswordButton->isChecked());
 }
 
 void PasswordGeneratorDialog::selectSimpleMode()

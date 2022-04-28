@@ -40,7 +40,6 @@ class PasswordGeneratorDialog : public QDialog {
     void reset(int length = 0);
     void setStandaloneMode(bool standalone);
     QString getGeneratedPassword();
-    bool isPasswordVisible() const;
 
   protected:
     void showEvent(QShowEvent *event) override;
@@ -71,6 +70,7 @@ class PasswordGeneratorDialog : public QDialog {
   private:
     bool m_updatingSpinBox;
     bool m_standalone = false;
+    bool m_passwordVisible;
 
     PasswordGenerator::CharClasses charClasses();
     PasswordGenerator::GeneratorFlags generatorFlags();

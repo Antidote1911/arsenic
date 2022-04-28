@@ -71,6 +71,7 @@ class Config : public QObject {
         PasswordGenerator_WordList,
         PasswordGenerator_WordCase,
         PasswordGenerator_Type,
+        PasswordGenerator_ViewPassword,
 
         // Special internal value
         Deleted
