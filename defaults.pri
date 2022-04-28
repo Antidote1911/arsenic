@@ -39,7 +39,7 @@ linux {
 win32 {
     message(win 32)
     QMAKE_LFLAGS += -fstack-protector -bigobj
-    QMAKE_CXXFLAGS += -Wa,-bigobj
+    QMAKE_CXXFLAGS += -bigobj
     LIBS += -ladvapi32 -luser32 -lws2_32 -lpthread
     INCLUDEPATH += ../3rdparty/botan/win_msvc64/
     DEPENDPATH += ../3rdparty/botan/win_msvc64/
