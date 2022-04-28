@@ -5,7 +5,6 @@ branches:
     - master
     - /^v\d+\.\d+$/
 
-skip_tags: true
 
 image: Visual Studio 2022
 
