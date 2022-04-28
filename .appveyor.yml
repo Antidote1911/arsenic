@@ -23,7 +23,8 @@ after_build:
     - xcopy %APPVEYOR_BUILD_FOLDER%\arscore\build\arscore.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
     - windeployqt arsenic_gui.exe
-    - iscc ./installer/installer.iss
+    - dir %APPVEYOR_BUILD_FOLDER%
+    - iscc .%APPVEYOR_BUILD_FOLDER%/installer/installer.iss
 
 artifacts:
     - path: Output/arsenic-*.exe
