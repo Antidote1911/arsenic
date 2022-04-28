@@ -7,7 +7,7 @@
 **A simple tool to encrypt files and text with strong algorithms.**<br>
 Tested with Windows 10 and all major Linux distributions. Arsenic is developed on Archlinux.
 
-Latest Windows x64 release 3.5.5 is [here](https://github.com/Antidote1911/arsenic/releases/latest).
+Latest Windows x64 release is [here](https://github.com/Antidote1911/arsenic/releases/latest).
 
 <img src='screenshots/main_dark.png'/>
 
