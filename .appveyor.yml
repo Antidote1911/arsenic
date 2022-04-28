@@ -15,7 +15,5 @@ install:
     - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
 
 build_script:
-    - echo %arch%
-    - echo %APPVEYOR_BUILD_WORKER_IMAGE%
     - qmake arsenic.pro -spec win32_x86_64_msvc2019 "CONFIG+=release"
     - nmake
