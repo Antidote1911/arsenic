@@ -31,8 +31,6 @@ SOURCES += \
 
 
 
-
-
 DESTDIR = build
 
 #INSTALL Linux
