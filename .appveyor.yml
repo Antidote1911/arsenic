@@ -6,12 +6,12 @@ branches:
 
 skip_tags: true
 
-image: Visual Studio 2019
+image: Visual Studio 2021
 
 configuration: Release
 
 environment:
-  QTDIR: C:\Qt\6.3.0\mingw_64
+  QTDIR: C:\Qt\6.2.4\mingw_64
   MINGWDIR: C:\Qt\Tools\mingw810_64
 
 install:
