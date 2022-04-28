@@ -1,43 +1,41 @@
-image: Visual Studio 2017
+version: 1.0.{build}
 
-version: 0.9.{build}
+branches:
+  only:
+    - master
+
+skip_tags: true
+
+image: Visual Studio 2019
+
+configuration: Release
 
 environment:
-  matrix:
-    - QTDIR: C:\Qt\5.13.2\mingw73_64
-      cname: mingw
-
-configuration:
-  #- debug
-   - release
+  QTDIR: C:\Qt\5.15.2\mingw81_64
+  MINGWDIR: C:\Qt\Tools\mingw810_64
 
 install:
-  # Setup the build toolchains
-  - cmd: vcpkg integrate install
-  - cmd: vcpkg install gsl:x64-windows
-  - cmd: cd C:/Tools/vcpkg/packages/gsl_x64-windows/share/
-  - cmd: dir
-  - cmd: cd C:/Tools/vcpkg/packages/gsl_x64-windows/bin/
-  - cmd: dir
-  - cmd: cd C:/Tools/vcpkg/packages/gsl_x64-windows/lib/
-  - cmd: dir
-  - cd %APPVEYOR_BUILD_FOLDER%
-  - '%QTDIR%\bin\qtenv2.bat'
-  - qmake -v
-  - if %QTDIR:_64=%==%QTDIR% ( set ARCH=x86 ) else set ARCH=x64
-  - if %cname%==mingw set make=mingw32-make.exe
-  - if %cname%==mingw g++ --version
-  - if %cname%==mingw %make% --version
-  - if not %cname%==mingw call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" %ARCH%
-  - if not %cname%==mingw set make=nmake.exe
-  - if not %cname%==mingw %make% /? > nul
-  - if %cname%==mingw set PATH=%PATH%;%QTDIR%\bin;C:\MinGW\bin;C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\shared
+    - set PATH=%QTDIR%\bin;%MINGWDIR%\bin;%PATH%
 
 before_build:
-    # Prepare the out-of-source build directory.
-    - cd %APPVEYOR_BUILD_FOLDER%
     - qmake arsenic.pro
 
 build_script:
-  - '%make%'
+    - qmake CONFIG+=release arsenic.pro
+    - mingw32-make
+    
+after_build:   
+    - cd %APPVEYOR_BUILD_FOLDER%
+    - mkdir arsenic_win_x64
+    - cd arsenic_win_x64
+    - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic\release\arsenic.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+    - xcopy %APPVEYOR_BUILD_FOLDER%\tests\release\tests.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+    - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\release\arsenic_gui.exe %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+    - xcopy %APPVEYOR_BUILD_FOLDER%\arscore\build\arscore.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
+    - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
+    - windeployqt arsenic_gui.exe
+    
 
+artifacts:
+    - path: arsenic_win_x64
+      type: zip
