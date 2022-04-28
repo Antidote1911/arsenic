@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-git tag -a v5.0 -m "Version 5.0"
+git tag v5.0 -m "Version 5.0"
 
 echo "Pushing Local Files To Github..."
 git push origin v5.0
