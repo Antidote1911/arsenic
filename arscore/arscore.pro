@@ -29,6 +29,10 @@ SOURCES += \
     messages.cpp \
     zxcvbn.c \
 
+# Botan
+LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
+INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
+DEPENDPATH += $$OUT_PWD/../3rdparty/botan/build
 
 
 DESTDIR = build

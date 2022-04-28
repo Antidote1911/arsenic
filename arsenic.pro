@@ -3,11 +3,13 @@ OTHER_FILES += \
     
 TEMPLATE = subdirs
 
-SUBDIRS += arscore \
+SUBDIRS += 3rdparty \
+           arscore \
            arsenic \
            arsenic_gui \
            tests
 
+arscore.depends = 3rdparty
 arsenic.depends = arscore
 arsenic_gui.depends = arscore
 tests.depends = arscore 

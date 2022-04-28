@@ -17,5 +17,5 @@ install:
 build_script:
     - echo %arch%
     - echo %APPVEYOR_BUILD_WORKER_IMAGE%
-    - qmake arsenic.pro -spec winrt_x86_msvc2017 "CONFIG+=release"
+    - qmake arsenic.pro -spec win32_x86_64_msvc2019 "CONFIG+=release"
     - nmake
