@@ -206,7 +206,7 @@ quint32 Crypto_Thread::encrypt(const QString& src_path)
     if (m_deletefile) {
         src_file.close();
         QFile::remove(src_file.fileName());
-        emit deletedAfterSuccess(fileName);
+        emit deletedAfterSuccess(src_path);
     }
     emit addEncrypted(des_file.fileName());
     return (CRYPT_SUCCESS);
@@ -335,10 +335,9 @@ quint32 Crypto_Thread::decrypt(const QString& src_path)
     }
 
     if (m_deletefile) {
-        auto test3= src_info.fileName();
         src_file.close();
         src_file.remove();
-        emit deletedAfterSuccess(test3);
+        emit deletedAfterSuccess(src_path);
     }
 
     return (DECRYPT_SUCCESS);
