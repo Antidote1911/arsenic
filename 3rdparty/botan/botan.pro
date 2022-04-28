@@ -6,10 +6,7 @@ exists($$PWD/botan/configure.py){
         message ( trying now )
     }
     win32-g++{
-        system( $$PWD/update-botan-gcc.bat )
-    }
-    win32-msvc{
-        system( $$PWD/update-botan-msvc.bat )
+        system( $$PWD/update-botan-win.bat )
     }
     linux {
         system( ./update-botan.sh )
