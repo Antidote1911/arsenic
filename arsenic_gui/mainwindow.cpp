@@ -155,7 +155,7 @@ void MainWindow::removeDeletedFile(QString filepath)
 {
     QList<QStandardItem *> items;
     QStandardItem *item;
-    items      = fileListModelCrypto->findItems(filepath, Qt::MatchExactly, 2);
+    items      = fileListModelCrypto->findItems(filepath, Qt::MatchExactly, 1);
     item       = items[0];
     auto index = item->row();
     if (fileListModelCrypto->hasChildren()) {
