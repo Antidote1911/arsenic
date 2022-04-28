@@ -22,7 +22,7 @@ OutputDir=..\Output
 MinVersion=6.0
 UserInfoPage=false
 AppVersion={#AppVersion}
-UninstallDisplayIcon={app}\arsenic.exe
+UninstallDisplayIcon={app}\arsenic_gui.exe
 EnableDirDoesntExistWarning=false
 DirExistsWarning=no
 SolidCompression=true
@@ -33,7 +33,7 @@ Source: ..\release\*; DestDir: {app}; Flags: recursesubdirs
 
 
 [Icons]
-Name: {group}\Arsenic; Filename: {app}\arsenic.exe; IconFilename: {app}\Arsenic.exe;
+Name: {group}\Arsenic; Filename: {app}\arsenic_gui.exe; IconFilename: {app}\Arsenic_gui.exe;
 Name: {group}\Uninstall; Filename: {uninstallexe}; WorkingDir: {app};
 
 ;;; HKEY_CURRENT_USER\Software\arsenic

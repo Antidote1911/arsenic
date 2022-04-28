@@ -28,7 +28,7 @@ after_build:
     - iscc ./installer/installer.iss
 
 artifacts:
-    - path: Output/arsenic-*.exe
+    - path: Output/arsenic_gui-*.exe
       name: SetupExe
 
 deploy:
