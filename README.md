@@ -47,7 +47,7 @@ the output is :
 - encrypted dataBlock2  ( BUFFER_SIZE + Authentication tag * 3 )
 - ....etc
 
-**Text encryption with cryptopad**<br>
+**Text encryption with cryptopad**  
 
 - version    (4 bytes)
 - salt       (16 bytes) for Argon2
@@ -55,7 +55,7 @@ the output is :
 - ciphertext
 - Authentication tag * 3
 
-**Hash calculator**<br>
+**Hash calculator**  
 Supported algorithms: SHA-3, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512-256, Skein-512, Keccak-1600, Whirlpool, Blake2b, SHAKE-128, SHAKE-256, GOST-34.11, SM3, Tiger, Streebog-256, Streebog-512, RIPEMD-160, Adler32, MD4, MD5, CRC24, CRC32
 
 
