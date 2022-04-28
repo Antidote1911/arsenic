@@ -18,7 +18,7 @@ class LIB_EXPORT consts : public QObject {
     explicit consts(QObject *parent = nullptr);
 
     static inline int const EXIT_CODE_REBOOT = -123456789;
-    static inline QVersionNumber const APP_VERSION{4, 0, 0};
+    static inline QVersionNumber const APP_VERSION{5, 0, 0};
     static inline QString const APP_SHORT_NAME         = "Arsenic";
     static inline QString const APP_LONG_NAME          = "Arsenic " + APP_VERSION.toString();
     static inline QString const APP_DESCRIPTION        = "Arsenic - Strong encryption";

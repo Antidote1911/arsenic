@@ -39,3 +39,19 @@ after_build:
 artifacts:
     - path: arsenic_win_x64
       type: zip
+
+# deploy tagged releases to Github releases
+deploy:
+      - provider: GitHub
+        release: $(appveyor_repo_tag_name)
+        description: 'Release of arsenic v${appveyor_repo_tag_name}'
+        draft: false
+        prerelease: false
+        do_rel: true
+        auth_token:
+          secure: +tfhnWlsWPfHXUdLqWA8LjT0q9toLiCuBZBUs+tRXLKTYOaxNpwZ/ezF25o8uvv+
+        artifact: arsenic_win_x64.zip
+        force_update: true
+        on:
+          branch: master                # release from master branch only
+          appveyor_repo_tag: true      # deploy on tag push only
