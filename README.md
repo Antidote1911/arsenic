@@ -70,7 +70,7 @@ If you want to update botan, simply delete the folder 3rdparty/botan/botan, and 
 
 Run Qmake and the new version was downloaded and amalgamation was generated.
 
-To build the program from source, the appropriate Qt version should be installed and configured.<br>
+To build the program from source, the appropriate Qt version should be installed and configured.  
 
 On linux distributions you can run this command in the extracted source archive:
 ```bash
@@ -82,7 +82,7 @@ Arsenic work well but it need some code simplifications, code comments, orthogra
 Any suggestions or help are welcome.
 
 
-- [Jack Lloyd from randombit.net](https://botan.randombit.net) for the powerful Botan C++ cryptographic library. You can find the Github [here](https://github.com/randombit/botan).<br>
+- [Jack Lloyd from randombit.net](https://botan.randombit.net) for the powerful Botan C++ cryptographic library. You can find the Github [here](https://github.com/randombit/botan).  
 It is released under the permissive Simplified [BSD license](https://botan.randombit.net/license.txt)
 
 - [KeepassXC](https://github.com/keepassxreboot/keepassxc) for some big portions of code. Including password generator (modified for use Botan Random Number Generator) and the QSettings wrapper class.
