@@ -8,6 +8,9 @@ exists($$PWD/botan/configure.py){
     win32-g++{
         system( $$PWD/update-botan.bat )
     }
+    win32-msvc{
+        system( $$PWD/update-botan.bat )
+    }
     linux {
         system( ./update-botan.sh )
     }
