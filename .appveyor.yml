@@ -8,6 +8,9 @@ environment:
 
 install:
     - set PATH=%QTDIR%\bin;%MINGWDIR%\bin;%PATH%
+    - ps: Start-FileDownload 'http://www.jrsoftware.org/download.php/is.exe' is.exe
+    - is.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+    - set PATH=%QTDIR%\bin;%MINGW%\bin;%PATH%;"C:\Program Files (x86)\Inno Setup 5"
 
 before_build:
     - qmake arsenic.pro
@@ -26,11 +29,11 @@ after_build:
     - xcopy %APPVEYOR_BUILD_FOLDER%\arscore\build\arscore.dll %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\
     - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
     - windeployqt arsenic_gui.exe
-    
+    - iscc ./installer/installer.iss
 
 artifacts:
-    - path: arsenic_win_x64
-      type: zip
+    - path: Output/arsenic-*.exe
+      name: SetupExe
 
 deploy:
       - provider: GitHub
@@ -41,7 +44,7 @@ deploy:
         do_rel: true
         auth_token:
           secure: +tfhnWlsWPfHXUdLqWA8LjT0q9toLiCuBZBUs+tRXLKTYOaxNpwZ/ezF25o8uvv+
-        artifact: arsenic_win_x64.zip
+        artifact: SetupExe
         force_update: true
         on:
           appveyor_repo_tag: true      # deploy on tag push only
