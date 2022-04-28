@@ -24,7 +24,8 @@ after_build:
     - xcopy %APPVEYOR_BUILD_FOLDER%\arsenic_gui\languages %APPVEYOR_BUILD_FOLDER%\arsenic_win_x64\languages /E /Y /I
     - windeployqt arsenic_gui.exe
     - dir %APPVEYOR_BUILD_FOLDER%
-    - iscc .%APPVEYOR_BUILD_FOLDER%/installer/installer.iss
+    - cd %APPVEYOR_BUILD_FOLDER%
+    - iscc ./installer/installer.iss
 
 artifacts:
     - path: Output/arsenic-*.exe
