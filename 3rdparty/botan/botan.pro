@@ -6,10 +6,10 @@ exists($$PWD/botan/configure.py){
         message ( trying now )
     }
     win32-g++{
-        system( $$PWD/update-botan.bat )
+        system( $$PWD/update-botan-gcc.bat )
     }
     win32-msvc{
-        system( $$PWD/update-botan.bat )
+        system( $$PWD/update-botan-msvc.bat )
     }
     linux {
         system( ./update-botan.sh )
@@ -44,7 +44,7 @@ CONFIG -= qt
 CONFIG += staticlib
 
 msvc: BOTAN_CC_TYPE = msvc
-clang: BOTAN_CC_TYPE = clang
+else: clang: BOTAN_CC_TYPE = clang
 else: BOTAN_CC_TYPE = gcc
 
 contains(QT_ARCH, i386): BOTAN_ARCH_SWITCH = "--cpu=x86"
