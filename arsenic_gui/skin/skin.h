@@ -9,7 +9,6 @@ class Skin : public QObject {
   public:
     Q_DISABLE_COPY(Skin)
     ~Skin() override;
-    QString getSkin(const QString &key);
     void setSkin(const QString &key);
     static Skin *instance();
 

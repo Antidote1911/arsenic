@@ -45,6 +45,7 @@ class Config : public QObject {
 
         CRYPTO_argonMemory,
         CRYPTO_argonItr,
+        CRYPTO_algorithm,
 
         SECURITY_clearclipboard,
         SECURITY_clearclipboardtimeout,

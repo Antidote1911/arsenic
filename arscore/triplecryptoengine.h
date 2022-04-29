@@ -6,10 +6,10 @@
 #include <QObject>
 #include <memory>
 
-class CryptoEngine : public QObject {
+class TripleCryptoEngine : public QObject {
     Q_OBJECT
   public:
-    explicit CryptoEngine(bool direction = true, QObject *parent = nullptr);
+    explicit TripleCryptoEngine(bool direction = true, QObject *parent = nullptr);
 
     void setSalt(const Botan::OctetString &salt);
     void derivePassword(const QString &password, quint32 memlimit, quint32 iterations);

@@ -1,7 +1,7 @@
 #include "textcrypto.h"
 #include "botan_all.h"
 #include "messages.h"
-#include "cryptoengine.h"
+#include "triplecryptoengine.h"
 #include <QString>
 #include <QTextStream>
 #include <stdexcept>
@@ -38,7 +38,7 @@ quint32 textCrypto::encryptString(QString &plaintext, QString const &password)
     const auto argonSalt   = rng.random_vec(m_const->ARGON_SALT_LEN);
     const auto tripleNonce = rng.random_vec(m_const->CIPHER_IV_LEN * 3);
 
-    CryptoEngine encrypt(true);
+    TripleCryptoEngine encrypt(true);
     encrypt.setSalt(argonSalt);
     encrypt.derivePassword(password, m_const->MEMLIMIT_INTERACTIVE, m_const->ITERATION_INTERACTIVE);
     encrypt.setNonce(tripleNonce);
@@ -72,7 +72,7 @@ quint32 textCrypto::decryptString(QString &cipher, QString const &password)
     if (ciphertext.size() < CRYPTOBOX_HEADER_LEN) {
         return (INVALID_CRYPTOBOX_IMPUT);
     }
-    for (auto i = 0; i != m_const->VERSION_CODE_LEN; ++i)
+    for (quint32 i = 0; i != m_const->VERSION_CODE_LEN; ++i)
         if (ciphertext[i] != get_byte_var(i, m_const->CRYPTOBOX_VERSION_CODE)) {
             return (BAD_CRYPTOBOX_VERSION);
         }
@@ -84,7 +84,7 @@ quint32 textCrypto::decryptString(QString &cipher, QString const &password)
     ciphertext.erase(ciphertext.begin(), ciphertext.begin() + CRYPTOBOX_HEADER_LEN);
 
     // Now we can do the triple decryption
-    CryptoEngine decrypt(false);
+    TripleCryptoEngine decrypt(false);
     decrypt.setSalt(salt);
     decrypt.derivePassword(password, m_const->MEMLIMIT_INTERACTIVE, m_const->ITERATION_INTERACTIVE);
     decrypt.setNonce(tripleNonce.bits_of());

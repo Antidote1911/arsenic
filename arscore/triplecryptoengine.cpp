@@ -1,9 +1,9 @@
-#include "cryptoengine.h"
+#include "triplecryptoengine.h"
 #include <cassert>
 
 using namespace Botan;
 
-CryptoEngine::CryptoEngine(bool direction, QObject *parent)
+TripleCryptoEngine::TripleCryptoEngine(bool direction, QObject *parent)
     : QObject(parent)
 {
 
@@ -19,13 +19,13 @@ CryptoEngine::CryptoEngine(bool direction, QObject *parent)
     m_engineSerpent = AEAD_Mode::create("Serpent/GCM", m_direction);
 }
 
-void CryptoEngine::setSalt(const Botan::OctetString &salt)
+void TripleCryptoEngine::setSalt(const Botan::OctetString &salt)
 {
     assert(salt.size() == m_const->ARGON_SALT_LEN && "Salt must be 16 bytes.");
     m_salt = salt;
 }
 
-void CryptoEngine::derivePassword(const QString &password, quint32 memlimit, quint32 iterations)
+void TripleCryptoEngine::derivePassword(const QString &password, quint32 memlimit, quint32 iterations)
 {
     const auto pass{password.toStdString()};
     SecureVector<char> pass_buffer(pass.begin(), pass.end());
@@ -54,7 +54,7 @@ void CryptoEngine::derivePassword(const QString &password, quint32 memlimit, qui
     m_engineSerpent->set_key(Serpent_key);
 }
 
-void CryptoEngine::setNonce(const SecureVector<quint8> &nonce)
+void TripleCryptoEngine::setNonce(const SecureVector<quint8> &nonce)
 {
     assert(nonce.size() == m_const->CIPHER_IV_LEN * 3 && "Triple nonce must be 24*3 bytes.");
     // split the triple nonce
@@ -68,7 +68,7 @@ void CryptoEngine::setNonce(const SecureVector<quint8> &nonce)
     m_nonceSerpent  = iv3.bits_of();
 }
 
-void CryptoEngine::incrementNonce()
+void TripleCryptoEngine::incrementNonce()
 {
 
     Sodium::sodium_increment(m_nonceChaCha20.data(), m_const->CIPHER_IV_LEN);
@@ -76,7 +76,7 @@ void CryptoEngine::incrementNonce()
     Sodium::sodium_increment(m_nonceSerpent.data(), m_const->CIPHER_IV_LEN);
 }
 
-void CryptoEngine::finish(SecureVector<quint8> &buffer)
+void TripleCryptoEngine::finish(SecureVector<quint8> &buffer)
 {
 
     if (m_direction == ENCRYPTION) {

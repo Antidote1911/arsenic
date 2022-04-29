@@ -19,9 +19,6 @@ Skin::~Skin()
 
 QPointer<Skin> Skin::m_instance(nullptr);
 
-QString Skin::getSkin(const QString &key)
-{
-}
 
 void Skin::setSkin(const QString &key)
 {

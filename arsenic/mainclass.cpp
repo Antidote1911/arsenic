@@ -15,11 +15,11 @@ MainClass::MainClass(QObject *parent)
     app->setApplicationName(m_const->APP_SHORT_NAME);
     app->setApplicationVersion(m_const->APP_VERSION.toString());
 
-    QObject::connect(m_crypto.get(), &Crypto_Thread::statusMessage,
-                     [=](const QString &message) { onMessageChanged(message); });
+    QObject::connect(m_crypto.get(), &Triple_Crypto_Thread::statusMessage,
+                    this, [=](const QString &message) { onMessageChanged(message); });
 
-    QObject::connect(m_crypto.get(), &Crypto_Thread::updateProgress,
-                     [=](const QString &path, quint32 percent) { displayProgress(path, percent); });
+    QObject::connect(m_crypto.get(), &Triple_Crypto_Thread::updateProgress,
+                    this, [=](const QString &path, quint32 percent) { displayProgress(path, percent); });
 
     // setup everything here
     // create any global objects

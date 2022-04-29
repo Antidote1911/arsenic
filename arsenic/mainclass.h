@@ -4,7 +4,7 @@
 #include <QCoreApplication>
 #include <QCommandLineParser>
 #include <memory>
-#include "CryptoThread.h"
+#include "TripleCryptoThread.h"
 #include "consts.h"
 #include "tqdm.h"
 
@@ -14,7 +14,7 @@ class MainClass : public QObject {
   private:
     QCoreApplication *app;
 
-    std::unique_ptr<Crypto_Thread> m_crypto = std::make_unique<Crypto_Thread>();
+    std::unique_ptr<Triple_Crypto_Thread> m_crypto = std::make_unique<Triple_Crypto_Thread>();
     std::unique_ptr<consts> m_const         = std::make_unique<consts>();
     tqdm bar;
 

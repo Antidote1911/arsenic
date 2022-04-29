@@ -26,7 +26,7 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>()),
-      m_file_crypto(std::make_unique<Crypto_Thread>(this)),
+      m_file_crypto(std::make_unique<Triple_Crypto_Thread>(this)),
       m_text_crypto(std::make_unique<textCrypto>(this))
 {
     m_ui->setupUi(this);
@@ -84,10 +84,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_ui->pushDecrypt, &QPushButton::clicked, this,      [=] { decryptFiles(); });
     connect(m_ui->menuAbortJob, &QAction::triggered, this,       [=] { abortJob(); });
 
-    connect(m_file_crypto.get(), &Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
-    connect(m_file_crypto.get(), &Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
-    connect(m_file_crypto.get(), &Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
-    connect(m_file_crypto.get(), &Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
+    connect(m_file_crypto.get(), &Triple_Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
+    connect(m_file_crypto.get(), &Triple_Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
+    connect(m_file_crypto.get(), &Triple_Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
+    connect(m_file_crypto.get(), &Triple_Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
     //connect(&pwGenerator, &PasswordGeneratorDialog::appliedPassword, this, [=](const QString &password) { setPassword(password); });
     //connect(&pwGenerator, SIGNAL(dialogTerminated()), &pwGenerator, SLOT(close()));
     // clang-format on

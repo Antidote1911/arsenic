@@ -41,6 +41,7 @@ void ConfigDialog::loadSettings()
     m_ui->spinBox_clip->setValue(config()->get(Config::SECURITY_clearclipboardtimeout).toInt());
     m_ui->checkBox_empty->setChecked(config()->get(Config::SECURITY_clearclipboard).toBool());
     m_ui->checkAddEncrypted->setChecked(config()->get(Config::GUI_AddEncrypted).toBool());
+    m_ui->comboAlgo->setCurrentIndex(config()->get(Config::CRYPTO_algorithm).toInt());
 }
 
 void ConfigDialog::saveSettings()
@@ -51,4 +52,5 @@ void ConfigDialog::saveSettings()
     config()->set(Config::SECURITY_clearclipboard, m_ui->checkBox_empty->isChecked());
     config()->set(Config::GUI_AddEncrypted, m_ui->checkAddEncrypted->isChecked());
     config()->set(Config::GUI_Language, m_ui->languageComboBox->currentData().toString());
+    config()->set(Config::CRYPTO_algorithm, m_ui->comboAlgo->currentIndex());
 }

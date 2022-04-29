@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>475</width>
-    <height>373</height>
+    <width>548</width>
+    <height>405</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -155,10 +155,79 @@
       <string>Files Encryption</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="0">
+      <item row="3" column="0">
        <widget class="QCheckBox" name="checkAddEncrypted">
         <property name="text">
          <string>Add finished encrypted files to list</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Encryption type : </string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboAlgo">
+        <item>
+         <property name="text">
+          <string>XChaCha20/Poly1305</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Serpent/GCM</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Serpent/SIV</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Serpent/EAX</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>AES-256/GCM</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>AES-256/SIV</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>AES-256/EAX</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Triple Encryption</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="label_5">
+        <property name="font">
+         <font>
+          <italic>true</italic>
+          <bold>false</bold>
+          <underline>false</underline>
+          <kerning>false</kerning>
+         </font>
+        </property>
+        <property name="text">
+         <string>(Decryption select the good algorithm) </string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
         </property>
        </widget>
       </item>

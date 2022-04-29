@@ -5,7 +5,7 @@
 #include <QDir>
 #include <QFile>
 #include "consts.h"
-#include "CryptoThread.h"
+#include "TripleCryptoThread.h"
 #include "textcrypto.h"
 #include "utils.h"
 #include "catch/catch.hpp"
@@ -70,7 +70,7 @@ bool encryptFile()
     QStringList list;
     list.append("cleartxt.txt");
 
-    Crypto_Thread Crypto;
+    Triple_Crypto_Thread Crypto;
     Crypto.setParam(true, list, "mypassword", 0, 0, true);
 
     Crypto.start();

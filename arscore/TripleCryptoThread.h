@@ -6,17 +6,17 @@
 #include "consts.h"
 #include "libexport.h"
 
-#ifdef CRYPTOTHREAD_EXPORT
-#define CRYPTOTHREAD_API Q_DECL_EXPORT
+#ifdef TRIPLECRYPTOTHREAD_EXPORT
+#define TRIPLECRYPTOTHREAD_API Q_DECL_EXPORT
 #else
-#define CRYPTOTHREAD_API Q_DECL_IMPORT
+#define TRIPLECRYPTOTHREAD_API Q_DECL_IMPORT
 #endif
 
-class LIB_EXPORT Crypto_Thread : public QThread {
+class LIB_EXPORT Triple_Crypto_Thread : public QThread {
     Q_OBJECT
 
   public:
-    explicit Crypto_Thread(QObject *parent = 0);
+    explicit Triple_Crypto_Thread(QObject *parent = 0);
     void run();
 
     void setParam(bool direction,

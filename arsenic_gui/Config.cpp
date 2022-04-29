@@ -62,6 +62,7 @@ static const QHash<Config::ConfigKey, ConfigDirective> configStrings = {
 
     {Config::CRYPTO_argonMemory, {QS("CRYPTO/argonMemory"), Roaming, 0}},
     {Config::CRYPTO_argonItr, {QS("CRYPTO/argonItr"), Roaming, 0}},
+    {Config::CRYPTO_algorithm, {QS("CRYPTO/cryptoAlgo"), Roaming, 0}},
 
     {Config::SECURITY_clearclipboard, {QS("SECURITY/clearclipboard"), Roaming, true}},
     {Config::SECURITY_clearclipboardtimeout, {QS("SECURITY/clearclipboardtimeout"), Roaming, 10}},

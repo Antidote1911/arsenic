@@ -1,4 +1,4 @@
-#include "CryptoThread.h"
+#include "TripleCryptoThread.h"
 
 #include <QDataStream>
 #include <QDateTime>
@@ -12,19 +12,19 @@
 
 #include "botan_all.h"
 #include "messages.h"
-#include "cryptoengine.h"
+#include "triplecryptoengine.h"
 #include "utils.h"
 #include <iostream>
 
 using namespace Botan;
 using namespace std;
 
-Crypto_Thread::Crypto_Thread(QObject* parent)
+Triple_Crypto_Thread::Triple_Crypto_Thread(QObject* parent)
     : QThread(parent)
 {
 }
 
-void Crypto_Thread::setParam(bool direction,
+void Triple_Crypto_Thread::setParam(bool direction,
                              QStringList const& filenames,
                              const QString& password,
                              quint32 argonmem,
@@ -55,13 +55,13 @@ void Crypto_Thread::setParam(bool direction,
         m_argoniter = m_const->ITERATION_SENSITIVE;
 }
 
-void Crypto_Thread::run()
+void Triple_Crypto_Thread::run()
 {
 
     for (auto& inputFileName : m_filenames) {
         if (m_aborted) {
             m_aborted = true;
-            Crypto_Thread::terminate();
+            Triple_Crypto_Thread::terminate();
             return;
         }
 
@@ -103,7 +103,7 @@ void Crypto_Thread::run()
     }
 }
 
-quint32 Crypto_Thread::encrypt(const QString& src_path)
+quint32 Triple_Crypto_Thread::encrypt(const QString& src_path)
 {
 
     /* format is:
@@ -142,7 +142,7 @@ quint32 Crypto_Thread::encrypt(const QString& src_path)
     // encryption of the buffer who contain the original name of the file
     // and some random data
 
-    CryptoEngine encrypt(true);
+    TripleCryptoEngine encrypt(true);
     encrypt.setSalt(argonSalt);
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
 
@@ -212,7 +212,7 @@ quint32 Crypto_Thread::encrypt(const QString& src_path)
     return (CRYPT_SUCCESS);
 }
 
-quint32 Crypto_Thread::decrypt(const QString& src_path)
+quint32 Triple_Crypto_Thread::decrypt(const QString& src_path)
 {
     QFile src_file(QDir::cleanPath(src_path));
     QFileInfo src_info(src_file);
@@ -287,7 +287,7 @@ quint32 Crypto_Thread::decrypt(const QString& src_path)
     emit statusMessage("Argon2 passphrase derivation... Please wait.");
 
     // decrypt header
-    CryptoEngine decrypt(false);
+    TripleCryptoEngine decrypt(false);
     decrypt.setSalt(salt_buffer);
     decrypt.derivePassword(m_password, m_argonmem, m_argoniter);
     decrypt.setNonce(tripleNonce);
@@ -343,7 +343,7 @@ quint32 Crypto_Thread::decrypt(const QString& src_path)
     return (DECRYPT_SUCCESS);
 }
 
-void Crypto_Thread::abort()
+void Triple_Crypto_Thread::abort()
 {
     m_aborted = true;
 }
