@@ -31,7 +31,7 @@ INCLUDEPATH += $$PWD/../arscore
 DEPENDPATH += $$PWD/../arscore
 
 # Botan
-LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-2
+LIBS += -L$$OUT_PWD/../3rdparty/botan/build/ -lbotan-3
 INCLUDEPATH += $$OUT_PWD/../3rdparty/botan/build
 DEPENDPATH += $$OUT_PWD/../3rdparty/botan/build
 
