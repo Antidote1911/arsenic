@@ -1,13 +1,13 @@
 #!/bin/sh
 #test $# -eq 1 || { echo "This script needs a Botan archive as its sole argument."; exit 1; }
-##https://github.com/randombit/botan/archive/2.19.1.tar.gz
+##https://github.com/randombit/botan/archive/3.0.0-alpha1.tar.gz
 set -e
 set -x
 
-wget https://github.com/randombit/botan/archive/2.19.1.tar.gz
+wget https://github.com/randombit/botan/archive/3.0.0-alpha1.tar.gz
 script_dir=$(readlink -f $(dirname $0))
-botan_archive=2.19.1.tar.gz
-botan_extracted_dir_name=botan-2.19.1
+botan_archive=3.0.0-alpha1.tar.gz
+botan_extracted_dir_name=botan-3.0.0-alpha1
 botan_parent_dir=$script_dir/
 
 cd $botan_parent_dir

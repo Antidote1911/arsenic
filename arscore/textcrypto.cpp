@@ -46,7 +46,7 @@ quint32 textCrypto::encryptString(QString &plaintext, QString const &password)
 
     SecureVector<quint8> final(VERSION_CODE_LEN);
     for (size_t i = 0; i != VERSION_CODE_LEN; ++i) {
-        final[i] = get_byte(i, CRYPTOBOX_VERSION_CODE);
+        final[i] = get_byte_var(i, CRYPTOBOX_VERSION_CODE);
     }
     final.insert(final.end(), argonSalt.begin(), argonSalt.end());
     final.insert(final.end(), tripleNonce.begin(), tripleNonce.end());
@@ -73,7 +73,7 @@ quint32 textCrypto::decryptString(QString &cipher, QString const &password)
         return (INVALID_CRYPTOBOX_IMPUT);
     }
     for (auto i = 0; i != m_const->VERSION_CODE_LEN; ++i)
-        if (ciphertext[i] != get_byte(i, m_const->CRYPTOBOX_VERSION_CODE)) {
+        if (ciphertext[i] != get_byte_var(i, m_const->CRYPTOBOX_VERSION_CODE)) {
             return (BAD_CRYPTOBOX_VERSION);
         }
     const auto *tmp{ciphertext.begin().base()};

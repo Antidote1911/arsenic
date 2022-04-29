@@ -22,7 +22,15 @@ class LIB_EXPORT textCrypto : public QObject {
     QString m_password;
     bool m_dirrection;
 
+    template<typename T> inline constexpr uint8_t get_byte_var(size_t byte_num, T input)
+       {
+       return static_cast<uint8_t>(
+          input >> (((~byte_num)&(sizeof(T)-1)) << 3)
+          );
+       }
+
     const std::unique_ptr<consts> m_const;
 
   signals:
 };
+

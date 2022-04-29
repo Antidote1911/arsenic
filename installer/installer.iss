@@ -29,7 +29,7 @@ SolidCompression=true
 LicenseFile=.\..\LICENSE
 
 [Files]
-Source: ..\release\*; DestDir: {app}; Flags: recursesubdirs      
+Source: ..\arsenic_win_x64\*; DestDir: {app}; Flags: recursesubdirs      
 
 
 [Icons]
