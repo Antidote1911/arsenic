@@ -5,11 +5,9 @@ TEMPLATE = subdirs
 
 SUBDIRS += 3rdparty \
            arscore \
-           arsenic \
-           arsenic_gui \
-           tests
+           arsenic_gui
 
 arscore.depends = 3rdparty
 arsenic.depends = arscore
 arsenic_gui.depends = arscore
-tests.depends = arscore 
+

@@ -3,8 +3,11 @@
 #include <vector>
 #include <QDir>
 #include <QStandardPaths>
+#include <QDataStream>
+#include <QVersionNumber>
 #include <QStringBuilder>
 #include "botan_all.h"
+#include "messages.h"
 
 Utils::Utils(QObject *parent)
     : QObject(parent)
@@ -124,4 +127,36 @@ QString Utils::uniqueFileName(const QString &fileName)
         }
     }
     return (uniqueFileName);
+}
+
+QString Utils::getAlgo(QFile &file)
+{
+
+    // open the source file and extract all informations necessary for decryption
+    QDataStream src_stream(&file);
+    src_stream.setVersion(QDataStream::Qt_5_0);
+
+    // Read and check the header
+    quint32 magic;
+    src_stream >> magic;
+
+    // Read and check the version
+    QVersionNumber version;
+    src_stream >> version;
+
+    // Read Argon2 parameters
+    quint32 memlimit;
+    src_stream >> memlimit;
+
+    quint32 iterations;
+    src_stream >> iterations;
+
+    QString algo;
+    src_stream >> algo;
+
+    qint64 fileNameSize;
+    src_stream >> fileNameSize;
+
+
+    return (algo);
 }

@@ -5,7 +5,7 @@
 #include <QTranslator>
 #include <QActionGroup>
 
-#include "TripleCryptoThread.h"
+#include "CryptoThread.h"
 #include "textcrypto.h"
 #include "consts.h"
 #include "Delegate.h"
@@ -61,7 +61,7 @@ class MainWindow : public QMainWindow {
 
   private:
     const std::unique_ptr<Ui::MainWindow> m_ui;
-    std::unique_ptr<Triple_Crypto_Thread> m_file_crypto;
+    std::unique_ptr<Crypto_Thread> m_file_crypto;
     std::unique_ptr<textCrypto> m_text_crypto;
 
     std::unique_ptr<QStandardItemModel> fileListModelCrypto;

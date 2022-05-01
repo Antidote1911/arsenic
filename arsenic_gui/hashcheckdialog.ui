@@ -157,12 +157,12 @@
        </item>
        <item>
         <property name="text">
-         <string notr="true">SHAKE-128</string>
+         <string notr="true">SHAKE-128(128)</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string notr="true">SHAKE-256</string>
+         <string notr="true">SHAKE-256(256)</string>
         </property>
        </item>
        <item>
@@ -173,11 +173,6 @@
        <item>
         <property name="text">
          <string notr="true">SM3</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string notr="true">Tiger</string>
         </property>
        </item>
        <item>

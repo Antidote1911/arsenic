@@ -7,12 +7,13 @@ TEMPLATE = lib
 DEFINES += EXPORT_LIB
 
 HEADERS += \
-    TripleCryptoThread.h \
+    CryptoThread.h \
     dict-src.h \
     libexport.h \
     passwordGenerator.h \
     textcrypto.h \
     triplecryptoengine.h \
+    simplecryptoengine.h \
     utils.h \
     consts.h \
     messages.h \
@@ -20,10 +21,11 @@ HEADERS += \
 
 
 SOURCES += \
-    TripleCryptoThread.cpp \
+    CryptoThread.cpp \
     passwordGenerator.cpp \
     textcrypto.cpp \
     triplecryptoengine.cpp \
+    simplecryptoengine.cpp \
     utils.cpp \
     consts.cpp \
     messages.cpp \

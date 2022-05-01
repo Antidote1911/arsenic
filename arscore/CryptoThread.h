@@ -6,22 +6,23 @@
 #include "consts.h"
 #include "libexport.h"
 
-#ifdef TRIPLECRYPTOTHREAD_EXPORT
-#define TRIPLECRYPTOTHREAD_API Q_DECL_EXPORT
+#ifdef CRYPTOTHREAD_EXPORT
+#define CRYPTOTHREAD_API Q_DECL_EXPORT
 #else
-#define TRIPLECRYPTOTHREAD_API Q_DECL_IMPORT
+#define CRYPTOTHREAD_API Q_DECL_IMPORT
 #endif
 
-class LIB_EXPORT Triple_Crypto_Thread : public QThread {
+class LIB_EXPORT Crypto_Thread : public QThread {
     Q_OBJECT
 
   public:
-    explicit Triple_Crypto_Thread(QObject *parent = 0);
+    explicit Crypto_Thread(QObject *parent = 0);
     void run();
 
     void setParam(bool direction,
                   QStringList const &filenames,
                   QString const &password,
+                  QString const &algo,
                   quint32 const argonmem,
                   quint32 const argoniter,
                   bool const deletefile);
@@ -35,10 +36,13 @@ class LIB_EXPORT Triple_Crypto_Thread : public QThread {
     void deletedAfterSuccess(const QString &inputFileName);
 
   private:
-    quint32 encrypt(const QString &src_path);
-    quint32 decrypt(const QString &src_path);
+    quint32 tripleEncrypt(const QString &src_path);
+    quint32 tripleDecrypt(const QString &src_path);
+    quint32 simpleEncrypt(const QString &src_path);
+    quint32 simpleDecrypt(const QString &src_path);
     QStringList m_filenames;
     QString m_password;
+    QString m_algo;
     quint32 m_argonmem;
     quint32 m_argoniter;
     bool m_direction;

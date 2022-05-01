@@ -1,4 +1,5 @@
-﻿#include "mainwindow.h"
+﻿
+#include "mainwindow.h"
 #include "ui_mainwindow.h"
 
 #include <QAction>
@@ -26,7 +27,7 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), m_ui(std::make_unique<Ui::MainWindow>()),
-      m_file_crypto(std::make_unique<Triple_Crypto_Thread>(this)),
+      m_file_crypto(std::make_unique<Crypto_Thread>(this)),
       m_text_crypto(std::make_unique<textCrypto>(this))
 {
     m_ui->setupUi(this);
@@ -84,10 +85,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_ui->pushDecrypt, &QPushButton::clicked, this,      [=] { decryptFiles(); });
     connect(m_ui->menuAbortJob, &QAction::triggered, this,       [=] { abortJob(); });
 
-    connect(m_file_crypto.get(), &Triple_Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
-    connect(m_file_crypto.get(), &Triple_Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
-    connect(m_file_crypto.get(), &Triple_Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
-    connect(m_file_crypto.get(), &Triple_Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
+    connect(m_file_crypto.get(), &Crypto_Thread::statusMessage, this,         [=](const QString &message) { onMessageChanged(message); });
+    connect(m_file_crypto.get(), &Crypto_Thread::updateProgress, this,        [=](const QString &filename, const quint32 &progress) { onPercentProgress(filename, progress); });
+    connect(m_file_crypto.get(), &Crypto_Thread::addEncrypted, this,          [=](const QString &filepath) { AddEncryptedFile(filepath); });
+    connect(m_file_crypto.get(), &Crypto_Thread::deletedAfterSuccess, this,   [=](const QString &filepath) { removeDeletedFile(filepath); });
+
+
     //connect(&pwGenerator, &PasswordGeneratorDialog::appliedPassword, this, [=](const QString &password) { setPassword(password); });
     //connect(&pwGenerator, SIGNAL(dialogTerminated()), &pwGenerator, SLOT(close()));
     // clang-format on
@@ -213,14 +216,21 @@ void MainWindow::encryptFiles()
         displayPasswordNotMatch();
         return;
     }
-    m_file_crypto->setParam(true,
-                            getListFiles(),
-                            m_ui->password_0->text(),
-                            config()->get(Config::CRYPTO_argonMemory).toInt(),
-                            config()->get(Config::CRYPTO_argonItr).toInt(),
-                            m_ui->CheckDeleteFiles->isChecked());
 
-    m_file_crypto->start();
+    auto algo = config()->get(Config::CRYPTO_algorithm).toString();
+
+
+
+        m_file_crypto->setParam(true,
+                                getListFiles(),
+                                m_ui->password_0->text(),
+                                algo,
+                                config()->get(Config::CRYPTO_argonMemory).toInt(),
+                                config()->get(Config::CRYPTO_argonItr).toInt(),
+                                m_ui->CheckDeleteFiles->isChecked());
+        m_file_crypto->start();
+
+
 }
 
 void MainWindow::decryptFiles()
@@ -233,9 +243,12 @@ void MainWindow::decryptFiles()
         displayEmptyPassword();
         return;
     }
+
+    auto algo = config()->get(Config::CRYPTO_algorithm).toString();
     m_file_crypto->setParam(false,
                             getListFiles(),
                             m_ui->password_0->text(),
+                            algo,
                             config()->get(Config::CRYPTO_argonMemory).toInt(),
                             config()->get(Config::CRYPTO_argonItr).toInt(),
                             m_ui->CheckDeleteFiles->isChecked());
@@ -462,6 +475,7 @@ void MainWindow::addFilePathToModel(const QString &filePath)
 
 void MainWindow::removeFile(const QModelIndex &index)
 {
+    abortJob();
     fileListModelCrypto->removeRow(index.row());
 }
 

@@ -52,7 +52,7 @@ linux: BOTAN_OS_SWITCH = "--os=linux"
 BOTAN_MODULES = aes aead gcm eax cryptobox chacha20poly1305 serpent sha3 sha3_bmi2 skein keccak whirlpool shake gost_3411 sm3 streebog rmd160 \
                 adler32 md4 md5 crc24 crc32 auto_rng argon2 base64 bcrypt bigint sodium entropy \
                 hex hash md5 sha1 sha1_sse2 sha1_x86 sha2_32 sha2_32_bmi2 sha2_32_x86 sha2_64 sha2_64_bmi2 \
-                simd system_rng sodium
+                simd shake system_rng sodium siv
 
 OTHER_FLAGS = --amalgamation --minimized-build  --disable-shared --build-targets="static" \
               --enable-modules=$$join(BOTAN_MODULES,",",,)
