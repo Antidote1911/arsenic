@@ -1,5 +1,5 @@
 [![License: GPL3](https://img.shields.io/badge/License-GPL3-green.svg)](https://opensource.org/licenses/GPL-3.0)
-[![ActionsCI](https://github.com/Antidote1911/arsenic_cmake/actions/workflows/github_workflows_build.yml/badge.svg)](https://github.com/Antidote1911/arsenic_cmake/actions/workflows/github_workflows_build.yml)
+[![Build](https://github.com/Antidote1911/arsenic/actions/workflows/build_arsenic.yml/badge.svg?branch=master)](https://github.com/Antidote1911/arsenic/actions/workflows/build_arsenic.yml)
 
 
 # Arsenic
