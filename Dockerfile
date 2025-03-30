@@ -8,5 +8,5 @@ RUN pacman -Syu --noconfirm \
 # Example: RUN pacman -S --noconfirm git
 
 RUN pacman -S --noconfirm git cmake clang ninja qt6-base qt6-tools python
-RUN git clone https://github.com/Antidote1911/arsenic_cmake
-RUN /bin/sh -c 'cd /arsenic_cmake && ./build.sh'
+RUN git clone https://github.com/Antidote1911/arsenic
+RUN /bin/sh -c 'cd /arsenic && ./build.sh'
