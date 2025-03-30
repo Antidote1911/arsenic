@@ -1,0 +1,110 @@
+name: Release
+
+env:
+  Configuration: Release
+
+on:
+  push:
+    tags:
+      - v[0-9]+.*
+
+jobs:
+  build-windows-release:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@main
+    
+    - name: Setup msbuild
+      uses: microsoft/setup-msbuild@v2
+      with:
+        vs-version: '[17,18)'  # 17.xx
+        msbuild-architecture: x64
+        
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version:      6.8.2
+        host:         windows
+        target:       desktop
+        modules:      qtmultimedia
+        setup-python: false
+        
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: build
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        set CL=/MP
+        cmake -S . -B build -G "Ninja Multi-Config"
+        cmake --build build --config Release
+        
+    - name: deploy
+      run:  |
+        windeployqt.exe --no-compiler-runtime --release build/src/Release/arsenic.exe
+        
+    - name: cleaning
+      shell: cmd
+      run:  |
+        xcopy ${{ github.workspace }}\README.md build\src\Release
+        rmdir /s /q build\src\Release\generic
+        rmdir /s /q build\src\Release\networkinformation
+        rmdir /s /q build\src\Release\translations
+        rmdir /s /q build\src\Release\tls
+        rmdir /s /q build\src\Release\styles
+        rmdir /s /q build\src\Release\iconengines
+        del /F build\src\Release\imageformats\qgif.dll
+        del /F build\src\Release\imageformats\qico.dll
+        del /F build\src\Release\imageformats\qjpeg.dll
+        mkdir build\src\Release\languages
+        xcopy build\share\translations\arsenic_en_US.qm build\src\Release\languages
+        xcopy build\share\translations\arsenic_fr_FR.qm build\src\Release\languages
+        del /F build\src\Release\botan_test.lib
+        del /F build\src\Release\Qt6Network.dll
+        del /F build\src\Release\D3Dcompiler_47.dll
+        del /F build\src\Release\opengl32sw.dll
+
+    - name: Compress artifacts
+      uses: vimtor/action-zip@v1.2
+      with:
+        files: build/src/Release
+        dest: build/src/arsenic_win_x64.zip
+        
+    - name: Calculate checksum
+      run: |
+        certutil -hashfile build/src/arsenic_win_x64.zip SHA256 > build/src/arsenic_win_x64.zip.sha256
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build/src/arsenic_win_x64.zip
+        asset_name: arsenic_win_x64_${{ github.ref_name }}.zip
+        asset_content_type: application/zip
+        
+    - name: Upload Checksum File
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build/src/arsenic_win_x64.zip.sha256
+        asset_name: arsenic_win_x64_${{ github.ref_name }}.zip.sha256
+        asset_content_type: text/plain

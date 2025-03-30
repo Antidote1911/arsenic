@@ -1,6 +1,5 @@
 [![License: GPL3](https://img.shields.io/badge/License-GPL3-green.svg)](https://opensource.org/licenses/GPL-3.0)
-[![Build status](https://ci.appveyor.com/api/projects/status/eid3dqq4c28u7sf4?svg=true)](https://ci.appveyor.com/project/Antidote1911/arsenic)
-[![GitHub release](https://img.shields.io/github/release/Antidote1911/arsenic)](https://github.com/Antidote1911/arsenic/releases/)
+[![ActionsCI](https://github.com/Antidote1911/arsenic_cmake/actions/workflows/github_workflows_build.yml/badge.svg)](https://github.com/Antidote1911/arsenic_cmake/actions/workflows/github_workflows_build.yml)
 
 
 # Arsenic
@@ -9,8 +8,7 @@ Tested with Windows 10 and all major Linux distributions. Arsenic is developed o
 
 Latest Windows x64 release is [here](https://github.com/Antidote1911/arsenic/releases/latest).
 
-**New in version 5:**  
-- Not compatible with previous versions.
+**New in version 5:**
 - Work with Qt6.
 - Now, the user can choose several encryption algorithms and not only the paranoid triple encryption.
 - Encryption or decryption are correctly stopped when a file is removed from the job list and the partial output file is deleted.
@@ -25,14 +23,14 @@ Latest Windows x64 release is [here](https://github.com/Antidote1911/arsenic/rel
 Arsenic was intended as a lightweight application, that would encode a list of local files using a password. A simple text editor named "CryptoPad" can be used for send encrypted text by email. Some useful tools are included. A file Hash calculator and a password generator.
 
 For file encryption you can choose several algorithms:
-- XChaCha20Poly1305
+- XChaCha20/Poly1305
 - AES-256/EAX
 - AES-256/GCM
 - AES-256/SIV
 - Serpent/EAX
 - Serpent/GCM
 - Serpent/SIV.
-- Triple Encryption (XChaCha20Poly1305, AES256/EAX, Serpent/GCM)
+- Triple Encryption (XChaCha20/Poly1305, AES256/EAX, Serpent/GCM)
 
 All mode are very strong. You can choose the faster on your machine. The decryption routine automatically detect the right settings. You don't have to retain anything. CryptoPad always use triple encryption.
 
@@ -102,23 +100,14 @@ Supported algorithms: SHA-3, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512-
 
 
 ## Developers: ##
-The application was primarily built around the Qt 5/6 framework.
-Botan is automatically downloaded by qmake, and an amalgamation build is generated (botan_all.cpp and botan_all.h).
-If you want to update botan, simply delete the folder 3rdparty/botan/botan, and modify the version you want in the three scripts:
+The application was primarily built around the Qt 6 framework.
+Botan is automatically downloaded by cmake, and an amalgamation build is generated (botan_all.cpp and botan_all.h).
 
-- for Windows : 3rdparty/botan/update-botan.bat
-- for unix : 3rdparty/botan/update-botan.sh
-- for mac : 3rdparty//botan/update_botan_osx.sh
+To build the program from source, Qt 6 should be installed and configured.  
 
-Run Qmake and the new version was downloaded and amalgamation was generated.
-
-To build the program from source, the appropriate Qt version should be installed and configured.  
-
-On linux distributions you can run this command in the extracted source archive:
+On linux distributions you can run this script in the extracted source archive:
 ```bash
-  qmake
-  make
-  sudo make install
+  ./build.sh
 ```
 Arsenic work well but it need some code simplifications, code comments, orthographic corrections ,etc.  
 Any suggestions or help are welcome.
@@ -127,7 +116,7 @@ Any suggestions or help are welcome.
 - [Jack Lloyd from randombit.net](https://botan.randombit.net) for the powerful Botan C++ cryptographic library. You can find the Github [here](https://github.com/randombit/botan).  
 It is released under the permissive Simplified [BSD license](https://botan.randombit.net/license.txt)
 
-- [KeepassXC](https://github.com/keepassxreboot/keepassxc) for some big portions of code. Including password generator (modified for use Botan Random Number Generator) and the QSettings wrapper class.
+- [KeepassXC](https://github.com/keepassxreboot/keepassxc) for the password generator.
 
 ## CAUTION: ##
 A simple tool to encrypt file is not magic. If You use an insecure system, Arsenic (and all encryption tools) are useless. Arsenic do not protect you from key-logger, disk analyze, virus, operating system cache etc...
@@ -136,7 +125,7 @@ A simple tool to encrypt file is not magic. If You use an insecure system, Arsen
 <img src='screenshots/main_dark.png'/>
 <img src='screenshots/pass_gen.png'/>
 
-*The password generator by the KeepassXC project. modified to use Botan RNG.*
+*The password generator by the KeepassXC project.*
 
 <img src='screenshots/hash.png'/>
 <img src='screenshots/cryptopad_light.png'/>

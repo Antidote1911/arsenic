@@ -1,0 +1,31 @@
+# Maintainer: Fabrice Corraire <antidote1911@gmail.com>
+
+pkgname=arsenic
+pkgver=5.2
+_gitname=${pkgname}-${pkgver}
+pkgrel=1
+pkgdesc="Strong file encryption"
+arch=('any')
+url="https://github.com/Antidote1911/arsenic"
+license=('GPL3')
+provides=("arsenic")
+depends=('qt6-base' 'qt6-translations' 'qt6-svg')
+makedepends=('git' 'cmake' 'qt6-tools' 'clang' 'python' 'ninja' 'qt6-base')
+source=("${pkgname}.tar.gz::https://github.com/Antidote1911/${pkgname}_cmake/archive/refs/tags/v${pkgver}.tar.gz")
+sha1sums=('SKIP')
+
+build() {
+  cd "$pkgname"_cmake
+  ./build.sh
+}
+
+package() {
+  cd "$pkgname"
+  install -Dm755 "build/src/Release/arsenic" "$pkgdir/usr/bin/arsenic"
+  mkdir -p "$pkgdir/usr/share/arsenic/languages"
+  install -Dm755 "build/share/translations/arsenic_en_US.qm" "$pkgdir/usr/share/arsenic/languages"
+  install -Dm755 "build/share/translations/arsenic_fr_FR.qm" "$pkgdir/usr/share/arsenic/languages"
+  install -Dm755 "build/share/translations/arsenic_fr_FR.qm" "$pkgdir/usr/share/arsenic/languages"
+  install -Dm755 "${srcdir}/${pkgname}/share/linux/arsenic.desktop" "$pkgdir/usr/share/applications/arsenic.desktop"
+  install -Dm755 "${srcdir}/${pkgname}/src/pixmaps/app.png" "$pkgdir/usr/share/arsenic/arsenic.png"
+}

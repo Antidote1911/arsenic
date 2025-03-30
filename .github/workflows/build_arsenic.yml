@@ -1,0 +1,119 @@
+name: Build Windows
+
+env:
+  Configuration: Release
+
+on:
+  push:
+    branches: [master, develop]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@main
+    
+    - name: Setup msbuild
+      uses: microsoft/setup-msbuild@v2
+      with:
+        vs-version: '[17,18)'  # 17.xx
+        msbuild-architecture: x64
+        
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version:      6.8.2
+        host:         windows
+        target:       desktop
+        modules:      qtmultimedia
+        setup-python: false
+        
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: build
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        set CL=/MP
+        cmake -S . -B build -G "Ninja Multi-Config"
+        cmake --build build --config Release
+        
+    - name: deploy
+      run:  |
+        windeployqt.exe --no-compiler-runtime --release build/src/Release/arsenic.exe
+        
+    - name: cleaning
+      shell: cmd
+      run:  |
+        xcopy ${{ github.workspace }}\README.md build\src\Release
+        rmdir /s /q build\src\Release\generic
+        rmdir /s /q build\src\Release\networkinformation
+        rmdir /s /q build\src\Release\translations
+        rmdir /s /q build\src\Release\tls
+        rmdir /s /q build\src\Release\styles
+        rmdir /s /q build\src\Release\iconengines
+        del /F build\src\Release\imageformats\qgif.dll
+        del /F build\src\Release\imageformats\qico.dll
+        del /F build\src\Release\imageformats\qjpeg.dll
+        mkdir build\src\Release\languages
+        xcopy build\share\translations\arsenic_en_US.qm build\src\Release\languages
+        xcopy build\share\translations\arsenic_fr_FR.qm build\src\Release\languages
+        del /F build\src\Release\botan_test.lib
+        del /F build\src\Release\Qt6Network.dll
+        del /F build\src\Release\D3Dcompiler_47.dll
+        del /F build\src\Release\opengl32sw.dll
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: arsenic.zip
+        path: build/src/Release
+        
+  build-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          aqtversion: '==3.1.*'
+          version: '6.8.2'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'linux_gcc_64'
+          modules: 'qtimageformats'
+          cache: true
+          
+      - name: Build Arsenic 
+        run:  |
+          ./build.sh
+          
+  build-archlinux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
+    - name: Build Docker image
+      run: docker build -t archlinux-ci .
+
+    - name: Run Docker container
+      run: docker run --rm archlinux-ci echo "Arch Linux container is running"
