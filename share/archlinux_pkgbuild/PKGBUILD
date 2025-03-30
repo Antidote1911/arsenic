@@ -22,6 +22,8 @@ build() {
 package() {
   cd "$_gitname"
   install -Dm755 "build/src/Release/arsenic" "$pkgdir/usr/bin/arsenic"
+  install -Dm644 "build/src/Release/libarsenic_core.so" -t "$pkgdir/usr/lib/"
+  install -Dm644 "build/src/zxcvbn/Release/libarsenic_entropy.so" -t "$pkgdir/usr/lib/"
   mkdir -p "$pkgdir/usr/share/arsenic/languages"
   install -Dm755 "build/share/translations/arsenic_en_US.qm" "$pkgdir/usr/share/arsenic/languages"
   install -Dm755 "build/share/translations/arsenic_fr_FR.qm" "$pkgdir/usr/share/arsenic/languages"
