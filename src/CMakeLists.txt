@@ -75,6 +75,7 @@ siv
 )
 
 set(app_icon_resource_windows "${CMAKE_SOURCE_DIR}/share/windows/icon.rc")
+
 add_subdirectory(zxcvbn)
 set(ZXCVBN_LIBRARIES arsenic_entropy)
 
