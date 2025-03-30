@@ -5,6 +5,7 @@ project(arsenic)
 find_package(Qt6 6 REQUIRED COMPONENTS Core Widgets LinguistTools)
 # Set c++ standard for all targets
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 
 if (WIN32)

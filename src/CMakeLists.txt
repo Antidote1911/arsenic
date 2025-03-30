@@ -16,7 +16,7 @@ find_package(
 # Generate target 'botan_test' with specific modules
 # Any Botan module can be listed here
 botan_generate(
-    botan_test
+    arsenic_core
 adler32
 aead
 aes
@@ -74,11 +74,9 @@ gcm
 siv
 )
 
-
-
 set(app_icon_resource_windows "${CMAKE_SOURCE_DIR}/share/windows/icon.rc")
 add_subdirectory(zxcvbn)
-set(ZXCVBN_LIBRARIES zxcvbn)
+set(ZXCVBN_LIBRARIES arsenic_entropy)
 
 add_executable(arsenic
     WIN32 MACOSX_BUNDLE
@@ -143,7 +141,7 @@ target_link_libraries(arsenic
     PRIVATE
         Qt::Core
         Qt::Widgets
-        botan_test
+        arsenic_core
         ${ZXCVBN_LIBRARIES}
 )
 
