@@ -19,7 +19,7 @@
 
 #include "PasswordHealth.h"
 
-#include "zxcvbn/zxcvbn.h"
+#include "../zxcvbn/zxcvbn.h"
 
 
 
