@@ -1,0 +1,106 @@
+1) absence de séparation KEK / DEK (La plus grosse faille d'architecture)
+Actuellement, vous dérivez directement le matériel de chiffrement (180 octets)
+depuis le mot de passe via Argon2id. C'est problématique pour deux raisons majeures :
+
+-Changement de mot de passe impossible : Si un utilisateur veut changer le mot de passe
+d'un fichier .cpdf de 50 Go, votre logiciel devra déchiffrer puis rechiffrer l'intégralité
+des 50 Go.
+Dans un système classique, le mot de passe dérive une Key Encryption Key (KEK) qui
+déchiffre une Data Encryption Key (DEK) stockée dans l'en-tête.
+Pour changer le mot de passe, on ne rechiffre que la DEK dans l'en-tête (quelques millisecondes).
+
+-Performances sur les petits fichiers : Si l'utilisateur chiffre un dossier
+contenant 10 000 petits fichiers texte, Argon2id s'exécutera 10 000 fois.
+Avec 64 MiB et 3 itérations, cela va figer le processeur et prendre un temps déraisonnable.
+
+3. Manque de robustesse sur les exceptions Botan
+Dans la boucle de déchiffrement, vous attrapez spécifiquement Botan::Invalid_Authentication_Tag.
+C'est bien, mais que se passe-t-il si AEAD_Mode::create_or_throw échoue
+(par exemple, si l'algorithme "Serpent/GCM" n'a pas été compilé dans la
+librairie Botan liée dynamiquement sur la machine cible) ?
+Ou si un chunk corrompu provoque une erreur de décodage interne à Botan autre qu'un mauvais tag ?
+
+La solution : Élargissez le bloc catch asynchrone pour capturer Botan::Exception
+ou std::exception afin d'éviter un crash inopiné de l'application
+(un appel à std::terminate si une exception sort du std::future).
+
+4. Surcharge liée à std::async
+L'implémentation de std::async(std::launch::async, ...) n'est pas un thread
+pool garanti. Selon la bibliothèque standard (notamment sous certaines versions de GCC/MSVC),
+cela peut littéralement instancier et détruire un thread natif du système d'exploitation
+pour chaque chunk de 1 MiB. Bien que le temps de chiffrement masque en grande partie
+ce délai, sur de très gros fichiers (des milliers de chunks), l'overhead de création
+de threads deviendra mesurable.
+Si vous utilisez déjà Qt, vous pourriez envisager QThreadPool::globalInstance() avec QtConcurrent::mapped
+pour une gestion de file d'attente de tâches plus légère.
+
+5. Nommage d'erreur ambigu
+Dans cpdfDecrypt, si la lecture d'un chunk échoue en cours de route (fichier tronqué),
+vous retournez SRC_HEADER_READ_ERROR. Bien que le mécanisme de défense fonctionne parfaitement,
+le nom de l'erreur envoyée à l'UI prête à confusion puisqu'il ne s'agit plus de l'en-tête.
+Un code de retour comme SRC_CHUNK_READ_ERROR ou FILE_TRUNCATED serait plus approprié.
+
+Paramètres figés dans le format: algo / argonmem / argoniter
+Donc impossible :
+
+d’augmenter le coût plus tard
+d’adapter mobile / serveur
+de migrer progressivement
+
+Pas de versioning crypto détaillé
+Mais aucun champ :
+
+algo KDF
+coût mémoire
+itérations
+couches crypto
+
+Donc :
+migration difficile
+compatibilité future compliquée
+
+
+Nonce déterministe
+
+Pas d’authentification globale du fichier
+
+Tu authentifies chunk par chunk.
+
+Mais il n’existe pas :
+
+MAC global
+hash final global
+
+Donc :
+
+impossible de vérifier l’intégralité sans relire tous les chunks.
+
+La taille exacte reste visible.
+
+Tu leaks :
+
+taille originale
+nombre chunks
+
+Inévitable dans beaucoup de formats, mais :
+
+padding optionnel pourrait aider.
+
+Ce que je ferais pour une V2
+Ajouter :
+Header extensible TLV
+
+Pour :
+
+version crypto
+paramètres Argon2
+flags
+padding
+
+
+Actuellement, vous stockez vos clés dans des std::vector<uint8_t>. En C++, la mémoire d'un std::vector standard n'est pas effacée de manière
+  sécurisée lors de sa destruction ; elle est simplement marquée comme libre. Les 180 octets de matériel de clé (mat, k1, k2, k3) restent donc en
+  clair dans la RAM, ce qui les rend vulnérables à un core dump ou à un swap sur le disque.
+
+  La solution : Utilisez Botan::secure_vector au lieu de std::vector pour tout ce qui contient des données sensibles (clés, mots de passe). Botan
+  écrasera automatiquement la mémoire avec des zéros lors de la destruction de l'objet.

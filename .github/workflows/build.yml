@@ -1,0 +1,267 @@
+name: CI
+
+on:
+  push:
+    branches: [master, develop]
+    tags:
+      - 'v[0-9]+.*'
+
+permissions:
+  contents: write
+
+# ── Linux ─────────────────────────────────────────────────────────────────────
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build python3 \
+            libgl1-mesa-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev \
+            libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev \
+            libxcb-randr0-dev libxcb-render-util0-dev libxcb-shape0-dev \
+            libxcb-xfixes0-dev libxcb-xinerama0-dev libxcb-xinput-dev
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.2'
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          setup-python: false
+
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --timeout 300
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Prepare AppDir
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cmake --install build --prefix AppDir/usr --component arsenic
+          # linuxdeploy also needs icon and desktop at AppDir root
+          cp AppDir/usr/share/icons/hicolor/256x256/apps/arsenic.png AppDir/arsenic.png
+          cp AppDir/usr/share/applications/arsenic.desktop AppDir/arsenic.desktop
+
+      - name: Download linuxdeploy and Qt plugin
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+      - name: Create AppImage
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          export OUTPUT="arsenic-${VERSION}-linux-x86_64.AppImage"
+          export QMAKE="${QT_ROOT_DIR}/bin/qmake"
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --plugin qt \
+            --output appimage
+
+      - name: Upload artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: arsenic-*-linux-x86_64.AppImage
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: brew install cmake ninja
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.2'
+          host: mac
+          target: desktop
+
+      - name: Build (native – branch only)
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+
+      - name: Test (branch only)
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        run: ctest --test-dir build --output-on-failure --timeout 300
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Build arm64
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cmake -S . -B build-arm64 -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64
+          cmake --build build-arm64 --parallel
+
+      - name: Test (tag – native arm64 build)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: ctest --test-dir build-arm64 --output-on-failure --timeout 300
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Build x86_64
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cmake -S . -B build-x86_64 -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64
+          cmake --build build-x86_64 --parallel
+
+      - name: Assemble universal .app bundle
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cp -R build-arm64/src/arsenic.app build-universal.app
+          while IFS= read -r -d '' bin; do
+            rel="${bin#build-arm64/src/arsenic.app/}"
+            x86="build-x86_64/src/arsenic.app/${rel}"
+            if [ -f "$x86" ]; then
+              lipo -create -output "$bin" "$bin" "$x86" 2>/dev/null || true
+            fi
+          done < <(find build-universal.app -type f -print0)
+
+      - name: Deploy Qt frameworks
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          "${QT_ROOT_DIR}/bin/macdeployqt" build-universal.app -verbose=1
+          mkdir -p build-universal.app/Contents/MacOS/languages
+          find build-arm64/share/translations -name "*.qm" \
+            -exec cp {} build-universal.app/Contents/MacOS/languages/ \; 2>/dev/null || true
+
+      - name: Create DMG
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cp -R build-universal.app "Arsenic.app"
+          hdiutil create \
+            -volname "Arsenic ${VERSION}" \
+            -srcfolder "Arsenic.app" \
+            -ov -format UDZO \
+            "arsenic-${VERSION}-universal-macos.dmg"
+
+      - name: Upload artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: arsenic-*-universal-macos.dmg
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.2'
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          setup-python: false
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build
+        run: |
+          cmake -S . -B build -G "Ninja Multi-Config"
+          cmake --build build --config Release
+
+      - name: Test
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:QT_ROOT_DIR\bin;build\src\Release;$env:PATH"
+          ctest --test-dir build --build-config Release --output-on-failure --timeout 300
+
+      - name: Install and deploy
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $dest = "$env:GITHUB_WORKSPACE\deploy"
+          # Install binary + translations (cmake handles all .qm files automatically)
+          cmake --install build --prefix $dest --component arsenic
+          # Deploy Qt DLLs; flags skip what Arsenic doesn't need
+          windeployqt.exe --release --no-translations --no-system-d3d-compiler `
+            --no-opengl-sw --no-network "$dest\arsenic.exe"
+          # Remove plugin directories unused at runtime
+          @("generic","networkinformation","tls","iconengines") | ForEach-Object {
+              Remove-Item -Recurse -Force "$dest\$_" -ErrorAction SilentlyContinue
+          }
+          Copy-Item README.md "$dest\"
+
+      - name: Create portable ZIP
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME -replace '^v', ''
+          Compress-Archive -Path "deploy\*" `
+            -DestinationPath "arsenic-${VERSION}-windows-portable.zip"
+
+      - name: Install Inno Setup
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: choco install innosetup -y --no-progress
+
+      - name: Build Inno Setup installer
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME -replace '^v', ''
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAPPVERSION=$VERSION /DSRCDIR=$env:GITHUB_WORKSPACE\deploy `
+            share\windows\installer.iss
+          Move-Item "share\windows\arsenic-${VERSION}-windows-setup.exe" "."
+
+      - name: Upload artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            arsenic-*-windows-portable.zip
+            arsenic-*-windows-setup.exe
+
+# ── Publish release (tag only, all builds must succeed) ───────────────────────
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    needs: [linux, macos, windows]
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            arsenic-*-linux-x86_64.AppImage
+            arsenic-*-universal-macos.dmg
+            arsenic-*-windows-portable.zip
+            arsenic-*-windows-setup.exe
