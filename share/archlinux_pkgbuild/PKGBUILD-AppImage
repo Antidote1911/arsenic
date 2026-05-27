@@ -6,7 +6,7 @@
 # La variable APPIMAGE_EXTRACT_AND_RUN évite d'avoir besoin de fuse2 au runtime.
 
 pkgname=arsenic-appimage
-pkgver=6.0.3
+pkgver=6.0.4
 pkgrel=1
 pkgdesc="Strong triple encryption tool (AppImage pre-built)"
 arch=('x86_64')

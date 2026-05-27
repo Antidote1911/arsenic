@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(arsenic VERSION 6.0.3)
+project(arsenic VERSION 6.0.4)
 
 find_package(Qt6 6 REQUIRED COMPONENTS Core Widgets LinguistTools)
 # Set c++ standard for all targets
